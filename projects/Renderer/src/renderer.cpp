@@ -23,8 +23,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
 
 Renderer::~Renderer() 
 { 
-	runLoadModelsThread = false;
-	if (loadModelsThread.joinable()) loadModelsThread.join();
+	stopThread();
 }
 
 int Renderer::run()
@@ -160,10 +159,21 @@ void Renderer::mainLoop()
 			glfwSetWindowShouldClose(e.window, true);
 	}
 
-	runLoadModelsThread = false;
-	if (loadModelsThread.joinable()) loadModelsThread.join();
+	stopThread();
 
 	vkDeviceWaitIdle(e.device);	// Waits for the logical device to finish operations. Needed for cleaning up once drawing and presentation operations (drawFrame) have finished. Use vkQueueWaitIdle for waiting for operations in a specific command queue to be finished.
+}
+
+void Renderer::cleanupLists()
+{
+	models.clear();
+	waitingModels.clear();
+}
+
+void Renderer::stopThread()
+{
+	runLoadModelsThread = false;
+	if (loadModelsThread.joinable()) loadModelsThread.join();
 }
 
 /**
@@ -365,6 +375,7 @@ void Renderer::cleanup()
 	// Cleanup each model
 	for(std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
 		it->cleanup();
+	cleanupLists();
 
 	// Cleanup environment
 	e.cleanup();
@@ -391,44 +402,95 @@ std::list<modelData>::iterator Renderer::newModel(size_t numberOfRenderings, con
 
 	return waitingModels.emplace(waitingModels.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, true);
 	// LOOK should this make copy-constructor unnecessary?
+	// LOOK using std::move inside emplace() could be better (https://quuxplusone.github.io/blog/2021/03/03/push-back-emplace-back/)
+}
+
+void Renderer::deleteModel(std::list<modelData>::iterator model)
+{
+	const std::lock_guard<std::mutex> lock(deletingModelsMutex);
+	
+	deletingModels.insert(deletingModels.cend(), model);
 }
 
 // Check for models pending full initialization.
 void Renderer::loadModels_Thread()
 {
-	std::list<modelData>::iterator begin, end, it;
+	std::list<modelData>::iterator						wBegin, wEnd, wIt;	// Iterators for waitingModels
+	std::list<std::list<modelData>::iterator>::iterator	dBegin, dEnd, dIt;	// Iterators for deletingModels
+	size_t waitSize, deleteSize;
+	std::list<modelData> deathRow;			// Vulkan models that are going to be deleted
 	
 	while (runLoadModelsThread)
 	{
-		if (!waitingModels.size())
+		if (!waitingModels.size() && !deletingModels.size())
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			continue;
 		}
 		else
 		{
-			begin = waitingModels.begin();
-			end = waitingModels.end();
-			it = waitingModels.begin();
+			deleteSize = deletingModels.size();
+			waitSize = waitingModels.size();
 
-			// Load object data from memory and create Vulkan objects.
-			while (it != end)
+			// Fully initialize modelData objects in the waitingModels list
+			if (waitSize)
 			{
-				it->fullConstruction();
-				++it;
-			}
+				wBegin = waitingModels.begin();
+				wEnd   = waitingModels.end();
 
-			// Move objects from waitingModels list to models list (this one has the models actually rendered).
-			const std::lock_guard<std::mutex> lock(modelsMutex);
-
-			{
-				const std::lock_guard<std::mutex> lock(waitingModelsMutex);
-				models.splice(models.cbegin(), waitingModels, begin, end);
+				for (wIt = wBegin; wIt != wEnd; ++wIt)	// Load object data from memory and create Vulkan objects.
+					wIt->fullConstruction();
 			}
 			
-			// Create command buffers for all the models in the models list.
-			//vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-			if (commandBuffers.size() > 0)		// If run() has not been called yet, don't create the command buffers.
-				createCommandBuffers(true);
+			{
+				const std::lock_guard<std::mutex> lock(modelsMutex);
+				
+				// Move objects from waitingModels list to models list
+				if (waitSize)
+				{
+					const std::lock_guard<std::mutex> lock(waitingModelsMutex);
+
+					models.splice(models.cend(), waitingModels, wBegin, wEnd);
+				}
+				
+				// Delete objects in models list pointed by the deletingModels list
+				if(deleteSize)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(deletingModelsMutex);
+
+						dBegin = deletingModels.begin();
+						dEnd = deletingModels.end();
+
+						for (dIt = dBegin; dIt != dEnd; dIt++)		// Move models to deathRow list
+							deathRow.splice(deathRow.cend(), models, *dIt);
+
+						deletingModels.erase(dBegin, dEnd);			// Delete iterators used
+					}
+				}
+				
+				// Recreate command buffers
+				if (commandBuffers.size() > 0)	// If run() has not been called yet, it just don't do it.
+				{
+					vkDeviceWaitIdle(e.device);
+					vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+					createCommandBuffers(true);		// Create command buffers for all the models in the models list.
+				}
+			}
+
+			if (deleteSize)
+			{
+				wBegin = deathRow.begin();
+				wEnd   = deathRow.end();
+
+				for (wIt = wBegin; wIt != wEnd; ++wIt)
+				{
+					wIt->cleanupSwapChain();
+					wIt->cleanup();				// Delete Vulkan objects
+				}			
+
+				deathRow.clear();				// Delete models
+			}
 		}
 	}
 }

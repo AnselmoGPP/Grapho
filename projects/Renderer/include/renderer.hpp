@@ -17,8 +17,10 @@
 						recreateSwapChain (for window resize)
 							cleanupSwapChain (2)
 							createCommandBuffers (3)
+						stopThreads
 				- cleanup
 					cleanupSwapChain (1)
+					cleanupLists
 
 		Thread 2:
 			loadModels_Thread
@@ -45,10 +47,14 @@ class Renderer
 	std::list<modelData>	models;			// Models (completly initialized)
 
 	// Threads stuff
-	std::list<modelData>	waitingModels;		// Models waiting for being included in m (partially initialized).
 	std::thread				loadModelsThread;	// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+
+	std::list<std::list<modelData>::iterator> deletingModels;	// Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<modelData>	waitingModels;		// Models waiting for being included in m (partially initialized).
+
 	std::mutex				modelsMutex;		// Controls access to models list and the command buffer
 	std::mutex				waitingModelsMutex;	// Controls access to waitingModels list
+	std::mutex				deletingModelsMutex;// Controls access to deletingModels list
 
 	// Private parameters:
 
@@ -61,15 +67,17 @@ class Renderer
 	void createCommandBuffers(bool justUpdate = false);	///< Allocates command buffers and record drawing commands in them. justUpdate is for using this method after loading new models in the secondary thread (avoids an initial semaphore that could block the thread).
 	void createSyncObjects();
 	void mainLoop();
+		void drawFrame();
 	void cleanup();
 
-	void drawFrame();
 	void updateUniformBuffer(uint32_t currentImage);
 	void(*graphicsUpdate) (Renderer& rend);
 	void loadModels_Thread();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();
+	void stopThread();
+	void cleanupLists();
 
 	// Member variables:
 
@@ -89,6 +97,7 @@ public:
 
 	int run();
 	std::list<modelData>::iterator newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
+	void deleteModel(std::list<modelData>::iterator model);
 	TimerSet& getTimer();
 	Camera& getCamera();
 };

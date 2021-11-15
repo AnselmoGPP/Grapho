@@ -35,8 +35,9 @@
 		
 		Completed
 			X Parallel loading
+			  Many threads
 			X Add model (after & during rendering)
-			  Remove model (after & during rendering)
+			X Remove model (after & during rendering)
 			  Add render (after & during rendering)
 			  Remove render (after & during rendering)
 */
@@ -63,6 +64,7 @@ void update(Renderer& r);
 
 std::map<std::string, std::list<modelData>::iterator> assets;
 bool roomVisible = false;
+bool cottageLoaded = false;
 
 int main(int argc, char* argv[])
 {
@@ -74,6 +76,7 @@ int main(int argc, char* argv[])
 		(SHADERS_DIR  + "triangleV.spv").c_str(),
 		(SHADERS_DIR  + "triangleF.spv").c_str() );
 
+	cottageLoaded = true;
 	assets.insert({ "cottage", itCottage });
 
 	app.run();
@@ -85,13 +88,20 @@ int main(int argc, char* argv[])
 void update(Renderer &r)
 {
 	long double time = r.getTimer().getTime();
-	//std::cout << time << std::endl;
+	size_t fps		 = r.getTimer().getFPS();
+	std::cout << fps << " - " << time << std::endl;
 
-	// Model loaded before run()
-	assets["cottage"]->MM[0] = cottage_MM(time);
+	// Model loaded before run(), and deleted after run()
+	if (time < 5 && cottageLoaded)
+		assets["cottage"]->MM[0] = cottage_MM(time);
+	else if (cottageLoaded)
+	{
+		r.deleteModel(assets["cottage"]);
+		cottageLoaded = false;
+	}
 
 	// Model loaded after run()
-	if (time > 5 && !roomVisible)
+	if (time > 10 && !roomVisible)
 	{
 		std::list<modelData>::iterator itRoom = r.newModel(4,
 			(MODELS_DIR + "viking_room.obj").c_str(),
