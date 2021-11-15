@@ -1,6 +1,6 @@
 # VulkRend (Vulkan renderer)
 
-<br>![Khronos Vulkan logo](https://raw.githubusercontent.com/AnselmoGPP/Vulkan_samples/master/files/Vulkan_logo.png)
+<br>![Khronos Vulkan logo](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/Vulkan_logo.png)
 
 VulkRend is a lightweight and easy to use project for rendering computer graphics with C++ and [Vulkan®](https://www.khronos.org/vulkan/), the new generation graphics and compute API from [Khronos®](https://www.khronos.org/). 
 
@@ -34,7 +34,7 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
 - _**models:**_ Models for loading in our projects.
 - _**textures:**_ Images used as textures in our projects.
 
-<br>![Vulkan window](https://raw.githubusercontent.com/AnselmoGPP/Vulkan_samples/master/files/window_2.png)
+<br>![Vulkan window](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/window_2.png)
 
 ## Dependencies
 
