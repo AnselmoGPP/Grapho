@@ -34,7 +34,7 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
 - _**models:**_ Models for loading in our projects.
 - _**textures:**_ Images used as textures in our projects.
 
-<br>![Vulkan window](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/window_2.png)
+<br>![Vulkan window](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/window_1.png)
 
 ## Dependencies
 
