@@ -82,7 +82,7 @@ void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 
 
 modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
-	: e(environment), numMM(numberOfRenderings)
+	: e(environment)
 {
 	// Save paths
 	copyCString(this->modelPath,	modelPath);
@@ -90,18 +90,8 @@ modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	copyCString(this->VSpath,		VSpath);
 	copyCString(this->FSpath,		FSpath);
 
-	// Dynamic offsets
-	if (numMM > 1) fillDynamicOffsets();
-
-	// Set up model matrices (MM)
-	MM = new glm::mat4[numMM];
-	for (size_t i = 0; i < numMM; ++i)
-	{
-		MM[i] = glm::mat4(1.0f);
-		MM[i] = glm::translate(MM[i], glm::vec3(0.0f, 0.0f, 0.0f));
-		//MM[i] = glm::rotate(MM[i], glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//MM[i] = glm::scale(MM[i], glm::vec3(1.0f, 1.0f, 1.0f));
-	}
+	// Set up model matrices (MM) and Dynamic offsets
+	resizeUBOset(numberOfRenderings, false);
 
 	// Create Vulkan objects
 	if (!partialInitialization) fullConstruction();
@@ -347,15 +337,16 @@ void modelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 		colorBlendAttachment.srcAlphaBlendFactor	= VK_BLEND_FACTOR_ONE;
 		colorBlendAttachment.dstAlphaBlendFactor	= VK_BLEND_FACTOR_ZERO;
 		colorBlendAttachment.alphaBlendOp			= VK_BLEND_OP_ADD;
+
+		/* Pseudocode demonstration:
+			if (blendEnable) {
+				finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp> (dstColorBlendFactor * oldColor.rgb);
+				finalColor.a = (srcAlphaBlendFactor * newColor.a) <alphaBlendOp> (dstAlphaBlendFactor * oldColor.a);
+			}
+			else finalColor = newColor;
+			finalColor = finalColor & colorWriteMask;
+		*/
 	}
-	/* Pseudocode demonstration:
-	if (blendEnable) {
-		finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp> (dstColorBlendFactor * oldColor.rgb);
-		finalColor.a = (srcAlphaBlendFactor * newColor.a) <alphaBlendOp> (dstAlphaBlendFactor * oldColor.a);
-	}
-	else finalColor = newColor;
-	finalColor = finalColor & colorWriteMask;
-	*/
 
 	//	- Global color blending settings. Set blend constants that you can use as blend factors in the aforementioned calculations.
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -921,27 +912,27 @@ void modelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		if (numMM == 1)	bufferInfo.range = sizeof(UniformBufferObject);	// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
-		else							bufferInfo.range = dynamicOffsets[1];			// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
+		if (numMM == 1)	bufferInfo.range = sizeof(UniformBufferObject);			// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
+		else							bufferInfo.range = dynamicOffsets[1];	// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = textureImageView;
 		imageInfo.sampler = textureSampler;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};		// <<< CURRENT BUG (render same model many times)
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];						// Descriptor set to update
-		descriptorWrites[0].dstBinding = 0;										// Binding
+		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
+		descriptorWrites[0].dstBinding = 0;												// Binding
 		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
 		if (numMM == 1)
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// Type of descriptor
 		else
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		descriptorWrites[0].descriptorCount = 1;										// Number of array elements to update
-		descriptorWrites[0].pBufferInfo = &bufferInfo;								// Used for descriptors that refer to buffer data (like our descriptor)
-		descriptorWrites[0].pImageInfo = nullptr;									// [Optional] Used for descriptors that refer to image data
+		descriptorWrites[0].pBufferInfo = &bufferInfo;									// Used for descriptors that refer to buffer data (like our descriptor)
+		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
 		descriptorWrites[0].pTexelBufferView = nullptr;									// [Optional] Used for descriptors that refer to buffer views
 
 		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -954,14 +945,6 @@ void modelData::createDescriptorSets()
 
 		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 	}
-}
-
-void modelData::fillDynamicOffsets()
-{
-	size_t minSize = e.minUniformBufferOffsetAlignment * (1 + sizeof(UniformBufferObject) / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
-
-	for (size_t i = 0; i < numMM; i++)
-		dynamicOffsets.push_back(i * minSize);
 }
 
 void modelData::recreateSwapChain()
@@ -1007,4 +990,57 @@ void modelData::cleanup()
 	// Vertex
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
+}
+
+// LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
+// LOOK what if I call this and immediately modify a not yet existing MM element?
+// LOOK change name from MM to UB
+void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
+{
+	numMM = newSize;
+
+	// Dynamic offsets
+	if (numMM > 1)
+	{
+		size_t minSize = e.minUniformBufferOffsetAlignment * (1 + sizeof(UniformBufferObject) / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+
+		dynamicOffsets.clear();
+		for (size_t i = 0; i < numMM; i++)
+			dynamicOffsets.push_back(i * minSize);
+	}
+
+	// Set up model matrices (MM)
+	if (MM != nullptr) delete[] MM;
+	MM = new glm::mat4[numMM];
+	for (size_t i = 0; i < numMM; ++i)
+	{
+		MM[i] = glm::mat4(1.0f);
+		MM[i] = glm::translate(MM[i], glm::vec3(0.0f, 0.0f, 0.0f));
+		//MM[i] = glm::rotate(MM[i], glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//MM[i] = glm::scale(MM[i], glm::vec3(1.0f, 1.0f, 1.0f));
+	}
+
+	// If the object has already been created, we have to recreate the uniform buffers and descriptor stuff 
+	if (objectAlreadyConstructed)
+	{
+		// Destroy Uniform buffers & memory
+		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
+			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
+			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
+		}
+
+		// Destroy Descriptor pool & Descriptor set
+		vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
+
+		// Create them again
+		createUniformBuffers();
+		createDescriptorPool();
+		createDescriptorSets();
+	}
+}
+
+void modelData::setUBO(size_t pos, glm::mat4 &newValue)
+{
+	if (pos < numMM)
+		MM[pos] = newValue;
 }

@@ -26,6 +26,7 @@ class TimerSet
 
     int FPS;
     int maxFPS;
+    int maxPossibleFPS;
 
     size_t frameCounter;
 
@@ -41,6 +42,7 @@ public:
     // FPS control
     int         getFPS();               ///< Get FPS (updated in computeDeltaTime())
     void        setMaxFPS(int fps);     ///< Modify the current maximum FPS. Set it to 0 to deactivate FPS control.
+    int         getMaxPossibleFPS();    ///< Get the maximum possible FPS you can get (if we haven't set max FPS, maxPossibleFPS == FPS)
 
     // Frame counting
     size_t      getFrameCounter();      ///< Get frame number (it is incremented each time getDeltaTime() is called)

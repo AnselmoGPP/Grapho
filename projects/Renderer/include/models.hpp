@@ -87,7 +87,6 @@ class modelData
 	void						copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	void						fillDynamicOffsets();
 	void						copyCString(const char*& destination, const char* source);
 
 public:
@@ -95,6 +94,10 @@ public:
 	modelData(const modelData& obj);
 	~modelData();
 	modelData& fullConstruction();
+
+	void recreateSwapChain();
+	void cleanupSwapChain();
+	void cleanup();
 
 	VkDescriptorSetLayout		 descriptorSetLayout;	///< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
 	VkPipelineLayout			 pipelineLayout;		///< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
@@ -118,17 +121,16 @@ public:
 
 	VkDescriptorPool			 descriptorPool;		///< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		///< List. Opaque handle to a descriptor set object. One for each swap chain image.
-
-	void recreateSwapChain();
-	void cleanupSwapChain();
-	void cleanup();
 	
 	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	///< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
 	//glm::mat4(*getModelMatrix) (float time);
 
-	std::vector<uint32_t> dynamicOffsets;	///< Stores the offsets for each ubo descriptor
-	size_t numMM;
-	glm::mat4* MM;							///< Model matrices for each rendering of this object
+	std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
+	size_t					numMM;
+	glm::mat4*				MM;				///< Model matrices for each rendering of this object
+
+	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
+	void setUBO(size_t pos, glm::mat4& newValue);
 };
 
 #endif

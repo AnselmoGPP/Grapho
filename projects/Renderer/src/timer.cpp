@@ -29,9 +29,11 @@ void TimerSet::computeDeltaTime()
 {
     // Get deltaTime
     currentTime = std::chrono::high_resolution_clock::now();
-    //time = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count() / 1000000.l;
-    //time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
     deltaTime = std::chrono::duration<long double, std::chrono::seconds::period>(currentTime - prevTime).count();
+    //   time = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count() / 1000000.l;
+    //   time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    maxPossibleFPS = std::round(1 / deltaTime);
 
     // Add some time to deltaTime to adjust the FPS (if FPS control is enabled)
     if (maxFPS > 0)
@@ -68,6 +70,8 @@ long double TimerSet::getTimeNow()
 }
 
 int TimerSet::getFPS() { return FPS; }
+
+int TimerSet::getMaxPossibleFPS() { return maxPossibleFPS; }
 
 void TimerSet::setMaxFPS(int newFPS) { maxFPS = newFPS; }
 

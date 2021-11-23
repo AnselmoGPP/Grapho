@@ -18,16 +18,32 @@
 		Dynamic states (graphics pipeline)
 		Push constants
 		Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
+		Move createDescriptorSetLayout() to Environment
+		Why is FPS limited by default?
+
+		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
+		Destroy Vulkan buffers (UBO) outside semaphores
+		Updating UBOs just after modifying the amount of them with setRenders()
+		deleteRendersWithoutDestroyingVulkanBuffers()
+
+		x MOVE SEMAPHORE IN DRAWFRAME()
+		x GET MAXFPS
+		x MOVE TIME OUT FROM SEMAPHORE?
+		Special cases: modifying renders while resizing window...
+			Create vector like storage system for UBOs
+			Similar for offsets vector, so we don't have to usually update it too
+			Is required to erase and recreate UBOs?
 
 	Rendering:
 		- Many models
 		- Same model many times
-		> Add new model at render time (or delete it): New model or and already loaded one. > New thread?
+		- Add new model at render time (or delete it): New model or and already loaded one. > New thread?
 		Points, lines, triangles
 		Transparencies
 		2D graphics
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
+		Make classes more secure (hide sensitive variables)
 
 		One model, many renders. Operations:
 				- Add/delete/block model/s
@@ -54,6 +70,7 @@
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
+#include <iomanip>
 #include <map>
 
 #include "renderer.hpp"
@@ -65,27 +82,141 @@ void update(Renderer& r);
 std::map<std::string, std::list<modelData>::iterator> assets;
 bool roomVisible = false;
 bool cottageLoaded = false;
+bool check1 = false, check2 = false;
 
 int main(int argc, char* argv[])
 {
+	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);
 
-	std::list<modelData>::iterator itCottage = app.newModel( 1,
+	// Add a model to render. An iterator is returned (std::list<modelData>::iterator). Save it for updating model data later.
+	assets["cottage"] = app.newModel( 1,
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR  + "triangleV.spv").c_str(),
 		(SHADERS_DIR  + "triangleF.spv").c_str() );
 
 	cottageLoaded = true;
-	assets.insert({ "cottage", itCottage });
 
+	// Delete a model you passed previously.
+	app.deleteModel(assets["cottage"]);
+
+	// Add the same model again.
+	assets["cottage"] = app.newModel( 1,
+		(MODELS_DIR + "cottage_obj.obj").c_str(),
+		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
+		(SHADERS_DIR + "triangleV.spv").c_str(),
+		(SHADERS_DIR + "triangleF.spv").c_str());
+
+	cottageLoaded = true;
+
+	assets["room"] = app.newModel( 4,
+		(MODELS_DIR + "viking_room.obj").c_str(),
+		(TEXTURES_DIR + "viking_room.png").c_str(),
+		(SHADERS_DIR + "triangleV.spv").c_str(),
+		(SHADERS_DIR + "triangleF.spv").c_str());
+
+	roomVisible = true;
+
+	// Start rendering
 	app.run();
-
+	
 	//std::this_thread::sleep_for(std::chrono::seconds(5));
 	return EXIT_SUCCESS;
 }
 
-void update(Renderer &r)
+void outputData(Renderer& r)
+{
+	long double time = r.getTimer().getTime();
+	size_t fps = r.getTimer().getFPS();
+	size_t maxfps = r.getTimer().getMaxPossibleFPS();
+
+	std::cout << std::fixed << std::setprecision(3);
+	//std::cout << fps << " - " << maxfps << " - " << time << std::endl;
+	//std::cout << '\r' << fps << " - " << time;
+	//std::cout.unsetf(std::ios::fixed | std::ios::scientific);
+}
+
+void update(Renderer& r)
+{
+	long double time = r.getTimer().getTime();
+	outputData(r);
+
+	// Update model's model matrix each frame
+	if (cottageLoaded)
+		assets["cottage"]->setUBO(0, cottage_MM(time));
+
+	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
+	{
+		assets["room"]->setUBO(0, room1_MM(time));
+		assets["room"]->setUBO(1, room2_MM(time));
+		assets["room"]->setUBO(2, room3_MM(time));
+		assets["room"]->setUBO(3, room4_MM(time));
+	}
+	else if (time > 5 && !check1)
+	{
+		r.setRenders(&assets["room"], 2);
+		check1 = true;
+	}
+	else if (time < 10)
+	{
+		assets["room"]->setUBO(0, room1_MM(time));
+		assets["room"]->setUBO(1, room2_MM(time));
+	}
+	else if (time > 10 && !check2)
+	{
+		r.setRenders(&assets["room"], 3);
+		check2 = true;
+	}
+	else
+	{
+		assets["room"]->setUBO(0, room1_MM(time));
+		assets["room"]->setUBO(1, room2_MM(time));
+		assets["room"]->setUBO(2, room3_MM(time));
+	}
+}
+/*
+void update2(Renderer& r)
+{
+	long double time = r.getTimer().getTime();
+	size_t fps = r.getTimer().getFPS();
+	std::cout << fps << " - " << time << std::endl;
+
+	// Update model's model matrix each frame
+	if (cottageLoaded)
+		assets["cottage"]->MM[0] = cottage_MM(time);
+
+	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
+	{
+		assets["room"]->MM[0] = room1_MM(time);
+		assets["room"]->MM[1] = room2_MM(time);
+		assets["room"]->MM[2] = room3_MM(time);
+		assets["room"]->MM[3] = room4_MM(time);
+	}
+	else if (time > 5 && !check1)
+	{
+		r.setRenders(&assets["room"], 2);
+		check1 = true;
+	}
+	else if(time < 10)
+	{
+		assets["room"]->MM[0] = room1_MM(time);
+		assets["room"]->MM[1] = room2_MM(time);
+	}
+	else if (time > 10 && !check2)
+	{
+		r.setRenders(&assets["room"], 3);
+		check2 = true;
+	}
+	else
+	{
+		assets["room"]->MM[0] = room1_MM(time);
+		assets["room"]->MM[1] = room2_MM(time);
+		assets["room"]->MM[2] = room3_MM(time);
+	}
+}
+
+void update1(Renderer &r)
 {
 	long double time = r.getTimer().getTime();
 	size_t fps		 = r.getTimer().getFPS();
@@ -103,13 +234,12 @@ void update(Renderer &r)
 	// Model loaded after run()
 	if (time > 10 && !roomVisible)
 	{
-		std::list<modelData>::iterator itRoom = r.newModel(4,
+		assets["room"] = r.newModel(4,
 			(MODELS_DIR + "viking_room.obj").c_str(),
 			(TEXTURES_DIR + "viking_room.png").c_str(),
 			(SHADERS_DIR + "triangleV.spv").c_str(),
 			(SHADERS_DIR + "triangleF.spv").c_str());
 
-		assets.insert({ "room", itRoom });
 		roomVisible = true;
 	}
 	else if (roomVisible)
@@ -120,3 +250,4 @@ void update(Renderer &r)
 		assets["room"]->MM[3] = room4_MM(time);
 	}
 }
+*/

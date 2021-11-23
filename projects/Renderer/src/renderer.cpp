@@ -16,9 +16,9 @@
 #include "renderer.hpp"
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
-	: input(e.window), graphicsUpdate(graphicsUpdate), currentFrame(0), runLoadModelsThread(true)
+	: input(e.window), graphicsUpdate(graphicsUpdate), currentFrame(0), runThread(true)
 {
-	loadModelsThread = std::thread(&Renderer::loadModels_Thread, this);
+	thread_loadModels = std::thread(&Renderer::loadModels_Thread, this);
 }
 
 Renderer::~Renderer() 
@@ -45,8 +45,8 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers(bool justUpdate)
 {
-	if(!justUpdate) 
-		const std::lock_guard<std::mutex> lock(modelsMutex);
+	if(!justUpdate)			// Used for avoiding a double-semaphore problem
+		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChainFramebuffers.size());				// One commandBuffer per swapChainFramebuffer
@@ -153,7 +153,7 @@ void Renderer::mainLoop()
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
 
 		drawFrame();
-		//if(waitingModels.size() > 0) addModelAndupdateCommandBuffers();
+		//if(modelsToLoad.size() > 0) addModelAndupdateCommandBuffers();
 
 		if (glfwGetKey(e.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			glfwSetWindowShouldClose(e.window, true);
@@ -167,13 +167,13 @@ void Renderer::mainLoop()
 void Renderer::cleanupLists()
 {
 	models.clear();
-	waitingModels.clear();
+	modelsToLoad.clear();
 }
 
 void Renderer::stopThread()
 {
-	runLoadModelsThread = false;
-	if (loadModelsThread.joinable()) loadModelsThread.join();
+	runThread = false;
+	if (thread_loadModels.joinable()) thread_loadModels.join();
 }
 
 /**
@@ -190,31 +190,33 @@ void Renderer::stopThread()
 */
 void Renderer::drawFrame()
 {
+	// Compute time difference
+	timer.computeDeltaTime();
+
 	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);		// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;
 	VkResult result = vkAcquireNextImageKHR(e.device, e.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {					// VK_ERROR_OUT_OF_DATE_KHR: The swap chain became incompatible with the surface and can no longer be used for rendering. Usually happens after window resize.
-		recreateSwapChain();
-		return;
-	}
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) 					// VK_ERROR_OUT_OF_DATE_KHR: The swap chain became incompatible with the surface and can no longer be used for rendering. Usually happens after window resize.
+		{ recreateSwapChain(); return; }
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)	// VK_SUBOPTIMAL_KHR: The swap chain can still be used to successfully present to the surface, but the surface properties are no longer matched exactly.
 		throw std::runtime_error("Failed to acquire swap chain image!");
-
-	// <<< Update uniforms
-	updateUniformBuffer(imageIndex);
 
 	// Check if this image is being used. If used, wait. Then, mark it as used by this frame.
 	if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)									// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		vkWaitForFences(e.device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 	imagesInFlight[imageIndex] = inFlightFences[currentFrame];							// Mark the image as now being in use by this frame
 
-	// <<< Submit the command buffer
+	// Update uniforms and submit command buffer
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };		// Which semaphores to signal once the command buffers have finished execution.
 	{
-		const std::lock_guard<std::mutex> lock(modelsMutex);	// Controls access to model list and command buffer
+		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);	// Controls access to model list and command buffer
 
+		// Update uniforms
+		updateUniformBuffer(imageIndex);
+
+		// Submit the command buffer
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };			// Which semaphores to wait on before execution begins.
@@ -226,7 +228,7 @@ void Renderer::drawFrame()
 		submitInfo.pSignalSemaphores = signalSemaphores;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-		//submitInfo.pCommandBuffers = commandBuffers.data();						// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
+		//submitInfo.pCommandBuffers = commandBuffers.data();			// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
 
 		vkResetFences(e.device, 1, &inFlightFences[currentFrame]);		// Reset the fence to the unsignaled state.
 
@@ -285,7 +287,7 @@ void Renderer::recreateSwapChain()
 	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
 
 	// Cleanup swapChain:
-	const std::lock_guard<std::mutex> lock(modelsMutex);
+	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
 	cleanupSwapChain();
 
@@ -305,11 +307,6 @@ void Renderer::recreateSwapChain()
 /// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
 void Renderer::updateUniformBuffer(uint32_t currentImage)
 {
-	const std::lock_guard<std::mutex> lock(modelsMutex);	// Controls access to model list and command buffer
-
-	// Compute time difference
-	timer.computeDeltaTime();
-
 	// Update model matrices and other things (user defined)
 	graphicsUpdate(*this);
 
@@ -395,98 +392,135 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-// Inserts a partially initialized model. The loadModelsThread thread will fully initialize it as soon as possible. 
+// Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
 std::list<modelData>::iterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
 {
-	const std::lock_guard<std::mutex> lock(waitingModelsMutex);		// Control access to waitingModels list from newModel() and loadModels_Thread().
+	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return waitingModels.emplace(waitingModels.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, true);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, true);
 	// LOOK should this make copy-constructor unnecessary?
 	// LOOK using std::move inside emplace() could be better (https://quuxplusone.github.io/blog/2021/03/03/push-back-emplace-back/)
 }
 
 void Renderer::deleteModel(std::list<modelData>::iterator model)
 {
-	const std::lock_guard<std::mutex> lock(deletingModelsMutex);
+	const std::lock_guard<std::mutex> lock(mutex_modelsToDelete);
 	
-	deletingModels.insert(deletingModels.cend(), model);
+	modelsToDelete.insert(modelsToDelete.cend(), model);
+}
+
+void Renderer::setRenders(std::list<modelData>::iterator* model, size_t numberOfRenders)
+{
+	if ((*model)->numMM != numberOfRenders)
+	{
+		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
+
+		rendersToSet[model] = numberOfRenders;
+	}
 }
 
 // Check for models pending full initialization.
 void Renderer::loadModels_Thread()
 {
-	std::list<modelData>::iterator						wBegin, wEnd, wIt;	// Iterators for waitingModels
-	std::list<std::list<modelData>::iterator>::iterator	dBegin, dEnd, dIt;	// Iterators for deletingModels
-	size_t waitSize, deleteSize;
+	std::list<modelData>::iterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
+	std::list<std::list<modelData>::iterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
+	std::map<std::list<modelData>::iterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
+	size_t models_to_load;
+	size_t models_to_delete;
+	size_t renders_to_set;
 	std::list<modelData> deathRow;			// Vulkan models that are going to be deleted
+	bool commandBufferNotCreatedYet;		// True if run() has not been called yet (i.e. a command buffer has not been created yet)					
 	
-	while (runLoadModelsThread)
+	while (runThread)
 	{
-		if (!waitingModels.size() && !deletingModels.size())
+		if (!modelsToLoad.size() && !modelsToDelete.size() && !rendersToSet.size())
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			continue;
 		}
 		else
 		{
-			deleteSize = deletingModels.size();
-			waitSize = waitingModels.size();
+			models_to_delete = modelsToDelete.size();
+			models_to_load   = modelsToLoad.size();
+			renders_to_set   = rendersToSet.size();
 
-			// Fully initialize modelData objects in the waitingModels list
-			if (waitSize)
+			// Fully initialize modelData objects in the modelsToLoad list
+			if (models_to_load)
 			{
-				wBegin = waitingModels.begin();
-				wEnd   = waitingModels.end();
+				lBegin = modelsToLoad.begin();
+				lEnd   = modelsToLoad.end();
 
-				for (wIt = wBegin; wIt != wEnd; ++wIt)	// Load object data from memory and create Vulkan objects.
-					wIt->fullConstruction();
+				for (lIt = lBegin; lIt != lEnd; ++lIt)
+					lIt->fullConstruction();		// Load object data from memory and create Vulkan objects.
 			}
 			
 			{
-				const std::lock_guard<std::mutex> lock(modelsMutex);
+				const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 				
-				// Move objects from waitingModels list to models list
-				if (waitSize)
-				{
-					const std::lock_guard<std::mutex> lock(waitingModelsMutex);
-
-					models.splice(models.cend(), waitingModels, wBegin, wEnd);
-				}
-				
-				// Delete objects in models list pointed by the deletingModels list
-				if(deleteSize)
+				// Move objects from modelsToLoad list to models list
+				if (models_to_load)
 				{
 					{
-						const std::lock_guard<std::mutex> lock(deletingModelsMutex);
+						const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);
 
-						dBegin = deletingModels.begin();
-						dEnd = deletingModels.end();
+						models.splice(models.cend(), modelsToLoad, lBegin, lEnd);
+					}
+				}
+								
+				// Mark objects in models list for deleting them (they're pointed by the modelsToDelete list)
+				if(models_to_delete)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(mutex_modelsToDelete);
+
+						dBegin = modelsToDelete.begin();
+						dEnd = modelsToDelete.end();
 
 						for (dIt = dBegin; dIt != dEnd; dIt++)		// Move models to deathRow list
 							deathRow.splice(deathRow.cend(), models, *dIt);
 
-						deletingModels.erase(dBegin, dEnd);			// Delete iterators used
+						modelsToDelete.erase(dBegin, dEnd);			// Delete iterators used
 					}
 				}
 				
-				// Recreate command buffers
-				if (commandBuffers.size() > 0)	// If run() has not been called yet, it just don't do it.
+				// Delete existing command buffers
+				commandBufferNotCreatedYet = (commandBuffers.size() == 0);
+				if (!commandBufferNotCreatedYet)
 				{
 					vkDeviceWaitIdle(e.device);
 					vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-					createCommandBuffers(true);		// Create command buffers for all the models in the models list.
 				}
+
+				// Set the number of renders for certain models in models list (this has to be here, since descriptors (and therefore, UBOs) are used by the command buffer
+				if (renders_to_set)
+				{
+					{
+						const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
+
+						rBegin = rendersToSet.begin();
+						rEnd = rendersToSet.end();
+						for (rIt = rBegin; rIt != rEnd; ++rIt)
+							(*rIt->first)->resizeUBOset(rendersToSet[rIt->first]);
+
+						rendersToSet.erase(rBegin, rEnd);
+					}
+				}
+				
+				// Generate new command buffer
+				if (!commandBufferNotCreatedYet)
+					createCommandBuffers(true);		// Create command buffers for all the models in the models list.
+
 			}
 
-			if (deleteSize)
+			if (models_to_delete)
 			{
-				wBegin = deathRow.begin();
-				wEnd   = deathRow.end();
+				lBegin = deathRow.begin();
+				lEnd   = deathRow.end();
 
-				for (wIt = wBegin; wIt != wEnd; ++wIt)
+				for (lIt = lBegin; lIt != lEnd; ++lIt)
 				{
-					wIt->cleanupSwapChain();
-					wIt->cleanup();				// Delete Vulkan objects
+					lIt->cleanupSwapChain();
+					lIt->cleanup();				// Delete Vulkan objects
 				}			
 
 				deathRow.clear();				// Delete models

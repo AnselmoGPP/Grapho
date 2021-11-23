@@ -29,6 +29,7 @@
 
 
 #include <vector>
+#include <map>
 #include <thread>
 #include <mutex>
 #include <optional>				// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
@@ -47,14 +48,16 @@ class Renderer
 	std::list<modelData>	models;			// Models (completly initialized)
 
 	// Threads stuff
-	std::thread				loadModelsThread;	// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+	std::thread				thread_loadModels;	// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 
-	std::list<std::list<modelData>::iterator> deletingModels;	// Iterators to the loaded models that have to be deleted from Vulkan.
-	std::list<modelData>	waitingModels;		// Models waiting for being included in m (partially initialized).
+	std::mutex				mutex_modelsAndCommandBuffers;	// Controls access to models list and the command buffer
+	std::mutex				mutex_modelsToLoad;				// Controls access to modelsToLoad list
+	std::mutex				mutex_modelsToDelete;			// Controls access to modelsToDelete list
+	std::mutex				mutex_rendersToSet;				// Controls access to rendersToSet map
 
-	std::mutex				modelsMutex;		// Controls access to models list and the command buffer
-	std::mutex				waitingModelsMutex;	// Controls access to waitingModels list
-	std::mutex				deletingModelsMutex;// Controls access to deletingModels list
+	std::list<modelData>							  modelsToLoad;		// Models waiting for being included in m (partially initialized).
+	std::list<std::list<modelData>::iterator>		  modelsToDelete;	// Iterators to the loaded models that have to be deleted from Vulkan.
+	std::map<std::list<modelData>::iterator*, size_t> rendersToSet;
 
 	// Private parameters:
 
@@ -89,7 +92,7 @@ class Renderer
 	std::vector<VkFence>		imagesInFlight;				///< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
 
 	size_t						currentFrame;				///< Frame to process next (0 or 1).
-	bool						runLoadModelsThread;		///< Signals whether the secondary thread (loadModelsThread) should be running.
+	bool						runThread;					///< Signals whether the secondary thread (thread_loadModels) should be running.
 
 public:
 	Renderer(void(*graphicsUpdate)(Renderer&));	// LOOK what if firstModel.size() == 0
@@ -98,6 +101,7 @@ public:
 	int run();
 	std::list<modelData>::iterator newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
 	void deleteModel(std::list<modelData>::iterator model);
+	void setRenders(std::list<modelData>::iterator* model, size_t numberOfRenders);
 	TimerSet& getTimer();
 	Camera& getCamera();
 };
