@@ -30,9 +30,6 @@
 		x GET MAXFPS
 		x MOVE TIME OUT FROM SEMAPHORE?
 		Special cases: modifying renders while resizing window...
-			Create vector like storage system for UBOs
-			Similar for offsets vector, so we don't have to usually update it too
-			Is required to erase and recreate UBOs?
 
 	Rendering:
 		- Many models
@@ -44,6 +41,7 @@
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
+		Model with 0 renders
 
 		One model, many renders. Operations:
 				- Add/delete/block model/s
@@ -79,7 +77,7 @@
 
 void update(Renderer& r);
 
-std::map<std::string, std::list<modelData>::iterator> assets;
+std::map<std::string, modelIterator> assets;
 bool roomVisible = false;
 bool cottageLoaded = false;
 bool check1 = false, check2 = false;
@@ -155,7 +153,7 @@ void update(Renderer& r)
 	}
 	else if (time > 5 && !check1)
 	{
-		r.setRenders(&assets["room"], 2);
+		r.setRenders(&assets["room"], 5);
 		check1 = true;
 	}
 	else if (time < 10)

@@ -82,7 +82,7 @@ void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 
 
 modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
-	: e(environment)
+	: e(environment), numMM(0)
 {
 	// Save paths
 	copyCString(this->modelPath,	modelPath);
@@ -101,7 +101,7 @@ modelData::modelData(const modelData& obj)
 	: e(obj.e), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM)
 {
 	// Fill the MM (model matrix) set
-	MM = new glm::mat4[numMM];
+	//MM = new glm::mat4[numMM];
 	for (size_t i = 0; i < numMM; ++i)
 		MM[i] = obj.MM[i];
 
@@ -114,7 +114,7 @@ modelData::modelData(const modelData& obj)
 
 modelData::~modelData()
 {
-	delete[] MM;
+	//delete[] MM;
 	delete[] modelPath;
 	delete[] texturePath;
 	delete[] VSpath;
@@ -849,17 +849,12 @@ void modelData::createIndexBuffer()
 
 // (21)
 void modelData::createUniformBuffers()
-{
-	VkDeviceSize bufferSize;
-	if (numMM == 1)	bufferSize = sizeof(UniformBufferObject);
-	else
-		bufferSize = numMM * dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size
-		
+{	
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
 
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
-		createBuffer(	bufferSize,
+		createBuffer(	getUBOSize(),
 						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 						uniformBuffers[i],
@@ -912,8 +907,7 @@ void modelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		if (numMM == 1)	bufferInfo.range = sizeof(UniformBufferObject);			// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
-		else							bufferInfo.range = dynamicOffsets[1];	// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
+		bufferInfo.range  = getUBORange();
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -968,8 +962,8 @@ void modelData::cleanupSwapChain()
 		vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 	}
 
-	// Descriptor pool & Descriptor set
-	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-sets are automatically freed when the descriptor pool is destroyed.
+	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
+	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);
 }
 
 void modelData::cleanup()
@@ -996,32 +990,31 @@ void modelData::cleanup()
 // LOOK what if I call this and immediately modify a not yet existing MM element?
 // LOOK change name from MM to UB
 void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
-{
-	numMM = newSize;
+{	
+	// Resize UBO and dynamic offsets
+	MM.resize(newSize);
+	dynamicOffsets.resize(newSize);	// Not used when newSize == 1
 
-	// Dynamic offsets
-	if (numMM > 1)
+	// Initialize (only) the new elements
+	if (newSize > numMM)
 	{
-		size_t minSize = e.minUniformBufferOffsetAlignment * (1 + sizeof(UniformBufferObject) / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+		glm::mat4 defaultM;
+		defaultM = glm::mat4(1.0f);
+		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
+		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
 
-		dynamicOffsets.clear();
-		for (size_t i = 0; i < numMM; i++)
-			dynamicOffsets.push_back(i * minSize);
+		size_t minSize = e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+
+		for (size_t i = numMM; i < newSize; ++i)
+		{
+			MM[i] = defaultM;
+			dynamicOffsets[i] = i * minSize;
+		}
 	}
 
-	// Set up model matrices (MM)
-	if (MM != nullptr) delete[] MM;
-	MM = new glm::mat4[numMM];
-	for (size_t i = 0; i < numMM; ++i)
-	{
-		MM[i] = glm::mat4(1.0f);
-		MM[i] = glm::translate(MM[i], glm::vec3(0.0f, 0.0f, 0.0f));
-		//MM[i] = glm::rotate(MM[i], glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//MM[i] = glm::scale(MM[i], glm::vec3(1.0f, 1.0f, 1.0f));
-	}
-
-	// If the object has already been created, we have to recreate the uniform buffers and descriptor stuff 
-	if (objectAlreadyConstructed)
+	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
+	if (objectAlreadyConstructed && newSize * getUBORange() > getUBOSize())
 	{
 		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
@@ -1029,14 +1022,17 @@ void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 		}
 
-		// Destroy Descriptor pool & Descriptor set
+		// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
 		vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
 		// Create them again
-		createUniformBuffers();
-		createDescriptorPool();
-		createDescriptorSets();
+		numMM = newSize;
+		createUniformBuffers();		// Create a UBO with the new size
+		createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
+		createDescriptorSets();		// Create Descriptor sets (contain the UBO)
 	}
+	else
+		numMM = newSize;
 }
 
 void modelData::setUBO(size_t pos, glm::mat4 &newValue)
@@ -1044,3 +1040,21 @@ void modelData::setUBO(size_t pos, glm::mat4 &newValue)
 	if (pos < numMM)
 		MM[pos] = newValue;
 }
+
+VkDeviceSize modelData::getUBOSize()
+{
+	if (numMM == 1)	
+		return getUsefulUBOSize();
+	else
+		return numMM * dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size
+}
+
+VkDeviceSize modelData::getUBORange()
+{
+	if (numMM == 1)	
+		return getUsefulUBOSize();		// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
+	else
+		return dynamicOffsets[1];				// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
+}
+
+VkDeviceSize modelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }

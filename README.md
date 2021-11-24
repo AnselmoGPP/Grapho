@@ -6,6 +6,7 @@ VulkRend is a lightweight and easy to use project for rendering computer graphic
 
 ## Table of Contents
 + [VulkRend](#vulkrend)
++ [How to use](#how-to-use)
 + [Dependencies](#dependencies)
 + [Building the project](#building-the-project)
 + [Adding a new project](#adding-a-new-project)
@@ -35,6 +36,45 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
 - _**textures:**_ Images used as textures in our projects.
 
 <br>![Vulkan window](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/window_1.png)
+
+## How to use
+
+Start by creating a `Renderer` object: Pass a callback of the form `void callback(Renderer& r)` as an argument. This callback will be run each frame. It can be used by the user for updating the Uniform Buffer Objects (model matrices, etc.), loading new model, deleting already loaded models, or modifying the number of renderings for each model. All this can also be done outside the callback, but always after the creation of the `Renderer` object.
+
+```
+Renderer app(callback);
+```
+
+Loading a model: For loading a model, specify the number of renders and the paths for the model, texture and shaders (vertex and fragment):
+
+```
+modelIterator modelIter = app.newModel( 
+    3,
+    "../models/model.obj",
+    "../models/texture.png",
+    "../shadrs/vertexShader.spv",
+    "../shadrs/fragmentShader.spv" );
+```
+
+Deleting a model: 
+
+```
+app.deleteModel(modelIter);
+```
+
+Modifying the number of renders of a model:
+
+```
+r.setRenders(modelIter, 5);
+```
+
+For efficiency, it is good practice to load a model by specifying the maximum number of renderings you will create from it, and during rendering you can modify the number of renders with `addRender()`. Why? Because the internal buffer of UBOs of that model needs to be destroyed and created again each time a bigger buffer requires allocation.
+
+For start running the render loop, call `run()`:
+
+```
+app.run();
+```
 
 ## Dependencies
 

@@ -39,6 +39,8 @@
 #include "input.hpp"
 #include "timer.hpp"
 
+typedef std::list<modelData>::iterator modelIterator;
+
 // LOOK Restart the Renderer object after finishing the render loop
 class Renderer
 {

@@ -47,6 +47,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	shaders/triangleF.frag
 
 	../../files/TODO.txt
+	../../Readme.md
 	CMakeLists.txt
 
 	#shaders/terrain.vs

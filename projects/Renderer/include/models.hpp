@@ -88,6 +88,9 @@ class modelData
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
+	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
+	VkDeviceSize				getUBORange();		///< Minimum size where the useful UBO fits (example: 4)
+	VkDeviceSize				getUsefulUBOSize();	///< Part of the range (useful UBO) that we will use (example: 3)
 
 public:
 	modelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
@@ -127,7 +130,8 @@ public:
 
 	std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
 	size_t					numMM;
-	glm::mat4*				MM;				///< Model matrices for each rendering of this object
+	std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
+
 
 	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
 	void setUBO(size_t pos, glm::mat4& newValue);

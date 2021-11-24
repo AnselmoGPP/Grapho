@@ -193,7 +193,8 @@ void Renderer::drawFrame()
 	// Compute time difference
 	timer.computeDeltaTime();
 
-	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);		// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
+	// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
+	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;
@@ -286,9 +287,9 @@ void Renderer::recreateSwapChain()
 
 	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
 
-	// Cleanup swapChain:
 	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
+	// Cleanup swapChain:
 	cleanupSwapChain();
 
 	// Recreate swapChain:
