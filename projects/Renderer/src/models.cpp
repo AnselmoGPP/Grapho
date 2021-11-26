@@ -90,7 +90,7 @@ modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	copyCString(this->VSpath,		VSpath);
 	copyCString(this->FSpath,		FSpath);
 
-	// Set up model matrices (MM) and Dynamic offsets
+	// Set up UBO data (Model matrices and Dynamic offsets)
 	resizeUBOset(numberOfRenderings, false);
 
 	// Create Vulkan objects
@@ -98,13 +98,8 @@ modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 }
 
 modelData::modelData(const modelData& obj) 
-	: e(obj.e), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM)
+	: e(obj.e), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
-	// Fill the MM (model matrix) set
-	//MM = new glm::mat4[numMM];
-	for (size_t i = 0; i < numMM; ++i)
-		MM[i] = obj.MM[i];
-
 	// Save paths
 	copyCString(modelPath,		obj.modelPath);
 	copyCString(texturePath,	obj.texturePath);
@@ -132,11 +127,11 @@ modelData& modelData::fullConstruction()
 	createTextureSampler();
 	loadModel(modelPath);
 	createVertexBuffer();
-	createIndexBuffer();
-	createUniformBuffers();
-	createDescriptorPool();
-	createDescriptorSets();
-
+	createIndexBuffer(); std::cout << "ABC 2" << ", " << numMM << std::endl;
+	createUniformBuffers(); std::cout << "ABC 3" << ", " << numMM << std::endl;
+	createDescriptorPool(); std::cout << "ABC 4" << ", " << numMM << std::endl;
+	createDescriptorSets(); std::cout << "ABC 5" << ", " << numMM << std::endl;
+	std::cout << "ABC 6" << ", " << numMM << std::endl;
 	return *this;
 }
 
@@ -853,12 +848,13 @@ void modelData::createUniformBuffers()
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
 
-	for (size_t i = 0; i < e.swapChainImages.size(); i++)
-		createBuffer(	getUBOSize(),
-						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						uniformBuffers[i],
-						uniformBuffersMemory[i] );
+	if(numMM != 0)
+		for (size_t i = 0; i < e.swapChainImages.size(); i++)
+			createBuffer(	getUBOSize(),
+							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							uniformBuffers[i],
+							uniformBuffersMemory[i] );
 }
  
 // (22)
@@ -867,10 +863,10 @@ void modelData::createDescriptorPool()
 	// Describe our descriptor sets.
 	std::array<VkDescriptorPoolSize, 2> poolSizes{};
 	if (numMM == 1)	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	else							poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	poolSizes[0].descriptorCount	= static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
-	poolSizes[1].type				= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount	= static_cast<uint32_t>(e.swapChainImages.size());
+	else			poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	poolSizes[0].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
+	poolSizes[1].type				  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[1].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());
 
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
@@ -887,6 +883,10 @@ void modelData::createDescriptorPool()
 // (23)
 void modelData::createDescriptorSets()
 {
+	descriptorSets.resize(e.swapChainImages.size());
+
+	if (numMM == 0) return;
+
 	std::vector<VkDescriptorSetLayout> layouts(e.swapChainImages.size(), descriptorSetLayout);
 
 	// Describe the descriptor set. Here, we will create one descriptor set for each swap chain image, all with the same layout
@@ -897,7 +897,6 @@ void modelData::createDescriptorSets()
 	allocInfo.pSetLayouts = layouts.data();											// Descriptor layout to base them on
 
 	// Allocate the descriptor set handles
-	descriptorSets.resize(e.swapChainImages.size());
 	if (vkAllocateDescriptorSets(e.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate descriptor sets!");
 
@@ -990,10 +989,10 @@ void modelData::cleanup()
 // LOOK what if I call this and immediately modify a not yet existing MM element?
 // LOOK change name from MM to UB
 void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
-{	
+{	 
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
-	dynamicOffsets.resize(newSize);	// Not used when newSize == 1
+	dynamicOffsets.resize(newSize);		// Not used when newSize == 1 or 0
 
 	// Initialize (only) the new elements
 	if (newSize > numMM)
@@ -1004,12 +1003,12 @@ void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
 
-		size_t minSize = e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+		size_t UBOrange = getUBORange();
 
 		for (size_t i = numMM; i < newSize; ++i)
 		{
 			MM[i] = defaultM;
-			dynamicOffsets[i] = i * minSize;
+			dynamicOffsets[i] = i * UBOrange;
 		}
 	}
 
@@ -1054,7 +1053,10 @@ VkDeviceSize modelData::getUBORange()
 	if (numMM == 1)	
 		return getUsefulUBOSize();		// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
 	else
-		return dynamicOffsets[1];				// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
+		return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+		//return dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
 }
 
 VkDeviceSize modelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }
+
+VkDeviceSize modelData::getUBOrange() {	return getUBORange(); }

@@ -15,7 +15,7 @@ VulkRend is a lightweight and easy to use project for rendering computer graphic
 
 ## VulkRend
 
-VulkRend allows the programmer to load models and textures (OBJ or raw data), and render them in a 3D space. A single model can be rendered many times simultaneously. Loaded models, or some of their renderings (or all of them), can be removed at any time. The camera system allows to navigate through the rendering. The models are loaded in a parallel thread, so that the render loop don't suffer delays.
+VulkRend allows the programmer to load models and textures (OBJ or raw data), and render them in a 3D space. A single model can be rendered many times simultaneously. Loaded models, or some of their renderings (or all of them), can be removed at any time. The camera system allows to navigate through the rendering. The models are loaded in a parallel thread, so that the render loop doesn't suffer delays.
 
 <h4>Main project content:</h4>
 
@@ -39,7 +39,7 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
 
 ## How to use
 
-Start by creating a `Renderer` object: Pass a callback of the form `void callback(Renderer& r)` as an argument. This callback will be run each frame. It can be used by the user for updating the Uniform Buffer Objects (model matrices, etc.), loading new model, deleting already loaded models, or modifying the number of renderings for each model. All this can also be done outside the callback, but always after the creation of the `Renderer` object.
+Start by creating a `Renderer` object: Pass a callback of the form `void callback(Renderer& r)` as an argument. This callback will be run each frame. It can be used by the user for updating the Uniform Buffer Objects (model matrices, etc.), loading new model, deleting already loaded models, or modifying the number of renderings for each model. All this actions can be performed inside or outside the callback, but always after the creation of the `Renderer` object.
 
 ```
 Renderer app(callback);
@@ -59,7 +59,7 @@ modelIterator modelIter = app.newModel(
 Deleting a model: 
 
 ```
-app.deleteModel(modelIter);
+r.deleteModel(modelIter);
 ```
 
 Modifying the number of renders of a model:

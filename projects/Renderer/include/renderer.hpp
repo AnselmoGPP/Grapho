@@ -27,7 +27,6 @@
 				createCommandBuffers (2)
 */
 
-
 #include <vector>
 #include <map>
 #include <thread>
@@ -56,10 +55,11 @@ class Renderer
 	std::mutex				mutex_modelsToLoad;				// Controls access to modelsToLoad list
 	std::mutex				mutex_modelsToDelete;			// Controls access to modelsToDelete list
 	std::mutex				mutex_rendersToSet;				// Controls access to rendersToSet map
+	std::mutex				mutex_resizingWindow;			// Controls any change to Vulkan objects (for 2nd thread & resizing window)
 
-	std::list<modelData>							  modelsToLoad;		// Models waiting for being included in m (partially initialized).
-	std::list<std::list<modelData>::iterator>		  modelsToDelete;	// Iterators to the loaded models that have to be deleted from Vulkan.
-	std::map<std::list<modelData>::iterator*, size_t> rendersToSet;
+	std::list<modelData>				modelsToLoad;		// Models waiting for being included in m (partially initialized).
+	std::list<modelIterator>			modelsToDelete;	// Iterators to the loaded models that have to be deleted from Vulkan.
+	std::map<modelIterator*, size_t>	rendersToSet;
 
 	// Private parameters:
 
@@ -100,12 +100,12 @@ public:
 	Renderer(void(*graphicsUpdate)(Renderer&));	// LOOK what if firstModel.size() == 0
 	~Renderer();
 
-	int run();
-	std::list<modelData>::iterator newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
-	void deleteModel(std::list<modelData>::iterator model);
-	void setRenders(std::list<modelData>::iterator* model, size_t numberOfRenders);
-	TimerSet& getTimer();
-	Camera& getCamera();
+	int				run();
+	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
+	void			deleteModel(modelIterator model);
+	void			setRenders(modelIterator& model, size_t numberOfRenders);
+	TimerSet&		getTimer();
+	Camera&			getCamera();
 };
 
 #endif

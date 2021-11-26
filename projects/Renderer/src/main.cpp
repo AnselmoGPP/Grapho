@@ -24,12 +24,6 @@
 		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
 		Destroy Vulkan buffers (UBO) outside semaphores
 		Updating UBOs just after modifying the amount of them with setRenders()
-		deleteRendersWithoutDestroyingVulkanBuffers()
-
-		x MOVE SEMAPHORE IN DRAWFRAME()
-		x GET MAXFPS
-		x MOVE TIME OUT FROM SEMAPHORE?
-		Special cases: modifying renders while resizing window...
 
 	Rendering:
 		- Many models
@@ -41,7 +35,7 @@
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
-		Model with 0 renders
+		- Model with 0 renders
 
 		One model, many renders. Operations:
 				- Add/delete/block model/s
@@ -49,11 +43,11 @@
 		
 		Completed
 			X Parallel loading
-			  Many threads
+			  Parallel loading (many threads)
 			X Add model (after & during rendering)
 			X Remove model (after & during rendering)
-			  Add render (after & during rendering)
-			  Remove render (after & during rendering)
+			X Add render (after & during rendering)
+			X Remove render (after & during rendering)
 */
 
 /*
@@ -87,8 +81,8 @@ int main(int argc, char* argv[])
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);
 
-	// Add a model to render. An iterator is returned (std::list<modelData>::iterator). Save it for updating model data later.
-	assets["cottage"] = app.newModel( 1,
+	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
+	assets["cottage"] = app.newModel( 0,
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR  + "triangleV.spv").c_str(),
@@ -144,6 +138,9 @@ void update(Renderer& r)
 	if (cottageLoaded)
 		assets["cottage"]->setUBO(0, cottage_MM(time));
 
+	if (time > 5)
+		r.setRenders(assets["cottage"], 0);
+
 	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
 	{
 		assets["room"]->setUBO(0, room1_MM(time));
@@ -153,7 +150,7 @@ void update(Renderer& r)
 	}
 	else if (time > 5 && !check1)
 	{
-		r.setRenders(&assets["room"], 5);
+		r.setRenders(assets["room"], 5);
 		check1 = true;
 	}
 	else if (time < 10)
@@ -163,7 +160,7 @@ void update(Renderer& r)
 	}
 	else if (time > 10 && !check2)
 	{
-		r.setRenders(&assets["room"], 3);
+		r.setRenders(assets["room"], 3);
 		check2 = true;
 	}
 	else

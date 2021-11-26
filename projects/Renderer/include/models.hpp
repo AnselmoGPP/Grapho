@@ -94,7 +94,7 @@ class modelData
 
 public:
 	modelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
-	modelData(const modelData& obj);
+	modelData(const modelData& obj);	// Copy constructor not used
 	~modelData();
 	modelData& fullConstruction();
 
@@ -135,6 +135,7 @@ public:
 
 	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
 	void setUBO(size_t pos, glm::mat4& newValue);
+	VkDeviceSize getUBOrange();
 };
 
 #endif

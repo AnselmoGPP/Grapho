@@ -43,7 +43,6 @@ Doesn't have key combination for "save all"
 ----------------------------------
 
 Doxygen comments (including documenting files)
-Class encapsulation
 
 ----------------------------------
 ----- ERRORS -----
@@ -65,7 +64,3 @@ terminate called after throwing an instance of 'std::runtime_error'
 Aborted (core dumped)
   
 ----------
-When resizing window:
-Validation layer: Validation Error: [ VUID-vkAcquireNextImageKHR-semaphore-01286 ] Object 0: handle = 0x892cdd0000000018, type = VK_OBJECT_TYPE_SEMAPHORE; | MessageID = 0xe9e4b2a9 | vkAcquireNextImageKHR: 
-Semaphore must not be currently signaled or in a wait state. The Vulkan spec states: If semaphore is not VK_NULL_HANDLE it must be unsignaled 
-(https://vulkan.lunarg.com/doc/view/1.2.170.0/windows/1.2-extensions/vkspec.html#VUID-vkAcquireNextImageKHR-semaphore-01286) 

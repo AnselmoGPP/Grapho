@@ -45,6 +45,7 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers(bool justUpdate)
 {
+	std::cout << "commands 1" << std::endl;
 	if(!justUpdate)			// Used for avoiding a double-semaphore problem
 		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
@@ -59,7 +60,7 @@ void Renderer::createCommandBuffers(bool justUpdate)
 
 	if (vkAllocateCommandBuffers(e.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-
+	std::cout << "commands 2" << std::endl;
 	// Start command buffer recording and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -88,7 +89,7 @@ void Renderer::createCommandBuffers(bool justUpdate)
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 
 		// Basic drawing commands (for each model)
-		for (std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
+		for (modelIterator it = models.begin(); it != models.end(); it++)
 		{
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
@@ -103,7 +104,8 @@ void Renderer::createCommandBuffers(bool justUpdate)
 				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);			// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).												
 			}
 			else
-				for (size_t j = 0; j < it->dynamicOffsets.size(); j++)
+				//for (size_t j = 0; j < it->dynamicOffsets.size(); j++)
+				for (size_t j = 0; j < it->numMM; j++)
 				{
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
 					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
@@ -115,6 +117,7 @@ void Renderer::createCommandBuffers(bool justUpdate)
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
 	}
+	std::cout << "commands 3" << std::endl;
 }
 
 // (25)
@@ -278,6 +281,7 @@ void Renderer::drawFrame()
 /// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
 void Renderer::recreateSwapChain()
 {
+
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(e.window, &width, &height);
 	while (width == 0 || height == 0) {
@@ -285,9 +289,9 @@ void Renderer::recreateSwapChain()
 		glfwWaitEvents();
 	}
 
-	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
+	const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
 
-	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
+	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
 
 	// Cleanup swapChain:
 	cleanupSwapChain();
@@ -297,7 +301,7 @@ void Renderer::recreateSwapChain()
 	e.recreateSwapChain();
 
 	//    - Each model
-	for (std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
+	for (modelIterator it = models.begin(); it != models.end(); it++)
 		it->recreateSwapChain();
 
 	//    - Renderer
@@ -324,13 +328,15 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	UniformBufferObject ubo{};
 	ubo.view = input.cam.GetViewMatrix();
 	ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
-
+std::cout << "update 1" << std::endl;
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
-	for (std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
+	for (modelIterator it = models.begin(); it != models.end(); it++)
 	{
+		std::cout << "- 1" << std::endl;
 		if (it->numMM == 1)
 		{
+			std::cout << "- 1.A" << std::endl;
 			//ubo.model = (*it)->getModelMatrix[0](timer.getTime());
 			ubo.model = it->MM[0];
 
@@ -338,10 +344,13 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 			vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 			memcpy(data, &ubo, sizeof(ubo));															// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 			vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);							// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+			std::cout << "- 1.AA" << std::endl;
 		}
-		else
+		else if(it->numMM > 1)
 		{
+			std::cout << "- 1.B" << std::endl;
 			UBOdynamic uboD(it->numMM, it->dynamicOffsets[1]);	// dynamicOffsets[1] == individual UBO size
+			std::cout << "- 1.BB" << std::endl;
 			for (size_t i = 0; i < uboD.UBOcount; i++)
 			{
 				//uboD.setModel(i, it->getModelMatrix[i](timer.getTime()));
@@ -354,8 +363,11 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 			vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 			memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 			vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+			std::cout << "- 1.BBB" << std::endl;
 		}
+		std::cout << "- 2" << std::endl;
 	}
+	std::cout << "update 2" << std::endl;
 }
 
 /// Cleanup after render loop terminated
@@ -371,7 +383,7 @@ void Renderer::cleanup()
 	}
 
 	// Cleanup each model
-	for(std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
+	for(modelIterator it = models.begin(); it != models.end(); it++)
 		it->cleanup();
 	cleanupLists();
 
@@ -386,7 +398,7 @@ void Renderer::cleanupSwapChain()
 	vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
 	// Models
-	for (std::list<modelData>::iterator it = models.begin(); it != models.end(); it++)
+	for (modelIterator it = models.begin(); it != models.end(); it++)
 		it->cleanupSwapChain();
 
 	// Environment
@@ -394,38 +406,37 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-std::list<modelData>::iterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
 	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, true);
-	// LOOK should this make copy-constructor unnecessary?
-	// LOOK using std::move inside emplace() could be better (https://quuxplusone.github.io/blog/2021/03/03/push-back-emplace-back/)
+
 }
 
-void Renderer::deleteModel(std::list<modelData>::iterator model)
+void Renderer::deleteModel(modelIterator model)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToDelete);
 	
 	modelsToDelete.insert(modelsToDelete.cend(), model);
 }
 
-void Renderer::setRenders(std::list<modelData>::iterator* model, size_t numberOfRenders)
+void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 {
-	if ((*model)->numMM != numberOfRenders)
+	if (model->numMM != numberOfRenders)
 	{
 		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 
-		rendersToSet[model] = numberOfRenders;
+		rendersToSet[&model] = numberOfRenders;
 	}
 }
 
 // Check for models pending full initialization.
 void Renderer::loadModels_Thread()
 {
-	std::list<modelData>::iterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
-	std::list<std::list<modelData>::iterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
-	std::map<std::list<modelData>::iterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
+	modelIterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
+	std::list<modelIterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
+	std::map<modelIterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
 	size_t models_to_load;
 	size_t models_to_delete;
 	size_t renders_to_set;
@@ -434,7 +445,7 @@ void Renderer::loadModels_Thread()
 	
 	while (runThread)
 	{
-		if (!modelsToLoad.size() && !modelsToDelete.size() && !rendersToSet.size())
+		if (!rendersToSet.size() && !modelsToLoad.size() && !modelsToDelete.size())
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			continue;
@@ -444,6 +455,8 @@ void Renderer::loadModels_Thread()
 			models_to_delete = modelsToDelete.size();
 			models_to_load   = modelsToLoad.size();
 			renders_to_set   = rendersToSet.size();
+
+			const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
 
 			// Fully initialize modelData objects in the modelsToLoad list
 			if (models_to_load)
@@ -510,7 +523,6 @@ void Renderer::loadModels_Thread()
 				// Generate new command buffer
 				if (!commandBufferNotCreatedYet)
 					createCommandBuffers(true);		// Create command buffers for all the models in the models list.
-
 			}
 
 			if (models_to_delete)
