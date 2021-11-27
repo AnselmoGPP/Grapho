@@ -10,8 +10,10 @@ VulkRend is a lightweight and easy to use project for rendering computer graphic
 + [Dependencies](#dependencies)
 + [Building the project](#building-the-project)
 + [Adding a new project](#adding-a-new-project)
-+ [Deeper technical details](#deeper-technical-details)
-    + [Loading models system](#loading-models-system)
++ [Technical details](#technical-details)
+    + [General system](#general-system)
+    + [Second thread](#second-thread)
++ [Links](#links)
 
 ## VulkRend
 
@@ -24,7 +26,7 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
   - _**shaders**_ Shaders used (vertex & fragment).
     - **environment:** Creates and configures the core Vulkan environment.
     - **renderer:** Uses the Vulkan environment for rendering the models provided by the user.
-    - **models:** The user loads his models to VulkRend through the modelData class.
+    - **models:** The user loads his models to VulkRend through the ModelData class.
     - **input:** Manages user input (keyboard, mouse...) and delivers it to VulkRend.
     - **camera:** Camera system.
     - **timer:** Time data.
@@ -39,18 +41,32 @@ VulkRend allows the programmer to load models and textures (OBJ or raw data), an
 
 ## How to use
 
-Start by creating a `Renderer` object: Pass a callback of the form `void callback(Renderer& r)` as an argument. This callback will be run each frame. It can be used by the user for updating the Uniform Buffer Objects (model matrices, etc.), loading new model, deleting already loaded models, or modifying the number of renderings for each model. All this actions can be performed inside or outside the callback, but always after the creation of the `Renderer` object.
+Start by creating a `Renderer` object: Pass a callback of the form `void callback(Renderer& r)` as an argument. This callback will be run each frame. It can be used by the user for updating the Uniform Buffer Objects (model matrices, etc.), loading new models, deleting already loaded models, or modifying the number of renderings for each model. All this actions can be performed inside or outside the callback, but always after the creation of the `Renderer` object.
 
 ```
 Renderer app(callback);
 ```
 
-Loading a model: For loading a model, specify the number of renders and the paths for the model, texture and shaders (vertex and fragment):
+Loading a model: There are different ways of loading a model.
+
+- Specify the number of renders and the paths for the model, texture and shaders (vertex and fragment):
 
 ```
 modelIterator modelIter = app.newModel( 
     3,
     "../models/model.obj",
+    "../models/texture.png",
+    "../shadrs/vertexShader.spv",
+    "../shadrs/fragmentShader.spv" );
+```
+
+- Specify the number of renders, a vector of vertex data (vector<Vertex>), a vector of indices (vector<uint32_t>), and the paths for the texture and shaders (vertex and fragment):
+
+```
+modelIterator modelIter = app.newModel( 
+    3,
+    vertex,
+    indices,
     "../models/texture.png",
     "../shadrs/vertexShader.spv",
     "../shadrs/fragmentShader.spv" );
@@ -138,15 +154,24 @@ The following includes the basics for setting up Vulkan and this project. For mo
   3. Modify project name in copiedProject/CMakeLists.txt
   4. Modify in-code shaders paths, if required
 
-## Deeper technical details
+## Technical details
 
-### Loading models system
+### General system
 
-A parallel thread (loadModelsThread) starts running for each Renderer object after it is created, and finishes right after the render loop has finished. When the user creates a new modelData object (newModel()), a partially initialized modelData is stored in the list "waitingModels". Meanwhile, loadModelsThread checks the waitingModels list periodically. If it detects any element inside, proceeds to fully initialize them (load models and textures into Vulkan), moves them to the list "models" (used mainly for updating the model matrices and creating the command buffers), and recreates the Vulkan command buffers. Three semaphores (lock_guard) are required:
+The Renderer class manages the ModelData objects. Both require a VulkanEnvironment object (the same one).
 
-  - waitingModelsMutex: Controls access to the waitingModels list from main thread (newModel -> inserts models) and secondary thread (extracts models from that list to put them in models list).
-  - modelsMutex: Controls access to the models list and command buffer from main thread (createCommandBuffers, updateUniformBuffer,recreateSwapChain, cleanupSwapChain) and secondary thread (inserts models in models list and updates command buffers).
-  - queuemutex: A vkQueue object (graphicsQueue, presentQueue) cannot be used in different threads simultaneously, so this controls the access to them.
+- _VulkanEnvironment:_ Contains the common elements required by Renderer and ModelData (GLFWwindow, VkInstance, VkSurfaceKHR, VkPhysicalDevice, VkDevice, VkQueues, VkSwapchainKHR, swapchain VkImages, swapchain VkFramebuffer, VkRenderPass, VkCommandPool, multisampled color buffer (VkImage), depth buffer (VkImage), ...).
+- _ModelData:_ Contains the data about some mesh (model), a reference to the VkEnvironment object used, VkPipeline, texture VkImage, texture VkSampler, vector of vertex, vector of indices, vertex VkBuffer, index VkBuffer, uniform VkBuffer, VkDescriptorPool, VkDescriptorSet, etc. The mesh data includes vertex (vertices, color, texture coordinates), indices, and paths to shaders and model data (vertices, color, texture coordinates, indices).
+- _Renderer:_ Contains all the ModelData objects, and the VkEnvironment object used. Also contains the VkCommandBuffer, Input, TimerSet, a second thread, some lists for pending tasks (load model, delete model, set renders for a model), semaphores, etc. 
+
+### Second thread
+
+When the user 
+- loads a model (newModel), a ModelData object is partially constructed and stored in a list of "models pending full construction".
+- deletes a model (deleteModel), it is annotated for deletion in a list of "models pending deletion".
+- changes the number of renders of some model (setRenders), it is annotated for modification in a list of "models pending changing number of renders".
+
+A secondary thread starts running in parallel just after the creation of a Renderer object. Such thread is continuously looking into these 3 lists. If a pending task is found, it is executed in this thread (so, it's done in parallel): fully construction of a ModelData, destroying a ModelData, or modifying the number of renders of some model. All these operations require modifying the command buffer. Different semaphores control access to different lists, the command buffer, and some common parts of code.
 
 ## Links
 

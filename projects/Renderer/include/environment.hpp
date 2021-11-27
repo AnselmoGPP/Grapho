@@ -71,7 +71,7 @@ public:
 
 	// Main member variables:
 
-	GLFWwindow*					window;								///< Opaque window object.
+	GLFWwindow*					 window;							///< Opaque window object.
 
 	VkInstance					 instance;							///< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	 debugMessenger;					///< Opaque handle to a debug messenger object (the debug callback is part of it).

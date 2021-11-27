@@ -17,6 +17,9 @@
 
 struct Vertex
 {
+	Vertex() = default;
+	Vertex(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates);
+
 	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 texCoord;
@@ -55,14 +58,16 @@ template<> struct std::hash<Vertex> {
 	size_t operator()(Vertex const& vertex) const;
 };
 
-class modelData
+class ModelData
 {
 	VulkanEnvironment& e;
 
 	const char* modelPath;
-	const char* texturePath;
+	
 	const char* VSpath;
 	const char* FSpath;
+
+	bool dataFromFile;						// Tell if vertex-color-texture_index comes from file or from code
 
 	// Main methods:
 
@@ -88,15 +93,14 @@ class modelData
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
-	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
-	VkDeviceSize				getUBORange();		///< Minimum size where the useful UBO fits (example: 4)
-	VkDeviceSize				getUsefulUBOSize();	///< Part of the range (useful UBO) that we will use (example: 3)
 
 public:
-	modelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
-	modelData(const modelData& obj);	// Copy constructor not used
-	~modelData();
-	modelData& fullConstruction();
+	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
+	ModelData(const ModelData& obj);	// Copy constructor not used
+	~ModelData();
+
+	ModelData& fullConstruction();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();
@@ -112,8 +116,8 @@ public:
 	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 
-	std::vector<Vertex>			 vertices;				///< Vertices of our model
-	std::vector<uint32_t>		 indices;				///< Indices of our model
+	std::vector<Vertex>			 vertices;				///< Vertices of our model (vertices, color, texture coordinates)
+	std::vector<uint32_t>		 indices;				///< Indices of our model (indices(
 	VkBuffer					 vertexBuffer;			///< Opaque handle to a buffer object (here, vertex buffer).
 	VkDeviceMemory				 vertexBufferMemory;	///< Opaque handle to a device memory object (here, memory for the vertex buffer).
 	VkBuffer					 indexBuffer;			///< Opaque handle to a buffer object (here, index buffer).
@@ -135,7 +139,11 @@ public:
 
 	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
 	void setUBO(size_t pos, glm::mat4& newValue);
-	VkDeviceSize getUBOrange();
+
+	const char* texturePath;
+	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
+	VkDeviceSize				getUBORange();		///< Minimum size where the useful UBO fits (example: 4)
+	VkDeviceSize				getUsefulUBOSize();	///< Part of the range (useful UBO) that we will use (example: 3)
 };
 
 #endif

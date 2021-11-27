@@ -6,6 +6,9 @@
 
 #include "models.hpp"
 
+Vertex::Vertex(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates)
+	: pos(vertex), color(vertexColor), texCoord(textureCoordinates) { }
+
 VkVertexInputBindingDescription Vertex::getBindingDescription()
 {
 	VkVertexInputBindingDescription bindingDescription{};
@@ -78,11 +81,11 @@ void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 	*original = matrix;
 }
 
-// modelData ----------------------------------------------------------------------------------
+// ModelData ----------------------------------------------------------------------------------
 
 
-modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
-	: e(environment), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
+	: e(environment), dataFromFile(true), numMM(0)
 {
 	// Save paths
 	copyCString(this->modelPath,	modelPath);
@@ -97,7 +100,26 @@ modelData::modelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	if (!partialInitialization) fullConstruction();
 }
 
-modelData::modelData(const modelData& obj) 
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
+	: e(environment), dataFromFile(false), numMM(0)
+{
+	// Save paths
+	copyCString(this->texturePath, texturePath);
+	copyCString(this->VSpath, VSpath);
+	copyCString(this->FSpath, FSpath);
+
+	// Set up UBO data (Model matrices and Dynamic offsets)
+	resizeUBOset(numberOfRenderings, false);
+
+	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
+	vertices = vertexData;
+	indices  = indicesData;
+
+	// Create Vulkan objects
+	if (!partialInitialization) fullConstruction();
+}
+
+ModelData::ModelData(const ModelData& obj) 
 	: e(obj.e), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
 	// Save paths
@@ -107,16 +129,19 @@ modelData::modelData(const modelData& obj)
 	copyCString(FSpath,			obj.FSpath);
 }
 
-modelData::~modelData()
+ModelData::~ModelData()
 {
-	//delete[] MM;
-	delete[] modelPath;
+	if (!dataFromFile)
+		std::cout << "Desctructor A" << std::endl;
+	if(dataFromFile) delete[] modelPath;
 	delete[] texturePath;
 	delete[] VSpath;
 	delete[] FSpath;
+	if (!dataFromFile)
+		std::cout << "Destructor B" << std::endl;
 }
 
-modelData& modelData::fullConstruction()
+ModelData& ModelData::fullConstruction()
 {
 	// Vulkan objects
 	createDescriptorSetLayout();
@@ -125,17 +150,19 @@ modelData& modelData::fullConstruction()
 	createTextureImage(texturePath);
 	createTextureImageView();
 	createTextureSampler();
-	loadModel(modelPath);
+
+	if(dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
-	createIndexBuffer(); std::cout << "ABC 2" << ", " << numMM << std::endl;
-	createUniformBuffers(); std::cout << "ABC 3" << ", " << numMM << std::endl;
-	createDescriptorPool(); std::cout << "ABC 4" << ", " << numMM << std::endl;
-	createDescriptorSets(); std::cout << "ABC 5" << ", " << numMM << std::endl;
-	std::cout << "ABC 6" << ", " << numMM << std::endl;
+	createIndexBuffer();
+
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+
 	return *this;
 }
 
-void modelData::copyCString(const char*& destination, const char* source)
+void ModelData::copyCString(const char*& destination, const char* source)
 {
 	size_t siz		= strlen(source) + 1;
 	char* address	= new char[siz];
@@ -144,7 +171,7 @@ void modelData::copyCString(const char*& destination, const char* source)
 }
 
 // (9)
-void modelData::createDescriptorSetLayout()
+void ModelData::createDescriptorSetLayout()
 {
 	// Describe the bindings
 	//	- Uniform buffer descriptor
@@ -195,7 +222,7 @@ void modelData::createDescriptorSetLayout()
 	Some programmable stages are optional (example: tessellation and geometry stages).
 	In Vulkan, the graphics pipeline is almost completely immutable. You will have to create a number of pipelines representing all of the different combinations of states you want to use.
 */
-void modelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
+void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 {
 	// Create pipeline layout   <<< sameMod
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -391,7 +418,7 @@ void modelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
 }
 
-std::vector<char> modelData::readFile(/*const std::string& filename*/ const char* filename)
+std::vector<char> ModelData::readFile(/*const std::string& filename*/ const char* filename)
 {
 	// Open file
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the of the file  /  binary: Read file as binary file (avoid text transformations)
@@ -411,7 +438,7 @@ std::vector<char> modelData::readFile(/*const std::string& filename*/ const char
 	return buffer;
 }
 
-VkShaderModule modelData::createShaderModule(const std::vector<char>& code)
+VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -425,7 +452,7 @@ VkShaderModule modelData::createShaderModule(const std::vector<char>& code)
 	return shaderModule;
 }
 
-void modelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+void ModelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 {
 	// Create buffer.
 	VkBufferCreateInfo bufferInfo{};
@@ -456,7 +483,7 @@ void modelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 
 // (15)
 /// Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer
-void modelData::createTextureImage(const char* path)
+void ModelData::createTextureImage(const char* path)
 {
 	// Load an image (usually, the most expensive process)
 	int texWidth, texHeight, texChannels;
@@ -509,7 +536,7 @@ void modelData::createTextureImage(const char* path)
 	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
 }
 
-void modelData::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void ModelData::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
 	VkCommandBuffer commandBuffer = e.beginSingleTimeCommands();
 
@@ -536,7 +563,7 @@ void modelData::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width
 	e.endSingleTimeCommands(commandBuffer);
 }
 
-void modelData::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
+void ModelData::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
 {
 	// Check if the image format supports linear blitting. We are using vkCmdBlitImage, but it's not guaranteed to be supported on all platforms bacause it requires our texture image format to support linear filtering, so we check it with vkGetPhysicalDeviceFormatProperties.
 	VkFormatProperties formatProperties;
@@ -636,13 +663,13 @@ void modelData::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t tex
 }
 
 // (16)
-void modelData::createTextureImageView()
+void ModelData::createTextureImageView()
 {
 	textureImageView = e.createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 }
 
 // (17)
-void modelData::createTextureSampler()
+void ModelData::createTextureSampler()
 {
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType			= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -700,9 +727,10 @@ void modelData::createTextureSampler()
 
 // (18)
 /**
+*	Fill the members vertices and indices.
 *	An OBJ file consists of positions, normals, texture coordinates and faces. Faces consist of an arbitrary amount of vertices, where each vertex refers to a position, normal and/or texture coordinate by index.
 */
-void modelData::loadModel(const char* obj_file)
+void ModelData::loadModel(const char* obj_file)
 {
 	tinyobj::attrib_t					 attrib;			// Holds all of the positions, normals and texture coordinates.
 	std::vector<tinyobj::shape_t>		 shapes;			// Holds all of the separate objects and their faces. Each face consists of an array of vertices. Each vertex contains the indices of the position, normal and texture coordinate attributes.
@@ -744,7 +772,7 @@ void modelData::loadModel(const char* obj_file)
 }
 
 // (19)
-void modelData::createVertexBuffer()
+void ModelData::createVertexBuffer()
 {
 	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data)
 	VkDeviceSize   bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -792,7 +820,7 @@ void modelData::createVertexBuffer()
 /**
 *	Memory transfer operations are executed using command buffers (like drawing commands), so we allocate a temporary command buffer. You may wish to create a separate command pool for these kinds of short-lived buffers, because the implementation could apply memory allocation optimizations. You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
 */
-void modelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
 	VkCommandBuffer commandBuffer = e.beginSingleTimeCommands();
 
@@ -808,7 +836,7 @@ void modelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize 
 }
 
 // (20)
-void modelData::createIndexBuffer()
+void ModelData::createIndexBuffer()
 {
 	// Create a staging buffer
 	VkDeviceSize   bufferSize = sizeof(indices[0]) * indices.size();
@@ -843,22 +871,21 @@ void modelData::createIndexBuffer()
 }
 
 // (21)
-void modelData::createUniformBuffers()
+void ModelData::createUniformBuffers()
 {	
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
 
-	if(numMM != 0)
-		for (size_t i = 0; i < e.swapChainImages.size(); i++)
-			createBuffer(	getUBOSize(),
-							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-							uniformBuffers[i],
-							uniformBuffersMemory[i] );
+	for (size_t i = 0; i < e.swapChainImages.size(); i++)
+		createBuffer(	getUBOSize(),
+						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+						uniformBuffers[i],
+						uniformBuffersMemory[i] );
 }
  
 // (22)
-void modelData::createDescriptorPool()
+void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
 	std::array<VkDescriptorPoolSize, 2> poolSizes{};
@@ -881,7 +908,7 @@ void modelData::createDescriptorPool()
 }
 
 // (23)
-void modelData::createDescriptorSets()
+void ModelData::createDescriptorSets()
 {
 	descriptorSets.resize(e.swapChainImages.size());
 
@@ -940,7 +967,7 @@ void modelData::createDescriptorSets()
 	}
 }
 
-void modelData::recreateSwapChain()
+void ModelData::recreateSwapChain()
 {
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 	
@@ -949,24 +976,28 @@ void modelData::recreateSwapChain()
 	createDescriptorSets();				// Descriptor sets
 }
 
-void modelData::cleanupSwapChain()
+void ModelData::cleanupSwapChain()
 {
+	std::cout << "cleanupSwapChain 1" << std::endl;
 	// Graphics pipeline
 	vkDestroyPipeline(e.device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(e.device, pipelineLayout, nullptr);
-
+	std::cout << "cleanupSwapChain 2" << std::endl;
 	// Uniform buffers & memory
 	for (size_t i = 0; i < e.swapChainImages.size(); i++) {
 		vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
 		vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 	}
-
+	std::cout << "cleanupSwapChain 3" << std::endl;
 	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
 	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);
+	std::cout << "cleanupSwapChain 4" << std::endl;
 }
 
-void modelData::cleanup()
+void ModelData::cleanup()
 {
+	if (!dataFromFile)
+		std::cout << "Cleanup A" << std::endl;
 	// Texture
 	vkDestroySampler(e.device, textureSampler, nullptr);
 	vkDestroyImageView(e.device, textureImageView, nullptr);
@@ -983,13 +1014,16 @@ void modelData::cleanup()
 	// Vertex
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
+	if (!dataFromFile)
+		std::cout << "Cleanup A" << std::endl;
 }
 
 // LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
 // LOOK what if I call this and immediately modify a not yet existing MM element?
 // LOOK change name from MM to UB
-void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
+void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 {	 
+	std::cout << "resizeUBOset 1" << std::endl;
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
 	dynamicOffsets.resize(newSize);		// Not used when newSize == 1 or 0
@@ -997,6 +1031,7 @@ void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	// Initialize (only) the new elements
 	if (newSize > numMM)
 	{
+		std::cout << "resizeUBOset A" << std::endl;
 		glm::mat4 defaultM;
 		defaultM = glm::mat4(1.0f);
 		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
@@ -1015,6 +1050,7 @@ void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
 	if (objectAlreadyConstructed && newSize * getUBORange() > getUBOSize())
 	{
+		std::cout << "resizeUBOset A" << std::endl;
 		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
@@ -1032,31 +1068,31 @@ void modelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	}
 	else
 		numMM = newSize;
+	std::cout << "resizeUBOset 2" << std::endl;
 }
 
-void modelData::setUBO(size_t pos, glm::mat4 &newValue)
+void ModelData::setUBO(size_t pos, glm::mat4 &newValue)
 {
 	if (pos < numMM)
 		MM[pos] = newValue;
 }
 
-VkDeviceSize modelData::getUBOSize()
+VkDeviceSize ModelData::getUBOSize()
 {
-	if (numMM == 1)	
+	if (numMM < 2)	
 		return getUsefulUBOSize();
 	else
-		return numMM * dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size
+		return numMM * getUBORange();		// getUBORange() == dynamicOffsets[1] == individual UBO size
 }
 
-VkDeviceSize modelData::getUBORange()
+VkDeviceSize ModelData::getUBORange()
 {
-	if (numMM == 1)	
+	if (numMM < 2)	
 		return getUsefulUBOSize();		// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
 	else
 		return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
 		//return dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
 }
 
-VkDeviceSize modelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }
+VkDeviceSize ModelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }
 
-VkDeviceSize modelData::getUBOrange() {	return getUBORange(); }

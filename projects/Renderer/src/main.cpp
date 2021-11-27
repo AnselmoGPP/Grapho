@@ -1,6 +1,6 @@
 /*
-	loopManager < VulkanEnvironment
-				< modelData		< VulkanEnvironment
+	Renderer	< VulkanEnvironment
+				< ModelData		< VulkanEnvironment
 								< modelConfig	< VulkanEnvironment
 												< getModelMatrix callbacks
 								< Input			< Camera
@@ -26,28 +26,16 @@
 		Updating UBOs just after modifying the amount of them with setRenders()
 
 	Rendering:
-		- Many models
-		- Same model many times
-		- Add new model at render time (or delete it): New model or and already loaded one. > New thread?
 		Points, lines, triangles
 		Transparencies
 		2D graphics
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
-		- Model with 0 renders
+		Parallel loading (many threads)
 
-		One model, many renders. Operations:
-				- Add/delete/block model/s
-				- Add/delete/block render/s
-		
-		Completed
-			X Parallel loading
-			  Parallel loading (many threads)
-			X Add model (after & during rendering)
-			X Remove model (after & during rendering)
-			X Add render (after & during rendering)
-			X Remove render (after & during rendering)
+	BUGS:
+		Somehow, camera continued moving backwards/left-side indefinetely
 */
 
 /*
@@ -78,8 +66,10 @@ bool check1 = false, check2 = false;
 
 int main(int argc, char* argv[])
 {
+	std::cout << "Begin" << std::endl;
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);
+	std::cout << "\n-----------------------------------------------------------------------------" << std::endl;
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	assets["cottage"] = app.newModel( 0,
@@ -110,6 +100,13 @@ int main(int argc, char* argv[])
 
 	roomVisible = true;
 
+	assets["floor"] = app.newModel(1,
+		v_floor,
+		i_floor,
+		(TEXTURES_DIR + "grass.png").c_str(),
+		(SHADERS_DIR + "triangleV.spv").c_str(),
+		(SHADERS_DIR + "triangleF.spv").c_str());
+
 	// Start rendering
 	app.run();
 	
@@ -124,7 +121,7 @@ void outputData(Renderer& r)
 	size_t maxfps = r.getTimer().getMaxPossibleFPS();
 
 	std::cout << std::fixed << std::setprecision(3);
-	//std::cout << fps << " - " << maxfps << " - " << time << std::endl;
+	std::cout << fps << " - " << maxfps << " - " << time << std::endl;
 	//std::cout << '\r' << fps << " - " << time;
 	//std::cout.unsetf(std::ios::fixed | std::ios::scientific);
 }
@@ -138,8 +135,11 @@ void update(Renderer& r)
 	if (cottageLoaded)
 		assets["cottage"]->setUBO(0, cottage_MM(time));
 
-	if (time > 5)
+	if (time > 5 && cottageLoaded)
+	{
 		r.setRenders(assets["cottage"], 0);
+		cottageLoaded = false;
+	}
 
 	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
 	{

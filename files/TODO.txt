@@ -36,6 +36,16 @@ terrainChunks:
 	(X) Encapsular terrain rendering
 	(X) Ommit first terrain creation
 
+--- Issues ------------------
+Vertex data (vertex, color, texture coords, indices) passed directly to a ModelData object. Problem:
+If such data is passed by reference, the user has to wait until the data is loaded after fullConstructor().
+If it is passed by value, user don't have to worry.
+
+Constructor sets flag dataFromFile and fullyConstructed
+fullConstruction uses dataFromFile
+User uses fullyConstructed for knowing how long ModelData needs the data visible 
+Alternatively, dont include fullyConstructed, but copy data directly
+
 --- Visual code ------------------
 Doesn't detect macros declared in CMakeLists.txt
 Doesn't have key combination for "save all"

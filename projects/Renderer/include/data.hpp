@@ -28,7 +28,12 @@ glm::mat4 room1_MM(float time);
 glm::mat4 room2_MM(float time);
 glm::mat4 room3_MM(float time);
 glm::mat4 room4_MM(float time);
+
 extern std::vector< std::function<glm::mat4(float)> > room_MM;
 
+// Others
+
+extern std::vector<Vertex>		v_floor;	// Vertex, color, texture coordinates
+extern std::vector<uint32_t>	i_floor;	// Indices
 
 #endif

@@ -2,7 +2,7 @@
 #define TRIANGLE_HPP
 
 /*
-	Renderer creates a VulkanEnvironment and, when the user wants, a modelData (newModel()).
+	Renderer creates a VulkanEnvironment and, when the user wants, a ModelData (newModel()).
 
 	Methods:
 
@@ -38,7 +38,7 @@
 #include "input.hpp"
 #include "timer.hpp"
 
-typedef std::list<modelData>::iterator modelIterator;
+typedef std::list<ModelData>::iterator modelIterator;
 
 // LOOK Restart the Renderer object after finishing the render loop
 class Renderer
@@ -46,10 +46,10 @@ class Renderer
 	VulkanEnvironment		e;				// Environment
 	Input					input;			// Input
 	TimerSet				timer;			// Time control
-	std::list<modelData>	models;			// Models (completly initialized)
+	std::list<ModelData>	models;			// Models (completly initialized)
 
 	// Threads stuff
-	std::thread				thread_loadModels;	// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+	std::thread				thread_loadModels;				// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 
 	std::mutex				mutex_modelsAndCommandBuffers;	// Controls access to models list and the command buffer
 	std::mutex				mutex_modelsToLoad;				// Controls access to modelsToLoad list
@@ -57,8 +57,8 @@ class Renderer
 	std::mutex				mutex_rendersToSet;				// Controls access to rendersToSet map
 	std::mutex				mutex_resizingWindow;			// Controls any change to Vulkan objects (for 2nd thread & resizing window)
 
-	std::list<modelData>				modelsToLoad;		// Models waiting for being included in m (partially initialized).
-	std::list<modelIterator>			modelsToDelete;	// Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<ModelData>				modelsToLoad;		// Models waiting for being included in m (partially initialized).
+	std::list<modelIterator>			modelsToDelete;		// Iterators to the loaded models that have to be deleted from Vulkan.
 	std::map<modelIterator*, size_t>	rendersToSet;
 
 	// Private parameters:
@@ -101,11 +101,16 @@ public:
 	~Renderer();
 
 	int				run();
-	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
-	void			deleteModel(modelIterator model);
-	void			setRenders(modelIterator& model, size_t numberOfRenders);
+
 	TimerSet&		getTimer();
 	Camera&			getCamera();
+
+	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
+	modelIterator	newModel(size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath);
+	void			deleteModel(modelIterator model);
+	void			setRenders(modelIterator& model, size_t numberOfRenders);
+
+
 };
 
 #endif
