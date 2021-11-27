@@ -160,9 +160,9 @@ The following includes the basics for setting up Vulkan and this project. For mo
 
 The Renderer class manages the ModelData objects. Both require a VulkanEnvironment object (the same one).
 
-- _VulkanEnvironment:_ Contains the common elements required by Renderer and ModelData (GLFWwindow, VkInstance, VkSurfaceKHR, VkPhysicalDevice, VkDevice, VkQueues, VkSwapchainKHR, swapchain VkImages, swapchain VkFramebuffer, VkRenderPass, VkCommandPool, multisampled color buffer (VkImage), depth buffer (VkImage), ...).
-- _ModelData:_ Contains the data about some mesh (model), a reference to the VkEnvironment object used, VkPipeline, texture VkImage, texture VkSampler, vector of vertex, vector of indices, vertex VkBuffer, index VkBuffer, uniform VkBuffer, VkDescriptorPool, VkDescriptorSet, etc. The mesh data includes vertex (vertices, color, texture coordinates), indices, and paths to shaders and model data (vertices, color, texture coordinates, indices).
-- _Renderer:_ Contains all the ModelData objects, and the VkEnvironment object used. Also contains the VkCommandBuffer, Input, TimerSet, a second thread, some lists for pending tasks (load model, delete model, set renders for a model), semaphores, etc. 
+- **VulkanEnvironment:** Contains the common elements required by Renderer and ModelData (GLFWwindow, VkInstance, VkSurfaceKHR, VkPhysicalDevice, VkDevice, VkQueues, VkSwapchainKHR, swapchain VkImages, swapchain VkFramebuffer, VkRenderPass, VkCommandPool, multisampled color buffer (VkImage), depth buffer (VkImage), ...).
+- **ModelData:** Contains the data about some mesh (model), a reference to the VkEnvironment object used, VkPipeline, texture VkImage, texture VkSampler, vector of vertex, vector of indices, vertex VkBuffer, index VkBuffer, uniform VkBuffer, VkDescriptorPool, VkDescriptorSet, etc. The mesh data includes vertex (vertices, color, texture coordinates), indices, and paths to shaders and model data (vertices, color, texture coordinates, indices).
+- **Renderer:** Contains all the ModelData objects, and the VkEnvironment object used. Also contains the VkCommandBuffer, Input, TimerSet, a second thread, some lists for pending tasks (load model, delete model, set renders for a model), semaphores, etc. 
 
 ### Second thread
 
