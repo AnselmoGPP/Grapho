@@ -45,6 +45,7 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers(bool justUpdate)
 {
+	std::cout << "createCommandBuffers" << std::endl;
 	if(!justUpdate)			// Used for avoiding a double-semaphore problem
 		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
@@ -107,7 +108,8 @@ void Renderer::createCommandBuffers(bool justUpdate)
 				//for (size_t j = 0; j < it->dynamicOffsets.size(); j++)
 				for (size_t j = 0; j < it->numMM; j++)
 				{
-					std::cout << "Multi: " << it->texturePath << ", " << it->getUsefulUBOSize() << ", " << it->getUBORange() << ", " << it->getUBOSize() << std::endl;
+
+					std::cout << "Multi (" << j << '/' << it->numMM << "): " << it->MM.size() << ' ' << it->dynamicOffsets[j] << ' ' << it->texturePath << ", " << it->getUsefulUBOSize() << ", " << it->getUBORange() << ", " << it->getUBOSize() << std::endl;
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
 					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 				}
@@ -281,25 +283,24 @@ void Renderer::drawFrame()
 /// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
 void Renderer::recreateSwapChain()
 {
-	std::cout << "rec 1" << std::endl;
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(e.window, &width, &height);
 	while (width == 0 || height == 0) {
 		glfwGetFramebufferSize(e.window, &width, &height);
 		glfwWaitEvents();
 	}
-	std::cout << "rec 2" << std::endl;
+
 	const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
-	std::cout << "rec 3" << std::endl;
+
 	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
-	std::cout << "rec 4" << std::endl;
+
 	// Cleanup swapChain:
 	cleanupSwapChain();
-	std::cout << "rec 5" << std::endl;
+
 	// Recreate swapChain:
 	//    - Environment
 	e.recreateSwapChain();
-	std::cout << "rec 6" << std::endl;
+
 	//    - Each model
 	for (modelIterator it = models.begin(); it != models.end(); it++)
 		it->recreateSwapChain();
@@ -307,7 +308,6 @@ void Renderer::recreateSwapChain()
 	//    - Renderer
 	createCommandBuffers(true);				// Command buffers directly depend on the swap chain images.
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
-	std::cout << "rec 7" << std::endl;
 }
 
 /// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
@@ -356,7 +356,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 				uboD.setView (i, ubo.view);
 				uboD.setProj (i, ubo.proj);
 			}
-
+			
 			void* data;
 			vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 			memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
@@ -389,22 +389,15 @@ void Renderer::cleanup()
 // Used in cleanup() and recreateSwapChain()
 void Renderer::cleanupSwapChain()
 {
-	std::cout << "cusc 1" << std::endl;
 	// Renderer (free Command buffers)
 	vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-	std::cout << "cusc 2" << std::endl;
+
 	// Models
 	for (modelIterator it = models.begin(); it != models.end(); it++)
-	{
-		std::cout << "Text. path> " << std::endl;
-		std::cout << it->texturePath << std::endl;
 		it->cleanupSwapChain();
-	}
 		
-	std::cout << "cusc 3" << std::endl;
 	// Environment
 	e.cleanupSwapChain();
-	std::cout << "cusc 4" << std::endl;
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
@@ -508,7 +501,6 @@ void Renderer::loadModels_Thread()
 				
 				// Delete existing command buffers
 				commandBufferNotCreatedYet = (commandBuffers.size() == 0);
-				std::cout << "Command buffer created: " << commandBufferNotCreatedYet << std::endl;
 				if (!commandBufferNotCreatedYet)
 				{
 					vkDeviceWaitIdle(e.device);

@@ -27,14 +27,21 @@
 
 	Rendering:
 		Points, lines, triangles
-		Transparencies
 		2D graphics
+		Transparencies
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 
+		Allow to update MM from the beginning, so it is not required to do so repeatedly in the callback
+		Can we take stuff out from thread 2?
+		Only dynamic UBOs
+		Start thread since run()
+
 	BUGS:
+		Look for numMM == or similar
+		addRender from 2 to 1 gives a problem: the dynamic UBO requires a dynamic offset (but 0 are left)
 		Somehow, camera continued moving backwards/left-side indefinetely
 */
 
@@ -70,7 +77,7 @@ int main(int argc, char* argv[])
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);
 	std::cout << "\n-----------------------------------------------------------------------------" << std::endl;
-
+/*
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	assets["cottage"] = app.newModel( 0,
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
@@ -91,8 +98,8 @@ int main(int argc, char* argv[])
 		(SHADERS_DIR + "triangleF.spv").c_str());
 
 	cottageLoaded = true;
-
-	assets["room"] = app.newModel( 4,
+*/
+	assets["room"] = app.newModel( 3,
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "triangleV.spv").c_str(),
@@ -100,13 +107,19 @@ int main(int argc, char* argv[])
 
 	roomVisible = true;
 
+	assets["room"]->setUBO(0, room1_MM(0));
+	assets["room"]->setUBO(1, room2_MM(0));
+	assets["room"]->setUBO(2, room3_MM(0));
+	//assets["room"]->setUBO(3, room4_MM(0));
+	//assets["room"]->setUBO(4, room5_MM(0));
+/*
 	assets["floor"] = app.newModel(1,
 		v_floor,
 		i_floor,
 		(TEXTURES_DIR + "grass.png").c_str(),
 		(SHADERS_DIR + "triangleV.spv").c_str(),
 		(SHADERS_DIR + "triangleF.spv").c_str());
-
+*/
 	// Start rendering
 	app.run();
 	
@@ -120,18 +133,18 @@ void outputData(Renderer& r)
 	size_t fps = r.getTimer().getFPS();
 	size_t maxfps = r.getTimer().getMaxPossibleFPS();
 
-	std::cout << std::fixed << std::setprecision(3);
-	std::cout << fps << " - " << maxfps << " - " << time << std::endl;
+	//std::cout << std::fixed << std::setprecision(3);
+	//std::cout << fps << " - " << maxfps << " - " << time << std::endl;
 	//std::cout << '\r' << fps << " - " << time;
 	//std::cout.unsetf(std::ios::fixed | std::ios::scientific);
 }
 
+// Update model's model matrix each frame
 void update(Renderer& r)
 {
 	long double time = r.getTimer().getTime();
 	outputData(r);
 
-	// Update model's model matrix each frame
 	if (cottageLoaded)
 		assets["cottage"]->setUBO(0, cottage_MM(time));
 
@@ -141,34 +154,30 @@ void update(Renderer& r)
 		cottageLoaded = false;
 	}
 
-	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
+	 if (time > 5 && !check1)
 	{
-		assets["room"]->setUBO(0, room1_MM(time));
-		assets["room"]->setUBO(1, room2_MM(time));
-		assets["room"]->setUBO(2, room3_MM(time));
-		assets["room"]->setUBO(3, room4_MM(time));
-	}
-	else if (time > 5 && !check1)
-	{
-		r.setRenders(assets["room"], 5);
+		std::cout << ">>> Render 4 rooms" << std::endl;
+		r.setRenders(assets["room"], 4);
 		check1 = true;
-	}
-	else if (time < 10)
-	{
-		assets["room"]->setUBO(0, room1_MM(time));
-		assets["room"]->setUBO(1, room2_MM(time));
 	}
 	else if (time > 10 && !check2)
 	{
-		r.setRenders(assets["room"], 3);
-		check2 = true;
+		//r.setRenders(assets["room"], 3);
+		//check2 = true;
 	}
-	else
-	{
-		assets["room"]->setUBO(0, room1_MM(time));
-		assets["room"]->setUBO(1, room2_MM(time));
-		assets["room"]->setUBO(2, room3_MM(time));
-	}
+	
+	 if (time > 5)
+	 {
+		 assets["room"]->setUBO(0, room1_MM(0));
+		 assets["room"]->setUBO(1, room2_MM(0));
+		 assets["room"]->setUBO(2, room3_MM(0));
+		 assets["room"]->setUBO(3, room4_MM(0));
+		 //assets["room"]->setUBO(4, room5_MM(0));
+	 }
+		 
+
+
+
 }
 /*
 void update2(Renderer& r)

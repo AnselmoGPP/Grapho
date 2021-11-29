@@ -28,6 +28,7 @@ glm::mat4 room1_MM(float time);
 glm::mat4 room2_MM(float time);
 glm::mat4 room3_MM(float time);
 glm::mat4 room4_MM(float time);
+glm::mat4 room5_MM(float time);
 
 extern std::vector< std::function<glm::mat4(float)> > room_MM;
 

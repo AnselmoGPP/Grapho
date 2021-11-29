@@ -173,6 +173,10 @@ When the user
 
 A secondary thread starts running in parallel just after the creation of a Renderer object. Such thread is continuously looking into these 3 lists. If a pending task is found, it is executed in this thread (so, it's done in parallel): fully construction of a ModelData, destroying a ModelData, or modifying the number of renders of some model. All these operations require modifying the command buffer. Different semaphores control access to different lists, the command buffer, and some common parts of code.
 
+### Others
+
+Models with 0 renders have a descriptor set (like every model) but, since it is supposed to render nothing, the commmand for rendering it is not passed to the command buffer.
+
 ## Links
 
 - [Setting up Vulkan](https://sciencesoftcode.wordpress.com/2021/03/09/setting-up-vulkan/)

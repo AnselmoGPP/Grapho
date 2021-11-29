@@ -875,7 +875,7 @@ void ModelData::createUniformBuffers()
 {	
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
-
+std::cout << getUBOSize() << std::endl;
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
 		createBuffer(	getUBOSize(),
 						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -946,7 +946,7 @@ void ModelData::createDescriptorSets()
 		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
 		descriptorWrites[0].dstBinding = 0;												// Binding
 		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
-		if (numMM == 1)
+		if (numMM < 1)
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// Type of descriptor
 		else
 			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -1023,7 +1023,7 @@ void ModelData::cleanup()
 // LOOK change name from MM to UB
 void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 {	 
-	std::cout << "resizeUBOset 1" << std::endl;
+	std::cout << "resizeUBOset 1 (" << newSize << ")" << std::endl;
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
 	dynamicOffsets.resize(newSize);		// Not used when newSize == 1 or 0
@@ -1031,26 +1031,26 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	// Initialize (only) the new elements
 	if (newSize > numMM)
 	{
-		std::cout << "resizeUBOset A" << std::endl;
 		glm::mat4 defaultM;
 		defaultM = glm::mat4(1.0f);
 		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
 		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
-
-		size_t UBOrange = getUBORange();
+		
+		size_t UBOrange = getUBORange(newSize);
+		std::cout << "> UBOrange: " << UBOrange << std::endl;
 
 		for (size_t i = numMM; i < newSize; ++i)
 		{
 			MM[i] = defaultM;
 			dynamicOffsets[i] = i * UBOrange;
 		}
+		std::cout << "resizeUBOset A" << std::endl;
 	}
 
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
-	if (objectAlreadyConstructed && newSize * getUBORange() > getUBOSize())
+	if (objectAlreadyConstructed && newSize * getUBORange(newSize) > getUBOSize())
 	{
-		std::cout << "resizeUBOset A" << std::endl;
 		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
@@ -1065,6 +1065,7 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 		createUniformBuffers();		// Create a UBO with the new size
 		createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
 		createDescriptorSets();		// Create Descriptor sets (contain the UBO)
+		std::cout << "resizeUBOset B" << std::endl;
 	}
 	else
 		numMM = newSize;
@@ -1075,6 +1076,8 @@ void ModelData::setUBO(size_t pos, glm::mat4 &newValue)
 {
 	if (pos < numMM)
 		MM[pos] = newValue;
+	else
+		std::cout << "UBO not found" << std::endl;
 }
 
 VkDeviceSize ModelData::getUBOSize()
@@ -1085,9 +1088,13 @@ VkDeviceSize ModelData::getUBOSize()
 		return numMM * getUBORange();		// getUBORange() == dynamicOffsets[1] == individual UBO size
 }
 
-VkDeviceSize ModelData::getUBORange()
+VkDeviceSize ModelData::getUBORange(size_t UBOcount)
 {
-	if (numMM < 2)	
+	size_t numMMs;
+	if (UBOcount == UINT_MAX)	numMMs = numMM;
+	else numMMs = UBOcount;
+
+	if (numMMs < 2)
 		return getUsefulUBOSize();		// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
 	else
 		return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
