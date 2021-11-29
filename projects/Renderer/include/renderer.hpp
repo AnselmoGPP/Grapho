@@ -69,7 +69,7 @@ class Renderer
 
 	// Main methods:
 
-	void createCommandBuffers(bool justUpdate = false);	///< Allocates command buffers and record drawing commands in them. justUpdate is for using this method after loading new models in the secondary thread (avoids an initial semaphore that could block the thread).
+	void createCommandBuffers();	///< Allocates command buffers and record drawing commands in them.
 	void createSyncObjects();
 	void mainLoop();
 		void drawFrame();

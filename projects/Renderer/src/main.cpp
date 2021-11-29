@@ -37,9 +37,9 @@
 		Updating UBOs just after modifying the amount of them with setRenders()
 		Can we take stuff out from thread 2?
 		- Only dynamic UBOs
-		> Start thread since run() (objectAlreadyConstructed)
+		- Start thread since run() (objectAlreadyConstructed)
 		Try applying alignment just to the entire UBO buffer (not individual dynamic buffers)
-		Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
+		> Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
 
 	BUGS:
 		addRender from 2 to 1 gives a problem: the dynamic UBO requires a dynamic offset (but 0 are left)
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 
 	cottageLoaded = true;
 */
-	assets["room"] = app.newModel( 0,
+	assets["room"] = app.newModel( 2,
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "triangleV.spv").c_str(),
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 
 	assets["room"]->setUBO(0, room1_MM(0));
 	assets["room"]->setUBO(1, room2_MM(0));
-	assets["room"]->setUBO(2, room3_MM(0));
+	//assets["room"]->setUBO(2, room3_MM(0));
 	//assets["room"]->setUBO(3, room4_MM(0));
 	//assets["room"]->setUBO(4, room5_MM(0));
 /*

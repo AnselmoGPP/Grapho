@@ -16,10 +16,7 @@
 #include "renderer.hpp"
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
-	: input(e.window), graphicsUpdate(graphicsUpdate), currentFrame(0), runThread(true)
-{
-	thread_loadModels = std::thread(&Renderer::loadModels_Thread, this);
-}
+	: input(e.window), graphicsUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
 
 Renderer::~Renderer() 
 { 
@@ -28,10 +25,15 @@ Renderer::~Renderer()
 
 int Renderer::run()
 {
+	std::cout << "run()" << std::endl;
 	try 
 	{
- 		createCommandBuffers();
+		createCommandBuffers();
 		createSyncObjects();
+
+		runThread = true;
+		thread_loadModels = std::thread(&Renderer::loadModels_Thread, this);
+
 		mainLoop();
 		cleanup();
 	}
@@ -43,11 +45,11 @@ int Renderer::run()
 }
 
 // (24)
-void Renderer::createCommandBuffers(bool justUpdate)
+void Renderer::createCommandBuffers()
 {
 	std::cout << "createCommandBuffers" << std::endl;
-	if(!justUpdate)			// Used for avoiding a double-semaphore problem
-		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
+	//if(!justUpdate)			// Used for avoiding a double-semaphore problem
+	//	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChainFramebuffers.size());				// One commandBuffer per swapChainFramebuffer
@@ -303,7 +305,7 @@ void Renderer::recreateSwapChain()
 		it->recreateSwapChain();
 
 	//    - Renderer
-	createCommandBuffers(true);				// Command buffers directly depend on the swap chain images.
+	createCommandBuffers();				// Command buffers directly depend on the swap chain images.
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
 }
 
@@ -523,7 +525,7 @@ void Renderer::loadModels_Thread()
 				
 				// Generate new command buffer
 				if (!commandBufferNotCreatedYet)
-					createCommandBuffers(true);		// Create command buffers for all the models in the models list.
+					createCommandBuffers();		// Create command buffers for all the models in the models list.
 			}
 
 			if (models_to_delete)
