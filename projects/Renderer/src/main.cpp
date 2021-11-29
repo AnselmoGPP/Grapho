@@ -23,7 +23,6 @@
 
 		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
 		Destroy Vulkan buffers (UBO) outside semaphores
-		Updating UBOs just after modifying the amount of them with setRenders()
 
 	Rendering:
 		Points, lines, triangles
@@ -35,12 +34,14 @@
 		Parallel loading (many threads)
 
 		Allow to update MM from the beginning, so it is not required to do so repeatedly in the callback
+		Updating UBOs just after modifying the amount of them with setRenders()
 		Can we take stuff out from thread 2?
-		Only dynamic UBOs
-		Start thread since run()
+		- Only dynamic UBOs
+		> Start thread since run() (objectAlreadyConstructed)
+		Try applying alignment just to the entire UBO buffer (not individual dynamic buffers)
+		Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
 
 	BUGS:
-		Look for numMM == or similar
 		addRender from 2 to 1 gives a problem: the dynamic UBO requires a dynamic offset (but 0 are left)
 		Somehow, camera continued moving backwards/left-side indefinetely
 */
@@ -99,7 +100,7 @@ int main(int argc, char* argv[])
 
 	cottageLoaded = true;
 */
-	assets["room"] = app.newModel( 3,
+	assets["room"] = app.newModel( 0,
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "triangleV.spv").c_str(),

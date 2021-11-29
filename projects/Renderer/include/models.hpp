@@ -142,7 +142,7 @@ public:
 
 	const char* texturePath;
 	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
-	VkDeviceSize				getUBORange(size_t UBOcount = UINT_MAX);		///< Minimum size where the useful UBO fits (example: 4)
+	VkDeviceSize				getUBORange();		///< Minimum size where the useful UBO fits (example: 4)
 	VkDeviceSize				getUsefulUBOSize();	///< Part of the range (useful UBO) that we will use (example: 3)
 };
 

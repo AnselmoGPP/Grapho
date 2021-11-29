@@ -91,28 +91,25 @@ void Renderer::createCommandBuffers(bool justUpdate)
 		// Basic drawing commands (for each model)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
 		{
+			if (it->numMM == 0) continue;
+
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 			VkDeviceSize offsets[]		= { 0 };	// <<<
 			//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);					// Bind the vertex buffer to bindings.
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);					// Bind the vertex buffer to bindings.
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
 			vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);			// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
-			if (it->numMM == 1)
-			{
-				std::cout << "Single: " << it->texturePath << std::endl;
-				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
-				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 
-				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);			// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).												
-			}
-			else
-				//for (size_t j = 0; j < it->dynamicOffsets.size(); j++)
-				for (size_t j = 0; j < it->numMM; j++)
-				{
 
-					std::cout << "Multi (" << j << '/' << it->numMM << "): " << it->MM.size() << ' ' << it->dynamicOffsets[j] << ' ' << it->texturePath << ", " << it->getUsefulUBOSize() << ", " << it->getUBORange() << ", " << it->getUBOSize() << std::endl;
-					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
-					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
-				}
+			for (size_t j = 0; j < it->numMM; j++)
+			{
+				//std::cout << "Multi (" << j << '/' << it->numMM << "): " << it->MM.size() << ' ' << it->dynamicOffsets[j] << ' ' << it->texturePath << ", " << it->getUsefulUBOSize() << ", " << it->getUBORange() << ", " << it->getUBOSize() << std::endl;
+				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
+				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+
+				//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
+				//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
+				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
+			}
 		}
 
 		// Finish up
@@ -334,7 +331,24 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
 	for (modelIterator it = models.begin(); it != models.end(); it++)
 	{
-		
+		if (it->numMM == 0) continue;
+
+		UBOdynamic uboD(it->numMM, it->getUBORange());
+
+		for (size_t i = 0; i < uboD.UBOcount; i++)
+		{
+			//uboD.setModel(i, it->getModelMatrix[i](timer.getTime()));
+			uboD.setModel(i, it->MM[i]);
+			uboD.setView(i, ubo.view);
+			uboD.setProj(i, ubo.proj);
+		}
+
+		void* data;
+		vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+		memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+		vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+
+		/*
 		if (it->numMM == 1)
 		{
 			//ubo.model = (*it)->getModelMatrix[0](timer.getTime());
@@ -345,23 +359,8 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 			memcpy(data, &ubo, sizeof(ubo));															// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 			vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);							// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 		}
-		else if(it->numMM > 1)
-		{
-			UBOdynamic uboD(it->numMM, it->dynamicOffsets[1]);	// dynamicOffsets[1] == individual UBO size
-			
-			for (size_t i = 0; i < uboD.UBOcount; i++)
-			{
-				//uboD.setModel(i, it->getModelMatrix[i](timer.getTime()));
-				uboD.setModel(i, it->MM[i]);
-				uboD.setView (i, ubo.view);
-				uboD.setProj (i, ubo.proj);
-			}
-			
-			void* data;
-			vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-			memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-			vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
-		}
+		else if(it->numMM > 1) {...}
+		*/
 	}
 }
 

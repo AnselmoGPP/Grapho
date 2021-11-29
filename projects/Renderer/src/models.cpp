@@ -177,10 +177,8 @@ void ModelData::createDescriptorSetLayout()
 	//	- Uniform buffer descriptor
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	uboLayoutBinding.binding			= 0;
-	if (numMM == 1)
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	else
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	//uboLayoutBinding.descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	uboLayoutBinding.descriptorCount	= 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of the bones in a skeleton for skeletal animation).
 	uboLayoutBinding.stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;		// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
 	uboLayoutBinding.pImmutableSamplers	= nullptr;							// [Optional] Only relevant for image sampling related descriptors.
@@ -889,8 +887,8 @@ void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
 	std::array<VkDescriptorPoolSize, 2> poolSizes{};
-	if (numMM == 1)	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	else			poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	//poolSizes[0].type				  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[0].type				  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	poolSizes[0].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
 	poolSizes[1].type				  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());
@@ -911,8 +909,6 @@ void ModelData::createDescriptorPool()
 void ModelData::createDescriptorSets()
 {
 	descriptorSets.resize(e.swapChainImages.size());
-
-	if (numMM == 0) return;
 
 	std::vector<VkDescriptorSetLayout> layouts(e.swapChainImages.size(), descriptorSetLayout);
 
@@ -946,10 +942,8 @@ void ModelData::createDescriptorSets()
 		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
 		descriptorWrites[0].dstBinding = 0;												// Binding
 		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
-		if (numMM < 1)
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// Type of descriptor
-		else
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		//descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// Type of descriptor
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		descriptorWrites[0].descriptorCount = 1;										// Number of array elements to update
 		descriptorWrites[0].pBufferInfo = &bufferInfo;									// Used for descriptors that refer to buffer data (like our descriptor)
 		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
@@ -1037,9 +1031,7 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
 		
-		size_t UBOrange = getUBORange(newSize);
-		std::cout << "> UBOrange: " << UBOrange << std::endl;
-
+		size_t UBOrange = getUBORange();
 		for (size_t i = numMM; i < newSize; ++i)
 		{
 			MM[i] = defaultM;
@@ -1049,7 +1041,7 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	}
 
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
-	if (objectAlreadyConstructed && newSize * getUBORange(newSize) > getUBOSize())
+	if (objectAlreadyConstructed && newSize * getUBORange() > getUBOSize())
 	{
 		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
@@ -1082,23 +1074,16 @@ void ModelData::setUBO(size_t pos, glm::mat4 &newValue)
 
 VkDeviceSize ModelData::getUBOSize()
 {
-	if (numMM < 2)	
-		return getUsefulUBOSize();
-	else
-		return numMM * getUBORange();		// getUBORange() == dynamicOffsets[1] == individual UBO size
+	if (numMM != 0)	return numMM * getUBORange();
+	else			return getUBORange();
+	//return getUsefulUBOSize();	
 }
 
-VkDeviceSize ModelData::getUBORange(size_t UBOcount)
+VkDeviceSize ModelData::getUBORange()
 {
-	size_t numMMs;
-	if (UBOcount == UINT_MAX)	numMMs = numMM;
-	else numMMs = UBOcount;
-
-	if (numMMs < 2)
-		return getUsefulUBOSize();		// If you're overwriting the whole buffer, like we are in this case, it's possible to use VK_WHOLE_SIZE here. 
-	else
-		return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
-		//return dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO size.  Another option: VK_WHOLE_SIZE
+	return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+	//return dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
+	// If you're overwriting the whole buffer, like we are in this case, it's possible to return VK_WHOLE_SIZE here. 
 }
 
 VkDeviceSize ModelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }
