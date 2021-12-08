@@ -34,7 +34,11 @@ extern std::vector< std::function<glm::mat4(float)> > room_MM;
 
 // Others
 
-extern std::vector<Vertex>		v_floor;	// Vertex, color, texture coordinates
+extern std::vector<VertexPCT>	v_floor;	// Vertex, color, texture coordinates
 extern std::vector<uint32_t>	i_floor;	// Indices
+
+extern std::vector<VertexPCT>		v_axis;		// Vertex, color
+extern std::vector<uint32_t>	i_axis;		// Indices
+
 
 #endif

@@ -368,7 +368,12 @@ void VulkanEnvironment::pickPhysicalDevice()
 	if (physicalDevice == VK_NULL_HANDLE)
 		throw std::runtime_error("Failed to find a suitable GPU!");
 
-	if (printInfo) std::cout << "Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
+	if (printInfo)
+	{
+		std::cout << "Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
+		std::cout << "Large points supported: " << largePointsSupported() << std::endl;
+		std::cout << "Wide lines supported: " << wideLinesSupported() << std::endl;
+	}
 }
 
 /**
@@ -1305,5 +1310,19 @@ VkDeviceSize VulkanEnvironment::getMinUniformBufferOffsetAlignment()
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	return deviceProperties.limits.minUniformBufferOffsetAlignment;
+}
+
+VkBool32 VulkanEnvironment::largePointsSupported()
+{
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+	return deviceFeatures.largePoints;
+}
+
+VkBool32 VulkanEnvironment::wideLinesSupported()
+{
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+	return deviceFeatures.wideLines;
 }
 

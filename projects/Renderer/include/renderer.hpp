@@ -38,6 +38,15 @@
 
 typedef std::list<ModelData>::iterator modelIterator;
 
+enum primitiveTopology {
+	point			= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+	line			= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+	lineStrip		= VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+	triangle		= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	triangleStrip	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+	triangleFan		= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
+};
+
 // LOOK Restart the Renderer object after finishing the render loop
 class Renderer
 {
@@ -102,8 +111,9 @@ public:
 	TimerSet&		getTimer();
 	Camera&			getCamera();
 
-	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
-	modelIterator	newModel(size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath);
+	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
+	modelIterator	newModel(size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
+
 	void			deleteModel(modelIterator model);
 	void			setRenders(modelIterator& model, size_t numberOfRenders);
 

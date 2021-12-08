@@ -9,48 +9,48 @@
 
 //Vertex -----------------------------------------------------------------
 
-Vertex::Vertex(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates)
+VertexPCT::VertexPCT(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates)
 	: pos(vertex), color(vertexColor), texCoord(textureCoordinates) { }
 
-VkVertexInputBindingDescription Vertex::getBindingDescription()
+VkVertexInputBindingDescription VertexPCT::getBindingDescription()
 {
 	VkVertexInputBindingDescription bindingDescription{};
 	bindingDescription.binding		= 0;							// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
-	bindingDescription.stride		= sizeof(Vertex);				// Number of bytes from one entry to the next.
+	bindingDescription.stride		= sizeof(VertexPCT);				// Number of bytes from one entry to the next.
 	bindingDescription.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;	// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
 
 	return bindingDescription;
 }
 
-std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescriptions()
+std::array<VkVertexInputAttributeDescription, 3> VertexPCT::getAttributeDescriptions()
 {
 	std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
 	attributeDescriptions[0].binding	= 0;							// From which binding the per-vertex data comes.
 	attributeDescriptions[0].location	= 0;							// Directive "location" of the input in the vertex shader.
 	attributeDescriptions[0].format		= VK_FORMAT_R32G32B32_SFLOAT;	// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
-	attributeDescriptions[0].offset		= offsetof(Vertex, pos);		// Number of bytes since the start of the per-vertex data to read from.
+	attributeDescriptions[0].offset		= offsetof(VertexPCT, pos);		// Number of bytes since the start of the per-vertex data to read from.
 
 	attributeDescriptions[1].binding	= 0;
 	attributeDescriptions[1].location	= 1;
 	attributeDescriptions[1].format		= VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset		= offsetof(Vertex, color);
+	attributeDescriptions[1].offset		= offsetof(VertexPCT, color);
 
 	attributeDescriptions[2].binding	= 0;
 	attributeDescriptions[2].location	= 2;
 	attributeDescriptions[2].format		= VK_FORMAT_R32G32_SFLOAT;
-	attributeDescriptions[2].offset		= offsetof(Vertex, texCoord);
+	attributeDescriptions[2].offset		= offsetof(VertexPCT, texCoord);
 
 	return attributeDescriptions;
 }
 
-bool Vertex::operator==(const Vertex& other) const {
+bool VertexPCT::operator==(const VertexPCT& other) const {
 	return	pos == other.pos &&
 			color == other.color &&
 			texCoord == other.texCoord;
 }
 
-size_t std::hash<Vertex>::operator()(Vertex const& vertex) const
+size_t std::hash<VertexPCT>::operator()(VertexPCT const& vertex) const
 {
 	return ( (hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1 ) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
 }
@@ -115,8 +115,9 @@ glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation
 
 // ModelData ----------------------------------------------------------------------------------
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
-	: e(environment), dataFromFile(true), fullyConstructed(false), numMM(0)
+/// Constructor. Requires model path and texture path.
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), numMM(0)
 {
 	// Save paths
 	copyCString(this->modelPath,	modelPath);
@@ -131,8 +132,9 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	//if (!partialInitialization) fullConstruction();
 }
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath)
-	: e(environment), dataFromFile(false), fullyConstructed(false), numMM(0)
+/// Constructor. Requires vertex data, indices data, and texture path.
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), numMM(0)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -150,8 +152,10 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	//if (!partialInitialization) fullConstruction();
 }
 
+
+
 ModelData::ModelData(const ModelData& obj) 
-	: e(obj.e), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
+	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
 	// Save paths
 	copyCString(modelPath,		obj.modelPath);
@@ -294,18 +298,18 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	// Vertex input: Describes format of the vertex data that will be passed to the vertex shader.
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	auto bindingDescription							= Vertex::getBindingDescription();
+	auto bindingDescription							= VertexPCT::getBindingDescription();
 	vertexInputInfo.vertexBindingDescriptionCount	= 1;
 	vertexInputInfo.pVertexBindingDescriptions		= &bindingDescription;							// Optional
-	auto attributeDescriptions						= Vertex::getAttributeDescriptions();
+	auto attributeDescriptions						= VertexPCT::getAttributeDescriptions();
 	vertexInputInfo.vertexAttributeDescriptionCount	= static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions	= attributeDescriptions.data();					// Optional
 
 	// Input assembly: Describes what kind of geometry will be drawn from the vertices, and if primitive restart should be enabled.
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType						= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology					= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;		// VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP
-	inputAssembly.primitiveRestartEnable	= VK_FALSE;									// If VK_TRUE, then it's possible to break up lines and triangles in the _STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF.
+	inputAssembly.topology					= primitiveTopology;		// VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP
+	inputAssembly.primitiveRestartEnable	= VK_FALSE;					// If VK_TRUE, then it's possible to break up lines and triangles in the _STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF.
 
 	// Viewport: Describes the region of the framebuffer that the output will be rendered to.
 	VkViewport viewport{};
@@ -767,7 +771,7 @@ void ModelData::loadModel(const char* obj_file)
 	std::vector<tinyobj::shape_t>		 shapes;			// Holds all of the separate objects and their faces. Each face consists of an array of vertices. Each vertex contains the indices of the position, normal and texture coordinate attributes.
 	std::vector<tinyobj::material_t>	 materials;			// OBJ models can also define a material and texture per face, but we will ignore those.
 	std::string							 warn, err;			// Errors and warnings that occur while loading the file.
-	std::unordered_map<Vertex, uint32_t> uniqueVertices{};	// Keeps track of the unique vertices and the respective indices, avoiding duplicated vertices (not indices).
+	std::unordered_map<VertexPCT, uint32_t> uniqueVertices{};	// Keeps track of the unique vertices and the respective indices, avoiding duplicated vertices (not indices).
 
 	// Load model
 	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_file))
@@ -777,7 +781,7 @@ void ModelData::loadModel(const char* obj_file)
 	for (const auto& shape : shapes)
 		for (const auto& index : shape.mesh.indices)
 		{
-			Vertex vertex{};
+			VertexPCT vertex{};
 
 			vertex.pos = {
 				attrib.vertices[3 * index.vertex_index + 0],			// attrib.vertices is an array of floats, so we need to multiply the index by 3 and add offsets for accessing XYZ components.

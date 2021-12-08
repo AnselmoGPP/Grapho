@@ -382,19 +382,19 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
 
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath)
+modelIterator Renderer::newModel(size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexData, indices, texturePath, VSpath, FSpath);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
 }
 
 void Renderer::deleteModel(modelIterator model)

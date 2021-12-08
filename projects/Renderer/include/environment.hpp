@@ -146,6 +146,8 @@ private:
 	VkFormat				findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);	///< Take a list of candidate formats in order from most desirable to least desirable, and checks which is the first one that is supported.
 	bool					hasStencilComponent(VkFormat format);
 	VkDeviceSize			getMinUniformBufferOffsetAlignment();
+	VkBool32				largePointsSupported();
+	VkBool32				wideLinesSupported();
 };
 
 #endif

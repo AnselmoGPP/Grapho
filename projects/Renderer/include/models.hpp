@@ -32,10 +32,11 @@
 		- recreateSwapChain()		// For recreating swapchain (for window resize)
 */
 
-struct Vertex
+/// Vertex structure containing Position, Color and Texture coordinates.
+struct VertexPCT
 {
-	Vertex() = default;
-	Vertex(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates);
+	VertexPCT() = default;
+	VertexPCT(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates);
 
 	glm::vec3 pos;
 	glm::vec3 color;
@@ -43,7 +44,12 @@ struct Vertex
 
 	static VkVertexInputBindingDescription					getBindingDescription();	///< Describes at which rate to load data from memory throughout the vertices (number of bytes between data entries and whether to move to the next data entry after each vertex or after each instance).
 	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();	///< Describe how to extract a vertex attribute from a chunk of vertex data originiating from a binding description. Two attributes here: position and color.
-	bool operator==(const Vertex& other) const;											///< Overriding of operator ==. Required for doing comparisons in loadModel().
+	bool operator==(const VertexPCT& other) const;										///< Overriding of operator ==. Required for doing comparisons in loadModel().
+};
+
+/// Hash function for VertexPCT. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
+template<> struct std::hash<VertexPCT> {
+	size_t operator()(VertexPCT const& vertex) const;
 };
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
@@ -70,13 +76,9 @@ struct UBOdynamic
 	alignas(16) char*			data;			// <<< is alignas(16) necessary?
 };
 
-/// Hash function for Vertex. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
-template<> struct std::hash<Vertex> {
-	size_t operator()(Vertex const& vertex) const;
-};
 
-glm::mat4	modelMatrix();																///< Get a basic model matrix
-glm::mat4	modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);	///< Get a model matrix 
+glm::mat4 modelMatrix();															///< Get a basic model matrix
+glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);	///< Get a model matrix 
 
 class ModelData
 {
@@ -88,8 +90,11 @@ class ModelData
 	const char* VSpath;
 	const char* FSpath;
 
+	VkPrimitiveTopology primitiveTopology;	///< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
+	//bool includesColor;						///< Flags if color is included in the Vertex structure
+	//bool includesTexture;
 
 	// Main methods:
 
@@ -120,8 +125,8 @@ class ModelData
 	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
 
 public:
-	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath);
+	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
 	ModelData(const ModelData& obj);	// Copy constructor not used
 	~ModelData();
 
@@ -140,7 +145,7 @@ public:
 	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 
-	std::vector<Vertex>			 vertices;				///< Vertices of our model (vertices, color, texture coordinates)
+	std::vector<VertexPCT>		 vertices;				///< Vertices of our model (vertices, color, texture coordinates)
 	std::vector<uint32_t>		 indices;				///< Indices of our model (indices(
 	VkBuffer					 vertexBuffer;			///< Opaque handle to a buffer object (here, vertex buffer).
 	VkDeviceMemory				 vertexBufferMemory;	///< Opaque handle to a device memory object (here, memory for the vertex buffer).

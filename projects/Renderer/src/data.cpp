@@ -82,13 +82,14 @@ glm::mat4 room5_MM(float time)
 
 // Others --------------------
 
-std::vector<Vertex> v_floor = { 
-	Vertex(glm::vec3(-100,  100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10,  10)) ,
-	Vertex(glm::vec3(-100, -100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10, -10)),
-	Vertex(glm::vec3( 100, -100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10, -10)),
-	Vertex(glm::vec3( 100,  100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10,  10))
+std::vector<VertexPCT> v_floor = {
+	VertexPCT(glm::vec3(-100,  100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10,  10)) ,
+	VertexPCT(glm::vec3(-100, -100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10, -10)),
+	VertexPCT(glm::vec3( 100, -100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10, -10)),
+	VertexPCT(glm::vec3( 100,  100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10,  10))
 };
 
-extern std::vector<uint32_t> i_floor = { 0, 1, 3,  1, 2, 3 };
+std::vector<uint32_t> i_floor = { 0, 1, 3,  1, 2, 3 };
 
-
+std::vector<VertexPCT>	v_axis;		// Vertex, color
+std::vector<uint32_t>	i_axis;		// Indices

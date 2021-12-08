@@ -25,6 +25,7 @@
 		Destroy Vulkan buffers (UBO) outside semaphores
 
 	Rendering:
+		Vertex struct has pos, color, text coord. Different vertex structs are required.
 		Points, lines, triangles
 		2D graphics
 		Transparencies
@@ -32,6 +33,12 @@
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
+
+		Refactor:
+		Each ModelData could have: Vertices, Color buffers, textures, texture coords, Indices, UBO, shaders
+		Unique elements (always): Vertices, indices, shaders
+		Unique elements (sometimes): Color buffer, texture coords, 
+		Shared elements (sometimes): UBO class, Textures
 
 		-Allow to update MM immediately after addModel() or addRender()
 		- Only dynamic UBOs
@@ -104,7 +111,8 @@ int main(int argc, char* argv[])
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "triangleV.spv").c_str(),
-		(SHADERS_DIR + "triangleF.spv").c_str());
+		(SHADERS_DIR + "triangleF.spv").c_str(),
+		primitiveTopology::triangle);
 
 	roomVisible = true;
 
@@ -135,8 +143,8 @@ void outputData(Renderer& r)
 	size_t fps = r.getTimer().getFPS();
 	size_t maxfps = r.getTimer().getMaxPossibleFPS();
 
-	std::cout << std::fixed << std::setprecision(3);
-	std::cout << fps << " - " << maxfps << " - " << time << std::endl;
+	//std::cout << std::fixed << std::setprecision(3);
+	//std::cout << fps << " - " << maxfps << " - " << time << std::endl;
 	//std::cout << '\r' << fps << " - " << time;
 	//std::cout.unsetf(std::ios::fixed | std::ios::scientific);
 }
