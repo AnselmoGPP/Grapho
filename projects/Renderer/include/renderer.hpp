@@ -41,10 +41,7 @@ typedef std::list<ModelData>::iterator modelIterator;
 enum primitiveTopology {
 	point			= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
 	line			= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-	lineStrip		= VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
 	triangle		= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-	triangleStrip	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-	triangleFan		= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN
 };
 
 // LOOK Restart the Renderer object after finishing the render loop

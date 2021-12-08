@@ -494,7 +494,7 @@ void ModelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
 	bufferInfo.usage = usage;									// For multiple purposes use a bitwise or.
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;				// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;			// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
 	bufferInfo.flags = 0;										// Used to configure sparse buffer memory.
 
 	if (vkCreateBuffer(e.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)	// vkCreateBuffer creates a new buffer object and returns it to a pointer to a VkBuffer provided by the caller.
