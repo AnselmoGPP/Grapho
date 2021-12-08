@@ -34,11 +34,10 @@
 		Parallel loading (many threads)
 
 		-Allow to update MM immediately after addModel() or addRender()
-		Can we take stuff out from thread 2?
 		- Only dynamic UBOs
 		- Start thread since run() (objectAlreadyConstructed)
-		Try applying alignment just to the entire UBO buffer (not individual dynamic buffers)
-		> Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
+		- Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
+		Can we take stuff out from thread 2?
 		model&commandBuffer mutex, think about it
 		Usar numMM o MM.size()?
 		Profiling
@@ -109,11 +108,10 @@ int main(int argc, char* argv[])
 
 	roomVisible = true;
 
-	assets["room"]->setUBO(0, room1_MM(0));
-	assets["room"]->setUBO(1, room2_MM(0));
-	//assets["room"]->setUBO(2, room3_MM(0));
-	//assets["room"]->setUBO(3, room4_MM(0));
-	//assets["room"]->setUBO(4, room5_MM(0));
+	assets["room"]->setUBO(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3( 0.0f, -50.0f, 3.0f)));
+	assets["room"]->setUBO(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,   0.0f), glm::vec3( 0.0f, -80.0f, 3.0f)));
+	//assets["room"]->setUBO(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+	//assets["room"]->setUBO(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 /*
 	assets["floor"] = app.newModel(1,
 		v_floor,
@@ -158,14 +156,14 @@ void update(Renderer& r)
 		cottageLoaded = false;
 	}
 
-	 if (time > 5 && !check1)
+	if (time > 5 && !check1)
 	{
 		std::cout << ">>> Render 4 rooms" << std::endl;
 		r.setRenders(assets["room"], 4);
-		assets["room"]->setUBO(0, room1_MM(0));
-		assets["room"]->setUBO(1, room2_MM(0));
-		assets["room"]->setUBO(2, room3_MM(0));
-		assets["room"]->setUBO(3, room4_MM(0));
+		assets["room"]->setUBO(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3( 0.0f, -50.0f, 3.0f)));
+		assets["room"]->setUBO(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,   0.0f), glm::vec3( 0.0f, -80.0f, 3.0f)));
+		assets["room"]->setUBO(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+		assets["room"]->setUBO(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 		check1 = true;
 	}
 	else if (time > 10 && !check2)

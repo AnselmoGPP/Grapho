@@ -89,8 +89,7 @@ void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 
 glm::mat4 modelMatrix()
 {
-	glm::mat4 mm;
-	mm = glm::mat4(1.0f);
+	glm::mat4 mm  = glm::mat4(1.0f);
 
 	mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
 	//mm = glm::rotate(mm, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -102,13 +101,12 @@ glm::mat4 modelMatrix()
 /// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees.
 glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation)
 {
-	glm::mat4 mm;
-	mm = glm::mat4(1.0f);
+	glm::mat4 mm  = glm::mat4(1.0f);
 
 	mm = glm::translate	(mm, translation);
-	mm = glm::rotate	(mm, rotation[0], glm::vec3(1.0f, 0.0f, 0.0f));
-	mm = glm::rotate	(mm, rotation[1], glm::vec3(0.0f, 1.0f, 0.0f));
-	mm = glm::rotate	(mm, rotation[2], glm::vec3(0.0f, 0.0f, 1.0f));
+	mm = glm::rotate	(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
+	mm = glm::rotate	(mm, glm::radians(rotation[1]), glm::vec3(0.0f, 1.0f, 0.0f));
+	mm = glm::rotate	(mm, glm::radians(rotation[2]), glm::vec3(0.0f, 0.0f, 1.0f));
 	mm = glm::scale		(mm, scale);
 
 	return mm;
@@ -127,7 +125,7 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	copyCString(this->FSpath,		FSpath);
 
 	// Set up UBO data (Model matrices and Dynamic offsets)
-	resizeUBOset(numberOfRenderings, false);
+	resizeUBOset(numberOfRenderings);
 
 	// Create Vulkan objects
 	//if (!partialInitialization) fullConstruction();
@@ -142,7 +140,7 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	copyCString(this->FSpath, FSpath);
 
 	// Set up UBO data (Model matrices and Dynamic offsets)
-	resizeUBOset(numberOfRenderings, false);
+	resizeUBOset(numberOfRenderings);
 
 	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
 	vertices = vertexData;
@@ -1044,11 +1042,11 @@ void ModelData::cleanup()
 // LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
 // LOOK what if I call this and immediately modify a not yet existing MM element?
 // LOOK change name from MM to UB
-void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
+void ModelData::resizeUBOset(size_t newSize)
 {	 
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
-	dynamicOffsets.resize(newSize);		// Not used when newSize == 1 or 0
+	dynamicOffsets.resize(newSize);		// Not used when newSize == 0
 
 	// Initialize (only) the new elements
 	if (newSize > numMM)
@@ -1068,7 +1066,7 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	}
 
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
-	if (objectAlreadyConstructed && newSize * getUBORange() > getUBOSize())
+	if (fullyConstructed && newSize * getUBORange() > getUBOSize())
 	{
 		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
@@ -1103,12 +1101,10 @@ VkDeviceSize ModelData::getUBOSize()
 	else			return getUBORange();
 }
 
-VkDeviceSize ModelData::getUBORange()
+VkDeviceSize ModelData::getUBORange(VkDeviceSize usefulUBOsize)
 {
-	return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
+	return e.minUniformBufferOffsetAlignment * (1 + usefulUBOsize / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
 	
 	// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
 	// If you're overwriting the whole buffer, like we are in this case, it's possible to return VK_WHOLE_SIZE here. 
 }
-
-VkDeviceSize ModelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }

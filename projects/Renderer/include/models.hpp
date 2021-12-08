@@ -15,7 +15,21 @@
 #include "environment.hpp"
 
 /*
-	
+	Basic ModelData interface:
+
+		- ModelData obj(...)		// Create basic model object
+		- obj.fullConstruction()	// Load model data into the object (useful in a second thread)
+		- setUBO(...)				// Used by final user for updating some UBO
+
+		- dynamicOffsets			// For command buffer creation
+		- MM						// For command buffer creation, UBO update, and setRenders
+		- numMM						// For command buffer creation, UBO update, and setRenders (MM.size() and numMM may be different)
+		- getUBORange()				// For updating command buffer
+
+		- resizeUBOset(...)			// For modifying the number of renders
+
+		- cleanupSwapChain()		// For recreating swapchain (for window resize)
+		- recreateSwapChain()		// For recreating swapchain (for window resize)
 */
 
 struct Vertex
@@ -61,14 +75,15 @@ template<> struct std::hash<Vertex> {
 	size_t operator()(Vertex const& vertex) const;
 };
 
-glm::mat4	modelMatrix();		///< Get a basic model matrix
-glm::mat4	modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);		///< Get a model matrix 
+glm::mat4	modelMatrix();																///< Get a basic model matrix
+glm::mat4	modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);	///< Get a model matrix 
 
 class ModelData
 {
 	VulkanEnvironment& e;
 
 	const char* modelPath;
+	const char* texturePath;
 	
 	const char* VSpath;
 	const char* FSpath;
@@ -91,6 +106,8 @@ class ModelData
 	void createDescriptorPool();			///< Descriptor pool creation (a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor).
 	void createDescriptorSets();			///< Descriptor sets creation.
 
+	void cleanup();
+
 	// Helper methods:
 
 	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);	///< Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
@@ -100,6 +117,7 @@ class ModelData
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
+	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
 
 public:
 	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
@@ -111,7 +129,6 @@ public:
 
 	void recreateSwapChain();
 	void cleanupSwapChain();
-	void cleanup();
 
 	VkDescriptorSetLayout		 descriptorSetLayout;	///< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
 	VkPipelineLayout			 pipelineLayout;		///< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
@@ -144,13 +161,10 @@ public:
 	size_t					numMM;			///< Number of MM/UBOs (note: Renderer resizes MM
 	//UBOdynamic			dynUBO;			// LOOK Used by Renderer. Renderer updates these UBOs and passes them to Vulkan
 
-	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
 	void setUBO(size_t pos, glm::mat4& newValue);
+	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
 
-	const char* texturePath;
-	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
-	VkDeviceSize				getUBORange();		///< Minimum size where the useful UBO fits (example: 4)
-	VkDeviceSize				getUsefulUBOSize();	///< Part of the range (useful UBO) that we will use (example: 3)
+	VkDeviceSize getUBORange(VkDeviceSize usefulUBOsize = sizeof(UniformBufferObject));		///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
 };
 
 #endif

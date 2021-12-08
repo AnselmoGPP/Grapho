@@ -102,7 +102,6 @@ void Renderer::createCommandBuffers()
 
 			for (size_t j = 0; j < it->numMM; j++)
 			{
-				//std::cout << "Multi (" << j << '/' << it->numMM << "): " << it->MM.size() << ' ' << it->dynamicOffsets[j] << ' ' << it->texturePath << ", " << it->getUsefulUBOSize() << ", " << it->getUBORange() << ", " << it->getUBOSize() << std::endl;
 				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
 				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 
@@ -368,7 +367,7 @@ void Renderer::cleanup()
 	e.cleanup();
 }
 
-// Used in cleanup() and recreateSwapChain()
+// Used in recreateSwapChain()
 void Renderer::cleanupSwapChain()
 {
 	// Renderer (free Command buffers)
@@ -512,19 +511,8 @@ void Renderer::loadModels_Thread()
 					createCommandBuffers();		// Create command buffers for all the models in the models list.
 			}
 
-			if (models_to_delete)
-			{
-				lBegin = deathRow.begin();
-				lEnd   = deathRow.end();
-
-				for (lIt = lBegin; lIt != lEnd; ++lIt)
-				{
-					//lIt->cleanupSwapChain();
-					//lIt->cleanup();				// Delete Vulkan objects
-				}			
-
+			if (models_to_delete) 
 				deathRow.clear();				// Delete models
-			}
 		}
 	}
 }
