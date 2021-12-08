@@ -33,13 +33,15 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 
-		Allow to update MM from the beginning, so it is not required to do so repeatedly in the callback
-		Updating UBOs just after modifying the amount of them with setRenders()
+		>Allow to update MM from the beginning, so it is not required to do so repeatedly in the callback
+			Updating UBOs just after modifying the amount of them with setRenders()
 		Can we take stuff out from thread 2?
 		- Only dynamic UBOs
 		- Start thread since run() (objectAlreadyConstructed)
 		Try applying alignment just to the entire UBO buffer (not individual dynamic buffers)
 		> Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
+		model&commandBuffer mutex, think about it
+		Usar numMM o MM.size()? 
 
 	BUGS:
 		addRender from 2 to 1 gives a problem: the dynamic UBO requires a dynamic offset (but 0 are left)
@@ -121,6 +123,8 @@ int main(int argc, char* argv[])
 		(SHADERS_DIR + "triangleV.spv").c_str(),
 		(SHADERS_DIR + "triangleF.spv").c_str());
 */
+
+
 	// Start rendering
 	app.run();
 	
@@ -134,8 +138,8 @@ void outputData(Renderer& r)
 	size_t fps = r.getTimer().getFPS();
 	size_t maxfps = r.getTimer().getMaxPossibleFPS();
 
-	//std::cout << std::fixed << std::setprecision(3);
-	//std::cout << fps << " - " << maxfps << " - " << time << std::endl;
+	std::cout << std::fixed << std::setprecision(3);
+	std::cout << fps << " - " << maxfps << " - " << time << std::endl;
 	//std::cout << '\r' << fps << " - " << time;
 	//std::cout.unsetf(std::ios::fixed | std::ios::scientific);
 }
@@ -159,6 +163,10 @@ void update(Renderer& r)
 	{
 		std::cout << ">>> Render 4 rooms" << std::endl;
 		r.setRenders(assets["room"], 4);
+		assets["room"]->setUBO(0, room1_MM(0));
+		assets["room"]->setUBO(1, room2_MM(0));
+		assets["room"]->setUBO(2, room3_MM(0));
+		assets["room"]->setUBO(3, room4_MM(0));
 		check1 = true;
 	}
 	else if (time > 10 && !check2)
@@ -169,10 +177,10 @@ void update(Renderer& r)
 	
 	 if (time > 5)
 	 {
-		 assets["room"]->setUBO(0, room1_MM(0));
-		 assets["room"]->setUBO(1, room2_MM(0));
-		 assets["room"]->setUBO(2, room3_MM(0));
-		 assets["room"]->setUBO(3, room4_MM(0));
+		 //assets["room"]->setUBO(0, room1_MM(0));
+		 //assets["room"]->setUBO(1, room2_MM(0));
+		 //assets["room"]->setUBO(2, room3_MM(0));
+		 //assets["room"]->setUBO(3, room4_MM(0));
 		 //assets["room"]->setUBO(4, room5_MM(0));
 	 }
 		 

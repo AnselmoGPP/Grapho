@@ -6,6 +6,9 @@
 
 #include "models.hpp"
 
+
+//Vertex -----------------------------------------------------------------
+
 Vertex::Vertex(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates)
 	: pos(vertex), color(vertexColor), texCoord(textureCoordinates) { }
 
@@ -81,8 +84,38 @@ void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 	*original = matrix;
 }
 
-// ModelData ----------------------------------------------------------------------------------
 
+// Model matrix -----------------------------------------------------------------
+
+glm::mat4 modelMatrix()
+{
+	glm::mat4 mm;
+	mm = glm::mat4(1.0f);
+
+	mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
+	//mm = glm::rotate(mm, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	//mm = glm::scale(mm, glm::vec3(1.0f, 1.0f, 1.0f));
+
+	return mm;
+}
+
+/// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees.
+glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation)
+{
+	glm::mat4 mm;
+	mm = glm::mat4(1.0f);
+
+	mm = glm::translate	(mm, translation);
+	mm = glm::rotate	(mm, rotation[0], glm::vec3(1.0f, 0.0f, 0.0f));
+	mm = glm::rotate	(mm, rotation[1], glm::vec3(0.0f, 1.0f, 0.0f));
+	mm = glm::rotate	(mm, rotation[2], glm::vec3(0.0f, 0.0f, 1.0f));
+	mm = glm::scale		(mm, scale);
+
+	return mm;
+}
+
+
+// ModelData ----------------------------------------------------------------------------------
 
 ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
 	: e(environment), dataFromFile(true), numMM(0)
@@ -873,7 +906,7 @@ void ModelData::createUniformBuffers()
 {	
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
-std::cout << getUBOSize() << std::endl;
+
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
 		createBuffer(	getUBOSize(),
 						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1017,7 +1050,6 @@ void ModelData::cleanup()
 // LOOK change name from MM to UB
 void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 {	 
-	std::cout << "resizeUBOset 1 (" << newSize << ")" << std::endl;
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
 	dynamicOffsets.resize(newSize);		// Not used when newSize == 1 or 0
@@ -1025,19 +1057,18 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 	// Initialize (only) the new elements
 	if (newSize > numMM)
 	{
-		glm::mat4 defaultM;
-		defaultM = glm::mat4(1.0f);
-		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
+		//glm::mat4 defaultM;
+		//defaultM = glm::mat4(1.0f);
+		//defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
 		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
 		
 		size_t UBOrange = getUBORange();
 		for (size_t i = numMM; i < newSize; ++i)
 		{
-			MM[i] = defaultM;
+			//MM[i] = defaultM;
 			dynamicOffsets[i] = i * UBOrange;
 		}
-		std::cout << "resizeUBOset A" << std::endl;
 	}
 
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
@@ -1057,16 +1088,14 @@ void ModelData::resizeUBOset(size_t newSize, bool objectAlreadyConstructed)
 		createUniformBuffers();		// Create a UBO with the new size
 		createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
 		createDescriptorSets();		// Create Descriptor sets (contain the UBO)
-		std::cout << "resizeUBOset B" << std::endl;
 	}
 	else
 		numMM = newSize;
-	std::cout << "resizeUBOset 2" << std::endl;
 }
 
 void ModelData::setUBO(size_t pos, glm::mat4 &newValue)
 {
-	if (pos < numMM)
+	if (pos < MM.size())
 		MM[pos] = newValue;
 	else
 		std::cout << "UBO not found" << std::endl;
@@ -1087,4 +1116,3 @@ VkDeviceSize ModelData::getUBORange()
 }
 
 VkDeviceSize ModelData::getUsefulUBOSize() { return sizeof(UniformBufferObject); }
-

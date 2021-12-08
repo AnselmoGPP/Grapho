@@ -431,6 +431,9 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 
 		rendersToSet[&model] = numberOfRenders;
+
+		if(model->MM.size() < numberOfRenders)		// Done to allow the user to update the new UBOs immediately
+			model->MM.resize(numberOfRenders);
 	}
 }
 

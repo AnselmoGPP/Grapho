@@ -58,6 +58,9 @@ template<> struct std::hash<Vertex> {
 	size_t operator()(Vertex const& vertex) const;
 };
 
+glm::mat4	modelMatrix();		///< Get a basic model matrix
+glm::mat4	modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);		///< Get a model matrix 
+
 class ModelData
 {
 	VulkanEnvironment& e;
@@ -133,8 +136,8 @@ public:
 	//glm::mat4(*getModelMatrix) (float time);
 
 	std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
-	size_t					numMM;
 	std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
+	size_t					numMM;
 
 
 	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
