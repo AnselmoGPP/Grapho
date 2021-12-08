@@ -25,7 +25,6 @@ Renderer::~Renderer()
 
 int Renderer::run()
 {
-	std::cout << "run()" << std::endl;
 	try 
 	{
 		createCommandBuffers();
@@ -47,7 +46,6 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
-	std::cout << "createCommandBuffers" << std::endl;
 	//if(!justUpdate)			// Used for avoiding a double-semaphore problem
 	//	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
 
@@ -166,12 +164,6 @@ void Renderer::mainLoop()
 	stopThread();
 
 	vkDeviceWaitIdle(e.device);	// Waits for the logical device to finish operations. Needed for cleaning up once drawing and presentation operations (drawFrame) have finished. Use vkQueueWaitIdle for waiting for operations in a specific command queue to be finished.
-}
-
-void Renderer::cleanupLists()
-{
-	models.clear();
-	modelsToLoad.clear();
 }
 
 void Renderer::stopThread()
@@ -324,10 +316,11 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	
 	// Compute transformation matrix
 	input.cam.ProcessCameraInput(timer.getDeltaTime());
-
-	UniformBufferObject ubo{};
-	ubo.view = input.cam.GetViewMatrix();
-	ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+	glm::mat4 view = input.cam.GetViewMatrix();
+	glm::mat4 proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+	//UniformBufferObject ubo{};
+	//ubo.view = input.cam.GetViewMatrix();
+	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
@@ -339,30 +332,15 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 
 		for (size_t i = 0; i < uboD.UBOcount; i++)
 		{
-			//uboD.setModel(i, it->getModelMatrix[i](timer.getTime()));
 			uboD.setModel(i, it->MM[i]);
-			uboD.setView(i, ubo.view);
-			uboD.setProj(i, ubo.proj);
+			uboD.setView (i, view);
+			uboD.setProj (i, proj);
 		}
 
 		void* data;
 		vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 		memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 		vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
-
-		/*
-		if (it->numMM == 1)
-		{
-			//ubo.model = (*it)->getModelMatrix[0](timer.getTime());
-			ubo.model = it->MM[0];
-
-			void* data;
-			vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-			memcpy(data, &ubo, sizeof(ubo));															// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-			vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);							// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
-		}
-		else if(it->numMM > 1) {...}
-		*/
 	}
 }
 
@@ -370,7 +348,10 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 void Renderer::cleanup()
 {
 	// Cleanup renderer
-	cleanupSwapChain();
+	//cleanupSwapChain();
+
+	// Renderer
+	vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
 	
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {							// Semaphores (render & image available) & fences (in flight)
 		vkDestroySemaphore(e.device, renderFinishedSemaphores[i], nullptr);
@@ -379,11 +360,11 @@ void Renderer::cleanup()
 	}
 	
 	// Cleanup each model
-	for(modelIterator it = models.begin(); it != models.end(); it++)
-		it->cleanup();
-	cleanupLists();
+	models.clear();
+	modelsToLoad.clear();
 	
 	// Cleanup environment
+	e.cleanupSwapChain();
 	e.cleanup();
 }
 
@@ -406,7 +387,7 @@ modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPat
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, true);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath);
 
 }
 
@@ -414,7 +395,7 @@ modelIterator Renderer::newModel(size_t numberOfRenderings, std::vector<Vertex>&
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexData, indices, texturePath, VSpath, FSpath, true);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexData, indices, texturePath, VSpath, FSpath);
 }
 
 void Renderer::deleteModel(modelIterator model)
@@ -538,8 +519,8 @@ void Renderer::loadModels_Thread()
 
 				for (lIt = lBegin; lIt != lEnd; ++lIt)
 				{
-					lIt->cleanupSwapChain();
-					lIt->cleanup();				// Delete Vulkan objects
+					//lIt->cleanupSwapChain();
+					//lIt->cleanup();				// Delete Vulkan objects
 				}			
 
 				deathRow.clear();				// Delete models

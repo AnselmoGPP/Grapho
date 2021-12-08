@@ -117,8 +117,8 @@ glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation
 
 // ModelData ----------------------------------------------------------------------------------
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
-	: e(environment), dataFromFile(true), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath)
+	: e(environment), dataFromFile(true), fullyConstructed(false), numMM(0)
 {
 	// Save paths
 	copyCString(this->modelPath,	modelPath);
@@ -130,11 +130,11 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	resizeUBOset(numberOfRenderings, false);
 
 	// Create Vulkan objects
-	if (!partialInitialization) fullConstruction();
+	//if (!partialInitialization) fullConstruction();
 }
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization)
-	: e(environment), dataFromFile(false), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath)
+	: e(environment), dataFromFile(false), fullyConstructed(false), numMM(0)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -146,14 +146,14 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 
 	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
 	vertices = vertexData;
-	indices  = indicesData;
+	indices  = indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
 
 	// Create Vulkan objects
-	if (!partialInitialization) fullConstruction();
+	//if (!partialInitialization) fullConstruction();
 }
 
 ModelData::ModelData(const ModelData& obj) 
-	: e(obj.e), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
+	: e(obj.e), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
 	// Save paths
 	copyCString(modelPath,		obj.modelPath);
@@ -164,14 +164,15 @@ ModelData::ModelData(const ModelData& obj)
 
 ModelData::~ModelData()
 {
-	if (!dataFromFile)
-		std::cout << "Desctructor A" << std::endl;
+	if (fullyConstructed) {
+		cleanupSwapChain();
+		cleanup();
+	}
+
 	if(dataFromFile) delete[] modelPath;
 	delete[] texturePath;
 	delete[] VSpath;
 	delete[] FSpath;
-	if (!dataFromFile)
-		std::cout << "Destructor B" << std::endl;
 }
 
 ModelData& ModelData::fullConstruction()
@@ -192,6 +193,7 @@ ModelData& ModelData::fullConstruction()
 	createDescriptorPool();
 	createDescriptorSets();
 
+	fullyConstructed = true;
 	return *this;
 }
 
@@ -1005,26 +1007,22 @@ void ModelData::recreateSwapChain()
 
 void ModelData::cleanupSwapChain()
 {
-	std::cout << "cleanupSwapChain 1" << std::endl;
 	// Graphics pipeline
 	vkDestroyPipeline(e.device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(e.device, pipelineLayout, nullptr);
-	std::cout << "cleanupSwapChain 2" << std::endl;
+
 	// Uniform buffers & memory
 	for (size_t i = 0; i < e.swapChainImages.size(); i++) {
 		vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
 		vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 	}
-	std::cout << "cleanupSwapChain 3" << std::endl;
+
 	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
 	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);
-	std::cout << "cleanupSwapChain 4" << std::endl;
 }
 
 void ModelData::cleanup()
 {
-	if (!dataFromFile)
-		std::cout << "Cleanup A" << std::endl;
 	// Texture
 	vkDestroySampler(e.device, textureSampler, nullptr);
 	vkDestroyImageView(e.device, textureImageView, nullptr);
@@ -1041,8 +1039,6 @@ void ModelData::cleanup()
 	// Vertex
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
-	if (!dataFromFile)
-		std::cout << "Cleanup A" << std::endl;
 }
 
 // LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
@@ -1105,13 +1101,13 @@ VkDeviceSize ModelData::getUBOSize()
 {
 	if (numMM != 0)	return numMM * getUBORange();
 	else			return getUBORange();
-	//return getUsefulUBOSize();	
 }
 
 VkDeviceSize ModelData::getUBORange()
 {
 	return e.minUniformBufferOffsetAlignment * (1 + getUsefulUBOSize() / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
-	//return dynamicOffsets[1];		// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
+	
+	// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
 	// If you're overwriting the whole buffer, like we are in this case, it's possible to return VK_WHOLE_SIZE here. 
 }
 

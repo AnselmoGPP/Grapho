@@ -15,12 +15,10 @@
 						updateUniformBuffer
 							graphicsUpdate
 						recreateSwapChain (for window resize)
-							cleanupSwapChain (2)
+							cleanupSwapChain
 							createCommandBuffers (3)
 						stopThreads
 				- cleanup
-					cleanupSwapChain (1)
-					cleanupLists
 
 		Thread 2:
 			loadModels_Thread
@@ -46,7 +44,7 @@ class Renderer
 	VulkanEnvironment		e;				// Environment
 	Input					input;			// Input
 	TimerSet				timer;			// Time control
-	std::list<ModelData>	models;			// Models (completly initialized)
+	std::list<ModelData>	models;			// Models (fully initialized)
 
 	// Threads stuff
 	std::thread				thread_loadModels;				// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
@@ -82,7 +80,6 @@ class Renderer
 	void recreateSwapChain();
 	void cleanupSwapChain();
 	void stopThread();
-	void cleanupLists();
 
 	// Member variables:
 

@@ -14,6 +14,9 @@
 
 #include "environment.hpp"
 
+/*
+	
+*/
 
 struct Vertex
 {
@@ -70,7 +73,8 @@ class ModelData
 	const char* VSpath;
 	const char* FSpath;
 
-	bool dataFromFile;						// Tell if vertex-color-texture_index comes from file or from code
+	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
+	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
 
 	// Main methods:
 
@@ -98,8 +102,8 @@ class ModelData
 	void						copyCString(const char*& destination, const char* source);
 
 public:
-	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool partialInitialization = false);
+	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath);
 	ModelData(const ModelData& obj);	// Copy constructor not used
 	~ModelData();
 
@@ -137,8 +141,8 @@ public:
 
 	std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
 	std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
-	size_t					numMM;
-
+	size_t					numMM;			///< Number of MM/UBOs (note: Renderer resizes MM
+	//UBOdynamic			dynUBO;			// LOOK Used by Renderer. Renderer updates these UBOs and passes them to Vulkan
 
 	void resizeUBOset(size_t newSize, bool objectAlreadyConstructed = true);	///< Set up dynamic offsets and number of MM (model matrices)
 	void setUBO(size_t pos, glm::mat4& newValue);

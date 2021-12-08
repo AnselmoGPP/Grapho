@@ -33,19 +33,18 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 
-		>Allow to update MM from the beginning, so it is not required to do so repeatedly in the callback
-			Updating UBOs just after modifying the amount of them with setRenders()
+		-Allow to update MM immediately after addModel() or addRender()
 		Can we take stuff out from thread 2?
 		- Only dynamic UBOs
 		- Start thread since run() (objectAlreadyConstructed)
 		Try applying alignment just to the entire UBO buffer (not individual dynamic buffers)
 		> Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
 		model&commandBuffer mutex, think about it
-		Usar numMM o MM.size()? 
+		Usar numMM o MM.size()?
+		Profiling
 
 	BUGS:
-		addRender from 2 to 1 gives a problem: the dynamic UBO requires a dynamic offset (but 0 are left)
-		Somehow, camera continued moving backwards/left-side indefinetely
+		Sometimes camera continue moving backwards/left indefinetely
 */
 
 /*
@@ -76,9 +75,9 @@ bool check1 = false, check2 = false;
 
 int main(int argc, char* argv[])
 {
-	std::cout << "Begin" << std::endl;
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);
+
 	std::cout << "\n-----------------------------------------------------------------------------" << std::endl;
 /*
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
@@ -171,8 +170,9 @@ void update(Renderer& r)
 	}
 	else if (time > 10 && !check2)
 	{
+		 r.deleteModel(assets["room"]);
 		//r.setRenders(assets["room"], 3);
-		//check2 = true;
+		check2 = true;
 	}
 	
 	 if (time > 5)
