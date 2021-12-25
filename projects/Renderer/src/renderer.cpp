@@ -46,9 +46,6 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
-	//if(!justUpdate)			// Used for avoiding a double-semaphore problem
-	//	const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
-
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChainFramebuffers.size());				// One commandBuffer per swapChainFramebuffer
 
@@ -96,14 +93,17 @@ void Renderer::createCommandBuffers()
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 			VkDeviceSize offsets[]		= { 0 };	// <<<
-			//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);					// Bind the vertex buffer to bindings.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
-			vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);			// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
+			if(it->hasIndices())
+				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);			// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
 			for (size_t j = 0; j < it->numMM; j++)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
-				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+				if (it->hasIndices())
+					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+				else
+					vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
 
 				//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
 				//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
@@ -382,19 +382,19 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, vertexType, (VkPrimitiveTopology)primitiveTopology);
 
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
 }
 
 void Renderer::deleteModel(modelIterator model)
@@ -433,7 +433,7 @@ void Renderer::loadModels_Thread()
 	{
 		if (!rendersToSet.size() && !modelsToLoad.size() && !modelsToDelete.size())
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 			continue;
 		}
 		else

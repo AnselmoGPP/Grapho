@@ -83,13 +83,25 @@ glm::mat4 room5_MM(float time)
 // Others --------------------
 
 std::vector<VertexPCT> v_floor = {
-	VertexPCT(glm::vec3(-100,  100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10,  10)) ,
-	VertexPCT(glm::vec3(-100, -100, 0), glm::vec3(1, 1, 1) , glm::vec2(-10, -10)),
-	VertexPCT(glm::vec3( 100, -100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10, -10)),
-	VertexPCT(glm::vec3( 100,  100, 1), glm::vec3(1, 1, 1) , glm::vec2( 10,  10))
+	VertexPCT(glm::vec3(-100,  100, 10), glm::vec3(1, 1, 1), glm::vec2(0.f, 0.f)),
+	VertexPCT(glm::vec3(-100, -100, 10), glm::vec3(1, 1, 1), glm::vec2(0.f, 1.f)),
+	VertexPCT(glm::vec3( 100, -100, 10), glm::vec3(1, 1, 1), glm::vec2(1.f, 1.f)),
+	VertexPCT(glm::vec3( 100,  100, 10), glm::vec3(1, 1, 1), glm::vec2(1.f, 0.f))
 };
 
 std::vector<uint32_t> i_floor = { 0, 1, 3,  1, 2, 3 };
 
-std::vector<VertexPCT>	v_axis;		// Vertex, color
-std::vector<uint32_t>	i_axis;		// Indices
+std::vector<VertexPC> v_points = {
+	VertexPC(glm::vec3(-10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(  0, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3( 10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(-10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(  0,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3( 10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(-10,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(  0,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3( 10,  10,  10), glm::vec3(1.f, 0.f, 0.f))
+};
+
+std::vector<uint32_t> i_points = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+

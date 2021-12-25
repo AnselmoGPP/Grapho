@@ -7,123 +7,15 @@
 #include "models.hpp"
 
 
-//Vertex -----------------------------------------------------------------
-
-VertexPCT::VertexPCT(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates)
-	: pos(vertex), color(vertexColor), texCoord(textureCoordinates) { }
-
-VkVertexInputBindingDescription VertexPCT::getBindingDescription()
-{
-	VkVertexInputBindingDescription bindingDescription{};
-	bindingDescription.binding		= 0;							// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
-	bindingDescription.stride		= sizeof(VertexPCT);				// Number of bytes from one entry to the next.
-	bindingDescription.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX;	// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
-
-	return bindingDescription;
-}
-
-std::array<VkVertexInputAttributeDescription, 3> VertexPCT::getAttributeDescriptions()
-{
-	std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-	attributeDescriptions[0].binding	= 0;							// From which binding the per-vertex data comes.
-	attributeDescriptions[0].location	= 0;							// Directive "location" of the input in the vertex shader.
-	attributeDescriptions[0].format		= VK_FORMAT_R32G32B32_SFLOAT;	// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
-	attributeDescriptions[0].offset		= offsetof(VertexPCT, pos);		// Number of bytes since the start of the per-vertex data to read from.
-
-	attributeDescriptions[1].binding	= 0;
-	attributeDescriptions[1].location	= 1;
-	attributeDescriptions[1].format		= VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset		= offsetof(VertexPCT, color);
-
-	attributeDescriptions[2].binding	= 0;
-	attributeDescriptions[2].location	= 2;
-	attributeDescriptions[2].format		= VK_FORMAT_R32G32_SFLOAT;
-	attributeDescriptions[2].offset		= offsetof(VertexPCT, texCoord);
-
-	return attributeDescriptions;
-}
-
-bool VertexPCT::operator==(const VertexPCT& other) const {
-	return	pos == other.pos &&
-			color == other.color &&
-			texCoord == other.texCoord;
-}
-
-size_t std::hash<VertexPCT>::operator()(VertexPCT const& vertex) const
-{
-	return ( (hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1 ) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-}
-
-
-// Uniform Buffer Object Dynamic -----------------------------------------------------------------
-
-UBOdynamic::UBOdynamic(size_t UBOcount, VkDeviceSize sizePerUBO)
-	: UBOcount(UBOcount), sizePerUBO(sizePerUBO), totalBytes(sizePerUBO * UBOcount), data(nullptr)
-{
-	data = new char[totalBytes];
-}
-
-UBOdynamic::~UBOdynamic() { delete[] data; }
-
-void UBOdynamic::setModel(size_t position, const glm::mat4& matrix)
-{ 
-	glm::mat4* original = (glm::mat4*) &data[position * sizePerUBO + 0 * sizeof(glm::mat4)];
-	*original = matrix;					// Equivalent to:   memcpy((void*)original, (void*)&matrix, sizeof(glm::mat4));
-}
-
-void UBOdynamic::setView(size_t position, const glm::mat4& matrix)
-{ 
-	glm::mat4* original = (glm::mat4*) &data[position * sizePerUBO + 1 * sizeof(glm::mat4)];
-	*original = matrix;
-}
-
-void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
-{ 
-	glm::mat4* original = (glm::mat4*) &data[position * sizePerUBO + 2 * sizeof(glm::mat4)];
-	*original = matrix;
-}
-
-
-// Model matrix -----------------------------------------------------------------
-
-glm::mat4 modelMatrix()
-{
-	glm::mat4 mm  = glm::mat4(1.0f);
-
-	mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
-	//mm = glm::rotate(mm, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//mm = glm::scale(mm, glm::vec3(1.0f, 1.0f, 1.0f));
-
-	return mm;
-}
-
-/// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees.
-glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation)
-{
-	glm::mat4 mm  = glm::mat4(1.0f);
-
-	mm = glm::translate	(mm, translation);
-	mm = glm::rotate	(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
-	mm = glm::rotate	(mm, glm::radians(rotation[1]), glm::vec3(0.0f, 1.0f, 0.0f));
-	mm = glm::rotate	(mm, glm::radians(rotation[2]), glm::vec3(0.0f, 0.0f, 1.0f));
-	mm = glm::scale		(mm, scale);
-
-	return mm;
-}
-
-
-// ModelData ----------------------------------------------------------------------------------
-
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), vertices(vertexType), numMM(0)
 {
 	// Save paths
-	copyCString(this->modelPath,	modelPath);
-	copyCString(this->texturePath,	texturePath);
-	copyCString(this->VSpath,		VSpath);
-	copyCString(this->FSpath,		FSpath);
+	copyCString(this->modelPath, modelPath);
+	copyCString(this->texturePath, texturePath);
+	copyCString(this->VSpath, VSpath);
+	copyCString(this->FSpath, FSpath);
 
 	// Set up UBO data (Model matrices and Dynamic offsets)
 	resizeUBOset(numberOfRenderings);
@@ -133,8 +25,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), vertices(vertexType, numVertex, vertexData), numMM(0)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -145,23 +37,24 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	resizeUBOset(numberOfRenderings);
 
 	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
-	vertices = vertexData;
-	indices  = indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
+	//vertices = vertexData;
+	if (indicesData)
+		indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
+	else
+		includesIndices = false;
 
 	// Create Vulkan objects
 	//if (!partialInitialization) fullConstruction();
 }
 
-
-
-ModelData::ModelData(const ModelData& obj) 
-	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
+ModelData::ModelData(const ModelData& obj)
+	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), includesIndices(obj.includesIndices), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
 	// Save paths
-	copyCString(modelPath,		obj.modelPath);
-	copyCString(texturePath,	obj.texturePath);
-	copyCString(VSpath,			obj.VSpath);
-	copyCString(FSpath,			obj.FSpath);
+	copyCString(modelPath, obj.modelPath);
+	copyCString(texturePath, obj.texturePath);
+	copyCString(VSpath, obj.VSpath);
+	copyCString(FSpath, obj.FSpath);
 }
 
 ModelData::~ModelData()
@@ -171,40 +64,41 @@ ModelData::~ModelData()
 		cleanup();
 	}
 
-	if(dataFromFile) delete[] modelPath;
-	delete[] texturePath;
+	if (dataFromFile) delete[] modelPath;
+	if(numTextures()) delete[] texturePath;
 	delete[] VSpath;
 	delete[] FSpath;
 }
 
 ModelData& ModelData::fullConstruction()
 {
-	// Vulkan objects
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
-
-	createTextureImage(texturePath);
-	createTextureImageView();
-	createTextureSampler();
-
-	if(dataFromFile) loadModel(modelPath);
+	
+	if (numTextures()) {
+		createTextureImage(texturePath);
+		createTextureImageView();
+		createTextureSampler();
+	}
+	
+	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
-	createIndexBuffer();
-
+	if(includesIndices) createIndexBuffer();
+	
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-
+	
 	fullyConstructed = true;
 	return *this;
 }
 
 void ModelData::copyCString(const char*& destination, const char* source)
 {
-	size_t siz		= strlen(source) + 1;
-	char* address	= new char[siz];
+	size_t siz = strlen(source) + 1;
+	char* address = new char[siz];
 	strncpy(address, source, siz);
-	destination		= address;
+	destination = address;
 }
 
 // (9)
@@ -213,31 +107,44 @@ void ModelData::createDescriptorSetLayout()
 	// Describe the bindings
 	//	- Uniform buffer descriptor
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
-	uboLayoutBinding.binding			= 0;
-	//uboLayoutBinding.descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	uboLayoutBinding.descriptorCount	= 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of the bones in a skeleton for skeletal animation).
-	uboLayoutBinding.stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;		// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
-	uboLayoutBinding.pImmutableSamplers	= nullptr;							// [Optional] Only relevant for image sampling related descriptors.
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+	uboLayoutBinding.descriptorCount = 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of the bones in a skeleton for skeletal animation).
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;		// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
+	uboLayoutBinding.pImmutableSamplers = nullptr;							// [Optional] Only relevant for image sampling related descriptors.
 
 	//	- Combined image sampler descriptor (it lets shaders access an image resource through a sampler object)
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding			= 1;
-	samplerLayoutBinding.descriptorType		= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount	= 1;
-	samplerLayoutBinding.stageFlags			= VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
-	samplerLayoutBinding.pImmutableSamplers	= nullptr;
-	
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
+/*
+	//std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType		= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount	= static_cast<uint32_t>(bindings.size());
-	layoutInfo.pBindings	= bindings.data();
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	layoutInfo.pBindings = bindings.data();
+*/
+
+	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[getNumDescriptors()];
+	bindings[0] = uboLayoutBinding;
+	for (size_t i = 0; i < numTextures(); i++)
+		bindings[1 + i] = samplerLayoutBinding;
+
+	// Create a descriptor set layout (combines all of the descriptor bindings)
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = static_cast<uint32_t>(getNumDescriptors());
+	layoutInfo.pBindings = bindings;
 
 	if (vkCreateDescriptorSetLayout(e.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor set layout!");
+
+	delete[] bindings;
 }
 
 // (10)
@@ -274,51 +181,51 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	std::vector<char> vertShaderCode = readFile(VSpath);
 	std::vector<char> fragShaderCode = readFile(FSpath);
 
-	VkShaderModule vertShaderModule	= createShaderModule(vertShaderCode);
+	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
 	// Configure Vertex shader
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-	vertShaderStageInfo.sType				= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage				= VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module				= vertShaderModule;
-	vertShaderStageInfo.pName				= "main";			// Function to invoke (entrypoint). You may combine multiple fragment shaders into a single shader module and use different entry points (different behaviors).  
-	vertShaderStageInfo.pSpecializationInfo	= nullptr;			// Optional. Specifies values for shader constants.
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = vertShaderModule;
+	vertShaderStageInfo.pName = "main";			// Function to invoke (entrypoint). You may combine multiple fragment shaders into a single shader module and use different entry points (different behaviors).  
+	vertShaderStageInfo.pSpecializationInfo = nullptr;			// Optional. Specifies values for shader constants.
 
 	// Configure Fragment shader
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-	fragShaderStageInfo.sType				= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage				= VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module				= fragShaderModule;
-	fragShaderStageInfo.pName				= "main";
-	fragShaderStageInfo.pSpecializationInfo	= nullptr;
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = fragShaderModule;
+	fragShaderStageInfo.pName = "main";
+	fragShaderStageInfo.pSpecializationInfo = nullptr;
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	// Vertex input: Describes format of the vertex data that will be passed to the vertex shader.
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	auto bindingDescription							= VertexPCT::getBindingDescription();
-	vertexInputInfo.vertexBindingDescriptionCount	= 1;
-	vertexInputInfo.pVertexBindingDescriptions		= &bindingDescription;							// Optional
-	auto attributeDescriptions						= VertexPCT::getAttributeDescriptions();
-	vertexInputInfo.vertexAttributeDescriptionCount	= static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexAttributeDescriptions	= attributeDescriptions.data();					// Optional
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	auto bindingDescription = vertices.Vtype.getBindingDescription();
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;							// Optional
+	auto attributeDescriptions = vertices.Vtype.getAttributeDescriptions();
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();				// Optional
 
 	// Input assembly: Describes what kind of geometry will be drawn from the vertices, and if primitive restart should be enabled.
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-	inputAssembly.sType						= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology					= primitiveTopology;		// VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP
-	inputAssembly.primitiveRestartEnable	= VK_FALSE;					// If VK_TRUE, then it's possible to break up lines and triangles in the _STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF.
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = primitiveTopology;		// VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP
+	inputAssembly.primitiveRestartEnable = VK_FALSE;					// If VK_TRUE, then it's possible to break up lines and triangles in the _STRIP topology modes by using a special index of 0xFFFF or 0xFFFFFFFF.
 
 	// Viewport: Describes the region of the framebuffer that the output will be rendered to.
 	VkViewport viewport{};
-	viewport.x			= 0.0f;
-	viewport.y			= 0.0f;
-	viewport.width		= (float)e.swapChainExtent.width;
-	viewport.height		= (float)e.swapChainExtent.height;
-	viewport.minDepth	= 0.0f;
-	viewport.maxDepth	= 1.0f;
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)e.swapChainExtent.width;
+	viewport.height = (float)e.swapChainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
 
 	// Scissor rectangle: Defines in which region pixels will actually be stored. Pixels outside the scissor rectangles will be discarded by the rasterizer. It works like a filter rather than a transformation.
 	VkRect2D scissor{};
@@ -327,49 +234,49 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 
 	// Viewport state: Combines the viewport and scissor rectangle into a viewport state. Multiple viewports and scissors require enabling a GPU feature.
 	VkPipelineViewportStateCreateInfo viewportState{};
-	viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportState.viewportCount	= 1;
-	viewportState.pViewports	= &viewport;
-	viewportState.scissorCount	= 1;
-	viewportState.pScissors		= &scissor;
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
 
 	// Rasterizer: It takes the geometry shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. It also performs depth testing, face culling and the scissor test, and can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
 	VkPipelineRasterizationStateCreateInfo rasterizer{};
-	rasterizer.sType					= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable			= VK_FALSE;							// If VK_TRUE, fragments that are beyond the near and far planes are clamped to them (requires enabling a GPU feature), as opposed to discarding them.
-	rasterizer.rasterizerDiscardEnable	= VK_FALSE;							// If VK_TRUE, geometry never passes through the rasterizer stage (disables any output to the framebuffer).
-	rasterizer.polygonMode				= VK_POLYGON_MODE_FILL;				// How fragments are generated for geometry (VK_POLYGON_MODE_ ... FILL, LINE, POINT). Any mode other than FILL requires enabling a GPU feature.
-	rasterizer.lineWidth				= 1.0f;								// Thickness of lines in terms of number of fragments. The maximum line width supported depends on the hardware. Lines thicker than 1.0f requires enabling the `wideLines` GPU feature.
-	rasterizer.cullMode					= VK_CULL_MODE_BACK_BIT;			// Type of face culling (disable culling, cull front faces, cull back faces, cull both).
-	rasterizer.frontFace				= VK_FRONT_FACE_COUNTER_CLOCKWISE;	// Vertex order for faces to be considered front-facing (clockwise, counterclockwise). If we draw vertices clockwise, because of the Y-flip we did in the projection matrix, the vertices are now drawn counter-clockwise.
-	rasterizer.depthBiasEnable			= VK_FALSE;							// If VK_TRUE, it allows to alter the depth values (sometimes used for shadow mapping).
-	rasterizer.depthBiasConstantFactor	= 0.0f;								// [Optional] 
-	rasterizer.depthBiasClamp			= 0.0f;								// [Optional] 
-	rasterizer.depthBiasSlopeFactor		= 0.0f;								// [Optional] 
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE;							// If VK_TRUE, fragments that are beyond the near and far planes are clamped to them (requires enabling a GPU feature), as opposed to discarding them.
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;							// If VK_TRUE, geometry never passes through the rasterizer stage (disables any output to the framebuffer).
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;				// How fragments are generated for geometry (VK_POLYGON_MODE_ ... FILL, LINE, POINT). Any mode other than FILL requires enabling a GPU feature.
+	rasterizer.lineWidth = LINE_WIDTH;								// Thickness of lines in terms of number of fragments. The maximum line width supported depends on the hardware. Lines thicker than 1.0f requires enabling the `wideLines` GPU feature.
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;			// Type of face culling (disable culling, cull front faces, cull back faces, cull both).
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// Vertex order for faces to be considered front-facing (clockwise, counterclockwise). If we draw vertices clockwise, because of the Y-flip we did in the projection matrix, the vertices are now drawn counter-clockwise.
+	rasterizer.depthBiasEnable = VK_FALSE;							// If VK_TRUE, it allows to alter the depth values (sometimes used for shadow mapping).
+	rasterizer.depthBiasConstantFactor = 0.0f;								// [Optional] 
+	rasterizer.depthBiasClamp = 0.0f;								// [Optional] 
+	rasterizer.depthBiasSlopeFactor = 0.0f;								// [Optional] 
 
 	// Multisampling: One way to perform anti-aliasing. Combines the fragment shader results of multiple polygons that rasterize to the same pixel. Requires enabling a GPU feature.
 	VkPipelineMultisampleStateCreateInfo multisampling{};
-	multisampling.sType					= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.rasterizationSamples	= e.msaaSamples;
-	multisampling.sampleShadingEnable	= (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.rasterizationSamples = e.msaaSamples;
+	multisampling.sampleShadingEnable = (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
 	if (e.add_SS)
-		multisampling.minSampleShading	= .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
-	multisampling.pSampleMask			= nullptr;							// [Optional]
-	multisampling.alphaToCoverageEnable	= VK_FALSE;							// [Optional]
-	multisampling.alphaToOneEnable		= VK_FALSE;							// [Optional]
+		multisampling.minSampleShading = .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
+	multisampling.pSampleMask = nullptr;							// [Optional]
+	multisampling.alphaToCoverageEnable = VK_FALSE;							// [Optional]
+	multisampling.alphaToOneEnable = VK_FALSE;							// [Optional]
 
 	// Depth and stencil testing. Used if you are using a depth and/or stencil buffer.
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable		= VK_TRUE;				// Specify if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
-	depthStencil.depthWriteEnable		= VK_TRUE;				// Specify if the new depth of fragments that pass the depth test should actually be written to the depth buffer.
-	depthStencil.depthCompareOp			= VK_COMPARE_OP_LESS;	// Specify the comparison that is performed to keep or discard fragments.
-	depthStencil.depthBoundsTestEnable	= VK_FALSE;				// [Optional] Use depth bound test (allows to only keep fragments that fall within a specified depth range.
-	depthStencil.minDepthBounds			= 0.0f;					// [Optional]
-	depthStencil.maxDepthBounds			= 1.0f;					// [Optional]
-	depthStencil.stencilTestEnable		= VK_FALSE;				// [Optional] Use stencil buffer operations (if you want to use it, make sure that the format of the depth/stencil image contains a stencil component).
-	depthStencil.front					= {};					// [Optional]
-	depthStencil.back					= {};					// [Optional]
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.depthTestEnable = VK_TRUE;				// Specify if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
+	depthStencil.depthWriteEnable = VK_TRUE;				// Specify if the new depth of fragments that pass the depth test should actually be written to the depth buffer.
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;	// Specify the comparison that is performed to keep or discard fragments.
+	depthStencil.depthBoundsTestEnable = VK_FALSE;				// [Optional] Use depth bound test (allows to only keep fragments that fall within a specified depth range.
+	depthStencil.minDepthBounds = 0.0f;					// [Optional]
+	depthStencil.maxDepthBounds = 1.0f;					// [Optional]
+	depthStencil.stencilTestEnable = VK_FALSE;				// [Optional] Use stencil buffer operations (if you want to use it, make sure that the format of the depth/stencil image contains a stencil component).
+	depthStencil.front = {};					// [Optional]
+	depthStencil.back = {};					// [Optional]
 
 	// Color blending: After a fragment shader has returned a color, it needs to be combined with the color that is already in the framebuffer. Two ways to do it: Mix old and new value to produce a final color, or combine the old and new value using a bitwise operation.
 	//	- Configuration per attached framebuffer
@@ -377,23 +284,23 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	if (1)	// Not alpha blending implemented
 	{
-		colorBlendAttachment.blendEnable			= VK_FALSE;
-		colorBlendAttachment.srcColorBlendFactor	= VK_BLEND_FACTOR_ONE;		// Optional. Check VkBlendFactor enum.
-		colorBlendAttachment.dstColorBlendFactor	= VK_BLEND_FACTOR_ZERO;		// Optional
-		colorBlendAttachment.colorBlendOp			= VK_BLEND_OP_ADD;			// Optional. Check VkBlendOp enum.
-		colorBlendAttachment.srcAlphaBlendFactor	= VK_BLEND_FACTOR_ONE;		// Optional
-		colorBlendAttachment.dstAlphaBlendFactor	= VK_BLEND_FACTOR_ZERO;		// Optional
-		colorBlendAttachment.alphaBlendOp			= VK_BLEND_OP_ADD;			// Optional
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;		// Optional. Check VkBlendFactor enum.
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;		// Optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;			// Optional. Check VkBlendOp enum.
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;		// Optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;		// Optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;			// Optional
 	}
 	else	// Options for implementing alpha blending (new color blended with old color based on its opacity):
 	{
-		colorBlendAttachment.blendEnable			= VK_TRUE;
-		colorBlendAttachment.srcColorBlendFactor	= VK_BLEND_FACTOR_SRC_ALPHA;
-		colorBlendAttachment.dstColorBlendFactor	= VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		colorBlendAttachment.colorBlendOp			= VK_BLEND_OP_ADD;
-		colorBlendAttachment.srcAlphaBlendFactor	= VK_BLEND_FACTOR_ONE;
-		colorBlendAttachment.dstAlphaBlendFactor	= VK_BLEND_FACTOR_ZERO;
-		colorBlendAttachment.alphaBlendOp			= VK_BLEND_OP_ADD;
+		colorBlendAttachment.blendEnable = VK_TRUE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 		/* Pseudocode demonstration:
 			if (blendEnable) {
@@ -407,43 +314,43 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 
 	//	- Global color blending settings. Set blend constants that you can use as blend factors in the aforementioned calculations.
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
-	colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlending.logicOpEnable		= VK_FALSE;					// VK_FALSE: Blending method of mixing values.  VK_TRUE: Blending method of bitwise values combination (this disables the previous structure, like blendEnable = VK_FALSE).
-	colorBlending.logicOp			= VK_LOGIC_OP_COPY;			// Optional
-	colorBlending.attachmentCount	= 1;
-	colorBlending.pAttachments		= &colorBlendAttachment;
-	colorBlending.blendConstants[0]	= 0.0f;						// Optional
-	colorBlending.blendConstants[1]	= 0.0f;						// Optional
-	colorBlending.blendConstants[2]	= 0.0f;						// Optional
-	colorBlending.blendConstants[3]	= 0.0f;						// Optional
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;					// VK_FALSE: Blending method of mixing values.  VK_TRUE: Blending method of bitwise values combination (this disables the previous structure, like blendEnable = VK_FALSE).
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;			// Optional
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;						// Optional
+	colorBlending.blendConstants[1] = 0.0f;						// Optional
+	colorBlending.blendConstants[2] = 0.0f;						// Optional
+	colorBlending.blendConstants[3] = 0.0f;						// Optional
 
 	// Dynamic states: A limited amount of the state that we specified in the previous structs can actually be changed without recreating the pipeline (size of viewport, lined width, blend constants...). If you want to do that, you have to fill this struct. This will cause the configuration of these values to be ignored and you will be required to specify the data at drawing time. This struct can be substituted by a nullptr later on if you don't have any dynamic state.
-	VkDynamicState dynamicStates[]	= { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_LINE_WIDTH };
+	VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_LINE_WIDTH };
 
 	VkPipelineDynamicStateCreateInfo dynamicState{};
-	dynamicState.sType				= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount	= 2;
-	dynamicState.pDynamicStates		= dynamicStates;
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.dynamicStateCount = 2;
+	dynamicState.pDynamicStates = dynamicStates;
 
 	// Create graphics pipeline
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount				= 2;
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
 	//pipelineInfo.flags				= VK_PIPELINE_CREATE_DERIVATIVE_BIT;	// Required for using basePipelineHandle and basePipelineIndex members
-	pipelineInfo.pStages				= shaderStages;
-	pipelineInfo.pVertexInputState		= &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState	= &inputAssembly;
-	pipelineInfo.pViewportState			= &viewportState;
-	pipelineInfo.pRasterizationState	= &rasterizer;
-	pipelineInfo.pMultisampleState		= &multisampling;
-	pipelineInfo.pDepthStencilState		= &depthStencil;	// [Optional]
-	pipelineInfo.pColorBlendState		= &colorBlending;
-	pipelineInfo.pDynamicState			= nullptr;			// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
-	pipelineInfo.layout					= pipelineLayout;
-	pipelineInfo.renderPass				= e.renderPass;		// <<< It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
-	pipelineInfo.subpass				= 0;
-	pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;	// [Optional] Specify the handle of an existing pipeline.
-	pipelineInfo.basePipelineIndex		= -1;				// [Optional] Reference another pipeline that is about to be created by index.
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = &depthStencil;	// [Optional]
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = nullptr;			// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = e.renderPass;		// <<< It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;	// [Optional] Specify the handle of an existing pipeline.
+	pipelineInfo.basePipelineIndex = -1;				// [Optional] Reference another pipeline that is about to be created by index.
 
 	if (vkCreateGraphicsPipelines(e.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
@@ -525,39 +432,39 @@ void ModelData::createTextureImage(const char* path)
 	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
 	if (!pixels)
 		throw std::runtime_error("Failed to load texture image!");
-	
+
 	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)
 
 	// Create a staging buffer (temporary buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it)
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
-	
+
 	createBuffer(imageSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
 		stagingBufferMemory);
-	
+
 	// Copy directly the pixel values from the image we loaded to the staging-buffer.
 	void* data;
 	vkMapMemory(e.device, stagingBufferMemory, 0, imageSize, 0, &data);	// vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (stagingBufferMemory). We have to provide the logical device that owns the memory (e.device).
 	memcpy(data, pixels, static_cast<size_t>(imageSize));				// Copies a number of bytes (imageSize) from a source (pixels) to a destination (data).
 	vkUnmapMemory(e.device, stagingBufferMemory);						// Unmap a previously mapped memory object (stagingBufferMemory).
-	
+
 	stbi_image_free(pixels);	// Clean up the original pixel array
 
 	// Create the texture image
-	e.createImage(	texWidth,
-					texHeight,
-					mipLevels,
-					VK_SAMPLE_COUNT_1_BIT,
-					VK_FORMAT_R8G8B8A8_SRGB,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					textureImage,
-					textureImageMemory );
+	e.createImage(texWidth,
+		texHeight,
+		mipLevels,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		textureImage,
+		textureImageMemory);
 
 	// Copy the staging buffer to the texture image
 	e.transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);					// Transition the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
@@ -707,12 +614,12 @@ void ModelData::createTextureImageView()
 void ModelData::createTextureSampler()
 {
 	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType			= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter		= VK_FILTER_LINEAR;					// How to interpolate texels that are magnified (oversampling) or ...
-	samplerInfo.minFilter		= VK_FILTER_LINEAR;					// ... minified (undersampling). Choices: VK_FILTER_NEAREST, VK_FILTER_LINEAR
-	samplerInfo.addressModeU	= VK_SAMPLER_ADDRESS_MODE_REPEAT;	// Addressing mode per axis (what happens when going beyond the image dimensions). In texture space coordinates, XYZ are UVW. Available values: VK_SAMPLER_ADDRESS_MODE_ ... REPEAT (repeat the texture), MIRRORED_REPEAT (like repeat, but inverts coordinates to mirror the image), CLAMP_TO_EDGE (take the color of the closest edge), MIRROR_CLAMP_TO_EDGE (like clamp to edge, but taking the opposite edge), CLAMP_TO_BORDER (return solid color).
-	samplerInfo.addressModeV	= VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW	= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;					// How to interpolate texels that are magnified (oversampling) or ...
+	samplerInfo.minFilter = VK_FILTER_LINEAR;					// ... minified (undersampling). Choices: VK_FILTER_NEAREST, VK_FILTER_LINEAR
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;	// Addressing mode per axis (what happens when going beyond the image dimensions). In texture space coordinates, XYZ are UVW. Available values: VK_SAMPLER_ADDRESS_MODE_ ... REPEAT (repeat the texture), MIRRORED_REPEAT (like repeat, but inverts coordinates to mirror the image), CLAMP_TO_EDGE (take the color of the closest edge), MIRROR_CLAMP_TO_EDGE (like clamp to edge, but taking the opposite edge), CLAMP_TO_BORDER (return solid color).
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
 	if (1)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
 	{
@@ -767,20 +674,22 @@ void ModelData::createTextureSampler()
 */
 void ModelData::loadModel(const char* obj_file)
 {
+	// Load model
 	tinyobj::attrib_t					 attrib;			// Holds all of the positions, normals and texture coordinates.
 	std::vector<tinyobj::shape_t>		 shapes;			// Holds all of the separate objects and their faces. Each face consists of an array of vertices. Each vertex contains the indices of the position, normal and texture coordinate attributes.
 	std::vector<tinyobj::material_t>	 materials;			// OBJ models can also define a material and texture per face, but we will ignore those.
 	std::string							 warn, err;			// Errors and warnings that occur while loading the file.
-	std::unordered_map<VertexPCT, uint32_t> uniqueVertices{};	// Keeps track of the unique vertices and the respective indices, avoiding duplicated vertices (not indices).
 
-	// Load model
 	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_file))
 		throw std::runtime_error(warn + err);
 
 	// Combine all the faces in the file into a single model
+	std::unordered_map<VertexPCT, uint32_t> uniqueVertices{};	// Keeps track of the unique vertices and the respective indices, avoiding duplicated vertices (not indices).
+
 	for (const auto& shape : shapes)
 		for (const auto& index : shape.mesh.indices)
 		{
+			// Get each vertex
 			VertexPCT vertex{};
 
 			vertex.pos = {
@@ -796,12 +705,14 @@ void ModelData::loadModel(const char* obj_file)
 
 			vertex.color = { 1.0f, 1.0f, 1.0f };
 
-			if (uniqueVertices.count(vertex) == 0)	// Check if we have already seen this vertex. Using a user-defined type (Vertex struct) as key in a hash table requires us to implement two functions: equality test (override operator ==) and hash calculation (implement a hash function for Vertex).
+			// Check if we have already seen this vertex. If not, assign an index to it and save the vertex.
+			if (uniqueVertices.count(vertex) == 0)			// Using a user-defined type (Vertex struct) as key in a hash table requires us to implement two functions: equality test (override operator ==) and hash calculation (implement a hash function for Vertex).
 			{
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());	// Set new index for this vertex
-				vertices.push_back(vertex);											// Save vertex
+				vertices.push_back(&vertex);										// Save vertex
 			}
 
+			// Save the index
 			indices.push_back(uniqueVertices[vertex]);								// Save index
 		}
 }
@@ -810,7 +721,7 @@ void ModelData::loadModel(const char* obj_file)
 void ModelData::createVertexBuffer()
 {
 	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data)
-	VkDeviceSize   bufferSize = sizeof(vertices[0]) * vertices.size();
+	VkDeviceSize   bufferSize = vertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
@@ -818,13 +729,13 @@ void ModelData::createVertexBuffer()
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 											// VK_BUFFER_USAGE_ ... TRANSFER_SRC_BIT / TRANSFER_DST_BIT (buffer can be used as source/destination in a memory transfer operation).
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
-		stagingBufferMemory);
+		stagingBufferMemory);	// LOOK why creating a staging buffer?
 
 	// Fill the staging buffer (by mapping the buffer memory into CPU accessible memory: https://en.wikipedia.org/wiki/Memory-mapped_I/O)
 	void* data;
 	vkMapMemory(e.device, stagingBufferMemory, 0, bufferSize, 0, &data);	// Access a memory region. Use VK_WHOLE_SIZE to map all of the memory.
 	memcpy(data, vertices.data(), (size_t)bufferSize);						// Copy the vertex data to the mapped memory.
-	vkUnmapMemory(e.device, stagingBufferMemory);								// Unmap memory.
+	vkUnmapMemory(e.device, stagingBufferMemory);							// Unmap memory.
 
 	/*
 		Note:
@@ -907,39 +818,47 @@ void ModelData::createIndexBuffer()
 
 // (21)
 void ModelData::createUniformBuffers()
-{	
+{
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
 
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
-		createBuffer(	getUBOSize(),
-						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						uniformBuffers[i],
-						uniformBuffersMemory[i] );
+		createBuffer(
+			getUBOSize(),
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			uniformBuffers[i],
+			uniformBuffersMemory[i] );
 }
- 
+
 // (22)
 void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
-	std::array<VkDescriptorPoolSize, 2> poolSizes{};
-	//poolSizes[0].type				  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].type				  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	poolSizes[0].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
-	poolSizes[1].type				  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount	  = static_cast<uint32_t>(e.swapChainImages.size());
+	//std::array<VkDescriptorPoolSize, 2> poolSizes{};
+
+	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[getNumDescriptors()];
+
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+	poolSizes[0].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
+	for (size_t i = 0; i < numTextures(); i++) 
+	{
+		poolSizes[1 + i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1 + i].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+	}
 
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	poolInfo.pPoolSizes = poolSizes.data();
+	poolInfo.poolSizeCount = static_cast<uint32_t>(getNumDescriptors());
+	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = static_cast<uint32_t>(e.swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
-	poolInfo.flags = 0;												// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
+	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
 
 	if (vkCreateDescriptorPool(e.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor pool!");
+
+	delete[] poolSizes;
 }
 
 // (23)
@@ -966,13 +885,51 @@ void ModelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range  = getUBORange();
+		bufferInfo.range = getUBORange();
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = textureImageView;
 		imageInfo.sampler = textureSampler;
 
+		VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[getNumDescriptors()];
+		
+		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
+		descriptorWrites[0].dstBinding = 0;												// Binding
+		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// Type of descriptor: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+		descriptorWrites[0].descriptorCount = 1;										// Number of array elements to update
+		descriptorWrites[0].pBufferInfo = &bufferInfo;									// Used for descriptors that refer to buffer data (like our descriptor)
+		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
+		descriptorWrites[0].pTexelBufferView = nullptr;									// [Optional] Used for descriptors that refer to buffer views
+		descriptorWrites[0].pNext = nullptr;											// LOOK why this line was not necessary before implementing no-texture descriptor (and no data from file)
+
+		for (size_t j = 0; j < numTextures(); j++)
+		{
+			descriptorWrites[1 + j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1 + j].dstSet = descriptorSets[i];
+			descriptorWrites[1 + j].dstBinding = 1;
+			descriptorWrites[1 + j].dstArrayElement = 0;
+			descriptorWrites[1 + j].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1 + j].descriptorCount = 1;
+			descriptorWrites[1 + j].pBufferInfo = nullptr;
+			descriptorWrites[1 + j].pImageInfo = &imageInfo;
+			descriptorWrites[1 + j].pTexelBufferView = nullptr;
+			descriptorWrites[1 + j].pNext = nullptr;											// LOOK why this line was not necessary before implementing no-texture descriptor (and no data from file)
+		}
+
+		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(getNumDescriptors()), descriptorWrites, 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
+
+		delete[] descriptorWrites;
+	}
+}
+/*
+void ModelData::createDescriptorSets2()
+{
+	// Populate each descriptor set.
+	for (size_t i = 0; i < e.swapChainImages.size(); i++)
+	{
 		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -997,11 +954,11 @@ void ModelData::createDescriptorSets()
 		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 	}
 }
-
+*/
 void ModelData::recreateSwapChain()
 {
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
-	
+
 	createUniformBuffers();				// Uniform buffers depend on the number of swap chain images.
 	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
 	createDescriptorSets();				// Descriptor sets
@@ -1026,17 +983,23 @@ void ModelData::cleanupSwapChain()
 void ModelData::cleanup()
 {
 	// Texture
-	vkDestroySampler(e.device, textureSampler, nullptr);
-	vkDestroyImageView(e.device, textureImageView, nullptr);
-	vkDestroyImage(e.device, textureImage, nullptr);
-	vkFreeMemory(e.device, textureImageMemory, nullptr);
+	if (numTextures())
+	{
+		vkDestroySampler(e.device, textureSampler, nullptr);
+		vkDestroyImageView(e.device, textureImageView, nullptr);
+		vkDestroyImage(e.device, textureImage, nullptr);
+		vkFreeMemory(e.device, textureImageMemory, nullptr);
+	}
 
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);
 
 	// Index
-	vkDestroyBuffer(e.device, indexBuffer, nullptr);
-	vkFreeMemory(e.device, indexBufferMemory, nullptr);
+	if (includesIndices)
+	{
+		vkDestroyBuffer(e.device, indexBuffer, nullptr);
+		vkFreeMemory(e.device, indexBufferMemory, nullptr);
+	}
 
 	// Vertex
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
@@ -1047,7 +1010,7 @@ void ModelData::cleanup()
 // LOOK what if I call this and immediately modify a not yet existing MM element?
 // LOOK change name from MM to UB
 void ModelData::resizeUBOset(size_t newSize)
-{	 
+{
 	// Resize UBO and dynamic offsets
 	MM.resize(newSize);
 	dynamicOffsets.resize(newSize);		// Not used when newSize == 0
@@ -1055,16 +1018,16 @@ void ModelData::resizeUBOset(size_t newSize)
 	// Initialize (only) the new elements
 	if (newSize > numMM)
 	{
-		//glm::mat4 defaultM;
-		//defaultM = glm::mat4(1.0f);
-		//defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
+		glm::mat4 defaultM;
+		defaultM = glm::mat4(1.0f);
+		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
 		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
-		
+
 		size_t UBOrange = getUBORange();
 		for (size_t i = numMM; i < newSize; ++i)
 		{
-			//MM[i] = defaultM;
+			MM[i] = defaultM;
 			dynamicOffsets[i] = i * UBOrange;
 		}
 	}
@@ -1091,12 +1054,10 @@ void ModelData::resizeUBOset(size_t newSize)
 		numMM = newSize;
 }
 
-void ModelData::setUBO(size_t pos, glm::mat4 &newValue)
+void ModelData::setUBO(size_t pos, glm::mat4& newValue)
 {
 	if (pos < MM.size())
 		MM[pos] = newValue;
-	else
-		std::cout << "UBO not found" << std::endl;
 }
 
 VkDeviceSize ModelData::getUBOSize()
@@ -1108,7 +1069,15 @@ VkDeviceSize ModelData::getUBOSize()
 VkDeviceSize ModelData::getUBORange(VkDeviceSize usefulUBOsize)
 {
 	return e.minUniformBufferOffsetAlignment * (1 + usefulUBOsize / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
-	
+
 	// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
 	// If you're overwriting the whole buffer, like we are in this case, it's possible to return VK_WHOLE_SIZE here. 
 }
+
+bool ModelData::isDataFromFile() { return dataFromFile; }
+
+size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[texture]; }
+
+size_t ModelData::getNumDescriptors() { return 1 + numTextures(); } // 1 UBO + X textures
+
+bool ModelData::hasIndices() { return includesIndices; }

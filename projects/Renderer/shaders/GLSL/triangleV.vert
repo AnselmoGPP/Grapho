@@ -29,11 +29,6 @@ void main()
 		- (location = X): Indices for the inputs that we can use later to reference them. Note that some types, like dvec3 64 bit vectors, use multiple slots:
 							layout(location = 0) in dvec3 inPosition;
 							layout(location = 2) in vec3 inColor;
-		- MVP transformations: They compute the final position in clip coordinates. Unlike 2D triangles, the last component of the clip coordinates may not be 1, 
-		  which will result in a division when converted to the final normalized device coordinates on the screen. This is used in perspective projection for making 
-		  closer objects look larger than objects that are further away.
-		- Multiple descriptor sets: You can bind multiple descriptor sets simultaneously by specifying a descriptor layout for each descriptor set when creating the 
-		  pipeline layout. Shaders can then reference specific descriptor sets like this:  "layout(set = 0, binding = 0) uniform UniformBufferObject { ... }".
-		  This way you can put descriptors that vary per-object and descriptors that are shared into separate descriptor sets, avoiding rebinding most of the 
-		  descriptors across draw calls
+		- MVP transformations: They compute the final position in clip coordinates. Unlike 2D triangles, the last component of the clip coordinates may not be 1, which will result in a division when converted to the final normalized device coordinates on the screen. This is used in perspective projection for making closer objects look larger than objects that are further away.
+		- Multiple descriptor sets: You can bind multiple descriptor sets simultaneously by specifying a descriptor layout for each descriptor set when creating the pipeline layout. Shaders can then reference specific descriptor sets like this:  "layout(set = 0, binding = 0) uniform UniformBufferObject { ... }". This way you can put descriptors that vary per-object and descriptors that are shared into separate descriptor sets, avoiding rebinding most of the descriptors across draw calls
 */

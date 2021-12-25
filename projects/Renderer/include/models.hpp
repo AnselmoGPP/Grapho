@@ -4,6 +4,7 @@
 #include <iostream>
 #include <array>
 #include <functional>						// std::function (function wrapper that stores a callable object)
+#include <fstream>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE			// GLM uses OpenGL depth range [-1.0, 1.0]. This macro forces GLM to use Vulkan range [0.0, 1.0].
@@ -13,6 +14,7 @@
 #include <glm/gtx/hash.hpp>
 
 #include "environment.hpp"
+#include "models_2.hpp"
 
 /*
 	Basic ModelData interface:
@@ -25,6 +27,8 @@
 		- MM						// For command buffer creation, UBO update, and setRenders
 		- numMM						// For command buffer creation, UBO update, and setRenders (MM.size() and numMM may be different)
 		- getUBORange()				// For updating command buffer
+		- isDataFromFile()
+		- numTextures()
 
 		- resizeUBOset(...)			// For modifying the number of renders
 
@@ -32,69 +36,23 @@
 		- recreateSwapChain()		// For recreating swapchain (for window resize)
 */
 
-/// Vertex structure containing Position, Color and Texture coordinates.
-struct VertexPCT
-{
-	VertexPCT() = default;
-	VertexPCT(glm::vec3 vertex, glm::vec3 vertexColor, glm::vec2 textureCoordinates);
+#define LINE_WIDTH 1.0f
 
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription					getBindingDescription();	///< Describes at which rate to load data from memory throughout the vertices (number of bytes between data entries and whether to move to the next data entry after each vertex or after each instance).
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();	///< Describe how to extract a vertex attribute from a chunk of vertex data originiating from a binding description. Two attributes here: position and color.
-	bool operator==(const VertexPCT& other) const;										///< Overriding of operator ==. Required for doing comparisons in loadModel().
-};
-
-/// Hash function for VertexPCT. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
-template<> struct std::hash<VertexPCT> {
-	size_t operator()(VertexPCT const& vertex) const;
-};
-
-/// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
-struct UniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
-};
-
-/// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
-struct UBOdynamic
-{
-	UBOdynamic(size_t subUBOcount, VkDeviceSize minSizePerSubUBO);
-	~UBOdynamic();
-
-	void setModel(size_t position, const glm::mat4& matrix);
-	void setView (size_t position, const glm::mat4& matrix);
-	void setProj (size_t position, const glm::mat4& matrix);
-
-	alignas(16) size_t			UBOcount;
-	alignas(16) VkDeviceSize	sizePerUBO;
-	alignas(16) size_t			totalBytes;
-
-	alignas(16) char*			data;			// <<< is alignas(16) necessary?
-};
-
-
-glm::mat4 modelMatrix();															///< Get a basic model matrix
-glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);	///< Get a model matrix 
-
+//template <typename Vertex>
 class ModelData
 {
 	VulkanEnvironment& e;
 
 	const char* modelPath;
 	const char* texturePath;
-	
+
 	const char* VSpath;
 	const char* FSpath;
 
 	VkPrimitiveTopology primitiveTopology;	///< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
-	//bool includesColor;						///< Flags if color is included in the Vertex structure
-	//bool includesTexture;
+	bool includesIndices;					///< Flags if indices are included (usually, not required for points)
 
 	// Main methods:
 
@@ -123,12 +81,15 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
 	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
+	size_t						getNumDescriptors();
 
 public:
-	ModelData(VulkanEnvironment &environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
+	/// Data from file 
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology);
+	/// Data passed as argument
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
 	ModelData(const ModelData& obj);	// Copy constructor not used
-	~ModelData();
+	virtual ~ModelData();
 
 	ModelData& fullConstruction();
 
@@ -145,7 +106,7 @@ public:
 	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 
-	std::vector<VertexPCT>		 vertices;				///< Vertices of our model (vertices, color, texture coordinates)
+	VertexSet					 vertices;				///< Vertices of our model (position, color, texture coordinates, ...)
 	std::vector<uint32_t>		 indices;				///< Indices of our model (indices(
 	VkBuffer					 vertexBuffer;			///< Opaque handle to a buffer object (here, vertex buffer).
 	VkDeviceMemory				 vertexBufferMemory;	///< Opaque handle to a device memory object (here, memory for the vertex buffer).
@@ -157,7 +118,7 @@ public:
 
 	VkDescriptorPool			 descriptorPool;		///< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		///< List. Opaque handle to a descriptor set object. One for each swap chain image.
-	
+
 	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	///< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
 	//glm::mat4(*getModelMatrix) (float time);
 
@@ -169,7 +130,11 @@ public:
 	void setUBO(size_t pos, glm::mat4& newValue);
 	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
 
-	VkDeviceSize getUBORange(VkDeviceSize usefulUBOsize = sizeof(UniformBufferObject));		///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
+	VkDeviceSize getUBORange(VkDeviceSize usefulUBOsize = sizeof(UBO_MVP));		///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
+	bool isDataFromFile();
+	size_t numTextures();
+	bool hasIndices();
 };
+
 
 #endif

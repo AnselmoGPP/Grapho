@@ -42,7 +42,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix(const float &aspectRatio)
 {
-    glm::mat4 proj = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 1000.0f);   // Params: FOV, aspect ratio, near and far view planes.
+    glm::mat4 proj = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 5000.0f);   // Params: FOV, aspect ratio, near and far view planes.
     proj[1][1] *= -1;                                                                   // GLM returns the Y clip coordinate inverted.
 
     return proj;

@@ -27,24 +27,31 @@ ADD_DEFINITIONS(
 
 ADD_EXECUTABLE(${PROJECT_NAME}
 	src/main.cpp
+
 	src/environment.cpp
-	src/models.cpp
 	src/renderer.cpp
+	src/models.cpp
+	src/models_2.cpp
 	src/camera.cpp
 	src/input.cpp
 	src/timer.cpp
+	src/toolkit.cpp
 	src/data.cpp
 
 	include/renderer.hpp
 	include/environment.hpp
 	include/models.hpp
+	include/models_2.hpp
 	include/camera.hpp
 	include/input.hpp
 	include/timer.hpp
+	include/toolkit.hpp
 	include/data.hpp
 
-	shaders/triangleV.vert
-	shaders/triangleF.frag
+	shaders/GLSL/triangleV.vert
+	shaders/GLSL/triangleF.frag
+	shaders/GLSL/triangleV.vert
+	shaders/GLSL/triangleF.frag
 
 	../../files/TODO.txt
 	../../Readme.md

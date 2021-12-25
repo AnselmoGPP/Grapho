@@ -586,10 +586,11 @@ void VulkanEnvironment::createLogicalDevice()
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
-	// Describe the set of features from the physical device that you will use (geometry shaders...)
+	// Enable the features from the physical device that you will use (geometry shaders...)
 	VkPhysicalDeviceFeatures deviceFeatures{};
-	deviceFeatures.samplerAnisotropy = VK_TRUE;							// Anisotropic filtering is an optional device feature (most modern graphics cards support it, but we should check it in isDeviceSuitable)
-	deviceFeatures.sampleRateShading = (add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading feature for the device
+	deviceFeatures.samplerAnisotropy = VK_TRUE;								// Anisotropic filtering is an optional device feature (most modern graphics cards support it, but we should check it in isDeviceSuitable)
+	deviceFeatures.sampleRateShading = (add_SS ? VK_TRUE : VK_FALSE);		// Enable sample shading feature for the device
+	deviceFeatures.wideLines = (wideLinesSupported() ? VK_TRUE : VK_FALSE);	// Enable line width configuration (in VkPipeline)
 
 	// Describe queue parameters
 	VkDeviceCreateInfo createInfo{};

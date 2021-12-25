@@ -1,5 +1,5 @@
-#ifndef TRIANGLE_HPP
-#define TRIANGLE_HPP
+#ifndef RENDERER_HPP
+#define RENDERER_HPP
 
 /*
 	Renderer creates a VulkanEnvironment and, when the user wants, a ModelData (newModel()).
@@ -39,9 +39,9 @@
 typedef std::list<ModelData>::iterator modelIterator;
 
 enum primitiveTopology {
-	point			= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
-	line			= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-	triangle		= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	point		= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+	line		= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+	triangle	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 };
 
 // LOOK Restart the Renderer object after finishing the render loop
@@ -67,9 +67,10 @@ class Renderer
 
 	// Private parameters:
 
-	const int MAX_FRAMES_IN_FLIGHT		= 2;										// How many frames should be processed concurrently.
+	const int MAX_FRAMES_IN_FLIGHT		= 2;				// How many frames should be processed concurrently.
 	VkClearColorValue backgroundColor	= { 50/255.f, 150/255.f, 255/255.f, 1.0f };
 	int maxFPS							= 80;
+	int waitTime						= 500;
 
 	// Main methods:
 
@@ -108,13 +109,11 @@ public:
 	TimerSet&		getTimer();
 	Camera&			getCamera();
 
-	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
-	modelIterator	newModel(size_t numberOfRenderings, std::vector<VertexPCT>& vertexData, std::vector<uint32_t>& indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
+	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology = primitiveTopology::triangle);
+	modelIterator	newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
 
 	void			deleteModel(modelIterator model);
 	void			setRenders(modelIterator& model, size_t numberOfRenders);
-
-
 };
 
 #endif
