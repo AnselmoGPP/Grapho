@@ -53,6 +53,7 @@ class ModelData
 	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
 	bool includesIndices;					///< Flags if indices are included (usually, not required for points)
+	bool hasTransparencies;					///< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
 
@@ -80,14 +81,14 @@ class ModelData
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
-	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
+
 	size_t						getNumDescriptors();
 
 public:
 	/// Data from file 
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency);
 	/// Data passed as argument
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency);
 	ModelData(const ModelData& obj);	// Copy constructor not used
 	virtual ~ModelData();
 
@@ -131,6 +132,7 @@ public:
 	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
 
 	VkDeviceSize getUBORange(VkDeviceSize usefulUBOsize = sizeof(UBO_MVP));		///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
+	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
 	bool isDataFromFile();
 	size_t numTextures();
 	bool hasIndices();

@@ -34,8 +34,8 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		- When passing vertex data directly, should I copy it or pass by reference?
-		> VkDrawIndex instanceCount -> check this way of multiple renderings
-		> In a single draw, draw skybox from one mesh and many textures.
+		X VkDrawIndex instanceCount -> check this way of multiple renderings
+		X In a single draw, draw skybox from one mesh and many textures.
 		> Generalize VertexPCT in loadModel()
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
 	
@@ -79,10 +79,14 @@
 #include "toolkit.hpp"
 #include "data.hpp"
 
-void update(Renderer& r);
 std::map<std::string, modelIterator> assets;
-int gridStep = 10;
+int gridStep = 50;
+ifOnce check;
 
+void update(Renderer& r);
+
+void setReticule(Renderer& app);
+void setSun		(Renderer& app);
 void setPoints	(Renderer& app);
 void setAxis	(Renderer& app);
 void setGrid	(Renderer& app);
@@ -90,10 +94,6 @@ void setSkybox	(Renderer& app);
 void setCottage	(Renderer& app);
 void setRoom	(Renderer& app);
 void setFloor	(Renderer& app);
-
-bool roomVisible = false;
-bool cottageLoaded = false;
-bool check1 = false, check2 = false;
 
 
 int main(int argc, char* argv[])
@@ -107,7 +107,9 @@ int main(int argc, char* argv[])
 	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
-	//setFloor(app);
+	setFloor(app);
+	setSun(app);
+	setReticule(app);
 
 	app.run();		// Start rendering
 	
@@ -124,6 +126,8 @@ void update(Renderer& r)
 	float xpos			= r.getCamera().Position.x;
 	float ypos			= r.getCamera().Position.y;
 	float zpos			= r.getCamera().Position.z;
+
+	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
 
 	if (assets.find("grid") != assets.end())
 		assets["grid"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)xpos/gridStep), gridStep*((int)ypos/gridStep), 0.0f)));
@@ -177,6 +181,37 @@ void update(Renderer& r)
 
 }
 
+void setSun(Renderer& app)
+{
+	std::vector<VertexPT> v_sun;
+	std::vector<uint32_t> i_sun;
+	size_t numVertex = getReticule(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	assets["reticule"] = app.newModel(1,
+		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_sun.data(),
+		&i_sun,
+		(TEXTURES_DIR + "sun.png").c_str(),
+		(SHADERS_DIR + "v_hudPT.spv").c_str(),
+		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		primitiveTopology::triangle,
+		true);
+}
+
+void setReticule(Renderer& app)
+{
+	std::vector<VertexPT> v_ret;
+	std::vector<uint32_t> i_ret;
+	size_t numVertex = getReticule(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	assets["reticule"] = app.newModel( 1,
+		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_ret.data(),
+		&i_ret,
+		(TEXTURES_DIR + "HUD/reticule_1.png").c_str(),
+		(SHADERS_DIR + "v_hudPT.spv").c_str(),
+		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		primitiveTopology::triangle,
+		true );
+}
 
 void setPoints(Renderer& app)
 {
@@ -184,8 +219,8 @@ void setPoints(Renderer& app)
 		VertexType(sizeof(VertexPC), 1, 1, 0), 9, v_points.data(),
 		nullptr,
 		"",
-		(SHADERS_DIR + "pointV.spv").c_str(),
-		(SHADERS_DIR + "pointF.spv").c_str(),
+		(SHADERS_DIR + "v_pointPC.spv").c_str(),
+		(SHADERS_DIR + "f_pointPC.spv").c_str(),
 		primitiveTopology::point);
 
 	//assets["points"]->setUBO(0, modelMatrix());
@@ -195,14 +230,14 @@ void setAxis(Renderer& app)
 {
 	std::vector<VertexPC> v_axis;
 	std::vector<uint32_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 500, 0.8);
+	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
 
 	assets["axis"] = app.newModel(1,
 		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_axis.data(),
 		&i_axis,
 		"",
-		(SHADERS_DIR + "lineV.spv").c_str(),
-		(SHADERS_DIR + "lineF.spv").c_str(),
+		(SHADERS_DIR + "v_linePC.spv").c_str(),
+		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		primitiveTopology::line);
 
 	//assets["axis"]->setUBO(0, modelMatrix());
@@ -212,17 +247,17 @@ void setGrid(Renderer& app)
 {
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
-	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 100, glm::vec3(0.1, 0.1, 0.6));
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 6, glm::vec3(0.1, 0.1, 0.6));
 
 	assets["grid"] = app.newModel(1,
 		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_grid.data(),
 		&i_grid,
 		"",
-		(SHADERS_DIR + "lineV.spv").c_str(),
-		(SHADERS_DIR + "lineF.spv").c_str(),
+		(SHADERS_DIR + "v_linePC.spv").c_str(),
+		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		primitiveTopology::line);
 
-	assets["grid"]->setUBO(0, modelMatrix());
+	//assets["grid"]->setUBO(0, modelMatrix());
 }
 
 void setSkybox(Renderer& app)
@@ -231,48 +266,48 @@ void setSkybox(Renderer& app)
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posx.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
 	assets["skyBoxY"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posy.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
 	assets["skyBoxZ"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posz.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
 	assets["skyBox-X"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negx.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
 	assets["skyBox-Y"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negy.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
 	assets["skyBox-Z"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negz.jpg").c_str(),
-		(SHADERS_DIR + "triangleTV.spv").c_str(),
-		(SHADERS_DIR + "triangleTF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 }
 
@@ -282,23 +317,20 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel( 0,
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
-		(SHADERS_DIR  + "triangleV.spv").c_str(),
-		(SHADERS_DIR  + "triangleF.spv").c_str(),
+		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
+		(SHADERS_DIR  + "f_trianglePCT.spv").c_str(),
 		VertexType(sizeof(VertexPCT), 1, 1, 1),
 		primitiveTopology::triangle);
 
-	cottageLoaded = true;
-
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);
-	cottageLoaded = false;
 
 	// Add the same model again.
 	assets["cottage"] = app.newModel( 1,
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
-		(SHADERS_DIR + "triangleV.spv").c_str(),
-		(SHADERS_DIR + "triangleF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		VertexType(sizeof(VertexPCT), 1, 1, 1),
 		primitiveTopology::triangle);
 }
@@ -308,8 +340,8 @@ void setRoom(Renderer& app)
 	assets["room"] = app.newModel(2,
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
-		(SHADERS_DIR + "triangleV.spv").c_str(),
-		(SHADERS_DIR + "triangleF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		VertexType(sizeof(VertexPCT), 1, 1, 1),
 		primitiveTopology::triangle);
 
@@ -322,11 +354,11 @@ void setRoom(Renderer& app)
 void setFloor(Renderer& app)
 {
 	assets["floor"] = app.newModel( 1,
-		VertexType(sizeof(VertexPCT), 1, 1, 1), 4, v_floor.data(),
+		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_floor.data(),
 		&i_floor,
 		(TEXTURES_DIR + "grass.png").c_str(),
-		(SHADERS_DIR + "triangleV.spv").c_str(),
-		(SHADERS_DIR + "triangleF.spv").c_str(),
+		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle );
 
 	//assets["floor"]->setUBO(0, modelMatrix());

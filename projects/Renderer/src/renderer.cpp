@@ -90,12 +90,13 @@ void Renderer::createCommandBuffers()
 		{
 			if (it->numMM == 0) continue;
 
-			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
-			VkDeviceSize offsets[]		= { 0 };	// <<<
+			VkDeviceSize offsets[] = { 0 };	// <<<
+
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
 			if(it->hasIndices())
-				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);			// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
+				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
 			for (size_t j = 0; j < it->numMM; j++)
 			{
@@ -109,6 +110,13 @@ void Renderer::createCommandBuffers()
 				//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
 				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
 			}
+
+			// Instance rendering allows to perform a single draw call. As I understood, UBO can be passed in the following Ways:
+			// - In a non-dynamic descriptor (problem: shader has to contain the declaration of one UBO for each instance).
+			// - As a buffer's attribute (problem: it is non-modifyable).
+			// - In a dynamic descriptor (solves both previous problems), but requires many draw calls (defeats the whole purpose of instance rendering).
+			// https://stackoverflow.com/questions/54619507/whats-the-correct-way-to-implement-instanced-rendering-in-vulkan
+			// https://www.reddit.com/r/vulkan/comments/hhoktq/rendering_multiple_objects/
 		}
 
 		// Finish up
@@ -382,19 +390,19 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, vertexType, (VkPrimitiveTopology)primitiveTopology);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, vertexType, (VkPrimitiveTopology)primitiveTopology, transparency);
 
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology)
+modelIterator Renderer::newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology, transparency);
 }
 
 void Renderer::deleteModel(modelIterator model)

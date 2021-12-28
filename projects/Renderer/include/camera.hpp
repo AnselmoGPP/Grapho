@@ -31,6 +31,8 @@ public:
     float MouseSensitivity  = 0.1f;     ///< Mouse sensitivity
     float scrollSpeed       = 5.0f;     ///< Scroll speed
     float fov               = 60.0f;    ///< FOV (degrees)
+    float nearViewPlane     = 0.1f;     ///< Near view plane
+    float farViewPlane      = 5000.0f;  ///< Near view plane
 
     // Camera attributes (configurable)
     glm::vec3 Position      = glm::vec3(30.0f, -30.0f, 30.0f);  ///< Camera position

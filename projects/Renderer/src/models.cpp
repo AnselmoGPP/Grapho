@@ -8,8 +8,8 @@
 
 
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), vertices(vertexType), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), numMM(0)
 {
 	// Save paths
 	copyCString(this->modelPath, modelPath);
@@ -19,14 +19,11 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 
 	// Set up UBO data (Model matrices and Dynamic offsets)
 	resizeUBOset(numberOfRenderings);
-
-	// Create Vulkan objects
-	//if (!partialInitialization) fullConstruction();
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), vertices(vertexType, numVertex, vertexData), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), numMM(0)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -42,13 +39,10 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 		indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
 	else
 		includesIndices = false;
-
-	// Create Vulkan objects
-	//if (!partialInitialization) fullConstruction();
 }
 
 ModelData::ModelData(const ModelData& obj)
-	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), includesIndices(obj.includesIndices), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
+	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), includesIndices(obj.includesIndices), hasTransparencies(obj.hasTransparencies), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
 	// Save paths
 	copyCString(modelPath, obj.modelPath);
@@ -74,21 +68,21 @@ ModelData& ModelData::fullConstruction()
 {
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
-	
+
 	if (numTextures()) {
 		createTextureImage(texturePath);
 		createTextureImageView();
 		createTextureSampler();
 	}
-	
+
 	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
 	if(includesIndices) createIndexBuffer();
-	
+
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-	
+
 	fullyConstructed = true;
 	return *this;
 }
@@ -109,7 +103,7 @@ void ModelData::createDescriptorSetLayout()
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-	uboLayoutBinding.descriptorCount = 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of the bones in a skeleton for skeletal animation).
+	uboLayoutBinding.descriptorCount = 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of bone in a skeleton for skeletal animation).
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;		// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
 	uboLayoutBinding.pImmutableSamplers = nullptr;							// [Optional] Only relevant for image sampling related descriptors.
 
@@ -282,15 +276,15 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	//	- Configuration per attached framebuffer
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	if (1)	// Not alpha blending implemented
+	if (!hasTransparencies)	// Not alpha blending implemented
 	{
 		colorBlendAttachment.blendEnable = VK_FALSE;
 		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;		// Optional. Check VkBlendFactor enum.
-		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;		// Optional
-		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;			// Optional. Check VkBlendOp enum.
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;	// Optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;				// Optional. Check VkBlendOp enum.
 		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;		// Optional
-		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;		// Optional
-		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;			// Optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;	// Optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;				// Optional
 	}
 	else	// Options for implementing alpha blending (new color blended with old color based on its opacity):
 	{
@@ -885,7 +879,7 @@ void ModelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = getUBORange();
+		bufferInfo.range  = getUBORange();
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -912,11 +906,11 @@ void ModelData::createDescriptorSets()
 			descriptorWrites[1 + j].dstBinding = 1;
 			descriptorWrites[1 + j].dstArrayElement = 0;
 			descriptorWrites[1 + j].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1 + j].descriptorCount = 1;
+			descriptorWrites[1 + j].descriptorCount = 1;			// LOOK maybe this can be used instead of the for-loop
 			descriptorWrites[1 + j].pBufferInfo = nullptr;
 			descriptorWrites[1 + j].pImageInfo = &imageInfo;
 			descriptorWrites[1 + j].pTexelBufferView = nullptr;
-			descriptorWrites[1 + j].pNext = nullptr;											// LOOK why this line was not necessary before implementing no-texture descriptor (and no data from file)
+			descriptorWrites[1 + j].pNext = nullptr;
 		}
 
 		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(getNumDescriptors()), descriptorWrites, 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
@@ -1025,13 +1019,36 @@ void ModelData::resizeUBOset(size_t newSize)
 		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
 
 		size_t UBOrange = getUBORange();
+
 		for (size_t i = numMM; i < newSize; ++i)
 		{
 			MM[i] = defaultM;
 			dynamicOffsets[i] = i * UBOrange;
 		}
+
+		// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size/capacity of the current VkBuffer (UBO)).
+		if (fullyConstructed && newSize * getUBORange() > getUBOSize())
+		{
+			// Destroy Uniform buffers & memory
+			for (size_t i = 0; i < e.swapChainImages.size(); i++) {
+				vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
+				vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
+			}
+
+			// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
+			vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
+
+			// Create them again
+			numMM = newSize;
+			createUniformBuffers();		// Create a UBO with the new size
+			createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
+			createDescriptorSets();		// Create Descriptor sets (contain the UBO)
+		}
 	}
 
+	numMM = newSize;
+
+	/*
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
 	if (fullyConstructed && newSize * getUBORange() > getUBOSize())
 	{
@@ -1052,6 +1069,7 @@ void ModelData::resizeUBOset(size_t newSize)
 	}
 	else
 		numMM = newSize;
+	*/
 }
 
 void ModelData::setUBO(size_t pos, glm::mat4& newValue)

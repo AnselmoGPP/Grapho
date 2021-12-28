@@ -33,9 +33,9 @@ VertexType& VertexType::operator=(const VertexType& obj)
 VkVertexInputBindingDescription VertexType::getBindingDescription()
 {
 	VkVertexInputBindingDescription bindingDescription{};
-	bindingDescription.binding = 0;								// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
-	bindingDescription.stride = vertexSize;						// Number of bytes from one entry to the next.
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;	// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
+	bindingDescription.binding = 0;									// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
+	bindingDescription.stride = vertexSize;							// Number of bytes from one entry to the next.
+	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;		// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
 
 	return bindingDescription;
 }

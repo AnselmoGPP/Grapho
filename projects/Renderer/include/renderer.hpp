@@ -109,8 +109,8 @@ public:
 	TimerSet&		getTimer();
 	Camera&			getCamera();
 
-	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology = primitiveTopology::triangle);
-	modelIterator	newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle);
+	modelIterator	newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology = primitiveTopology::triangle, bool transparency = false);
+	modelIterator	newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle, bool transparency = false);
 
 	void			deleteModel(modelIterator model);
 	void			setRenders(modelIterator& model, size_t numberOfRenders);
