@@ -89,7 +89,7 @@ public:
 	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency);
 	/// Data passed as argument
 	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency);
-	ModelData(const ModelData& obj);	// Copy constructor not used
+	//ModelData(const ModelData& obj);	// Copy constructor not used
 	virtual ~ModelData();
 
 	ModelData& fullConstruction();

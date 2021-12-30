@@ -6,20 +6,23 @@
 #include "toolkit.hpp"
 
 
+double pi = 3.14159265359;
+
+
 // Model Matrix -----------------------------------------------------------------
 
 glm::mat4 modelMatrix()
 {
 	glm::mat4 mm = glm::mat4(1.0f);
 
-	mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
+	//mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
 	//mm = glm::rotate(mm, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	//mm = glm::scale(mm, glm::vec3(1.0f, 1.0f, 1.0f));
 
 	return mm;
 }
 
-/// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees.
+/// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees, and positive if clockwise (looking from each axis).
 glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation)
 {
 	glm::mat4 mm = glm::mat4(1.0f);
@@ -97,7 +100,20 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 	return numVertex;
 }
 
-size_t getReticule(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize)
+size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize)
+{
+	vertexDestination = std::vector<VertexPT>{
+	VertexPT(glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 0)),
+	VertexPT(glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 1)),
+	VertexPT(glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 1)),
+	VertexPT(glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 0)) };
+
+	indicesDestination = std::vector<uint32_t>{ 0, 1, 3,  1, 2, 3 };
+
+	return 4;
+}
+
+size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize)
 {
 	vertexDestination = std::vector<VertexPT>{ 
 		VertexPT( glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 0) ),
@@ -131,4 +147,19 @@ bool ifOnce::ifBigger(float a, float b)
 	}
 	else 
 		return false;
+}
+
+glm::mat4 sunMM(glm::vec3 pos, float dayTime, float sunDist, float sunAngDist)
+{
+	float sunSize = 2 * sunDist * tan(sunAngDist / 2);
+	float sunAng = (dayTime - 6) * (pi / 12);
+	float xRotation = 0.f;
+	float yRotation = 90. + (180. - glm::degrees(sunAng));
+	float zRotation = 90.f;
+
+	return modelMatrix(
+		glm::vec3(sunSize, sunSize, sunSize),
+		glm::vec3(xRotation, yRotation, zRotation),
+		glm::vec3(pos.x + sunDist * cos(sunAng), pos.y + 0.f, pos.z + sunDist * sin(sunAng))
+	);
 }

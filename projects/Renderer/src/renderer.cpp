@@ -311,9 +311,6 @@ void Renderer::recreateSwapChain()
 /// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
 void Renderer::updateUniformBuffer(uint32_t currentImage)
 {
-	// Update model matrices and other things (user defined)
-	graphicsUpdate(*this);
-
 	//static auto startTime	= std::chrono::high_resolution_clock::now();
 	//static float prevTime	= 0;
 	//auto currentTime		= std::chrono::high_resolution_clock::now();
@@ -328,6 +325,9 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	//UniformBufferObject ubo{};
 	//ubo.view = input.cam.GetViewMatrix();
 	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+
+	// Update model matrices and other things (user defined)
+	graphicsUpdate(*this);
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.

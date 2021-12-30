@@ -30,15 +30,20 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 /// Get a set of lines that form a grid
 size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, glm::vec3 color);
 
-/// Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4)
-size_t getReticule(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
+/// (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix.
+size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
+
+/// (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix.
+size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
 
 /// Skybox vertex
 extern std::vector<VertexPT> v_posx, v_posy, v_posz, v_negx, v_negy, v_negz;
 /// Skybox indices
 extern std::vector<uint32_t> i_square;
 
-// If class -----------------------------------------------------------------
+// Others -----------------------------------------------------------------
+
+extern double pi;
 
 /// This class checks if X argument (float) is bigger than some other argument (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
 class ifOnce
@@ -49,5 +54,6 @@ public:
 	bool ifBigger(float a, float b);
 };
 
+glm::mat4 sunMM(glm::vec3 pos, float dayTime, float sunDist, float sunAngDist);
 
 #endif

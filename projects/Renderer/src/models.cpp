@@ -41,6 +41,7 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 		includesIndices = false;
 }
 
+/*
 ModelData::ModelData(const ModelData& obj)
 	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), includesIndices(obj.includesIndices), hasTransparencies(obj.hasTransparencies), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
 {
@@ -50,6 +51,7 @@ ModelData::ModelData(const ModelData& obj)
 	copyCString(VSpath, obj.VSpath);
 	copyCString(FSpath, obj.FSpath);
 }
+*/
 
 ModelData::~ModelData()
 {

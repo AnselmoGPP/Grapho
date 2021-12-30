@@ -11,7 +11,7 @@
 /*
 	TODO:
 		- Axis
-		> Sun billboard (transparencies)
+		- Sun billboard (transparencies)
 		> Terrain
 		Make the renderer a static library
 		Add ProcessInput() maybe
@@ -20,6 +20,7 @@
 		Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
 		Move createDescriptorSetLayout() to Environment
 		Why is FPS limited by default?
+		Bug: Some drag click produces camera jump
 
 		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
 		Destroy Vulkan buffers (UBO) outside semaphores
@@ -27,17 +28,17 @@
 	Rendering:
 		- Vertex struct has pos, color, text coord. Different vertex structs are required.
 		- Points, lines, triangles
-		2D graphics
-		Transparencies
+		- 2D graphics
+		- Transparencies
 		Draw in front of some rendering (used for weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
-		- When passing vertex data directly, should I copy it or pass by reference?
-		X VkDrawIndex instanceCount -> check this way of multiple renderings
-		X In a single draw, draw skybox from one mesh and many textures.
+		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
 		> Generalize VertexPCT in loadModel()
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
+		X VkDrawIndex instanceCount -> check this way of multiple renderings
+		X In a single draw, draw skybox from one mesh and many textures.
 	
 		- Allow to update MM immediately after addModel() or addRender()
 		- Only dynamic UBOs
@@ -82,6 +83,9 @@
 std::map<std::string, modelIterator> assets;
 int gridStep = 50;
 ifOnce check;
+float dayTime = 15.00;
+float sunDist = 500;
+float sunAngDist = 3.14/10;			// radians
 
 void update(Renderer& r);
 
@@ -105,7 +109,7 @@ int main(int argc, char* argv[])
 	setAxis(app);
 	setGrid(app);
 	setSkybox(app);
-	setCottage(app);
+	//setCottage(app);
 	setRoom(app);
 	setFloor(app);
 	setSun(app);
@@ -123,27 +127,30 @@ void update(Renderer& r)
 	long double time	= r.getTimer().getTime();
 	size_t fps			= r.getTimer().getFPS();
 	size_t maxfps		= r.getTimer().getMaxPossibleFPS();
-	float xpos			= r.getCamera().Position.x;
-	float ypos			= r.getCamera().Position.y;
-	float zpos			= r.getCamera().Position.z;
+	glm::vec3 pos		= r.getCamera().Position;
+
 
 	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
 
 	if (assets.find("grid") != assets.end())
-		assets["grid"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)xpos/gridStep), gridStep*((int)ypos/gridStep), 0.0f)));
+		assets["grid"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("skyBoxX") != assets.end())
 	{
-		assets["skyBoxX"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
-		assets["skyBoxY"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
-		assets["skyBoxZ"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
-		assets["skyBox-X"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
-		assets["skyBox-Y"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
-		assets["skyBox-Z"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(xpos, ypos, zpos)));
+		assets["skyBoxX" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBoxY" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBoxZ" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-X"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-Y"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-Z"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 	}
 
 	if (assets.find("cottage") != assets.end())
 		assets["cottage"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+
+	if (assets.find("sun") != assets.end())
+		assets["sun"]->setUBO(0, sunMM(pos, dayTime, sunDist, sunAngDist));
+
 
 	//if (time > 5 && cottageLoaded)
 	//{
@@ -177,22 +184,20 @@ void update(Renderer& r)
 	 }
 */		 
 
-
-
 }
 
 void setSun(Renderer& app)
 {
 	std::vector<VertexPT> v_sun;
 	std::vector<uint32_t> i_sun;
-	size_t numVertex = getReticule(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
+	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	assets["reticule"] = app.newModel(1,
+	assets["sun"] = app.newModel(1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_sun.data(),
 		&i_sun,
-		(TEXTURES_DIR + "sun.png").c_str(),
-		(SHADERS_DIR + "v_hudPT.spv").c_str(),
-		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		(TEXTURES_DIR + "Sun/sun2_1.png").c_str(),
+		(SHADERS_DIR + "v_sunPT.spv").c_str(),
+		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		primitiveTopology::triangle,
 		true);
 }
@@ -201,7 +206,7 @@ void setReticule(Renderer& app)
 {
 	std::vector<VertexPT> v_ret;
 	std::vector<uint32_t> i_ret;
-	size_t numVertex = getReticule(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
+	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	assets["reticule"] = app.newModel( 1,
 		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_ret.data(),

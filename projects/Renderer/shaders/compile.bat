@@ -8,4 +8,6 @@ C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_pointPC.vert -o SPIRV\v_pointPC.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\f_pointPC.frag -o SPIRV\f_pointPC.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_hudPT.vert -o SPIRV\v_hudPT.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\f_hudPT.frag -o SPIRV\f_hudPT.spv
+C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_sunPT.vert -o SPIRV\v_sunPT.spv
+C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\f_sunPT.frag -o SPIRV\f_sunPT.spv
 pause
