@@ -68,23 +68,30 @@ ModelData::~ModelData()
 
 ModelData& ModelData::fullConstruction()
 {
+	bool test = false;
+
+	if (test) std::cout << "fullConst 1" << std::endl;
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
 
+	if (test) std::cout << "fullConst 2" << std::endl;
 	if (numTextures()) {
 		createTextureImage(texturePath);
 		createTextureImageView();
 		createTextureSampler();
 	}
 
+	if (test) std::cout << "fullConst 3" << std::endl;
 	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
 	if(includesIndices) createIndexBuffer();
 
+	if (test) std::cout << "fullConst 4" << std::endl;
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 
+	if (test) std::cout << "fullConst 5" << std::endl;
 	fullyConstructed = true;
 	return *this;
 }
@@ -116,20 +123,11 @@ void ModelData::createDescriptorSetLayout()
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
-/*
-	//std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 
-	// Create a descriptor set layout (combines all of the descriptor bindings)
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-	layoutInfo.pBindings = bindings.data();
-*/
-
+	// Combine the bindings in one structure
 	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[getNumDescriptors()];
 	bindings[0] = uboLayoutBinding;
-	for (size_t i = 0; i < numTextures(); i++)
-		bindings[1 + i] = samplerLayoutBinding;
+	for (size_t i = 0; i < numTextures(); i++) bindings[1 + i] = samplerLayoutBinding;
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -172,14 +170,14 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 
 	if (vkCreatePipelineLayout(e.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
-
+	
 	// Read shader files
 	std::vector<char> vertShaderCode = readFile(VSpath);
 	std::vector<char> fragShaderCode = readFile(FSpath);
-
+	
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-
+	
 	// Configure Vertex shader
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

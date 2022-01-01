@@ -401,7 +401,7 @@ modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPat
 modelIterator Renderer::newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
-
+	
 	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology, transparency);
 }
 

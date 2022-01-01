@@ -6,6 +6,18 @@
 								< Input			< Camera
 
 	set of modelConfig (callbacks + paths) > Renderer > set of ModelData
+
+	Data passed:
+		- Vertex data:
+			- Vertex coordinates
+			- Texture coordinates
+			- Normals
+			- Color
+		- Indices
+		- Descriptor set:
+			- UBO (MVP matrices...)
+			- Texture samplers
+		- Shaders (vertex, fragment...)
 */
 
 /*
@@ -13,13 +25,12 @@
 		- Axis
 		- Sun billboard (transparencies)
 		> Terrain
+		> Modify terrainGenerator for it to have some state (noiseSet...) and generate buffers outside itself
 		Make the renderer a static library
 		Add ProcessInput() maybe
 		Dynamic states (graphics pipeline)
 		Push constants
 		Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
-		Move createDescriptorSetLayout() to Environment
-		Why is FPS limited by default?
 		Bug: Some drag click produces camera jump
 
 		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
@@ -79,18 +90,21 @@
 #include "renderer.hpp"
 #include "toolkit.hpp"
 #include "data.hpp"
+#include "geometry.hpp"
 
 std::map<std::string, modelIterator> assets;
 int gridStep = 50;
-ifOnce check;
+ifOnce check;			// LOOK implement as functor (function with state)
+
 float dayTime = 15.00;
 float sunDist = 500;
 float sunAngDist = 3.14/10;			// radians
 
-void update(Renderer& r);
+noiseSet noiser;
+terrainGenerator terrGen;
 
+void update		(Renderer& r);
 void setReticule(Renderer& app);
-void setSun		(Renderer& app);
 void setPoints	(Renderer& app);
 void setAxis	(Renderer& app);
 void setGrid	(Renderer& app);
@@ -98,22 +112,29 @@ void setSkybox	(Renderer& app);
 void setCottage	(Renderer& app);
 void setRoom	(Renderer& app);
 void setFloor	(Renderer& app);
+void setSun		(Renderer& app);
+void setTerrain	(Renderer& app);
 
 
 int main(int argc, char* argv[])
 {
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update);		std::cout << "-----------------------------------------------------------------------------" << std::endl;
+	Renderer app(update);		
 
-	setPoints(app);
+	std::cout << "-----------------------------------------------------------------------------" << std::endl;
+
+	//setPoints(app);
 	setAxis(app);
 	setGrid(app);
 	setSkybox(app);
 	//setCottage(app);
-	setRoom(app);
-	setFloor(app);
+	//setRoom(app);
+	//setFloor(app);
+	setTerrain(app);
+
 	setSun(app);
 	setReticule(app);
+
 
 	app.run();		// Start rendering
 	
@@ -369,79 +390,15 @@ void setFloor(Renderer& app)
 	//assets["floor"]->setUBO(0, modelMatrix());
 }
 
-/*
-void update2(Renderer& r)
+void setTerrain(Renderer& app)
 {
-	long double time = r.getTimer().getTime();
-	size_t fps = r.getTimer().getFPS();
-	std::cout << fps << " - " << time << std::endl;
+	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
 
-	// Update model's model matrix each frame
-	if (cottageLoaded)
-		assets["cottage"]->MM[0] = cottage_MM(time);
-
-	if (time < 5)	// LOOK when setRenders(), the first frame uses default MMs
-	{
-		assets["room"]->MM[0] = room1_MM(time);
-		assets["room"]->MM[1] = room2_MM(time);
-		assets["room"]->MM[2] = room3_MM(time);
-		assets["room"]->MM[3] = room4_MM(time);
-	}
-	else if (time > 5 && !check1)
-	{
-		r.setRenders(&assets["room"], 2);
-		check1 = true;
-	}
-	else if(time < 10)
-	{
-		assets["room"]->MM[0] = room1_MM(time);
-		assets["room"]->MM[1] = room2_MM(time);
-	}
-	else if (time > 10 && !check2)
-	{
-		r.setRenders(&assets["room"], 3);
-		check2 = true;
-	}
-	else
-	{
-		assets["room"]->MM[0] = room1_MM(time);
-		assets["room"]->MM[1] = room2_MM(time);
-		assets["room"]->MM[2] = room3_MM(time);
-	}
+	assets["terrain"] = app.newModel( 1,
+		VertexType(sizeof(VertexPTN), 1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
+		&terrGen.indices,
+		(TEXTURES_DIR + "squares.png").c_str(),
+		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
+		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
+		primitiveTopology::triangle);
 }
-
-void update1(Renderer &r)
-{
-	long double time = r.getTimer().getTime();
-	size_t fps		 = r.getTimer().getFPS();
-	std::cout << fps << " - " << time << std::endl;
-
-	// Model loaded before run(), and deleted after run()
-	if (time < 5 && cottageLoaded)
-		assets["cottage"]->MM[0] = cottage_MM(time);
-	else if (cottageLoaded)
-	{
-		r.deleteModel(assets["cottage"]);
-		cottageLoaded = false;
-	}
-
-	// Model loaded after run()
-	if (time > 10 && !roomVisible)
-	{
-		assets["room"] = r.newModel(4,
-			(MODELS_DIR + "viking_room.obj").c_str(),
-			(TEXTURES_DIR + "viking_room.png").c_str(),
-			(SHADERS_DIR + "triangleV.spv").c_str(),
-			(SHADERS_DIR + "triangleF.spv").c_str());
-
-		roomVisible = true;
-	}
-	else if (roomVisible)
-	{
-		assets["room"]->MM[0] = room1_MM(time);
-		assets["room"]->MM[1] = room2_MM(time);
-		assets["room"]->MM[2] = room3_MM(time);
-		assets["room"]->MM[3] = room4_MM(time);
-	}
-}
-*/

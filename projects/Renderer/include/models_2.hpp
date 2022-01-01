@@ -15,23 +15,24 @@
 #include <glm/gtx/hash.hpp>
 
 /*
-		VertexSet
-			VertexPCT
-			VertexPC
-			VertexPT
-
-		UBOdynamic (UBOset)
-			UBO_MVP
+		- VertexType
+		- VertexSet
+			- VertexPCT
+			- VertexPC
+			- VertexPT
+			- VertexPTN
+		- UBOdynamic (UBOset)
+			- UBO_MVP
 */
 
-//enum vertexType{ PCT, PC, PT };
-enum vertexElements{ position, color, texture };
+
+enum vertexElements{ position, color, texture, normal };
 
 
 class VertexType
 {
 public:
-	VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT);
+	VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT, size_t numN = 0);
 	~VertexType();
 	VertexType& operator=(const VertexType& obj);
 
@@ -39,11 +40,11 @@ public:
 	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 	
 	//static const size_t maxNumAttribs = 3;				// Number of types of attributes (Positions, Color buffers, Texture coordinates buffers)
-	const std::array<size_t, 3> attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2) };
+	const std::array<size_t, 4> attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };
 
 	//char* vertex;							// Vertex data
 	size_t vertexSize;						// LOOK necessary? Size in bytes of a vertex object (including padding)
-	std::array<size_t, 3> numEachAttrib;	// Amount of each type of attribute
+	std::array<size_t, 4> numEachAttrib;	// Amount of each type of attribute
 };
 
 /// VertexSet serves as a container for any object type, similarly to a std::vector, but storing such objects directly in bytes (char array). This allows ModelData objects store different Vertex types in a clean way (otherwise, templates and inheritance would be required, but code would be less clean).
@@ -73,6 +74,7 @@ private:
 	size_t capacity;		// (resizable) Maximum number of vertex objects that fit in buffer
 	size_t numVertex;		// Number of vertex objects stored in buffer
 };
+
 
 /// Vertex structure containing Position, Color and Texture coordinates.
 struct VertexPCT
@@ -132,6 +134,13 @@ template<> struct std::hash<VertexPT> {
 	size_t operator()(VertexPT const& vertex) const;
 };
 
+/// Vertex structure containing Position, Texture, and Normals
+struct VertexPTN
+{
+	glm::vec3 pos;
+	glm::vec2 texCoord;
+	glm::vec3 normals;
+};
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
 struct UBO_MVP {

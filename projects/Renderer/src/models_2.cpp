@@ -6,12 +6,13 @@
 
 //VertexType -----------------------------------------------------------------
 
-VertexType::VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT)
+VertexType::VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT, size_t numN)
 	: vertexSize(vertexSize)
 { 
 	numEachAttrib[0] = numP;
 	numEachAttrib[1] = numC;
 	numEachAttrib[2] = numT;
+	numEachAttrib[3] = numN;
 
 	std::cout << "Vertex size: " << vertexSize << std::endl;
 	std::cout << "   Attributes: " << numEachAttrib[0] << ", " << numEachAttrib[1] << ", " << numEachAttrib[2] << std::endl;
@@ -48,7 +49,8 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
-	for (size_t i = 0; i < numEachAttrib[0]; i++)	// Position
+	// POSITION
+	for (size_t i = 0; i < numEachAttrib[0]; i++)
 	{
 		vertexAttrib.binding = 0;							// From which binding the per-vertex data comes.
 		vertexAttrib.location = location;					// Directive "location" of the input in the vertex shader.
@@ -60,7 +62,8 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 		attributeDescriptions.push_back(vertexAttrib);
 	}
 
-	for (size_t i = 0; i < numEachAttrib[1]; i++)	// Color
+	// COLOR
+	for (size_t i = 0; i < numEachAttrib[1]; i++)
 	{
 		vertexAttrib.binding = 0;
 		vertexAttrib.location = location;
@@ -72,7 +75,8 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 		attributeDescriptions.push_back(vertexAttrib);
 	}
 
-	for (size_t i = 0; i < numEachAttrib[2]; i++)	// Texture coordinates
+	// TEXTURE COORDINATES
+	for (size_t i = 0; i < numEachAttrib[2]; i++)
 	{
 		vertexAttrib.binding = 0;
 		vertexAttrib.location = location;
@@ -81,6 +85,19 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 
 		location++;
 		offset += attribsSize[2];
+		attributeDescriptions.push_back(vertexAttrib);
+	}
+
+	// NORMALS
+	for (size_t i = 0; i < numEachAttrib[3]; i++)
+	{
+		vertexAttrib.binding = 0;
+		vertexAttrib.location = location;
+		vertexAttrib.format = VK_FORMAT_R32G32B32_SFLOAT;
+		vertexAttrib.offset = offset;
+
+		location++;
+		offset += attribsSize[3];
 		attributeDescriptions.push_back(vertexAttrib);
 	}
 

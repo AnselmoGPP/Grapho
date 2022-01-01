@@ -1,3 +1,5 @@
+C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_terrainPTN.vert -o SPIRV\v_terrainPTN.spv
+C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\f_terrainPTN.frag -o SPIRV\f_terrainPTN.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_trianglePCT.vert -o SPIRV\v_trianglePCT.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\f_trianglePCT.frag -o SPIRV\f_trianglePCT.spv
 C:\VulkanSDK\1.2.189.2\Bin\glslc.exe GLSL\v_trianglePT.vert -o SPIRV\v_trianglePT.spv

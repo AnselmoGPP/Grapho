@@ -19,7 +19,7 @@ MESSAGE(STATUS "Project: " ${PROJECT_NAME})
 
 ADD_DEFINITIONS(
 	-std=c++17
-	-O2
+	-O2		# Optimization incompatible with Release mode
 	#-O3
 )
 #ADD_COMPILE_DEFINITIONS( IMGUI_IMPL_OPENGL_LOADER_GLEW=1 )
@@ -48,25 +48,14 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	include/toolkit.hpp
 	include/data.hpp
 
-	shaders/GLSL/triangleV.vert
-	shaders/GLSL/triangleF.frag
-	shaders/GLSL/triangleV.vert
-	shaders/GLSL/triangleF.frag
+	include/geometry.hpp
+	include/world.hpp
+	src/geometry.cpp
+	src/world.cpp
 
 	../../files/TODO.txt
 	../../Readme.md
 	CMakeLists.txt
-
-	#shaders/terrain.vs
-	#shaders/terrain.fs
-	#shaders/sea.vs
-	#shaders/sea.fs
-	#shaders/axis.vs
-	#shaders/axis.fs
-	#shaders/sun.vs
-	#shaders/sun.fs
-	#shaders/icosahedron.vs
-	#shaders/icosahedron.fs
 )
 
 TARGET_SOURCES(${PROJECT_NAME} PRIVATE
@@ -87,9 +76,8 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/glm/glm-0.9.9.5
 	../../extern/stb
 	../../extern/tinyobjloader
+	../../extern/FastNoiseLite
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
-	
-	#../../extern/FastNoise
 
 	#../../extern/glad/include
 	#../../extern/glew/glew-2.1.0/include
