@@ -23,12 +23,14 @@
 			- VertexPTN
 		- UBOdynamic (UBOset)
 			- UBO_MVP
+			- UBO_MVPN
 */
 
 
-enum vertexElements{ position, color, texture, normal };
+enum vertexSize;	// PCT, PC, PT, PTN
+enum uboSize;		// MVP, MVPN
 
-
+/// Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
 class VertexType
 {
 public:
@@ -74,7 +76,6 @@ private:
 	size_t capacity;		// (resizable) Maximum number of vertex objects that fit in buffer
 	size_t numVertex;		// Number of vertex objects stored in buffer
 };
-
 
 /// Vertex structure containing Position, Color and Texture coordinates.
 struct VertexPCT
@@ -142,19 +143,32 @@ struct VertexPTN
 	glm::vec3 normals;
 };
 
+enum vertexSize { PCT = sizeof(VertexPCT), PC = sizeof(VertexPC), PT = sizeof(VertexPT), PTN = sizeof(VertexPTN) };
+
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
 struct UBO_MVP {
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 proj;
 };
+ 
+struct UBO_MVPN {
+	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 proj;
+	alignas(16) glm::mat3 normalMatrix;
+};
+
+enum uboSize { MVP = sizeof(UBO_MVP), MVPN = sizeof(UBO_MVPN) };
 
 /// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
 struct UBOdynamic
 {
-	UBOdynamic(size_t subUBOcount, VkDeviceSize minSizePerSubUBO);
+	UBOdynamic(size_t UBOcount = 0, VkDeviceSize sizePerUBO = 0);
+	UBOdynamic& operator = (const UBOdynamic& obj);
 	~UBOdynamic();
 
+	void resize(size_t UBOcount, VkDeviceSize sizePerUBO);
 	void setModel(size_t position, const glm::mat4& matrix);
 	void setView(size_t position, const glm::mat4& matrix);
 	void setProj(size_t position, const glm::mat4& matrix);

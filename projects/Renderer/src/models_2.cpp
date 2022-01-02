@@ -14,9 +14,9 @@ VertexType::VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT,
 	numEachAttrib[2] = numT;
 	numEachAttrib[3] = numN;
 
-	std::cout << "Vertex size: " << vertexSize << std::endl;
-	std::cout << "   Attributes: " << numEachAttrib[0] << ", " << numEachAttrib[1] << ", " << numEachAttrib[2] << std::endl;
-	std::cout << "   Sizes: " << attribsSize[0] << ", " << attribsSize[1] << ", " << attribsSize[2] << std::endl;
+	//std::cout << "Vertex size: " << vertexSize << std::endl;
+	//std::cout << "   Attributes: " << numEachAttrib[0] << ", " << numEachAttrib[1] << ", " << numEachAttrib[2] << std::endl;
+	//std::cout << "   Sizes: " << attribsSize[0] << ", " << attribsSize[1] << ", " << attribsSize[2] << std::endl;
 }
 
 VertexType::~VertexType() { }
@@ -302,10 +302,41 @@ size_t std::hash<VertexPT>::operator()(VertexPT const& vertex) const
 UBOdynamic::UBOdynamic(size_t UBOcount, VkDeviceSize sizePerUBO)
 	: UBOcount(UBOcount), sizePerUBO(sizePerUBO), totalBytes(sizePerUBO* UBOcount), data(nullptr)
 {
-	data = new char[totalBytes];
+	if(totalBytes > 0)
+		data = new char[totalBytes];
 }
 
-UBOdynamic::~UBOdynamic() { delete[] data; }
+UBOdynamic& UBOdynamic::operator = (const UBOdynamic& obj)
+{
+	UBOcount = obj.UBOcount;
+	sizePerUBO = obj.sizePerUBO;
+	totalBytes = obj.totalBytes;
+	if (totalBytes) data = new char[totalBytes];
+
+	return *this;
+}
+
+UBOdynamic::~UBOdynamic() 
+{ 
+	if (totalBytes) delete[] data; 
+}
+
+void UBOdynamic::resize(size_t UBOcount, VkDeviceSize sizePerUBO)
+{	
+	bool increaseBuffer = true;
+	if (totalBytes > (UBOcount * sizePerUBO)) increaseBuffer = false;
+
+	this->UBOcount = UBOcount;
+	this->sizePerUBO = sizePerUBO;
+	this->totalBytes = UBOcount * sizePerUBO;
+
+	if (increaseBuffer)
+	{
+		this->~UBOdynamic();
+		if (totalBytes)
+			data = new char[totalBytes];
+	}
+}
 
 void UBOdynamic::setModel(size_t position, const glm::mat4& matrix)
 {

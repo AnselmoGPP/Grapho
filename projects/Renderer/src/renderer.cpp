@@ -20,7 +20,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
 
 Renderer::~Renderer() 
 { 
-	stopThread();
+	//stopThread();
 }
 
 int Renderer::run()
@@ -88,7 +88,7 @@ void Renderer::createCommandBuffers()
 		// Basic drawing commands (for each model)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
 		{
-			if (it->numMM == 0) continue;
+			if (it->numUBOs == 0) continue;
 
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 			VkDeviceSize offsets[] = { 0 };	// <<<
@@ -98,7 +98,7 @@ void Renderer::createCommandBuffers()
 			if(it->hasIndices())
 				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
-			for (size_t j = 0; j < it->numMM; j++)
+			for (size_t j = 0; j < it->numUBOs; j++)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynamicOffsets[j]);
 				if (it->hasIndices())
@@ -333,20 +333,20 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
 	for (modelIterator it = models.begin(); it != models.end(); it++)
 	{
-		if (it->numMM == 0) continue;
+		if (it->numUBOs == 0) continue;
 
-		UBOdynamic uboD(it->numMM, it->getUBORange());
+		//UBOdynamic uboD(it->numUBOs, it->getUBORange());		// LOOK keep UBOdynamic in modelData
 
-		for (size_t i = 0; i < uboD.UBOcount; i++)
+		for (size_t i = 0; i < it->dynUBO.UBOcount; i++)
 		{
-			uboD.setModel(i, it->MM[i]);
-			uboD.setView (i, view);
-			uboD.setProj (i, proj);
+			it->dynUBO.setModel(i, it->MM[i]);
+			it->dynUBO.setView (i, view);
+			it->dynUBO.setProj (i, proj);
 		}
 
 		void* data;
-		vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, uboD.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-		memcpy(data, uboD.data, uboD.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+		vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, it->dynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+		memcpy(data, it->dynUBO.data, it->dynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 		vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 	}
 }
@@ -365,14 +365,14 @@ void Renderer::cleanup()
 		vkDestroySemaphore(e.device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(e.device, inFlightFences[i], nullptr);
 	}
-	
+
 	// Cleanup each model
 	models.clear();
 	modelsToLoad.clear();
 	
 	// Cleanup environment
 	e.cleanupSwapChain();
-	e.cleanup();
+	e.cleanup(); 
 }
 
 // Used in recreateSwapChain()
@@ -390,19 +390,19 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, size_t uboSize, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, modelPath, texturePath, VSpath, FSpath, vertexType, (VkPrimitiveTopology)primitiveTopology, transparency);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, uboSize, modelPath, texturePath, VSpath, FSpath, vertexType, (VkPrimitiveTopology)primitiveTopology, transparency);
 
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, size_t uboSize, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 	
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology, transparency);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, uboSize, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, (VkPrimitiveTopology)primitiveTopology, transparency);
 }
 
 void Renderer::deleteModel(modelIterator model)
@@ -414,7 +414,7 @@ void Renderer::deleteModel(modelIterator model)
 
 void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 {
-	if (model->numMM != numberOfRenders)
+	if (model->numUBOs != numberOfRenders)
 	{
 		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 

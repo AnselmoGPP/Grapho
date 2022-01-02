@@ -50,6 +50,7 @@ class ModelData
 	const char* FSpath;
 
 	VkPrimitiveTopology primitiveTopology;	///< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
+	VkDeviceSize usefulUBOsize;
 	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
 	bool includesIndices;					///< Flags if indices are included (usually, not required for points)
@@ -81,19 +82,18 @@ class ModelData
 	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
-
+	VkDeviceSize				getUBORange();						///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
+	VkDeviceSize				getUBOSize();						///< Total UBO size (example: 12)
 	size_t						getNumDescriptors();
 
 public:
 	/// Data from file 
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency);
 	/// Data passed as argument
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency);
-	//ModelData(const ModelData& obj);	// Copy constructor not used
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency);
 	virtual ~ModelData();
 
 	ModelData& fullConstruction();
-
 	void recreateSwapChain();
 	void cleanupSwapChain();
 
@@ -116,23 +116,21 @@ public:
 
 	std::vector<VkBuffer>		 uniformBuffers;		///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
 	std::vector<VkDeviceMemory>	 uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
-
 	VkDescriptorPool			 descriptorPool;		///< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		///< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	///< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
 	//glm::mat4(*getModelMatrix) (float time);
 
+	size_t					numUBOs;		///< Number of UBOs
+	UBOdynamic				dynUBO;			///< Store the UBO that will be passed to shader
 	std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
 	std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
-	size_t					numMM;			///< Number of MM/UBOs (note: Renderer resizes MM
-	//UBOdynamic			dynUBO;			// LOOK Used by Renderer. Renderer updates these UBOs and passes them to Vulkan
+	std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
 
-	void setUBO(size_t pos, glm::mat4& newValue);
 	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
+	void setUBO(size_t pos, glm::mat4& newValue);
 
-	VkDeviceSize getUBORange(VkDeviceSize usefulUBOsize = sizeof(UBO_MVP));		///< UsefulUBOsize: Part of the range that we will use (example: 3). UBOrange: Minimum size where the useful UBO fits (example: 4).
-	VkDeviceSize				getUBOSize();		///< Total UBO size (example: 12)
 	bool isDataFromFile();
 	size_t numTextures();
 	bool hasIndices();

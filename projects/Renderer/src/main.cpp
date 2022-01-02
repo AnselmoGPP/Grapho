@@ -10,12 +10,12 @@
 	Data passed:
 		- Vertex data:
 			- Vertex coordinates
+			- Color
 			- Texture coordinates
 			- Normals
-			- Color
 		- Indices
 		- Descriptor set:
-			- UBO (MVP matrices...)
+			- UBO (MVP matrices, normal matrix...)
 			- Texture samplers
 		- Shaders (vertex, fragment...)
 */
@@ -98,10 +98,17 @@ ifOnce check;			// LOOK implement as functor (function with state)
 
 float dayTime = 15.00;
 float sunDist = 500;
-float sunAngDist = 3.14/10;			// radians
+float sunAngDist = 3.14/10;
 
-noiseSet noiser;
 terrainGenerator terrGen;
+noiseSet noiser( 
+	5, 1.5, 0.28f,					// Octaves, Lacunarity, Persistance
+	1, 150,							// Scale, Multiplier
+	2,								// Curve degree
+	0, 0,							// X offset, Y offset
+	FastNoiseLite::NoiseType_Perlin,// Noise type
+	false,							// Random offset
+	0);								// Seed
 
 void update		(Renderer& r);
 void setReticule(Renderer& app);
@@ -121,20 +128,19 @@ int main(int argc, char* argv[])
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);		
 
-	std::cout << "-----------------------------------------------------------------------------" << std::endl;
+	std::cout << "------------------------------" << std::endl;
 
 	//setPoints(app);
 	setAxis(app);
 	setGrid(app);
 	setSkybox(app);
 	//setCottage(app);
-	//setRoom(app);
+	setRoom(app);
 	//setFloor(app);
 	setTerrain(app);
 
 	setSun(app);
 	setReticule(app);
-
 
 	app.run();		// Start rendering
 	
@@ -213,8 +219,9 @@ void setSun(Renderer& app)
 	std::vector<uint32_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	assets["sun"] = app.newModel(1,
-		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_sun.data(),
+	assets["sun"] = app.newModel( 1,
+		MVPN,
+		VertexType(PT, 1, 0, 1), numVertex, v_sun.data(),
 		&i_sun,
 		(TEXTURES_DIR + "Sun/sun2_1.png").c_str(),
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
@@ -230,6 +237,7 @@ void setReticule(Renderer& app)
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	assets["reticule"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_ret.data(),
 		&i_ret,
 		(TEXTURES_DIR + "HUD/reticule_1.png").c_str(),
@@ -241,7 +249,8 @@ void setReticule(Renderer& app)
 
 void setPoints(Renderer& app)
 {
-	assets["points"] = app.newModel(1,
+	assets["points"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPC), 1, 1, 0), 9, v_points.data(),
 		nullptr,
 		"",
@@ -258,7 +267,8 @@ void setAxis(Renderer& app)
 	std::vector<uint32_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
 
-	assets["axis"] = app.newModel(1,
+	assets["axis"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_axis.data(),
 		&i_axis,
 		"",
@@ -275,7 +285,8 @@ void setGrid(Renderer& app)
 	std::vector<uint32_t> i_grid;
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 6, glm::vec3(0.1, 0.1, 0.6));
 
-	assets["grid"] = app.newModel(1,
+	assets["grid"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_grid.data(),
 		&i_grid,
 		"",
@@ -288,7 +299,8 @@ void setGrid(Renderer& app)
 
 void setSkybox(Renderer& app)
 {
-	assets["skyBoxX"] = app.newModel(1,
+	assets["skyBoxX"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posx.jpg").c_str(),
@@ -296,7 +308,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
-	assets["skyBoxY"] = app.newModel(1,
+	assets["skyBoxY"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posy.jpg").c_str(),
@@ -304,7 +317,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
-	assets["skyBoxZ"] = app.newModel(1,
+	assets["skyBoxZ"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posz.jpg").c_str(),
@@ -312,7 +326,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
-	assets["skyBox-X"] = app.newModel(1,
+	assets["skyBox-X"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negx.jpg").c_str(),
@@ -320,7 +335,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
-	assets["skyBox-Y"] = app.newModel(1,
+	assets["skyBox-Y"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negy.jpg").c_str(),
@@ -328,7 +344,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		primitiveTopology::triangle);
 
-	assets["skyBox-Z"] = app.newModel(1,
+	assets["skyBox-Z"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negz.jpg").c_str(),
@@ -341,6 +358,7 @@ void setCottage(Renderer& app)
 {
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	assets["cottage"] = app.newModel( 0,
+		MVP,
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
@@ -353,6 +371,7 @@ void setCottage(Renderer& app)
 
 	// Add the same model again.
 	assets["cottage"] = app.newModel( 1,
+		MVP,
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -363,7 +382,8 @@ void setCottage(Renderer& app)
 
 void setRoom(Renderer& app)
 {
-	assets["room"] = app.newModel(2,
+	assets["room"] = app.newModel( 2,
+		MVP,
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -380,6 +400,7 @@ void setRoom(Renderer& app)
 void setFloor(Renderer& app)
 {
 	assets["floor"] = app.newModel( 1,
+		MVP,
 		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_floor.data(),
 		&i_floor,
 		(TEXTURES_DIR + "grass.png").c_str(),
@@ -395,7 +416,8 @@ void setTerrain(Renderer& app)
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
 
 	assets["terrain"] = app.newModel( 1,
-		VertexType(sizeof(VertexPTN), 1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
+		MVP,
+		VertexType(PTN, 1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
 		&terrGen.indices,
 		(TEXTURES_DIR + "squares.png").c_str(),
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),

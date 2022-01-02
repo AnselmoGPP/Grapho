@@ -8,8 +8,8 @@
 
 
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), usefulUBOsize(uboSize), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), numUBOs(0)
 {
 	// Save paths
 	copyCString(this->modelPath, modelPath);
@@ -22,8 +22,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), numMM(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), usefulUBOsize(uboSize), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), numUBOs(0)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -40,18 +40,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	else
 		includesIndices = false;
 }
-
-/*
-ModelData::ModelData(const ModelData& obj)
-	: e(obj.e), primitiveTopology(obj.primitiveTopology), dataFromFile(obj.dataFromFile), fullyConstructed(obj.fullyConstructed), includesIndices(obj.includesIndices), hasTransparencies(obj.hasTransparencies), descriptorSetLayout(obj.descriptorSetLayout), pipelineLayout(obj.pipelineLayout), graphicsPipeline(obj.graphicsPipeline), mipLevels(obj.mipLevels), textureImage(obj.textureImage), textureImageMemory(obj.textureImageMemory), textureImageView(obj.textureImageView), textureSampler(obj.textureSampler), vertices(obj.vertices), indices(obj.indices), vertexBuffer(obj.vertexBuffer), vertexBufferMemory(obj.vertexBufferMemory), indexBuffer(obj.indexBuffer), indexBufferMemory(obj.indexBufferMemory), uniformBuffers(obj.uniformBuffers), uniformBuffersMemory(obj.uniformBuffersMemory), descriptorPool(obj.descriptorPool), descriptorSets(obj.descriptorSets), dynamicOffsets(obj.dynamicOffsets), numMM(obj.numMM), MM(obj.MM)
-{
-	// Save paths
-	copyCString(modelPath, obj.modelPath);
-	copyCString(texturePath, obj.texturePath);
-	copyCString(VSpath, obj.VSpath);
-	copyCString(FSpath, obj.FSpath);
-}
-*/
 
 ModelData::~ModelData()
 {
@@ -1006,11 +994,12 @@ void ModelData::cleanup()
 void ModelData::resizeUBOset(size_t newSize)
 {
 	// Resize UBO and dynamic offsets
+	dynUBO.resize(newSize, getUBORange());
 	MM.resize(newSize);
 	dynamicOffsets.resize(newSize);		// Not used when newSize == 0
 
 	// Initialize (only) the new elements
-	if (newSize > numMM)
+	if (newSize > numUBOs)
 	{
 		glm::mat4 defaultM;
 		defaultM = glm::mat4(1.0f);
@@ -1020,7 +1009,7 @@ void ModelData::resizeUBOset(size_t newSize)
 
 		size_t UBOrange = getUBORange();
 
-		for (size_t i = numMM; i < newSize; ++i)
+		for (size_t i = numUBOs; i < newSize; ++i)
 		{
 			MM[i] = defaultM;
 			dynamicOffsets[i] = i * UBOrange;
@@ -1039,14 +1028,14 @@ void ModelData::resizeUBOset(size_t newSize)
 			vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
 			// Create them again
-			numMM = newSize;
+			numUBOs = newSize;
 			createUniformBuffers();		// Create a UBO with the new size
 			createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
 			createDescriptorSets();		// Create Descriptor sets (contain the UBO)
 		}
 	}
 
-	numMM = newSize;
+	numUBOs = newSize;
 
 	/*
 	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
@@ -1080,11 +1069,11 @@ void ModelData::setUBO(size_t pos, glm::mat4& newValue)
 
 VkDeviceSize ModelData::getUBOSize()
 {
-	if (numMM != 0)	return numMM * getUBORange();
-	else			return getUBORange();
+	if (numUBOs != 0)	return numUBOs * getUBORange();
+	else				return getUBORange();
 }
 
-VkDeviceSize ModelData::getUBORange(VkDeviceSize usefulUBOsize)
+VkDeviceSize ModelData::getUBORange()
 {
 	return e.minUniformBufferOffsetAlignment * (1 + usefulUBOsize / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
 
@@ -1094,7 +1083,7 @@ VkDeviceSize ModelData::getUBORange(VkDeviceSize usefulUBOsize)
 
 bool ModelData::isDataFromFile() { return dataFromFile; }
 
-size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[texture]; }
+size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[2]; }
 
 size_t ModelData::getNumDescriptors() { return 1 + numTextures(); } // 1 UBO + X textures
 
