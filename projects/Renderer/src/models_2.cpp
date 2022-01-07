@@ -6,9 +6,10 @@
 
 //VertexType -----------------------------------------------------------------
 
-VertexType::VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT, size_t numN)
-	: vertexSize(vertexSize)
+VertexType::VertexType(size_t numP, size_t numC, size_t numT, size_t numN)
 { 
+	vertexSize = numP * attribsSize[0] + numC * attribsSize[1] + numT * attribsSize[2] + numN * attribsSize[3];
+
 	numEachAttrib[0] = numP;
 	numEachAttrib[1] = numC;
 	numEachAttrib[2] = numT;
@@ -297,61 +298,100 @@ size_t std::hash<VertexPT>::operator()(VertexPT const& vertex) const
 }
 
 
-// Uniform Buffer Object Dynamic -----------------------------------------------------------------
+// Dynamic Uniform Buffer Objects -----------------------------------------------------------------
 
-UBOdynamic::UBOdynamic(size_t UBOcount, VkDeviceSize sizePerUBO)
-	: UBOcount(UBOcount), sizePerUBO(sizePerUBO), totalBytes(sizePerUBO* UBOcount), data(nullptr)
+UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN)
 {
-	if(totalBytes > 0)
-		data = new char[totalBytes];
+	numEachAttrib[0] = numM;
+	numEachAttrib[1] = numV;
+	numEachAttrib[2] = numP;
+	numEachAttrib[3] = numMN;
+}
+
+UBOdynamic::UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment)
+	: count(0), dirtyCount(0)
+{
+	// Get amount of each attribute per dynamic UBO
+	for(size_t i = 0; i < numEachAttrib.size(); i++)
+		numEachAttrib[i] = uboType.numEachAttrib[i];
+
+	// Get range
+	VkDeviceSize usefulUBOsize = 0;			// Section of the range that will be actually used (example: 3)
+	for (size_t i = 0; i < numEachAttrib.size(); i++)
+		usefulUBOsize += attribsSize[i] * numEachAttrib[i];
+
+	range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
+
+	// Resize buffers
+	resize(UBOcount);
 }
 
 UBOdynamic& UBOdynamic::operator = (const UBOdynamic& obj)
 {
-	UBOcount = obj.UBOcount;
-	sizePerUBO = obj.sizePerUBO;
+	count = obj.count;
+	dirtyCount = obj.dirtyCount;
+	range = obj.range;
 	totalBytes = obj.totalBytes;
-	if (totalBytes) data = new char[totalBytes];
+	ubo.resize(totalBytes);
 
 	return *this;
 }
 
-UBOdynamic::~UBOdynamic() 
-{ 
-	if (totalBytes) delete[] data; 
+void UBOdynamic::resize(size_t newCount)
+{	
+	size_t oldCount = count;
+
+	count = dirtyCount = newCount;
+	totalBytes = newCount * range;
+
+	ubo.resize(totalBytes);
+	dynamicOffsets.resize(newCount);
+
+	if (newCount > oldCount)
+	{
+		glm::mat4 defaultM;
+		defaultM = glm::mat4(1.0f);
+		//defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));//<<< comment this
+		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
+
+		glm::mat3 defaultMNor = glm::mat3(glm::transpose(glm::inverse(defaultM)));
+
+		for (size_t i = oldCount; i < newCount; ++i)
+		{
+			if (numEachAttrib[0]) setModel(i, defaultM);
+			if (numEachAttrib[3]) setMNor (i, defaultMNor);
+			dynamicOffsets[i] = i * range;
+		}
+	}
 }
 
-void UBOdynamic::resize(size_t UBOcount, VkDeviceSize sizePerUBO)
-{	
-	bool increaseBuffer = true;
-	if (totalBytes > (UBOcount * sizePerUBO)) increaseBuffer = false;
-
-	this->UBOcount = UBOcount;
-	this->sizePerUBO = sizePerUBO;
-	this->totalBytes = UBOcount * sizePerUBO;
-
-	if (increaseBuffer)
-	{
-		this->~UBOdynamic();
-		if (totalBytes)
-			data = new char[totalBytes];
-	}
+void UBOdynamic::dirtyResize(size_t newCount) 
+{
+	ubo.resize(newCount * range);
+	dirtyCount = newCount;
 }
 
 void UBOdynamic::setModel(size_t position, const glm::mat4& matrix)
 {
-	glm::mat4* original = (glm::mat4*)&data[position * sizePerUBO + 0 * sizeof(glm::mat4)];
-	*original = matrix;					// Equivalent to:   memcpy((void*)original, (void*)&matrix, sizeof(glm::mat4));
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range];
+	*destination = matrix;					// Equivalent to:   memcpy((void*)original, (void*)&matrix, sizeof(glm::mat4));
 }
 
 void UBOdynamic::setView(size_t position, const glm::mat4& matrix)
 {
-	glm::mat4* original = (glm::mat4*)&data[position * sizePerUBO + 1 * sizeof(glm::mat4)];
-	*original = matrix;
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0]];
+	*destination = matrix;
 }
 
 void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
 {
-	glm::mat4* original = (glm::mat4*)&data[position * sizePerUBO + 2 * sizeof(glm::mat4)];
-	*original = matrix;
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0] + attribsSize[1] * numEachAttrib[1]];
+	*destination = matrix;
+}
+
+void UBOdynamic::setMNor(size_t position, const glm::mat3& matrix)
+{
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0] + attribsSize[1] * numEachAttrib[1] + attribsSize[2] * numEachAttrib[2]];
+	*destination = matrix;
 }

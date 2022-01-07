@@ -30,18 +30,17 @@
 enum vertexSize;	// PCT, PC, PT, PTN
 enum uboSize;		// MVP, MVPN
 
-/// Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
+/// Used for configuring VertexSet. Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
 class VertexType
 {
 public:
-	VertexType(size_t vertexSize, size_t numP, size_t numC, size_t numT, size_t numN = 0);
+	VertexType(size_t numP, size_t numC, size_t numT, size_t numN = 0);
 	~VertexType();
 	VertexType& operator=(const VertexType& obj);
 
 	VkVertexInputBindingDescription getBindingDescription();
 	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 	
-	//static const size_t maxNumAttribs = 3;				// Number of types of attributes (Positions, Color buffers, Texture coordinates buffers)
 	const std::array<size_t, 4> attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };
 
 	//char* vertex;							// Vertex data
@@ -56,7 +55,7 @@ public:
 	VertexSet(VertexType vertexType);
 	VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer);
 	~VertexSet();
-	VertexSet& operator=(const VertexSet& obj);
+	VertexSet& operator=(const VertexSet& obj);	// Not used
 
 	VertexType Vtype;						// Vertex type. Contains the configuration of a vertex
 
@@ -145,6 +144,7 @@ struct VertexPTN
 
 enum vertexSize { PCT = sizeof(VertexPCT), PC = sizeof(VertexPC), PT = sizeof(VertexPT), PTN = sizeof(VertexPTN) };
 
+
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
 struct UBO_MVP {
 	alignas(16) glm::mat4 model;
@@ -161,23 +161,44 @@ struct UBO_MVPN {
 
 enum uboSize { MVP = sizeof(UBO_MVP), MVPN = sizeof(UBO_MVPN) };
 
+/// Class used for configuring the dynamic UBO. UBO attributes: MVP matrices (MVP), Model matrix for normals (MN).
+class UBOtype
+{
+public:
+	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0);
+
+	std::array<size_t, 4> numEachAttrib;
+};
+
 /// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
+/// Attributes of the UBO: Model, View, Projection, ModelForNormals
 struct UBOdynamic
 {
-	UBOdynamic(size_t UBOcount = 0, VkDeviceSize sizePerUBO = 0);
+	UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);
 	UBOdynamic& operator = (const UBOdynamic& obj);
-	~UBOdynamic();
+	~UBOdynamic() = default;
 
-	void resize(size_t UBOcount, VkDeviceSize sizePerUBO);
+	void resize(size_t newCount);
 	void setModel(size_t position, const glm::mat4& matrix);
 	void setView(size_t position, const glm::mat4& matrix);
 	void setProj(size_t position, const glm::mat4& matrix);
+	void setMNor(size_t position, const glm::mat3& matrix);
 
-	alignas(16) size_t			UBOcount;
-	alignas(16) VkDeviceSize	sizePerUBO;
-	alignas(16) size_t			totalBytes;
+	size_t					count;			///< Number of dynamic UBOs
+	VkDeviceSize			range;			///< Size (bytes) of an aligned dynamic UBO (example: 4)
+	size_t					totalBytes;		///< Size (bytes) of the set of dynamic UBOs (example: 12)
+	std::vector<uint32_t>	dynamicOffsets;	///< Offsets for each dynamic UBO
+	std::array<size_t, 4>	numEachAttrib;
+	//std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
+	//std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
 
-	alignas(16) char* data;			// <<< is alignas(16) necessary?
+	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
+	size_t dirtyCount;						///< Number of dynamic UBOs, including those generated with dirtyResize()
+
+	std::vector<char> ubo;			///< Store the UBO that will be passed to shader	<<< is alignas(16) necessary?
+
+private:
+	const std::array<size_t, 4>	attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12 };	// 64, 64, 64, 36+12 (including padding for getting alignment with 16 bits)
 };
 
 #endif

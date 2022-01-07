@@ -8,8 +8,8 @@
 
 
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, VkPrimitiveTopology primitiveTopology, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), usefulUBOsize(uboSize), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), numUBOs(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
 {
 	// Save paths
 	copyCString(this->modelPath, modelPath);
@@ -22,8 +22,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, size_t uboSize, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, VkPrimitiveTopology primitiveTopology, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), usefulUBOsize(uboSize), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), numUBOs(0)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
 {
 	// Save paths
 	copyCString(this->texturePath, texturePath);
@@ -806,7 +806,7 @@ void ModelData::createUniformBuffers()
 
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
 		createBuffer(
-			getUBOSize(),
+			dynUBO.count == 0 ? dynUBO.range : dynUBO.totalBytes,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			uniformBuffers[i],
@@ -817,8 +817,6 @@ void ModelData::createUniformBuffers()
 void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
-	//std::array<VkDescriptorPoolSize, 2> poolSizes{};
-
 	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[getNumDescriptors()];
 
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
@@ -867,7 +865,7 @@ void ModelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range  = getUBORange();
+		bufferInfo.range  = dynUBO.range;
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -994,54 +992,12 @@ void ModelData::cleanup()
 void ModelData::resizeUBOset(size_t newSize)
 {
 	// Resize UBO and dynamic offsets
-	dynUBO.resize(newSize, getUBORange());
-	MM.resize(newSize);
-	dynamicOffsets.resize(newSize);		// Not used when newSize == 0
+	size_t oldSize = dynUBO.count;
+	dynUBO.resize(newSize);
 
-	// Initialize (only) the new elements
-	if (newSize > numUBOs)
+	// Destroy and recreate uniform buffers, descriptor pool and descriptor set
+	if (fullyConstructed && newSize > oldSize)
 	{
-		glm::mat4 defaultM;
-		defaultM = glm::mat4(1.0f);
-		defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));
-		//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
-
-		size_t UBOrange = getUBORange();
-
-		for (size_t i = numUBOs; i < newSize; ++i)
-		{
-			MM[i] = defaultM;
-			dynamicOffsets[i] = i * UBOrange;
-		}
-
-		// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size/capacity of the current VkBuffer (UBO)).
-		if (fullyConstructed && newSize * getUBORange() > getUBOSize())
-		{
-			// Destroy Uniform buffers & memory
-			for (size_t i = 0; i < e.swapChainImages.size(); i++) {
-				vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
-				vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
-			}
-
-			// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
-			vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
-
-			// Create them again
-			numUBOs = newSize;
-			createUniformBuffers();		// Create a UBO with the new size
-			createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
-			createDescriptorSets();		// Create Descriptor sets (contain the UBO)
-		}
-	}
-
-	numUBOs = newSize;
-
-	/*
-	// Recreate the Vulkan buffer & descriptor sets (only required if the new size is bigger than the size of the current VkBuffer (UBO)).
-	if (fullyConstructed && newSize * getUBORange() > getUBOSize())
-	{
-		// Destroy Uniform buffers & memory
 		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
 			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
@@ -1050,35 +1006,21 @@ void ModelData::resizeUBOset(size_t newSize)
 		// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
 		vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
-		// Create them again
-		numMM = newSize;
 		createUniformBuffers();		// Create a UBO with the new size
-		createDescriptorPool();		// Create Descriptor pool (required for creating descriptor sets)
-		createDescriptorSets();		// Create Descriptor sets (contain the UBO)
+		createDescriptorPool();		// Required for creating descriptor sets
+		createDescriptorSets();		// Contains the UBO
 	}
-	else
-		numMM = newSize;
-	*/
 }
 
-void ModelData::setUBO(size_t pos, glm::mat4& newValue)
+void ModelData::setMM(size_t pos, glm::mat4& newValue)
 {
-	if (pos < MM.size())
-		MM[pos] = newValue;
-}
+	// Model matrix (MM)
+	if (pos < dynUBO.dirtyCount)
+		dynUBO.setModel(pos, newValue);
 
-VkDeviceSize ModelData::getUBOSize()
-{
-	if (numUBOs != 0)	return numUBOs * getUBORange();
-	else				return getUBORange();
-}
-
-VkDeviceSize ModelData::getUBORange()
-{
-	return e.minUniformBufferOffsetAlignment * (1 + usefulUBOsize / e.minUniformBufferOffsetAlignment);	// Minimun descriptor set size, depending on the existing minimum uniform buffer offset alignment.
-
-	// dynamicOffsets[1] == individual UBO range size.  Another option: VK_WHOLE_SIZE
-	// If you're overwriting the whole buffer, like we are in this case, it's possible to return VK_WHOLE_SIZE here. 
+	// MM for normals (Used when MM applies non-uniform scaling since normals won't be scaled correctly. Otherwise, use glm::vec3(model))
+	if (dynUBO.numEachAttrib[3])
+		dynUBO.setMNor(pos, glm::mat3(glm::transpose(glm::inverse(newValue))));
 }
 
 bool ModelData::isDataFromFile() { return dataFromFile; }

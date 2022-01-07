@@ -81,7 +81,7 @@ class Renderer
 	void cleanup();
 
 	void updateUniformBuffer(uint32_t currentImage);
-	void(*graphicsUpdate) (Renderer& rend);
+	void(*userUpdate) (Renderer& rend);
 	void loadModels_Thread();
 
 	void recreateSwapChain();
@@ -109,8 +109,8 @@ public:
 	TimerSet&		getTimer();
 	Camera&			getCamera();
 
-	modelIterator	newModel(size_t numberOfRenderings, size_t uboSize, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, primitiveTopology primitiveTopology = primitiveTopology::triangle, bool transparency = false);
-	modelIterator	newModel(size_t numberOfRenderings, size_t uboSize, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, primitiveTopology primitiveTopology = primitiveTopology::triangle, bool transparency = false);
+	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency = false);
+	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, bool transparency = false);
 
 	void			deleteModel(modelIterator model);
 	void			setRenders(modelIterator& model, size_t numberOfRenders);

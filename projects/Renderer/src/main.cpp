@@ -46,6 +46,7 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
+		> Rearrange parameters in newModel()
 		> Generalize VertexPCT in loadModel()
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
 		X VkDrawIndex instanceCount -> check this way of multiple renderings
@@ -130,7 +131,7 @@ int main(int argc, char* argv[])
 
 	std::cout << "------------------------------" << std::endl;
 
-	//setPoints(app);
+	setPoints(app);
 	setAxis(app);
 	setGrid(app);
 	setSkybox(app);
@@ -160,23 +161,23 @@ void update(Renderer& r)
 	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
 
 	if (assets.find("grid") != assets.end())
-		assets["grid"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
+		assets["grid"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("skyBoxX") != assets.end())
 	{
-		assets["skyBoxX" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBoxY" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBoxZ" ]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-X"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-Y"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-Z"]->setUBO(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBoxX" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBoxY" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBoxZ" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-X"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-Y"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox-Z"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 	}
 
 	if (assets.find("cottage") != assets.end())
-		assets["cottage"]->setUBO(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+		assets["cottage"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 
 	if (assets.find("sun") != assets.end())
-		assets["sun"]->setUBO(0, sunMM(pos, dayTime, sunDist, sunAngDist));
+		assets["sun"]->setMM(0, sunMM(pos, dayTime, sunDist, sunAngDist));
 
 
 	//if (time > 5 && cottageLoaded)
@@ -188,10 +189,10 @@ void update(Renderer& r)
 	if (time > 5 && !check1)
 	{
 		r.setRenders(assets["room"], 4);
-		assets["room"]->setUBO(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3( 0.0f, -50.0f, 3.0f)));
-		assets["room"]->setUBO(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,   0.0f), glm::vec3( 0.0f, -80.0f, 3.0f)));
-		assets["room"]->setUBO(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-		assets["room"]->setUBO(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+		assets["room"]->setMM(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3( 0.0f, -50.0f, 3.0f)));
+		assets["room"]->setMM(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,   0.0f), glm::vec3( 0.0f, -80.0f, 3.0f)));
+		assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+		assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 		check1 = true;
 	}
 	else if (time > 10 && !check2)
@@ -203,11 +204,11 @@ void update(Renderer& r)
 	
 	 if (time > 5)
 	 {
-		 //assets["room"]->setUBO(0, room1_MM(0));
-		 //assets["room"]->setUBO(1, room2_MM(0));
-		 //assets["room"]->setUBO(2, room3_MM(0));
-		 //assets["room"]->setUBO(3, room4_MM(0));
-		 //assets["room"]->setUBO(4, room5_MM(0));
+		 //assets["room"]->setMM(0, room1_MM(0));
+		 //assets["room"]->setMM(1, room2_MM(0));
+		 //assets["room"]->setMM(2, room3_MM(0));
+		 //assets["room"]->setMM(3, room4_MM(0));
+		 //assets["room"]->setMM(4, room5_MM(0));
 	 }
 */		 
 
@@ -219,14 +220,14 @@ void setSun(Renderer& app)
 	std::vector<uint32_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	assets["sun"] = app.newModel( 1,
-		MVPN,
-		VertexType(PT, 1, 0, 1), numVertex, v_sun.data(),
+	assets["sun"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), numVertex, v_sun.data(),
 		&i_sun,
 		(TEXTURES_DIR + "Sun/sun2_1.png").c_str(),
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
-		primitiveTopology::triangle,
 		true);
 }
 
@@ -236,29 +237,30 @@ void setReticule(Renderer& app)
 	std::vector<uint32_t> i_ret;
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	assets["reticule"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), numVertex, v_ret.data(),
+	assets["reticule"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), numVertex, v_ret.data(),
 		&i_ret,
 		(TEXTURES_DIR + "HUD/reticule_1.png").c_str(),
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),
-		primitiveTopology::triangle,
 		true );
 }
 
 void setPoints(Renderer& app)
 {
-	assets["points"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPC), 1, 1, 0), 9, v_points.data(),
+	assets["points"] = app.newModel( 
+		1, primitiveTopology::point,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 1, 0), 9, v_points.data(),
 		nullptr,
 		"",
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
 		(SHADERS_DIR + "f_pointPC.spv").c_str(),
-		primitiveTopology::point);
+		false );
 
-	//assets["points"]->setUBO(0, modelMatrix());
+	//assets["points"]->setMM(0, modelMatrix());
 }
 
 void setAxis(Renderer& app)
@@ -267,160 +269,173 @@ void setAxis(Renderer& app)
 	std::vector<uint32_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
 
-	assets["axis"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_axis.data(),
+	assets["axis"] = app.newModel( 
+		1, primitiveTopology::line,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 1, 0), numVertex, v_axis.data(),
 		&i_axis,
 		"",
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
-		primitiveTopology::line);
+		false );
 
-	//assets["axis"]->setUBO(0, modelMatrix());
+	//assets["axis"]->setMM(0, modelMatrix());
 }
 
 void setGrid(Renderer& app)
 {
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
-	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 6, glm::vec3(0.1, 0.1, 0.6));
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, glm::vec3(0.1, 0.1, 0.6));
 
-	assets["grid"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPC), 1, 1, 0), numVertex, v_grid.data(),
+	assets["grid"] = app.newModel( 
+		1, primitiveTopology::line,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 1, 0), numVertex, v_grid.data(),
 		&i_grid,
 		"",
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
-		primitiveTopology::line);
+		false );
 
-	//assets["grid"]->setUBO(0, modelMatrix());
+	//assets["grid"]->setMM(0, modelMatrix());
 }
 
 void setSkybox(Renderer& app)
 {
-	assets["skyBoxX"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posx.data(),
+	assets["skyBoxX"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_posx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posx.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 
-	assets["skyBoxY"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posy.data(),
+	assets["skyBoxY"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_posy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posy.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 
-	assets["skyBoxZ"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_posz.data(),
+	assets["skyBoxZ"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_posz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_posz.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 
-	assets["skyBox-X"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negx.data(),
+	assets["skyBox-X"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_negx.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negx.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 
-	assets["skyBox-Y"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negy.data(),
+	assets["skyBox-Y"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_negy.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negy.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 
-	assets["skyBox-Z"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_negz.data(),
+	assets["skyBox-Z"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_negz.data(),
 		&i_square,
 		(TEXTURES_DIR + "sky_box/space1_negz.jpg").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 }
 
 void setCottage(Renderer& app)
 {
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
-	assets["cottage"] = app.newModel( 0,
-		MVP,
+	assets["cottage"] = app.newModel( 
+		0, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
 		(SHADERS_DIR  + "f_trianglePCT.spv").c_str(),
-		VertexType(sizeof(VertexPCT), 1, 1, 1),
-		primitiveTopology::triangle);
+		VertexType(1, 1, 1),
+		false );
 
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);
 
 	// Add the same model again.
-	assets["cottage"] = app.newModel( 1,
-		MVP,
+	assets["cottage"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		VertexType(sizeof(VertexPCT), 1, 1, 1),
-		primitiveTopology::triangle);
+		false );
 }
 
 void setRoom(Renderer& app)
 {
-	assets["room"] = app.newModel( 2,
-		MVP,
+	assets["room"] = app.newModel( 
+		2, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		(TEXTURES_DIR + "viking_room.png").c_str(),
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
-		VertexType(sizeof(VertexPCT), 1, 1, 1),
-		primitiveTopology::triangle);
+		VertexType(1, 1, 1),
+		false );
 
-	assets["room"]->setUBO(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
-	assets["room"]->setUBO(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
-	//assets["room"]->setUBO(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-	//assets["room"]->setUBO(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+	assets["room"]->setMM(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
+	assets["room"]->setMM(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
+	//assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+	//assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 }
 
 void setFloor(Renderer& app)
 {
-	assets["floor"] = app.newModel( 1,
-		MVP,
-		VertexType(sizeof(VertexPT), 1, 0, 1), 4, v_floor.data(),
+	assets["floor"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 0),
+		VertexType(1, 0, 1), 4, v_floor.data(),
 		&i_floor,
 		(TEXTURES_DIR + "grass.png").c_str(),
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		primitiveTopology::triangle );
+		false );
 
-	//assets["floor"]->setUBO(0, modelMatrix());
+	//assets["floor"]->setMM(0, modelMatrix());
 }
 
 void setTerrain(Renderer& app)
 {
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
 
-	assets["terrain"] = app.newModel( 1,
-		MVP,
-		VertexType(PTN, 1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
+	assets["terrain"] = app.newModel( 
+		1, primitiveTopology::triangle,
+		UBOtype(1, 1, 1, 1),
+		VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
 		&terrGen.indices,
 		(TEXTURES_DIR + "squares.png").c_str(),
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
-		primitiveTopology::triangle);
+		false );
 }
