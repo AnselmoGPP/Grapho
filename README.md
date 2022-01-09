@@ -1,11 +1,11 @@
-# VulkRend (Vulkan renderer)
+# Grapho (Vulkan renderer)
 
 <br>![Khronos Vulkan logo](https://raw.githubusercontent.com/AnselmoGPP/VulkRend/master/files/Vulkan_logo.png)
 
-VulkRend is a lightweight and easy to use project for rendering computer graphics with C++ and [Vulkan®](https://www.khronos.org/vulkan/), the new generation graphics and compute API from [Khronos®](https://www.khronos.org/). 
+Grapho is a lightweight and easy to use project for rendering computer graphics with C++ and [Vulkan®](https://www.khronos.org/vulkan/), the new generation graphics and compute API from [Khronos®](https://www.khronos.org/). 
 
 ## Table of Contents
-+ [VulkRend](#vulkrend)
++ [Grapho](#grapho)
 + [How to use](#how-to-use)
 + [Dependencies](#dependencies)
 + [Building the project](#building-the-project)
@@ -15,23 +15,23 @@ VulkRend is a lightweight and easy to use project for rendering computer graphic
     + [Second thread](#second-thread)
 + [Links](#links)
 
-## VulkRend
+## Grapho
 
-VulkRend allows the programmer to load models and textures (OBJ or raw data), and render them in a 3D space. A single model can be rendered many times simultaneously. Loaded models, or some of their renderings (or all of them), can be removed at any time. The camera system allows to navigate through the rendering. The models are loaded in a parallel thread, so that the render loop doesn't suffer delays.
+Grapho allows the programmer to load models and textures (OBJ or raw data), and render them in a 3D space. A single model can be rendered many times simultaneously. Loaded models, or some of their renderings (or all of them), can be removed at any time. The camera system allows to navigate through the rendering. The models are loaded in a parallel thread, so that the render loop doesn't suffer delays.
 
 <h4>Main project content:</h4>
 
-- _**projects:**_ Contains VulkRend and some example projects.
-  - _**Renderer:**_ VulkRend headers and source files.
+- _**projects:**_ Contains Grapho and some example projects.
+  - _**Renderer:**_ Grapho headers and source files.
   - _**shaders**_ Shaders used (vertex & fragment).
     - **environment:** Creates and configures the core Vulkan environment.
     - **renderer:** Uses the Vulkan environment for rendering the models provided by the user.
-    - **models:** The user loads his models to VulkRend through the ModelData class.
-    - **input:** Manages user input (keyboard, mouse...) and delivers it to VulkRend.
+    - **models:** The user loads his models to Grapho through the ModelData class.
+    - **input:** Manages user input (keyboard, mouse...) and delivers it to Grapho.
     - **camera:** Camera system.
     - **timer:** Time data.
     - **data:** Bonus functions (model matrix computation...).
-    - **main:** Examples of how to use VulkRend.
+    - **main:** Examples of how to use Grapho.
 - _**extern:**_ Dependencies (GLFW, GLM, stb_image, tinyobjloader...).
 - _**files:**_ Scripts and images.
 - _**models:**_ Models for loading in our projects.
