@@ -36,10 +36,11 @@ size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>&
 /// (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix.
 size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
 
-/// Skybox vertex
+/// Skybox
 extern std::vector<VertexPT> v_posx, v_posy, v_posz, v_negx, v_negy, v_negz;
-/// Skybox indices
 extern std::vector<uint32_t> i_square;
+extern std::vector<VertexPT> v_cube;
+extern std::vector<uint32_t> i_inCube;
 
 // Others -----------------------------------------------------------------
 

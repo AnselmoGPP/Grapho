@@ -136,6 +136,26 @@ std::vector<VertexPT> v_negz = { VertexPT(glm::vec3(-1,  1, -1), glm::vec2(0, 0)
 
 std::vector<uint32_t> i_square = { 0, 1, 3,  1, 2, 3 };
 
+std::vector<VertexPT> v_cube =
+{
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(0., 1/3.)),
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(0., 2/3.)),
+	VertexPT(glm::vec3(-1,  1,  1), glm::vec2(.25, 1/3.)),
+	VertexPT(glm::vec3(-1,  1, -1), glm::vec2(.25, 2/3.)),
+	VertexPT(glm::vec3( 1,  1,  1), glm::vec2(.5, 1/3.)),
+	VertexPT(glm::vec3( 1,  1, -1), glm::vec2(.5, 2/3.)),
+	VertexPT(glm::vec3( 1, -1,  1), glm::vec2(.75, 1/3.)),
+	VertexPT(glm::vec3( 1, -1, -1), glm::vec2(.75, 2/3.)),
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(1., 1/3.)),
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(1., 2/3.)),
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(.25, 0.)),
+	VertexPT(glm::vec3( 1, -1,  1), glm::vec2(.5, 0.)),
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(.25, 1.)),
+	VertexPT(glm::vec3( 1, -1, -1), glm::vec2(.5, 1.))
+};
+
+std::vector<uint32_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };
+
 bool ifOnce::ifBigger(float a, float b)
 {
 	if (std::find(checked.begin(), checked.end(), b) != checked.end())

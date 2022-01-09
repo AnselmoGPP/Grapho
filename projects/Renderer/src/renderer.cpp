@@ -95,13 +95,13 @@ void Renderer::createCommandBuffers()
 
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
-			if(it->hasIndices())
+			if(it->indices.size())
 				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
 			for (size_t j = 0; j < it->dynUBO.count; j++)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynUBO.dynamicOffsets[j]);
-				if (it->hasIndices())
+				if (it->indices.size())
 					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 				else
 					vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
@@ -156,12 +156,14 @@ void Renderer::mainLoop()
 {
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
+	std::cout << "- Start render loop" << std::endl;
 
 	while (!glfwWindowShouldClose(e.window))
 	{
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
-
+		std::cout << "Render loop 1" << std::endl;
 		drawFrame();
+		std::cout << "Render loop 2" << std::endl;
 		//if(modelsToLoad.size() > 0) addModelAndupdateCommandBuffers();
 
 		if (glfwGetKey(e.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -216,10 +218,10 @@ void Renderer::drawFrame()
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };		// Which semaphores to signal once the command buffers have finished execution.
 	{
 		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);	// Controls access to model list and command buffer
-
+		
 		// Update uniforms
 		updateUniformBuffer(imageIndex);
-
+		
 		// Submit the command buffer
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -272,7 +274,7 @@ void Renderer::drawFrame()
 	}
 	else if (result != VK_SUCCESS)
 		throw std::runtime_error("Failed to present swap chain image!");
-
+	
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;	// By using the modulo operator (%), the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
 
 	// vkQueueWaitIdle(presentQueue);							// Make the whole graphics pipeline to be used only one frame at a time (instead of using this, we use multiple semaphores for processing frames concurrently).
@@ -317,7 +319,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	//float time			= std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 	//float deltaTime		= time - prevTime;
 	//prevTime				= time;
-	
+	std::cout << "update 1" << std::endl;
 	// Compute transformation matrix
 	input.cam.ProcessCameraInput(timer.getDeltaTime());
 	glm::mat4 view = input.cam.GetViewMatrix();
@@ -328,7 +330,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 
 	// Update model matrices and other things (user defined)
 	userUpdate(*this);
-
+	std::cout << "update 2" << std::endl;
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
 	for (modelIterator it = models.begin(); it != models.end(); it++)
@@ -391,19 +393,18 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, modelPath, texturePath, VSpath, FSpath, vertexType, transparency);
-
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, modelPath, textures, VSpath, FSpath, vertexType, transparency);
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indices, const char* texturePath, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 	
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, vertexType, numVertex, vertexData, indices, texturePath, VSpath, FSpath, transparency);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, vertexType, numVertex, vertexData, indices, textures, VSpath, FSpath, transparency);
 }
 
 void Renderer::deleteModel(modelIterator model)
@@ -429,6 +430,7 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 // Check for models pending full initialization.
 void Renderer::loadModels_Thread()
 {
+	std::cout << "Start thread" << std::endl;
 	modelIterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
 	std::list<modelIterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
 	std::map<modelIterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet

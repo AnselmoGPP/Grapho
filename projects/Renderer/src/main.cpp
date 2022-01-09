@@ -127,15 +127,13 @@ void setTerrain	(Renderer& app);
 int main(int argc, char* argv[])
 {
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update);		
-
-	std::cout << "------------------------------" << std::endl;
+	Renderer app(update);		std::cout << "------------------------------" << std::endl;
 
 	setPoints(app);
 	setAxis(app);
 	setGrid(app);
 	setSkybox(app);
-	//setCottage(app);
+	setCottage(app);
 	setRoom(app);
 	//setFloor(app);
 	setTerrain(app);
@@ -162,6 +160,9 @@ void update(Renderer& r)
 
 	if (assets.find("grid") != assets.end())
 		assets["grid"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
+
+	if (assets.find("skyBox") != assets.end())
+		assets["skyBox"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 
 	if (assets.find("skyBoxX") != assets.end())
 	{
@@ -220,12 +221,13 @@ void setSun(Renderer& app)
 	std::vector<uint32_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
 	assets["sun"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 0, 1), numVertex, v_sun.data(),
-		&i_sun,
-		(TEXTURES_DIR + "Sun/sun2_1.png").c_str(),
+		i_sun,
+		textures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		true);
@@ -237,12 +239,13 @@ void setReticule(Renderer& app)
 	std::vector<uint32_t> i_ret;
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
 	assets["reticule"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 0, 1), numVertex, v_ret.data(),
-		&i_ret,
-		(TEXTURES_DIR + "HUD/reticule_1.png").c_str(),
+		i_ret,
+		textures,
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),
 		true );
@@ -254,8 +257,8 @@ void setPoints(Renderer& app)
 		1, primitiveTopology::point,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 1, 0), 9, v_points.data(),
-		nullptr,
-		"",
+		noIndices,
+		noTextures,
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
 		(SHADERS_DIR + "f_pointPC.spv").c_str(),
 		false );
@@ -273,8 +276,8 @@ void setAxis(Renderer& app)
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 1, 0), numVertex, v_axis.data(),
-		&i_axis,
-		"",
+		i_axis,
+		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		false );
@@ -292,8 +295,8 @@ void setGrid(Renderer& app)
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 1, 0), numVertex, v_grid.data(),
-		&i_grid,
-		"",
+		i_grid,
+		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		false );
@@ -303,75 +306,27 @@ void setGrid(Renderer& app)
 
 void setSkybox(Renderer& app)
 {
-	assets["skyBoxX"] = app.newModel( 
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
+	assets["skyBox"] = app.newModel(
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_posx.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_posx.jpg").c_str(),
+		VertexType(1, 0, 1), 14, v_cube.data(),
+		i_inCube,
+		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	assets["skyBoxY"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_posy.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_posy.jpg").c_str(),
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	assets["skyBoxZ"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_posz.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_posz.jpg").c_str(),
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	assets["skyBox-X"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_negx.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_negx.jpg").c_str(),
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	assets["skyBox-Y"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_negy.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_negy.jpg").c_str(),
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	assets["skyBox-Z"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		VertexType(1, 0, 1), 4, v_negz.data(),
-		&i_square,
-		(TEXTURES_DIR + "sky_box/space1_negz.jpg").c_str(),
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
+		false);
 }
 
 void setCottage(Renderer& app)
 {
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
 	assets["cottage"] = app.newModel( 
 		0, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
-		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
+		textures,
 		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
 		(SHADERS_DIR  + "f_trianglePCT.spv").c_str(),
 		VertexType(1, 1, 1),
@@ -385,7 +340,7 @@ void setCottage(Renderer& app)
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
-		(TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str(),
+		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		VertexType(sizeof(VertexPCT), 1, 1, 1),
@@ -394,11 +349,13 @@ void setCottage(Renderer& app)
 
 void setRoom(Renderer& app)
 {
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
+
 	assets["room"] = app.newModel( 
 		2, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		(MODELS_DIR + "viking_room.obj").c_str(),
-		(TEXTURES_DIR + "viking_room.png").c_str(),
+		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		VertexType(1, 1, 1),
@@ -412,12 +369,14 @@ void setRoom(Renderer& app)
 
 void setFloor(Renderer& app)
 {
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "grass.png").c_str()) };
+
 	assets["floor"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
 		VertexType(1, 0, 1), 4, v_floor.data(),
-		&i_floor,
-		(TEXTURES_DIR + "grass.png").c_str(),
+		i_floor,
+		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		false );
@@ -428,13 +387,14 @@ void setFloor(Renderer& app)
 void setTerrain(Renderer& app)
 {
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "squares.png").c_str()) };
 
 	assets["terrain"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 1),
 		VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
-		&terrGen.indices,
-		(TEXTURES_DIR + "squares.png").c_str(),
+		terrGen.indices,
+		textures,
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
 		false );

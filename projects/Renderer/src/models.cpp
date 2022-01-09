@@ -1,32 +1,36 @@
+#include "models.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-#include "models.hpp"
+std::vector<Texture> noTextures;
+std::vector<uint32_t> noIndices;
 
 
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), hasTransparencies(transparency), vertices(vertexType), textures(textures), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
 {
 	// Save paths
 	copyCString(this->modelPath, modelPath);
-	copyCString(this->texturePath, texturePath);
+	//copyCString(this->texturePath, texturePath);
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
 
 	// Set up UBO data (Model matrices and Dynamic offsets)
 	resizeUBOset(numberOfRenderings);
+
+	vertices = VertexSet(VertexType(1, 1, 1, 0));	// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), includesIndices(true), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), indices(indices), textures(textures), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
 {
+	std::cout << "Model constructor 1" << std::endl;
+
 	// Save paths
-	copyCString(this->texturePath, texturePath);
+	//copyCString(this->texturePath, texturePath);
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
 
@@ -35,10 +39,10 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 
 	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
 	//vertices = vertexData;
-	if (indicesData)
-		indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
-	else
-		includesIndices = false;
+	//if (indicesData) indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
+	//else indices = std::vector<uint32_t>(0);
+
+	std::cout << "Model constructor 2" << std::endl;
 }
 
 ModelData::~ModelData()
@@ -49,37 +53,31 @@ ModelData::~ModelData()
 	}
 
 	if (dataFromFile) delete[] modelPath;
-	if(numTextures()) delete[] texturePath;
 	delete[] VSpath;
 	delete[] FSpath;
 }
 
 ModelData& ModelData::fullConstruction()
 {
-	bool test = false;
-
-	if (test) std::cout << "fullConst 1" << std::endl;
+	std::cout << "FC 1" << std::endl;
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
 
-	if (test) std::cout << "fullConst 2" << std::endl;
-	if (numTextures()) {
-		createTextureImage(texturePath);
-		createTextureImageView();
-		createTextureSampler();
-	}
+	std::cout << "FC 2" << std::endl;
+	for(size_t i = 0; i < textures.size(); i++)
+		textures[i].loadAndCreateTexture(e);
 
-	if (test) std::cout << "fullConst 3" << std::endl;
+	std::cout << "FC 3" << std::endl;
 	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
-	if(includesIndices) createIndexBuffer();
+	if(indices.size()) createIndexBuffer();
 
-	if (test) std::cout << "fullConst 4" << std::endl;
+	std::cout << "FC 4" << std::endl;
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 
-	if (test) std::cout << "fullConst 5" << std::endl;
+	std::cout << "FC 5" << std::endl;
 	fullyConstructed = true;
 	return *this;
 }
@@ -108,19 +106,20 @@ void ModelData::createDescriptorSetLayout()
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.descriptorCount = textures.size();
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 
 	// Combine the bindings in one structure
-	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[getNumDescriptors()];
+	bool addTexture = textures.size();
+	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[1 + addTexture];
 	bindings[0] = uboLayoutBinding;
-	for (size_t i = 0; i < numTextures(); i++) bindings[1 + i] = samplerLayoutBinding;
+	if(addTexture) bindings[1] = samplerLayoutBinding;
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(getNumDescriptors());
+	layoutInfo.bindingCount = static_cast<uint32_t>(1 + addTexture);
 	layoutInfo.pBindings = bindings;
 
 	if (vkCreateDescriptorSetLayout(e.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
@@ -405,250 +404,6 @@ void ModelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 	vkBindBufferMemory(e.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
 }
 
-// (15)
-/// Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer
-void ModelData::createTextureImage(const char* path)
-{
-	// Load an image (usually, the most expensive process)
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
-	if (!pixels)
-		throw std::runtime_error("Failed to load texture image!");
-
-	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
-	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)
-
-	// Create a staging buffer (temporary buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it)
-	VkBuffer	   stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-
-	createBuffer(imageSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory);
-
-	// Copy directly the pixel values from the image we loaded to the staging-buffer.
-	void* data;
-	vkMapMemory(e.device, stagingBufferMemory, 0, imageSize, 0, &data);	// vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (stagingBufferMemory). We have to provide the logical device that owns the memory (e.device).
-	memcpy(data, pixels, static_cast<size_t>(imageSize));				// Copies a number of bytes (imageSize) from a source (pixels) to a destination (data).
-	vkUnmapMemory(e.device, stagingBufferMemory);						// Unmap a previously mapped memory object (stagingBufferMemory).
-
-	stbi_image_free(pixels);	// Clean up the original pixel array
-
-	// Create the texture image
-	e.createImage(texWidth,
-		texHeight,
-		mipLevels,
-		VK_SAMPLE_COUNT_1_BIT,
-		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		textureImage,
-		textureImageMemory);
-
-	// Copy the staging buffer to the texture image
-	e.transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);					// Transition the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-	copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));											// Execute the buffer to image copy operation
-	// Transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
-	// transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);	// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
-	generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
-
-	// Cleanup the staging buffer and its memory
-	vkDestroyBuffer(e.device, stagingBuffer, nullptr);
-	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
-}
-
-void ModelData::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-{
-	VkCommandBuffer commandBuffer = e.beginSingleTimeCommands();
-
-	// Specify which part of the buffer is going to be copied to which part of the image
-	VkBufferImageCopy region{};
-	region.bufferOffset = 0;							// Byte offset in the buffer at which the pixel values start
-	region.bufferRowLength = 0;							// How the pixels are laid out in memory. 0 indicates that the pixels are thightly packed. Otherwise, you could have some padding bytes between rows of the image, for example. 
-	region.bufferImageHeight = 0;							// How the pixels are laid out in memory. 0 indicates that the pixels are thightly packed. Otherwise, you could have some padding bytes between rows of the image, for example.
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;	// imageSubresource indicate to which part of the image we want to copy the pixels
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = { 0, 0, 0 };					// Indicate to which part of the image we want to copy the pixels
-	region.imageExtent = { width, height, 1 };			// Indicate to which part of the image we want to copy the pixels
-
-	// Enqueue buffer to image copy operations
-	vkCmdCopyBufferToImage(commandBuffer,
-		buffer,
-		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,			// Layout the image is currently using
-		1,
-		&region);
-
-	e.endSingleTimeCommands(commandBuffer);
-}
-
-void ModelData::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
-{
-	// Check if the image format supports linear blitting. We are using vkCmdBlitImage, but it's not guaranteed to be supported on all platforms bacause it requires our texture image format to support linear filtering, so we check it with vkGetPhysicalDeviceFormatProperties.
-	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(e.physicalDevice, imageFormat, &formatProperties);
-	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
-	{
-		throw std::runtime_error("Texture image format does not support linear blitting!");
-		// Two alternatives:
-		//		- Implement a function that searches common texture image formats for one that does support linear blitting.
-		//		- Implement the mipmap generation in software with a library like stb_image_resize. Each mip level can then be loaded into the image in the same way that you loaded the original image.
-		// It's uncommon to generate the mipmap levels at runtime anyway. Usually they are pregenerated and stored in the texture file alongside the base level to improve loading speed. <<<<<
-	}
-
-	VkCommandBuffer commandBuffer = e.beginSingleTimeCommands();
-
-	// Specify the barriers
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.image = image;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.subresourceRange.levelCount = 1;
-
-	int32_t mipWidth = texWidth;
-	int32_t mipHeight = texHeight;
-
-	for (uint32_t i = 1; i < mipLevels; i++)	// This loop records each of the VkCmdBlitImage commands. The source mip level is i - 1 and the destination mip level is i.
-	{
-		barrier.subresourceRange.baseMipLevel = i - 1;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;	// We transition level i - 1 to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. This transition will wait for level i - 1 to be filled, either from the previous blit command, or from vkCmdCopyBufferToImage. The current blit command will wait on this transition.
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		// Record a barrier (we transition level i - 1 to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. This transition will wait for level i - 1 to be filled, either from the previous blit command, or from vkCmdCopyBufferToImage. The current blit command will wait on this transition).
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		// Specify the regions that will be used in the blit operation
-		VkImageBlit blit{};
-		blit.srcOffsets[0] = { 0, 0, 0 };						// srcOffsets determine the 3D regions ...
-		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };		// ... that data will be blitted from.
-		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.srcSubresource.mipLevel = i - 1;
-		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
-		blit.dstOffsets[0] = { 0, 0, 0 };																	// dstOffsets determine the 3D region ...
-		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1,  mipHeight > 1 ? mipHeight / 2 : 1,  1 };	// ... that data will be blitted to.
-		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.dstSubresource.mipLevel = i;
-		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
-
-		// Record a blit command. Beware if you are using a dedicated transfer queue: vkCmdBlitImage must be submitted to a queue with graphics capability.
-		vkCmdBlitImage(commandBuffer,
-			image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,		// The textureImage is used for both the srcImage and dstImage parameter ...
-			image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,		// ...  because we're blitting between different levels of the same image.
-			1, &blit,
-			VK_FILTER_LINEAR);									// Enable interpolation
-
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		// Record a barrier (This barrier transitions mip level i - 1 to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. This transition waits on the current blit command to finish. All sampling operations will wait on this transition to finish).
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		if (mipWidth > 1) mipWidth /= 2;
-		if (mipHeight > 1) mipHeight /= 2;
-	}
-
-	barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	// Record a barrier (This barrier transitions the last mip level from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. This wasn't handled by the loop, since the last mip level is never blitted from).
-	vkCmdPipelineBarrier(commandBuffer,
-		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier);
-
-	e.endSingleTimeCommands(commandBuffer);
-}
-
-// (16)
-void ModelData::createTextureImageView()
-{
-	textureImageView = e.createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
-}
-
-// (17)
-void ModelData::createTextureSampler()
-{
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;					// How to interpolate texels that are magnified (oversampling) or ...
-	samplerInfo.minFilter = VK_FILTER_LINEAR;					// ... minified (undersampling). Choices: VK_FILTER_NEAREST, VK_FILTER_LINEAR
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;	// Addressing mode per axis (what happens when going beyond the image dimensions). In texture space coordinates, XYZ are UVW. Available values: VK_SAMPLER_ADDRESS_MODE_ ... REPEAT (repeat the texture), MIRRORED_REPEAT (like repeat, but inverts coordinates to mirror the image), CLAMP_TO_EDGE (take the color of the closest edge), MIRROR_CLAMP_TO_EDGE (like clamp to edge, but taking the opposite edge), CLAMP_TO_BORDER (return solid color).
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-	if (1)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
-	{
-		samplerInfo.anisotropyEnable = VK_TRUE;							// Specify if anisotropic filtering should be used
-		VkPhysicalDeviceProperties properties{};
-		vkGetPhysicalDeviceProperties(e.physicalDevice, &properties);
-		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;		// another option:  samplerInfo.maxAnisotropy = 1.0f;
-	}
-	else
-	{
-		samplerInfo.anisotropyEnable = VK_FALSE;
-		samplerInfo.maxAnisotropy = 1.0f;
-	}
-
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;	// Color returned (black, white or transparent, in format int or float) when sampling beyond the image with VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER. You cannot specify an arbitrary color.
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;							// Coordinate system to address texels in an image. False: [0, 1). True: [0, texWidth) & [0, texHeight). 
-	samplerInfo.compareEnable = VK_FALSE;							// If a comparison function is enabled, then texels will first be compared to a value, and the result of that comparison is used in filtering operations. This is mainly used for percentage-closer filtering on shadow maps (https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing). 
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;	// VK_SAMPLER_MIPMAP_MODE_ ... NEAREST (lod selects the mip level to sample from), LINEAR (lod selects 2 mip levels to be sampled, and the results are linearly blended)
-	samplerInfo.minLod = 0.0f;								// minLod=0 & maxLod=mipLevels allow the full range of mip levels to be used
-	samplerInfo.maxLod = static_cast<float>(mipLevels);	// lod: Level Of Detail
-	samplerInfo.mipLodBias = 0.0f;								// Used for changing the lod value. It forces to use lower "lod" and "level" than it would normally use
-
-	if (vkCreateSampler(e.device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create texture sampler!");
-	/*
-	* VkImage holds the mipmap data. VkSampler controls how that data is read while rendering.
-	* The sampler selects a mip level according to this pseudocode:
-	*
-	*	lod = getLodLevelFromScreenSize();						// Smaller when the object is close (may be negative)
-	*	lod = clamp(lod + mipLodBias, minLod, maxLod);
-	*
-	*	level = clamp(floor(lod), 0, texture.miplevels - 1);	// Clamped to the number of miplevels in the texture
-	*
-	*	if(mipmapMode == VK_SAMPLER_MIPMAP_MODE_NEAREST)		// Sample operation
-	*		color = sampler(level);
-	*	else
-	*		color = blend(sample(level), sample(level + 1));
-	*
-	*	if(lod <= 0)											// Filter
-	*		color = readTexture(uv, magFilter);
-	*	else
-	*		color = readTexture(uv, minFilter);
-	*/
-}
-
 // (18)
 /**
 *	Fill the members vertices and indices.
@@ -817,20 +572,21 @@ void ModelData::createUniformBuffers()
 void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
-	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[getNumDescriptors()];
+	bool addTexture = textures.size();
+	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[1 + addTexture];
 
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 	poolSizes[0].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
-	for (size_t i = 0; i < numTextures(); i++) 
+	if (addTexture)
 	{
-		poolSizes[1 + i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1 + i].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
 	}
 
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(getNumDescriptors());
+	poolInfo.poolSizeCount = static_cast<uint32_t>(1 + addTexture);
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = static_cast<uint32_t>(e.swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
 	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
@@ -866,13 +622,16 @@ void ModelData::createDescriptorSets()
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
 		bufferInfo.range  = dynUBO.range;
+		
+		VkDescriptorImageInfo* imageInfo = new VkDescriptorImageInfo[textures.size()];
+		for (size_t i = 0; i < textures.size(); i++) {
+			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo[i].imageView = textures[i].textureImageView;
+			imageInfo[i].sampler = textures[i].textureSampler;
+		}
 
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = textureImageView;
-		imageInfo.sampler = textureSampler;
-
-		VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[getNumDescriptors()];
+		bool addTexture = textures.size();
+		VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[1 + addTexture];
 		
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
@@ -884,57 +643,28 @@ void ModelData::createDescriptorSets()
 		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
 		descriptorWrites[0].pTexelBufferView = nullptr;									// [Optional] Used for descriptors that refer to buffer views
 		descriptorWrites[0].pNext = nullptr;											// LOOK why this line was not necessary before implementing no-texture descriptor (and no data from file)
-
-		for (size_t j = 0; j < numTextures(); j++)
+		std::cout << "textures.size() = " << textures.size() << std::endl;
+		if (textures.size())
 		{
-			descriptorWrites[1 + j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1 + j].dstSet = descriptorSets[i];
-			descriptorWrites[1 + j].dstBinding = 1;
-			descriptorWrites[1 + j].dstArrayElement = 0;
-			descriptorWrites[1 + j].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1 + j].descriptorCount = 1;			// LOOK maybe this can be used instead of the for-loop
-			descriptorWrites[1 + j].pBufferInfo = nullptr;
-			descriptorWrites[1 + j].pImageInfo = &imageInfo;
-			descriptorWrites[1 + j].pTexelBufferView = nullptr;
-			descriptorWrites[1 + j].pNext = nullptr;
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = descriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = textures.size();			// LOOK maybe this can be used instead of the for-loop
+			descriptorWrites[1].pBufferInfo = nullptr;
+			descriptorWrites[1].pImageInfo = imageInfo;
+			descriptorWrites[1].pTexelBufferView = nullptr;
+			descriptorWrites[1].pNext = nullptr;
 		}
 
-		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(getNumDescriptors()), descriptorWrites, 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
+		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(1 + addTexture), descriptorWrites, 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 
+		delete[] imageInfo;
 		delete[] descriptorWrites;
 	}
 }
-/*
-void ModelData::createDescriptorSets2()
-{
-	// Populate each descriptor set.
-	for (size_t i = 0; i < e.swapChainImages.size(); i++)
-	{
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
-		descriptorWrites[0].dstBinding = 0;												// Binding
-		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
-		//descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// Type of descriptor
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		descriptorWrites[0].descriptorCount = 1;										// Number of array elements to update
-		descriptorWrites[0].pBufferInfo = &bufferInfo;									// Used for descriptors that refer to buffer data (like our descriptor)
-		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
-		descriptorWrites[0].pTexelBufferView = nullptr;									// [Optional] Used for descriptors that refer to buffer views
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
-	}
-}
-*/
 void ModelData::recreateSwapChain()
 {
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
@@ -962,20 +692,14 @@ void ModelData::cleanupSwapChain()
 
 void ModelData::cleanup()
 {
-	// Texture
-	if (numTextures())
-	{
-		vkDestroySampler(e.device, textureSampler, nullptr);
-		vkDestroyImageView(e.device, textureImageView, nullptr);
-		vkDestroyImage(e.device, textureImage, nullptr);
-		vkFreeMemory(e.device, textureImageMemory, nullptr);
-	}
+	// Textures
+	textures.clear();
 
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);
 
 	// Index
-	if (includesIndices)
+	if (indices.size())
 	{
 		vkDestroyBuffer(e.device, indexBuffer, nullptr);
 		vkFreeMemory(e.device, indexBufferMemory, nullptr);
@@ -1025,8 +749,8 @@ void ModelData::setMM(size_t pos, glm::mat4& newValue)
 
 bool ModelData::isDataFromFile() { return dataFromFile; }
 
-size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[2]; }
+//size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[2]; }
 
-size_t ModelData::getNumDescriptors() { return 1 + numTextures(); } // 1 UBO + X textures
+//size_t ModelData::getNumDescriptors() { return 1 + numTextures(); } // 1 UBO + X textures
 
-bool ModelData::hasIndices() { return includesIndices; }
+//bool ModelData::hasIndices() { return indices.size(); }

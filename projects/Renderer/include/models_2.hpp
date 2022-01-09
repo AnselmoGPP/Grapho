@@ -14,21 +14,37 @@
 #include <glm/gtc/matrix_transform.hpp>		// Generate transformations matrices with glm::rotate (model), glm::lookAt (view), glm::perspective (projection).
 #include <glm/gtx/hash.hpp>
 
+
 /*
+	Content:
 		- VertexType
 		- VertexSet
 			- VertexPCT
 			- VertexPC
 			- VertexPT
 			- VertexPTN
+		- UBOtype
 		- UBOdynamic (UBOset)
 			- UBO_MVP
 			- UBO_MVPN
+
+	Data:
+		- Vertex:
+			- Position
+			- Color
+			- Texture coordinates
+			- Normal
+		- Descriptors:
+			- UBOs
+				- Model matrix
+				- View matrix
+				- Proyection matrix
+				- Model matrix for normals
+			- Textures
+				- Diffuse map
+				- Especular map
 */
 
-
-enum vertexSize;	// PCT, PC, PT, PTN
-enum uboSize;		// MVP, MVPN
 
 /// Used for configuring VertexSet. Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
 class VertexType
@@ -74,6 +90,77 @@ private:
 	char* buffer;			// Set of vertex objects stored directly in bytes
 	size_t capacity;		// (resizable) Maximum number of vertex objects that fit in buffer
 	size_t numVertex;		// Number of vertex objects stored in buffer
+};
+
+/// Class used for configuring the dynamic UBO. UBO attributes: MVP matrices (MVP), Model matrix for normals (MN).
+class UBOtype
+{
+public:
+	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0);
+
+	std::array<size_t, 4> numEachAttrib;
+};
+
+/// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
+/// Attributes of the UBO: Model, View, Projection, ModelForNormals
+struct UBOdynamic
+{
+	UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);
+	UBOdynamic& operator = (const UBOdynamic& obj);
+	~UBOdynamic() = default;
+
+	void resize(size_t newCount);
+	void setModel(size_t position, const glm::mat4& matrix);
+	void setView(size_t position, const glm::mat4& matrix);
+	void setProj(size_t position, const glm::mat4& matrix);
+	void setMNor(size_t position, const glm::mat3& matrix);
+
+	size_t					count;			///< Number of dynamic UBOs
+	VkDeviceSize			range;			///< Size (bytes) of an aligned dynamic UBO (example: 4)
+	size_t					totalBytes;		///< Size (bytes) of the set of dynamic UBOs (example: 12)
+	std::vector<uint32_t>	dynamicOffsets;	///< Offsets for each dynamic UBO
+	std::array<size_t, 4>	numEachAttrib;
+	//std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
+	//std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
+
+	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
+	size_t dirtyCount;						///< Number of dynamic UBOs, including those generated with dirtyResize()
+
+	std::vector<char> ubo;			///< Store the UBO that will be passed to shader	<<< is alignas(16) necessary?
+
+private:
+	const std::array<size_t, 4>	attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12 };	// 64, 64, 64, 36+12 (including padding for getting alignment with 16 bits)
+};
+
+
+#include "environment.hpp"
+
+class Texture
+{
+	const char* path;
+	VulkanEnvironment* e;
+
+	void createTextureImage();			///< Load an image and upload it into a Vulkan object.
+	void createTextureImageView();		///< Create an image view for the texture (images are accessed through image views rather than directly).
+	void createTextureSampler();		///< Create a sampler for the textures (it applies filtering and transformations).
+
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
+	void copyCString(const char*& destination, const char* source);
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+	
+public:
+	Texture(const char* path);
+	Texture(const Texture& obj);
+	~Texture();
+
+	void loadAndCreateTexture(VulkanEnvironment& e);
+
+	uint32_t					 mipLevels;				///< Number of levels (mipmaps)
+	VkImage						 textureImage;			///< Opaque handle to an image object.
+	VkDeviceMemory				 textureImageMemory;	///< Opaque handle to a device memory object.
+	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
+	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
 
 /// Vertex structure containing Position, Color and Texture coordinates.
@@ -142,8 +229,6 @@ struct VertexPTN
 	glm::vec3 normals;
 };
 
-enum vertexSize { PCT = sizeof(VertexPCT), PC = sizeof(VertexPC), PT = sizeof(VertexPT), PTN = sizeof(VertexPTN) };
-
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
 struct UBO_MVP {
@@ -159,46 +244,5 @@ struct UBO_MVPN {
 	alignas(16) glm::mat3 normalMatrix;
 };
 
-enum uboSize { MVP = sizeof(UBO_MVP), MVPN = sizeof(UBO_MVPN) };
-
-/// Class used for configuring the dynamic UBO. UBO attributes: MVP matrices (MVP), Model matrix for normals (MN).
-class UBOtype
-{
-public:
-	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0);
-
-	std::array<size_t, 4> numEachAttrib;
-};
-
-/// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
-/// Attributes of the UBO: Model, View, Projection, ModelForNormals
-struct UBOdynamic
-{
-	UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);
-	UBOdynamic& operator = (const UBOdynamic& obj);
-	~UBOdynamic() = default;
-
-	void resize(size_t newCount);
-	void setModel(size_t position, const glm::mat4& matrix);
-	void setView(size_t position, const glm::mat4& matrix);
-	void setProj(size_t position, const glm::mat4& matrix);
-	void setMNor(size_t position, const glm::mat3& matrix);
-
-	size_t					count;			///< Number of dynamic UBOs
-	VkDeviceSize			range;			///< Size (bytes) of an aligned dynamic UBO (example: 4)
-	size_t					totalBytes;		///< Size (bytes) of the set of dynamic UBOs (example: 12)
-	std::vector<uint32_t>	dynamicOffsets;	///< Offsets for each dynamic UBO
-	std::array<size_t, 4>	numEachAttrib;
-	//std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
-	//std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
-
-	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
-	size_t dirtyCount;						///< Number of dynamic UBOs, including those generated with dirtyResize()
-
-	std::vector<char> ubo;			///< Store the UBO that will be passed to shader	<<< is alignas(16) necessary?
-
-private:
-	const std::array<size_t, 4>	attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12 };	// 64, 64, 64, 36+12 (including padding for getting alignment with 16 bits)
-};
 
 #endif

@@ -38,13 +38,16 @@
 
 #define LINE_WIDTH 1.0f
 
+extern std::vector<Texture> noTextures;
+extern std::vector<uint32_t> noIndices;
+
 //template <typename Vertex>
 class ModelData
 {
 	VulkanEnvironment& e;
 
 	const char* modelPath;
-	const char* texturePath;
+	//const char* texturePath;
 
 	const char* VSpath;
 	const char* FSpath;
@@ -53,7 +56,6 @@ class ModelData
 	//VkDeviceSize usefulUBOsize;
 	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
-	bool includesIndices;					///< Flags if indices are included (usually, not required for points)
 	bool hasTransparencies;					///< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
@@ -61,9 +63,9 @@ class ModelData
 	void createDescriptorSetLayout();		///< Layout for the descriptor set (descriptor: handle or pointer into a resource (buffer, sampler, texture...))
 	void createGraphicsPipeline(const char* VSpath, const char* FSpath);///< Create the graphics pipeline.
 
-	void createTextureImage(const char* path);///< Load an image and upload it into a Vulkan object.
-	void createTextureImageView();			///< Create an image view for the texture (images are accessed through image views rather than directly).
-	void createTextureSampler();			///< Create a sampler for the textures (it applies filtering and transformations).
+	//void createTextureImage(const char* path);///< Load an image and upload it into a Vulkan object.
+	//void createTextureImageView();			///< Create an image view for the texture (images are accessed through image views rather than directly).
+	//void createTextureSampler();			///< Create a sampler for the textures (it applies filtering and transformations).
 	void loadModel(const char* obj_file);	///< Populate the vertices and indices members with the vertex data from the mesh (OBJ file).
 	void createVertexBuffer();				///< Vertex buffer creation.
 	void createIndexBuffer();				///< Index buffer creation
@@ -78,17 +80,17 @@ class ModelData
 	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);	///< Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
 	VkShaderModule				createShaderModule(const std::vector<char>& code);				///< Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
 	void						createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
-	void						copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-	void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+	//void						copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	//void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
 	size_t						getNumDescriptors();
 
 public:
 	/// Data from file 
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, const char* texturePath, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
 	/// Data passed as argument
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>* indicesData, const char* texturePath, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	virtual ~ModelData();
 
 	ModelData& fullConstruction();
@@ -99,11 +101,7 @@ public:
 	VkPipelineLayout			 pipelineLayout;		///< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		///< Opaque handle to a pipeline object.
 
-	uint32_t					 mipLevels;				///< Number of levels (mipmaps)
-	VkImage						 textureImage;			///< Opaque handle to an image object.
-	VkDeviceMemory				 textureImageMemory;	///< Opaque handle to a device memory object.
-	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
-	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
+	std::vector<Texture>		 textures;
 
 	VertexSet					 vertices;				///< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
 	std::vector<uint32_t>		 indices;				///< Indices of our model (indices(
@@ -130,8 +128,8 @@ public:
 	void setMM(size_t pos, glm::mat4& newValue);
 
 	bool isDataFromFile();
-	size_t numTextures();
-	bool hasIndices();
+	//size_t numTextures();
+	//bool hasIndices();
 };
 
 
