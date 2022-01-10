@@ -405,14 +405,11 @@ void UBOdynamic::setMNor(size_t position, const glm::mat3& matrix)
 
 Texture::Texture(const char* path) : path(nullptr), e(nullptr)
 {
-	std::cout << "Texture constructor" << std::endl;
 	copyCString(this->path, path);
-	std::cout << path << std::endl;
 }
 
 Texture::Texture(const Texture& obj)
 {
-	std::cout << "Copy constructor" << std::endl;
 	copyCString(this->path, obj.path);
 	std::cout << path << std::endl;
 
@@ -441,26 +438,23 @@ Texture::~Texture()
 
 void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 {
-	std::cout << "Texture load 1" << std::endl;
 	this->e = &e;
-	std::cout << "Texture load 2" << std::endl;
-	createTextureImage(); std::cout << "Texture load 3" << std::endl;
-	createTextureImageView(); std::cout << "Texture load 4" << std::endl;
-	createTextureSampler(); std::cout << "Texture load 5" << std::endl;
+	
+	createTextureImage();
+	createTextureImageView();
+	createTextureSampler();
 }
 
 // (15)
 /// Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer
 void Texture::createTextureImage()
 {
-std::cout << "createTextureImage 1" << std::endl;
-std::cout << path << std::endl;
 	// Load an image (usually, the most expensive process)
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
 	if (!pixels)
 		throw std::runtime_error("Failed to load texture image!");
-std::cout << "createTextureImage 2" << std::endl;
+
 	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)
 

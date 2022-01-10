@@ -27,6 +27,7 @@
 		- UBOdynamic (UBOset)
 			- UBO_MVP
 			- UBO_MVPN
+		- Texture
 
 	Data:
 		- Vertex:

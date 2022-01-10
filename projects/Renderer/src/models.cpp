@@ -27,8 +27,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), indices(indices), textures(textures), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
 {
-	std::cout << "Model constructor 1" << std::endl;
-
 	// Save paths
 	//copyCString(this->texturePath, texturePath);
 	copyCString(this->VSpath, VSpath);
@@ -41,8 +39,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	//vertices = vertexData;
 	//if (indicesData) indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
 	//else indices = std::vector<uint32_t>(0);
-
-	std::cout << "Model constructor 2" << std::endl;
 }
 
 ModelData::~ModelData()
@@ -59,25 +55,20 @@ ModelData::~ModelData()
 
 ModelData& ModelData::fullConstruction()
 {
-	std::cout << "FC 1" << std::endl;
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
 
-	std::cout << "FC 2" << std::endl;
 	for(size_t i = 0; i < textures.size(); i++)
 		textures[i].loadAndCreateTexture(e);
 
-	std::cout << "FC 3" << std::endl;
 	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
 	if(indices.size()) createIndexBuffer();
 
-	std::cout << "FC 4" << std::endl;
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 
-	std::cout << "FC 5" << std::endl;
 	fullyConstructed = true;
 	return *this;
 }
@@ -111,15 +102,15 @@ void ModelData::createDescriptorSetLayout()
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 
 	// Combine the bindings in one structure
-	bool addTexture = textures.size();
-	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[1 + addTexture];
+	size_t bindingCount = 1 + !textures.empty();
+	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[bindingCount];
 	bindings[0] = uboLayoutBinding;
-	if(addTexture) bindings[1] = samplerLayoutBinding;
+	if(!textures.empty()) bindings[1] = samplerLayoutBinding;
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(1 + addTexture);
+	layoutInfo.bindingCount = static_cast<uint32_t>(bindingCount);
 	layoutInfo.pBindings = bindings;
 
 	if (vkCreateDescriptorSetLayout(e.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
@@ -572,21 +563,22 @@ void ModelData::createUniformBuffers()
 void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
-	bool addTexture = textures.size();
-	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[1 + addTexture];
+	size_t descriptorCount = 1 + textures.size();
+	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[descriptorCount];
 
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 	poolSizes[0].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
-	if (addTexture)
+
+	for(size_t i = 1; i < descriptorCount; ++i)
 	{
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		poolSizes[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[i].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
 	}
 
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(1 + addTexture);
+	poolInfo.poolSizeCount = static_cast<uint32_t>(descriptorCount);
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = static_cast<uint32_t>(e.swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
 	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).

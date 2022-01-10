@@ -155,30 +155,21 @@ void update(Renderer& r)
 	size_t maxfps		= r.getTimer().getMaxPossibleFPS();
 	glm::vec3 pos		= r.getCamera().Position;
 
-
 	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
-
-	if (assets.find("grid") != assets.end())
-		assets["grid"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("skyBox") != assets.end())
 		assets["skyBox"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 
-	if (assets.find("skyBoxX") != assets.end())
-	{
-		assets["skyBoxX" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBoxY" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBoxZ" ]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-X"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-Y"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-		assets["skyBox-Z"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-	}
+	if (assets.find("sun") != assets.end())
+		assets["sun"]->setMM(0, sunMM(pos, dayTime, sunDist, sunAngDist));
+
+	if (assets.find("grid") != assets.end())
+		assets["grid"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("cottage") != assets.end())
 		assets["cottage"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 
-	if (assets.find("sun") != assets.end())
-		assets["sun"]->setMM(0, sunMM(pos, dayTime, sunDist, sunAngDist));
+
 
 
 	//if (time > 5 && cottageLoaded)
@@ -387,7 +378,10 @@ void setFloor(Renderer& app)
 void setTerrain(Renderer& app)
 {
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "squares.png").c_str()) };
+	std::vector<Texture> textures = { 
+		Texture((TEXTURES_DIR + "squares.png").c_str()),
+		Texture((TEXTURES_DIR + "grass.png").c_str())
+	};
 
 	assets["terrain"] = app.newModel( 
 		1, primitiveTopology::triangle,
