@@ -31,7 +31,6 @@
 #include <mutex>
 #include <optional>				// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 
-#include "environment.hpp"
 #include "models.hpp"
 #include "input.hpp"
 #include "timer.hpp"
@@ -109,8 +108,8 @@ public:
 	TimerSet&		getTimer();
 	Camera&			getCamera();
 
-	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency = false);
-	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency = false);
+	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& VsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency = false);
+	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency = false);
 
 	void			deleteModel(modelIterator model);
 	void			setRenders(modelIterator& model, size_t numberOfRenders);

@@ -169,7 +169,7 @@ bool ifOnce::ifBigger(float a, float b)
 		return false;
 }
 
-glm::mat4 sunMM(glm::vec3 pos, float dayTime, float sunDist, float sunAngDist)
+glm::mat4 sunMM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist)
 {
 	float sunSize = 2 * sunDist * tan(sunAngDist / 2);
 	float sunAng = (dayTime - 6) * (pi / 12);
@@ -180,6 +180,16 @@ glm::mat4 sunMM(glm::vec3 pos, float dayTime, float sunDist, float sunAngDist)
 	return modelMatrix(
 		glm::vec3(sunSize, sunSize, sunSize),
 		glm::vec3(xRotation, yRotation, zRotation),
-		glm::vec3(pos.x + sunDist * cos(sunAng), pos.y + 0.f, pos.z + sunDist * sin(sunAng))
-	);
+		glm::vec3(camPos.x + sunDist * cos(sunAng), camPos.y + 0.f, camPos.z + sunDist * sin(sunAng)) );
+}
+
+glm::vec3 sunLightDirection(float dayTime)
+{
+	glm::vec3 direction;
+	//direction.x = (dayTime - 18) * (pi / 12)
+	direction.x = -pi/2;
+	direction.y = 0;
+	direction.z = 0;
+
+	return direction;
 }

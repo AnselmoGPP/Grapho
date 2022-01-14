@@ -84,11 +84,11 @@ void Renderer::createCommandBuffers()
 		renderPassInfo.pClearValues			= clearValues.data();							// ... used as load operation for the color attachment and depth buffer.
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
-
+		std::cout << "CB 1" << std::endl;
 		// Basic drawing commands (for each model)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
 		{
-			if (it->dynUBO.count == 0) continue;
+			if (it->vsDynUBO.count == 0) continue;
 
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 			VkDeviceSize offsets[] = { 0 };	// <<<
@@ -98,9 +98,12 @@ void Renderer::createCommandBuffers()
 			if(it->indices.size())
 				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
-			for (size_t j = 0; j < it->dynUBO.count; j++)
+			for (size_t j = 0; j < it->vsDynUBO.count; j++)
 			{
-				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->dynUBO.dynamicOffsets[j]);
+				if(it->vsDynUBO.range)
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
+				else
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 				if (it->indices.size())
 					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 				else
@@ -123,6 +126,7 @@ void Renderer::createCommandBuffers()
 		vkCmdEndRenderPass(commandBuffers[i]);
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
+		std::cout << "CB 2" << std::endl;
 	}
 }
 
@@ -156,14 +160,13 @@ void Renderer::mainLoop()
 {
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
-	std::cout << "- Start render loop" << std::endl;
 
 	while (!glfwWindowShouldClose(e.window))
 	{
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
-		std::cout << "Render loop 1" << std::endl;
+
 		drawFrame();
-		std::cout << "Render loop 2" << std::endl;
+		
 		//if(modelsToLoad.size() > 0) addModelAndupdateCommandBuffers();
 
 		if (glfwGetKey(e.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -195,9 +198,6 @@ void Renderer::stopThread()
 */
 void Renderer::drawFrame()
 {
-	// Compute time difference
-	timer.computeDeltaTime();
-
 	// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
 	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -233,8 +233,7 @@ void Renderer::drawFrame()
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-		//submitInfo.pCommandBuffers = commandBuffers.data();			// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
+		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];		// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
 
 		vkResetFences(e.device, 1, &inFlightFences[currentFrame]);		// Reset the fence to the unsignaled state.
 
@@ -313,13 +312,9 @@ void Renderer::recreateSwapChain()
 /// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
 void Renderer::updateUniformBuffer(uint32_t currentImage)
 {
-	//static auto startTime	= std::chrono::high_resolution_clock::now();
-	//static float prevTime	= 0;
-	//auto currentTime		= std::chrono::high_resolution_clock::now();
-	//float time			= std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	//float deltaTime		= time - prevTime;
-	//prevTime				= time;
-	std::cout << "update 1" << std::endl;
+	// Compute time difference
+	timer.computeDeltaTime();
+
 	// Compute transformation matrix
 	input.cam.ProcessCameraInput(timer.getDeltaTime());
 	glm::mat4 view = input.cam.GetViewMatrix();
@@ -330,27 +325,26 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 
 	// Update model matrices and other things (user defined)
 	userUpdate(*this);
-	std::cout << "update 2" << std::endl;
+
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
 	for (modelIterator it = models.begin(); it != models.end(); it++)
 	{
-		if (it->dynUBO.count == 0) continue;
-
-		//UBOdynamic uboD(it->numUBOs, it->getUBORange());		// LOOK keep UBOdynamic in modelData
-
-		for (size_t i = 0; i < it->dynUBO.count; i++)
+		if (it->vsDynUBO.totalBytes)
 		{
-			//it->dynUBO.setModel(i, it->MM[i]);	// <<< MM EXISTS FOR MULTITHREADING ISSUES. SHOULD I RESTORE IT?
-			it->dynUBO.setView(i, view);
-			it->dynUBO.setProj(i, proj);
-			//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));	
-		}
+			for (size_t i = 0; i < it->vsDynUBO.count; i++)
+			{
+				//it->dynUBO.setModel(i, it->MM[i]);	// <<< MM EXISTS FOR MULTITHREADING ISSUES. SHOULD I RESTORE IT?
+				it->vsDynUBO.setViewM(i, 0, view);
+				it->vsDynUBO.setProjM(i, 0, proj);
+				//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));	
+			}
 
-		void* data;
-		vkMapMemory(e.device, it->uniformBuffersMemory[currentImage], 0, it->dynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-		memcpy(data, it->dynUBO.ubo.data(), it->dynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-		vkUnmapMemory(e.device, it->uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+			void* data;
+			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+			vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+		}
 	}
 }
 
@@ -393,18 +387,18 @@ void Renderer::cleanupSwapChain()
 }
 
 // Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, modelPath, textures, VSpath, FSpath, vertexType, transparency);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, vsUboType, fsUboType, modelPath, textures, VSpath, FSpath, vertexType, transparency);
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 	
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, uboType, vertexType, numVertex, vertexData, indices, textures, VSpath, FSpath, transparency);
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, vsUboType, fsUboType, vertexType, numVertex, vertexData, indices, textures, VSpath, FSpath, transparency);
 }
 
 void Renderer::deleteModel(modelIterator model)
@@ -416,14 +410,14 @@ void Renderer::deleteModel(modelIterator model)
 
 void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 {
-	if (model->dynUBO.count != numberOfRenders)
+	if (model->vsDynUBO.count != numberOfRenders)
 	{
 		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 
 		rendersToSet[&model] = numberOfRenders;
 
-		if(numberOfRenders > model->dynUBO.count)		// Done to allow the user to update the new UBOs immediately
-			model->dynUBO.dirtyResize(numberOfRenders);
+		if(numberOfRenders > model->vsDynUBO.count)		// Done to allow the user to update the new UBOs immediately
+			model->vsDynUBO.dirtyResize(numberOfRenders);
 	}
 }
 

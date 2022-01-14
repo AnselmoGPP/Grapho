@@ -55,6 +55,14 @@ public:
 	bool ifBigger(float a, float b);
 };
 
-glm::mat4 sunMM(glm::vec3 pos, float dayTime, float sunDist, float sunAngDist);
+/*  @brief Get Model matrix for the sun.
+        @param pos Camera position.
+        @param dayTime Time of the day (12,5 = 12:30). It determines the sun angle.
+        @param sunDist Sun distance from camPos.
+        @param sunAngDist Sun size as angle in the celestial sphere.
+*/
+glm::mat4 sunMM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist);
+
+glm::vec3 sunLightDirection(float dayTime);
 
 #endif

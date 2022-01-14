@@ -4,6 +4,35 @@
 #include "models_2.hpp"
 
 
+void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+{
+	// Create buffer.
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;									// For multiple purposes use a bitwise or.
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;			// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
+	bufferInfo.flags = 0;										// Used to configure sparse buffer memory.
+
+	if (vkCreateBuffer(e.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)	// vkCreateBuffer creates a new buffer object and returns it to a pointer to a VkBuffer provided by the caller.
+		throw std::runtime_error("Failed to create buffer!");
+
+	// Get buffer requirements.
+	VkMemoryRequirements memRequirements;		// Members: size (amount of memory in bytes. May differ from bufferInfo.size), alignment (offset in bytes where the buffer begins in the allocated region. Depends on bufferInfo.usage and bufferInfo.flags), memoryTypeBits (bit field of the memory types that are suitable for the buffer).
+	vkGetBufferMemoryRequirements(e.device, buffer, &memRequirements);
+
+	// Allocate memory for the buffer.
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = e.findMemoryType(memRequirements.memoryTypeBits, properties);		// Properties parameter: We need to be able to write our vertex data to that memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
+
+	if (vkAllocateMemory(e.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate buffer memory!");
+
+	vkBindBufferMemory(e.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
+}
+
 //VertexType -----------------------------------------------------------------
 
 VertexType::VertexType(size_t numP, size_t numC, size_t numT, size_t numN)
@@ -301,33 +330,32 @@ size_t std::hash<VertexPT>::operator()(VertexPT const& vertex) const
 
 // Dynamic Uniform Buffer Objects -----------------------------------------------------------------
 
-UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN)
+UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN, size_t numLights)
 {
 	numEachAttrib[0] = numM;
 	numEachAttrib[1] = numV;
 	numEachAttrib[2] = numP;
 	numEachAttrib[3] = numMN;
+	numEachAttrib[4] = numLights;
 }
 
-UBOdynamic::UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment)
-	: count(0), dirtyCount(0)
+UBO::UBO(VulkanEnvironment& e, size_t dynUBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment)
+	: count(0), range(0), dirtyCount(0), e(e)
 {
-	// Get amount of each attribute per dynamic UBO
 	for(size_t i = 0; i < numEachAttrib.size(); i++)
 		numEachAttrib[i] = uboType.numEachAttrib[i];
 
-	// Get range
-	VkDeviceSize usefulUBOsize = 0;			// Section of the range that will be actually used (example: 3)
+	size_t usefulUBOsize = 0;					///< Section of the range that will be actually used(example: 3)
 	for (size_t i = 0; i < numEachAttrib.size(); i++)
 		usefulUBOsize += attribsSize[i] * numEachAttrib[i];
 
-	range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
+	if (usefulUBOsize)
+		range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
 
-	// Resize buffers
-	resize(UBOcount);
+	resize(dynUBOcount);
 }
-
-UBOdynamic& UBOdynamic::operator = (const UBOdynamic& obj)
+/*
+UBO& UBO::operator = (const UBO& obj)
 {
 	count = obj.count;
 	dirtyCount = obj.dirtyCount;
@@ -337,8 +365,8 @@ UBOdynamic& UBOdynamic::operator = (const UBOdynamic& obj)
 
 	return *this;
 }
-
-void UBOdynamic::resize(size_t newCount)
+*/
+void UBO::resize(size_t newCount)// <<< what to do in modelData if uboType == 0
 {	
 	size_t oldCount = count;
 
@@ -348,6 +376,7 @@ void UBOdynamic::resize(size_t newCount)
 	ubo.resize(totalBytes);
 	dynamicOffsets.resize(newCount);
 
+	// Initialize the new Model matrices and Model matrices for normals
 	if (newCount > oldCount)
 	{
 		glm::mat4 defaultM;
@@ -360,43 +389,94 @@ void UBOdynamic::resize(size_t newCount)
 
 		for (size_t i = oldCount; i < newCount; ++i)
 		{
-			if (numEachAttrib[0]) setModel(i, defaultM);
-			if (numEachAttrib[3]) setMNor (i, defaultMNor);
+			for (size_t j = 0; j < numEachAttrib[0]; ++j) setModelM(i, 0, defaultM);
+			for (size_t j = 0; j < numEachAttrib[3]; ++j) setMNorm (i, 0, defaultMNor);
 			dynamicOffsets[i] = i * range;
 		}
 	}
 }
 
-void UBOdynamic::dirtyResize(size_t newCount) 
+// (21)
+void UBO::createUniformBuffers()
+{
+	std::cout << range << " + " << count << " = " << totalBytes << std::endl;
+
+	std::cout << "createUniformBuffers" << std::endl;
+	uniformBuffers.resize(e.swapChainImages.size());
+	uniformBuffersMemory.resize(e.swapChainImages.size());
+	
+	//destroyUniformBuffers();		// Not required since Renderer calls this first
+
+	if (range)
+		for (size_t i = 0; i < e.swapChainImages.size(); i++)
+			createBuffer(
+				e,
+				count == 0 ? range : totalBytes,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				uniformBuffers[i],
+				uniformBuffersMemory[i]);
+
+	std::cout << "Finish!" << std::endl;
+}
+
+void UBO::destroyUniformBuffers()
+{
+	if (range)
+		for (size_t i = 0; i < e.swapChainImages.size(); i++)
+		{
+			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
+			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
+		}
+}
+
+void UBO::dirtyResize(size_t newCount)
 {
 	ubo.resize(newCount * range);
 	dirtyCount = newCount;
 }
 
-void UBOdynamic::setModel(size_t position, const glm::mat4& matrix)
+size_t UBO::getPos(size_t dynUBO, size_t attribSet, size_t attrib)
 {
-	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range];
+	size_t pos = dynUBO * range;
+
+	for (size_t i = 0; i < attribSet; ++i)
+		pos += numEachAttrib[i] * attribsSize[i];
+
+	pos += attrib * attribsSize[attribSet];
+
+	return pos;
+}
+
+void UBO::setModelM(size_t posDyn, size_t attrib, const glm::mat4& matrix)
+{
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[getPos(posDyn, 0, attrib)];
 	*destination = matrix;					// Equivalent to:   memcpy((void*)original, (void*)&matrix, sizeof(glm::mat4));
 }
 
-void UBOdynamic::setView(size_t position, const glm::mat4& matrix)
+void UBO::setViewM(size_t posDyn, size_t attrib, const glm::mat4& matrix)
 {
-	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0]];
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[getPos(posDyn, 1, attrib)];
 	*destination = matrix;
 }
 
-void UBOdynamic::setProj(size_t position, const glm::mat4& matrix)
+void UBO::setProjM(size_t posDyn, size_t attrib, const glm::mat4& matrix)
 {
-	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0] + attribsSize[1] * numEachAttrib[1]];
+	glm::mat4* destination = (glm::mat4*)&ubo.data()[getPos(posDyn, 2, attrib)];
 	*destination = matrix;
 }
 
-void UBOdynamic::setMNor(size_t position, const glm::mat3& matrix)
+void UBO::setMNorm(size_t posDyn, size_t attrib, const glm::mat3& matrix)
 {
-	glm::mat4* destination = (glm::mat4*)&ubo.data()[position * range + attribsSize[0] * numEachAttrib[0] + attribsSize[1] * numEachAttrib[1] + attribsSize[2] * numEachAttrib[2]];
+	glm::mat3* destination = (glm::mat3*)&ubo.data()[getPos(posDyn, 3, attrib)];
 	*destination = matrix;
 }
 
+void UBO::setLight(size_t posDyn, size_t attrib, Light& light)
+{
+	Light* destination = (Light*)&ubo.data()[getPos(posDyn, 4, attrib)];
+	*destination = light;
+}
 
 // Textures -----------------------------------------------------------------
 
@@ -411,7 +491,6 @@ Texture::Texture(const char* path) : path(nullptr), e(nullptr)
 Texture::Texture(const Texture& obj)
 {
 	copyCString(this->path, obj.path);
-	std::cout << path << std::endl;
 
 	if (e)
 	{
@@ -462,7 +541,9 @@ void Texture::createTextureImage()
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	createBuffer(imageSize,
+	createBuffer(
+		*e,
+		imageSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
@@ -689,39 +770,52 @@ void Texture::createTextureSampler()
 	*/
 }
 
-void Texture::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-	// Create buffer.
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = usage;									// For multiple purposes use a bitwise or.
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;			// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
-	bufferInfo.flags = 0;										// Used to configure sparse buffer memory.
-
-	if (vkCreateBuffer(e->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)	// vkCreateBuffer creates a new buffer object and returns it to a pointer to a VkBuffer provided by the caller.
-		throw std::runtime_error("Failed to create buffer!");
-
-	// Get buffer requirements.
-	VkMemoryRequirements memRequirements;		// Members: size (amount of memory in bytes. May differ from bufferInfo.size), alignment (offset in bytes where the buffer begins in the allocated region. Depends on bufferInfo.usage and bufferInfo.flags), memoryTypeBits (bit field of the memory types that are suitable for the buffer).
-	vkGetBufferMemoryRequirements(e->device, buffer, &memRequirements);
-
-	// Allocate memory for the buffer.
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = e->findMemoryType(memRequirements.memoryTypeBits, properties);		// Properties parameter: We need to be able to write our vertex data to that memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
-
-	if (vkAllocateMemory(e->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate buffer memory!");
-
-	vkBindBufferMemory(e->device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
-}
-
 void Texture::copyCString(const char*& destination, const char* source)
 {
 	size_t siz = strlen(source) + 1;
 	char* address = new char[siz];
 	strncpy(address, source, siz);
 	destination = address;
+}
+
+// Light -----------------------------------------------------------------
+
+Light::Light() { lightType = 0; }
+
+void Light::turnOff() { lightType = 0; }
+
+void Light::setDirectional(glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
+{
+	this->lightType = 1;
+	this->direction = direction;
+	this->ambient = ambient;
+	this->diffuse = diffuse;
+	this->specular = specular;
+}
+
+void Light::setPoint(glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic)
+{
+	this->lightType = 2;
+	this->position = position;
+	this->ambient = ambient;
+	this->diffuse = diffuse;
+	this->specular = specular;
+	this->constant = constant;
+	this->linear = linear;
+	this->quadratic = quadratic;
+}
+
+void Light::setSpot(glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff)
+{
+	this->lightType = 3;
+	this->position = position;
+	this->direction = direction;
+	this->ambient = ambient;
+	this->diffuse = diffuse;
+	this->specular = specular;
+	this->constant = constant;
+	this->linear = linear;
+	this->quadratic = quadratic;
+	this->cutOff = cutOff;
+	this->outerCutOff = outerCutOff;
 }

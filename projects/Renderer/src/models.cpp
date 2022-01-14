@@ -8,8 +8,16 @@ std::vector<uint32_t> noIndices;
 
 
 /// Constructor. Requires model path and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(true), fullyConstructed(false), hasTransparencies(transparency), vertices(vertexType), textures(textures), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+	: e(environment), 
+	primitiveTopology(primitiveTopology), 
+	dataFromFile(true), 
+	fullyConstructed(false), 
+	hasTransparencies(transparency), 
+	vertices(vertexType), 
+	textures(textures), 
+	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment), 
+	fsUBO(e, 0, fsUboType, e.minUniformBufferOffsetAlignment)
 {
 	// Save paths
 	copyCString(this->modelPath, modelPath);
@@ -17,23 +25,34 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, 
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
 
-	// Set up UBO data (Model matrices and Dynamic offsets)
-	resizeUBOset(numberOfRenderings);
+	// Set up UBOs
+	if (fsUBO.range) fsUBO.resize(1);
+	resizeUBOset(numRenderings);
 
 	vertices = VertexSet(VertexType(1, 1, 1, 0));	// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 }
 
 /// Constructor. Requires vertex data, indices data, and texture path.
-ModelData::ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
-	: e(environment), primitiveTopology(primitiveTopology), dataFromFile(false), fullyConstructed(false), hasTransparencies(transparency), vertices(vertexType, numVertex, vertexData), indices(indices), textures(textures), dynUBO(0, uboType, e.minUniformBufferOffsetAlignment)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+	: e(environment), 
+	primitiveTopology(primitiveTopology), 
+	dataFromFile(false), 
+	fullyConstructed(false), 
+	hasTransparencies(transparency), 
+	vertices(vertexType, numVertex, vertexData), 
+	indices(indices), 
+	textures(textures), 
+	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment), 
+	fsUBO(e, 0, fsUboType, e.minUniformBufferOffsetAlignment)
 {
 	// Save paths
 	//copyCString(this->texturePath, texturePath);
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
 
-	// Set up UBO data (Model matrices and Dynamic offsets)
-	resizeUBOset(numberOfRenderings);
+	// Set up UBOs
+	if (fsUBO.range) fsUBO.resize(1);
+	resizeUBOset(numRenderings);
 
 	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
 	//vertices = vertexData;
@@ -55,20 +74,21 @@ ModelData::~ModelData()
 
 ModelData& ModelData::fullConstruction()
 {
+std::cout << "full 1" << std::endl;
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
-
+	
 	for(size_t i = 0; i < textures.size(); i++)
 		textures[i].loadAndCreateTexture(e);
 
 	if (dataFromFile) loadModel(modelPath);
 	createVertexBuffer();
 	if(indices.size()) createIndexBuffer();
-
-	createUniformBuffers();
+	
+	vsDynUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-
+std::cout << "full 2" << std::endl;
 	fullyConstructed = true;
 	return *this;
 }
@@ -84,39 +104,56 @@ void ModelData::copyCString(const char*& destination, const char* source)
 // (9)
 void ModelData::createDescriptorSetLayout()
 {
-	// Describe the bindings
-	//	- Uniform buffer descriptor
-	VkDescriptorSetLayoutBinding uboLayoutBinding{};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-	uboLayoutBinding.descriptorCount = 1;								// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of bone in a skeleton for skeletal animation).
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;		// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
-	uboLayoutBinding.pImmutableSamplers = nullptr;							// [Optional] Only relevant for image sampling related descriptors.
+	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	uint32_t bindNumber = 0;
 
-	//	- Combined image sampler descriptor (it lets shaders access an image resource through a sampler object)
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount = textures.size();
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
+	//	Dynamic Uniform buffer descriptor (vertex shader)
+	if (vsDynUBO.range)
+	{
+		VkDescriptorSetLayoutBinding vsUboLayoutBinding{};
+		vsUboLayoutBinding.binding = bindNumber++;
+		vsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// VK_DESCRIPTOR_TYPE_ ... UNIFORM_BUFFER, UNIFORM_BUFFER_DYNAMIC
+		vsUboLayoutBinding.descriptorCount = 1;											// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of bone in a skeleton for skeletal animation).
+		vsUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;						// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
+		vsUboLayoutBinding.pImmutableSamplers = nullptr;								// [Optional] Only relevant for image sampling related descriptors.
 
-	// Combine the bindings in one structure
-	size_t bindingCount = 1 + !textures.empty();
-	VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[bindingCount];
-	bindings[0] = uboLayoutBinding;
-	if(!textures.empty()) bindings[1] = samplerLayoutBinding;
+		bindings.push_back(vsUboLayoutBinding);
+	}
+
+	// Uniform buffer descriptor (fragment shader)
+	if (fsUBO.range)
+	{
+		VkDescriptorSetLayoutBinding fsUboLayoutBinding{};
+		fsUboLayoutBinding.binding = bindNumber++;
+		fsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		fsUboLayoutBinding.descriptorCount = 1;
+		fsUboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fsUboLayoutBinding.pImmutableSamplers = nullptr;
+
+		bindings.push_back(fsUboLayoutBinding);
+	}
+
+	//	Combined image sampler descriptor (it lets shaders access an image resource through a sampler object)
+	if (textures.size())
+	{
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = bindNumber++;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.descriptorCount = textures.size();
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;			// We want to use the combined image sampler descriptor in the fragment shader. It's possible to use texture sampling in the vertex shader (example: to dynamically deform a grid of vertices by a heightmap).
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+
+		bindings.push_back(samplerLayoutBinding);
+	}
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(bindingCount);
-	layoutInfo.pBindings = bindings;
+	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	layoutInfo.pBindings = bindings.data();
 
 	if (vkCreateDescriptorSetLayout(e.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor set layout!");
-
-	delete[] bindings;
 }
 
 // (10)
@@ -148,7 +185,7 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 
 	if (vkCreatePipelineLayout(e.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
-	
+
 	// Read shader files
 	std::vector<char> vertShaderCode = readFile(VSpath);
 	std::vector<char> fragShaderCode = readFile(FSpath);
@@ -326,7 +363,7 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 
 	if (vkCreateGraphicsPipelines(e.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
-
+	std::cout << "Graphics pipeline END" << std::endl;
 	// Cleanup
 	vkDestroyShaderModule(e.device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
@@ -364,35 +401,6 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 		throw std::runtime_error("Failed to create shader module!");
 
 	return shaderModule;
-}
-
-void ModelData::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-	// Create buffer.
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = usage;									// For multiple purposes use a bitwise or.
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;			// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
-	bufferInfo.flags = 0;										// Used to configure sparse buffer memory.
-
-	if (vkCreateBuffer(e.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)	// vkCreateBuffer creates a new buffer object and returns it to a pointer to a VkBuffer provided by the caller.
-		throw std::runtime_error("Failed to create buffer!");
-
-	// Get buffer requirements.
-	VkMemoryRequirements memRequirements;		// Members: size (amount of memory in bytes. May differ from bufferInfo.size), alignment (offset in bytes where the buffer begins in the allocated region. Depends on bufferInfo.usage and bufferInfo.flags), memoryTypeBits (bit field of the memory types that are suitable for the buffer).
-	vkGetBufferMemoryRequirements(e.device, buffer, &memRequirements);
-
-	// Allocate memory for the buffer.
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = e.findMemoryType(memRequirements.memoryTypeBits, properties);		// Properties parameter: We need to be able to write our vertex data to that memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
-
-	if (vkAllocateMemory(e.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate buffer memory!");
-
-	vkBindBufferMemory(e.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
 }
 
 // (18)
@@ -453,7 +461,9 @@ void ModelData::createVertexBuffer()
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	createBuffer(bufferSize,
+	createBuffer(
+		e,
+		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 											// VK_BUFFER_USAGE_ ... TRANSFER_SRC_BIT / TRANSFER_DST_BIT (buffer can be used as source/destination in a memory transfer operation).
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
@@ -477,7 +487,9 @@ void ModelData::createVertexBuffer()
 
 	// Create the actual vertex buffer (Device local buffer used as actual vertex buffer. Generally it doesn't allow to use vkMapMemory, but we can copy from stagingBuffer to vertexBuffer, though you need to specify the transfer source flag for stagingBuffer and the transfer destination flag for vertexBuffer).
 	// This makes vertex data to be loaded from high performance memory.
-	createBuffer(bufferSize,
+	createBuffer(
+		e,
+		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		vertexBuffer,
@@ -517,7 +529,9 @@ void ModelData::createIndexBuffer()
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 
-	createBuffer(bufferSize,
+	createBuffer(
+		e,
+		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
@@ -530,7 +544,9 @@ void ModelData::createIndexBuffer()
 	vkUnmapMemory(e.device, stagingBufferMemory);
 
 	// Create the vertex buffer
-	createBuffer(bufferSize,
+	createBuffer(
+		e,
+		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		indexBuffer,
@@ -544,49 +560,44 @@ void ModelData::createIndexBuffer()
 	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
 }
 
-// (21)
-void ModelData::createUniformBuffers()
-{
-	uniformBuffers.resize(e.swapChainImages.size());
-	uniformBuffersMemory.resize(e.swapChainImages.size());
-
-	for (size_t i = 0; i < e.swapChainImages.size(); i++)
-		createBuffer(
-			dynUBO.count == 0 ? dynUBO.range : dynUBO.totalBytes,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			uniformBuffers[i],
-			uniformBuffersMemory[i] );
-}
-
 // (22)
 void ModelData::createDescriptorPool()
 {
 	// Describe our descriptor sets.
-	size_t descriptorCount = 1 + textures.size();
-	VkDescriptorPoolSize* poolSizes = new VkDescriptorPoolSize[descriptorCount];
+	std::vector<VkDescriptorPoolSize> poolSizes;
+	VkDescriptorPoolSize pool;
 
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;		// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-	poolSizes[0].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
-
-	for(size_t i = 1; i < descriptorCount; ++i)
+	if (vsDynUBO.range)
 	{
-		poolSizes[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[i].descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;					// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
+		poolSizes.push_back(pool);
+	}
+
+	if (fsUBO.range)
+	{
+		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		poolSizes.push_back(pool);
+	}
+
+	for (size_t i = 0; i < textures.size(); ++i)
+	{
+		pool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		poolSizes.push_back(pool);
 	}
 
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(descriptorCount);
-	poolInfo.pPoolSizes = poolSizes;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = static_cast<uint32_t>(e.swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
 	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
 
 	if (vkCreateDescriptorPool(e.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor pool!");
-
-	delete[] poolSizes;
 }
 
 // (23)
@@ -610,50 +621,78 @@ void ModelData::createDescriptorSets()
 	// Populate each descriptor set.
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
 	{
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range  = dynUBO.range;
-		
-		VkDescriptorImageInfo* imageInfo = new VkDescriptorImageInfo[textures.size()];
-		for (size_t i = 0; i < textures.size(); i++) {
+		VkDescriptorBufferInfo bufferInfo_vs{};
+		if (vsDynUBO.range) bufferInfo_vs.buffer = vsDynUBO.uniformBuffers[i];
+		bufferInfo_vs.offset = 0;
+		bufferInfo_vs.range  = vsDynUBO.range;
+
+		VkDescriptorBufferInfo bufferInfo_fs{};
+		if(fsUBO.range) bufferInfo_fs.buffer = fsUBO.uniformBuffers[i];
+		bufferInfo_fs.offset = 0;
+		bufferInfo_fs.range = fsUBO.range;
+
+		//VkDescriptorImageInfo* imageInfo = new VkDescriptorImageInfo[textures.size()];
+		std::vector<VkDescriptorImageInfo> imageInfo(textures.size());
+		for (size_t i = 0; i < textures.size(); i++) 
+		{
 			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			imageInfo[i].imageView = textures[i].textureImageView;
 			imageInfo[i].sampler = textures[i].textureSampler;
 		}
+	
+		std::vector<VkWriteDescriptorSet> descriptorWrites;
+		VkWriteDescriptorSet descriptor;
+		uint32_t binding = 0;
 
-		bool addTexture = textures.size();
-		VkWriteDescriptorSet* descriptorWrites = new VkWriteDescriptorSet[1 + addTexture];
-		
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];									// Descriptor set to update
-		descriptorWrites[0].dstBinding = 0;												// Binding
-		descriptorWrites[0].dstArrayElement = 0;										// First index in the array (if you want to update multiple descriptors at once in an array)
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// Type of descriptor: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-		descriptorWrites[0].descriptorCount = 1;										// Number of array elements to update
-		descriptorWrites[0].pBufferInfo = &bufferInfo;									// Used for descriptors that refer to buffer data (like our descriptor)
-		descriptorWrites[0].pImageInfo = nullptr;										// [Optional] Used for descriptors that refer to image data
-		descriptorWrites[0].pTexelBufferView = nullptr;									// [Optional] Used for descriptors that refer to buffer views
-		descriptorWrites[0].pNext = nullptr;											// LOOK why this line was not necessary before implementing no-texture descriptor (and no data from file)
-		std::cout << "textures.size() = " << textures.size() << std::endl;
-		if (textures.size())
+		if (vsDynUBO.range)
 		{
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = textures.size();			// LOOK maybe this can be used instead of the for-loop
-			descriptorWrites[1].pBufferInfo = nullptr;
-			descriptorWrites[1].pImageInfo = imageInfo;
-			descriptorWrites[1].pTexelBufferView = nullptr;
-			descriptorWrites[1].pNext = nullptr;
+			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptor.dstSet = descriptorSets[i];
+			descriptor.dstBinding = binding++;
+			descriptor.dstArrayElement = 0;
+			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			descriptor.descriptorCount = 1;
+			descriptor.pBufferInfo = &bufferInfo_vs;
+			descriptor.pImageInfo = nullptr;
+			descriptor.pTexelBufferView = nullptr;
+			descriptor.pNext = nullptr;
+
+			descriptorWrites.push_back(descriptor);
 		}
 
-		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(1 + addTexture), descriptorWrites, 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
+		if (fsUBO.range)
+		{
+			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptor.dstSet = descriptorSets[i];
+			descriptor.dstBinding = binding++;
+			descriptor.dstArrayElement = 0;
+			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptor.descriptorCount = 1;
+			descriptor.pBufferInfo = &bufferInfo_fs;
+			descriptor.pImageInfo = nullptr;
+			descriptor.pTexelBufferView = nullptr;
+			descriptor.pNext = nullptr;
 
-		delete[] imageInfo;
-		delete[] descriptorWrites;
+			descriptorWrites.push_back(descriptor);
+		}
+
+		if (textures.size())
+		{
+			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptor.dstSet = descriptorSets[i];
+			descriptor.dstBinding = binding++;
+			descriptor.dstArrayElement = 0;
+			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptor.descriptorCount = textures.size();			// LOOK maybe this can be used instead of the for-loop
+			descriptor.pBufferInfo = nullptr;
+			descriptor.pImageInfo = imageInfo.data();
+			descriptor.pTexelBufferView = nullptr;
+			descriptor.pNext = nullptr;
+
+			descriptorWrites.push_back(descriptor);
+		}
+		
+		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 	}
 }
 
@@ -661,7 +700,7 @@ void ModelData::recreateSwapChain()
 {
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
-	createUniformBuffers();				// Uniform buffers depend on the number of swap chain images.
+	vsDynUBO.createUniformBuffers();				// Uniform buffers depend on the number of swap chain images.
 	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
 	createDescriptorSets();				// Descriptor sets
 }
@@ -673,10 +712,8 @@ void ModelData::cleanupSwapChain()
 	vkDestroyPipelineLayout(e.device, pipelineLayout, nullptr);
 
 	// Uniform buffers & memory
-	for (size_t i = 0; i < e.swapChainImages.size(); i++) {
-		vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
-		vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
-	}
+	vsDynUBO.destroyUniformBuffers();
+	fsUBO.destroyUniformBuffers();
 
 	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
 	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);
@@ -686,10 +723,10 @@ void ModelData::cleanup()
 {
 	// Textures
 	textures.clear();
-
+	
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);
-
+	
 	// Index
 	if (indices.size())
 	{
@@ -700,6 +737,7 @@ void ModelData::cleanup()
 	// Vertex
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
+
 }
 
 // LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
@@ -708,35 +746,32 @@ void ModelData::cleanup()
 void ModelData::resizeUBOset(size_t newSize)
 {
 	// Resize UBO and dynamic offsets
-	size_t oldSize = dynUBO.count;
-	dynUBO.resize(newSize);
+	size_t oldSize = vsDynUBO.count;
+	vsDynUBO.resize(newSize);
 
 	// Destroy and recreate uniform buffers, descriptor pool and descriptor set
 	if (fullyConstructed && newSize > oldSize)
 	{
-		for (size_t i = 0; i < e.swapChainImages.size(); i++) {
-			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
-			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
-		}
+		vsDynUBO.destroyUniformBuffers();
 
 		// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
 		vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
-		createUniformBuffers();		// Create a UBO with the new size
+		vsDynUBO.createUniformBuffers();		// Create a UBO with the new size
 		createDescriptorPool();		// Required for creating descriptor sets
 		createDescriptorSets();		// Contains the UBO
 	}
 }
 
-void ModelData::setMM(size_t pos, glm::mat4& newValue)
+void ModelData::setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue)
 {
 	// Model matrix (MM)
-	if (pos < dynUBO.dirtyCount)
-		dynUBO.setModel(pos, newValue);
+	if (posDynUbo < vsDynUBO.dirtyCount)
+		vsDynUBO.setModelM(posDynUbo, attrib, newValue);
 
 	// MM for normals (Used when MM applies non-uniform scaling since normals won't be scaled correctly. Otherwise, use glm::vec3(model))
-	if (dynUBO.numEachAttrib[3])
-		dynUBO.setMNor(pos, glm::mat3(glm::transpose(glm::inverse(newValue))));
+	if (vsDynUBO.numEachAttrib[3])
+		vsDynUBO.setMNorm(posDynUbo, attrib, glm::mat3(glm::transpose(glm::inverse(newValue))));
 }
 
 bool ModelData::isDataFromFile() { return dataFromFile; }

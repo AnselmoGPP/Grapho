@@ -1,30 +1,9 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-struct DirectionalLight
+struct Light
 {
-    vec3 direction;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
-
-struct PointLight
-{
-    vec3 position;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-
-    float constant;
-    float linear;
-    float quadratic;
-};
-
-struct SpotLight
-{
+    int lightType;
     vec3 position;
     vec3 direction;
 
@@ -49,7 +28,7 @@ struct Material
     float shininess;
 };
 
-vec3 directionalLightColor(DirectionalLight light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
 
 layout(set = 0, binding  = 1) uniform sampler2D texSampler[2];		// sampler1D, sampler2D, sampler3D
 
@@ -66,7 +45,7 @@ void main()
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
 }
 
-vec3 directionalLightColor(DirectionalLight light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
     vec3 camPos = vec3(30., -30., 30);
 

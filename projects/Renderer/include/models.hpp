@@ -13,7 +13,6 @@
 #include <glm/gtc/matrix_transform.hpp>		// Generate transformations matrices with glm::rotate (model), glm::lookAt (view), glm::perspective (projection).
 #include <glm/gtx/hash.hpp>
 
-#include "environment.hpp"
 #include "models_2.hpp"
 
 /*
@@ -41,13 +40,13 @@
 extern std::vector<Texture> noTextures;
 extern std::vector<uint32_t> noIndices;
 
+
 //template <typename Vertex>
 class ModelData
 {
 	VulkanEnvironment& e;
 
 	const char* modelPath;
-	//const char* texturePath;
 
 	const char* VSpath;
 	const char* FSpath;
@@ -79,22 +78,23 @@ class ModelData
 
 	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);	///< Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
 	VkShaderModule				createShaderModule(const std::vector<char>& code);				///< Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
-	void						createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
+	//void						createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
 	//void						copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	//void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void						copyCString(const char*& destination, const char* source);
-	size_t						getNumDescriptors();
+
+	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 public:
 	/// Data from file 
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
 	/// Data passed as argument
-	ModelData(VulkanEnvironment& environment, size_t numberOfRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& uboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	virtual ~ModelData();
 
 	ModelData& fullConstruction();
-	void recreateSwapChain();
+	void recreateSwapChain();							///< Called by Renderer for window resizing
 	void cleanupSwapChain();
 
 	VkDescriptorSetLayout		 descriptorSetLayout;	///< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
@@ -110,26 +110,20 @@ public:
 	VkBuffer					 indexBuffer;			///< Opaque handle to a buffer object (here, index buffer).
 	VkDeviceMemory				 indexBufferMemory;		///< Opaque handle to a device memory object (here, memory for the index buffer).
 
-	std::vector<VkBuffer>		 uniformBuffers;		///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
-	std::vector<VkDeviceMemory>	 uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
+	UBO							 vsDynUBO;				///< Stores the set of dynamic UBOs that will be passed to the vertex shader
+	UBO							 fsUBO;					///< Stores the UBO that will be passed to the fragment shader
+	//std::vector<VkBuffer>		 uniformBuffers;		///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
+	//std::vector<VkDeviceMemory>uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 	VkDescriptorPool			 descriptorPool;		///< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		///< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	///< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
 	//glm::mat4(*getModelMatrix) (float time);
 
-	//size_t					numUBOs;		///< Number of UBOs
-	UBOdynamic				dynUBO;			///< Store the UBO that will be passed to shader
-	//std::vector<uint32_t>	dynamicOffsets;	///< Stores the offsets for each ubo descriptor
-	//std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
-	//std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
-
 	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
-	void setMM(size_t pos, glm::mat4& newValue);
+	void setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue);
 
 	bool isDataFromFile();
-	//size_t numTextures();
-	//bool hasIndices();
 };
 
 

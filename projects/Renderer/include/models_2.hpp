@@ -14,6 +14,7 @@
 #include <glm/gtc/matrix_transform.hpp>		// Generate transformations matrices with glm::rotate (model), glm::lookAt (view), glm::perspective (projection).
 #include <glm/gtx/hash.hpp>
 
+#include "environment.hpp"
 
 /*
 	Content:
@@ -46,6 +47,8 @@
 				- Especular map
 */
 
+/// Function used as friend in modelData, UBO and Texture
+void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 /// Used for configuring VertexSet. Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
 class VertexType
@@ -93,44 +96,81 @@ private:
 	size_t numVertex;		// Number of vertex objects stored in buffer
 };
 
-/// Class used for configuring the dynamic UBO. UBO attributes: MVP matrices (MVP), Model matrix for normals (MN).
+/// Class used for configuring the dynamic UBO. UBO attributes: Model/View/Projection matrices, Model matrix for normals, Lights.
 class UBOtype
 {
 public:
-	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0);
+	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0, size_t numLights = 0);
 
-	std::array<size_t, 4> numEachAttrib;
+	std::array<size_t, 5> numEachAttrib;
+};
+
+/// Data structure for light. Sent to fragment shader.
+struct Light
+{
+	Light();
+	void turnOff();
+	void setDirectional(glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);
+	void setPoint(glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
+	void setSpot(glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
+
+	alignas(16) int lightType;		// 0: no light, 1: directional, 2: point, 3: spot
+	alignas(16) glm::vec3 position;
+	alignas(16) glm::vec3 direction;
+
+	alignas(16) glm::vec3 ambient;
+	alignas(16) glm::vec3 diffuse;
+	alignas(16) glm::vec3 specular;
+
+	alignas(16) float constant;
+	alignas(16) float linear;
+	alignas(16) float quadratic;
+
+	alignas(16) float cutOff;
+	alignas(16) float outerCutOff;
 };
 
 /// Structure used for storing many UBOs in the same structure in order to allow us to render the same model many times.
-/// Attributes of the UBO: Model, View, Projection, ModelForNormals
-struct UBOdynamic
+/// Attributes of the UBO: Model, View, Projection, ModelForNormals, Lights
+/// We may create a set of dynamic UBOs (dynUBOcount -> count), each one containing a number of descriptors (uboType -> numEachAttrib) (0 or more of each descriptor).
+/// Uniform buffers can be created or destroyed (createUniformBuffers, destroyUniformBuffers) only if range > 0. If count == 0, the buffer created will have size == range (not totalBytes). 
+/// User should call destroyUniformBuffers before createUniformBuffers. Renderer 
+/// Model matrix for Normals: Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
+struct UBO
 {
-	UBOdynamic(size_t UBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);
-	UBOdynamic& operator = (const UBOdynamic& obj);
-	~UBOdynamic() = default;
+	UBO(VulkanEnvironment& e, size_t dynUBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);
+	//UBO& operator = (const UBO& obj);
+	~UBO() = default;
 
 	void resize(size_t newCount);
-	void setModel(size_t position, const glm::mat4& matrix);
-	void setView(size_t position, const glm::mat4& matrix);
-	void setProj(size_t position, const glm::mat4& matrix);
-	void setMNor(size_t position, const glm::mat3& matrix);
+	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
+	void createUniformBuffers();
+	void destroyUniformBuffers();
+
+	void setModelM(size_t posDyn, size_t attrib, const glm::mat4& matrix);
+	void setViewM (size_t posDyn, size_t attrib, const glm::mat4& matrix);
+	void setProjM (size_t posDyn, size_t attrib, const glm::mat4& matrix);
+	void setMNorm (size_t posDyn, size_t attrib, const glm::mat3& matrix);
+	void setLight (size_t posDyn, size_t attrib, Light& light);
 
 	size_t					count;			///< Number of dynamic UBOs
+	size_t					dirtyCount;		///< Number of dynamic UBOs, including those generated with dirtyResize()
 	VkDeviceSize			range;			///< Size (bytes) of an aligned dynamic UBO (example: 4)
 	size_t					totalBytes;		///< Size (bytes) of the set of dynamic UBOs (example: 12)
 	std::vector<uint32_t>	dynamicOffsets;	///< Offsets for each dynamic UBO
-	std::array<size_t, 4>	numEachAttrib;
-	//std::vector<glm::mat4>	MM;				///< Model matrices for each rendering of this object
-	//std::vector<glm::mat3>  normalMatrix;	///< Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
+	std::array<size_t, 5>	numEachAttrib;
 
-	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
-	size_t dirtyCount;						///< Number of dynamic UBOs, including those generated with dirtyResize()
+	std::vector<char>			ubo;					///< Stores the UBO that will be passed to vertex shader (MVP, M for normals...).
+	std::vector<VkBuffer>		uniformBuffers;		///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
+	std::vector<VkDeviceMemory>	uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
-	std::vector<char> ubo;			///< Store the UBO that will be passed to shader	<<< is alignas(16) necessary?
+	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 private:
-	const std::array<size_t, 4>	attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12 };	// 64, 64, 64, 36+12 (including padding for getting alignment with 16 bits)
+	VulkanEnvironment& e;
+	const std::array<size_t, 5>	attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12, sizeof(Light) };	// 64, 64, 64, 36+12, 176 (including padding for getting alignment with 16 bits)
+
+	size_t getPos(size_t dynUBO, size_t attribSet, size_t attrib);
 };
 
 
@@ -145,11 +185,12 @@ class Texture
 	void createTextureImageView();		///< Create an image view for the texture (images are accessed through image views rather than directly).
 	void createTextureSampler();		///< Create a sampler for the textures (it applies filtering and transformations).
 
-	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
 	void copyCString(const char*& destination, const char* source);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-	
+
+	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
+
 public:
 	Texture(const char* path);
 	Texture(const Texture& obj);
@@ -157,12 +198,14 @@ public:
 
 	void loadAndCreateTexture(VulkanEnvironment& e);
 
+
 	uint32_t					 mipLevels;				///< Number of levels (mipmaps)
 	VkImage						 textureImage;			///< Opaque handle to an image object.
 	VkDeviceMemory				 textureImageMemory;	///< Opaque handle to a device memory object.
 	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
+
 
 /// Vertex structure containing Position, Color and Texture coordinates.
 struct VertexPCT

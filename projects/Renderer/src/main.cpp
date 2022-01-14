@@ -46,8 +46,9 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
-		> Rearrange parameters in newModel()
-		> Generalize VertexPCT in loadModel()
+		> Abstract descriptor set creation
+		> Generalize loadModel() (VertexPCT, etc.) 
+		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
 		X VkDrawIndex instanceCount -> check this way of multiple renderings
 		X In a single draw, draw skybox from one mesh and many textures.
@@ -65,6 +66,7 @@
 
 	BUGS:
 		Sometimes camera continue moving backwards/left indefinetely
+		Camera jump when starting to move camera
 
 	Model & Data system:
 		Each ModelData could have: Vertices, Color buffers, textures, texture coords, Indices, UBO class, shaders, vertex struct
@@ -100,6 +102,7 @@ ifOnce check;			// LOOK implement as functor (function with state)
 float dayTime = 15.00;
 float sunDist = 500;
 float sunAngDist = 3.14/10;
+Light sun;
 
 terrainGenerator terrGen;
 noiseSet noiser( 
@@ -135,9 +138,8 @@ int main(int argc, char* argv[])
 	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
-	//setFloor(app);
+	setFloor(app);
 	setTerrain(app);
-
 	setSun(app);
 	setReticule(app);
 
@@ -158,52 +160,16 @@ void update(Renderer& r)
 	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
 
 	if (assets.find("skyBox") != assets.end())
-		assets["skyBox"]->setMM(0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+		assets["skyBox"]->setMM(0, 0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 
 	if (assets.find("sun") != assets.end())
-		assets["sun"]->setMM(0, sunMM(pos, dayTime, sunDist, sunAngDist));
+		assets["sun"]->setMM(0, 0, sunMM(pos, dayTime, sunDist, sunAngDist));
 
 	if (assets.find("grid") != assets.end())
-		assets["grid"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
+		assets["grid"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("cottage") != assets.end())
-		assets["cottage"]->setMM(0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
-
-
-
-
-	//if (time > 5 && cottageLoaded)
-	//{
-	//	r.setRenders(assets["cottage"], 0);
-	//	cottageLoaded = false;
-	//}
-/*
-	if (time > 5 && !check1)
-	{
-		r.setRenders(assets["room"], 4);
-		assets["room"]->setMM(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3( 0.0f, -50.0f, 3.0f)));
-		assets["room"]->setMM(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,   0.0f), glm::vec3( 0.0f, -80.0f, 3.0f)));
-		assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-		assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
-		check1 = true;
-	}
-	else if (time > 10 && !check2)
-	{
-		 r.deleteModel(assets["room"]);
-		//r.setRenders(assets["room"], 3);
-		check2 = true;
-	}
-	
-	 if (time > 5)
-	 {
-		 //assets["room"]->setMM(0, room1_MM(0));
-		 //assets["room"]->setMM(1, room2_MM(0));
-		 //assets["room"]->setMM(2, room3_MM(0));
-		 //assets["room"]->setMM(3, room4_MM(0));
-		 //assets["room"]->setMM(4, room5_MM(0));
-	 }
-*/		 
-
+		assets["cottage"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 }
 
 void setSun(Renderer& app)
@@ -216,12 +182,15 @@ void setSun(Renderer& app)
 	assets["sun"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 0, 1), numVertex, v_sun.data(),
 		i_sun,
 		textures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		true);
+
+	sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
 }
 
 void setReticule(Renderer& app)
@@ -233,7 +202,8 @@ void setReticule(Renderer& app)
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
 	assets["reticule"] = app.newModel( 
 		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
+		UBOtype(), // UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 0, 1), numVertex, v_ret.data(),
 		i_ret,
 		textures,
@@ -247,6 +217,7 @@ void setPoints(Renderer& app)
 	assets["points"] = app.newModel( 
 		1, primitiveTopology::point,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 1, 0), 9, v_points.data(),
 		noIndices,
 		noTextures,
@@ -266,6 +237,7 @@ void setAxis(Renderer& app)
 	assets["axis"] = app.newModel( 
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 1, 0), numVertex, v_axis.data(),
 		i_axis,
 		noTextures,
@@ -285,6 +257,7 @@ void setGrid(Renderer& app)
 	assets["grid"] = app.newModel( 
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 1, 0), numVertex, v_grid.data(),
 		i_grid,
 		noTextures,
@@ -301,6 +274,7 @@ void setSkybox(Renderer& app)
 	assets["skyBox"] = app.newModel(
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 0, 1), 14, v_cube.data(),
 		i_inCube,
 		textures,
@@ -316,6 +290,7 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel( 
 		0, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		textures,
 		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
@@ -330,6 +305,7 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -345,6 +321,7 @@ void setRoom(Renderer& app)
 	assets["room"] = app.newModel( 
 		2, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -352,8 +329,8 @@ void setRoom(Renderer& app)
 		VertexType(1, 1, 1),
 		false );
 
-	assets["room"]->setMM(0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
-	assets["room"]->setMM(1, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
+	assets["room"]->setMM(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
+	assets["room"]->setMM(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 }
@@ -365,6 +342,7 @@ void setFloor(Renderer& app)
 	assets["floor"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
+		UBOtype(),
 		VertexType(1, 0, 1), 4, v_floor.data(),
 		i_floor,
 		textures,
@@ -386,6 +364,7 @@ void setTerrain(Renderer& app)
 	assets["terrain"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 1),
+		UBOtype(),//UBOtype(0, 0, 0, 0, 1),
 		VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
 		terrGen.indices,
 		textures,
