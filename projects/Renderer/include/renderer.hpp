@@ -36,6 +36,7 @@
 #include "timer.hpp"
 
 typedef std::list<ModelData>::iterator modelIterator;
+typedef std::list<Texture>::iterator texIterator;
 
 enum primitiveTopology {
 	point		= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -50,6 +51,7 @@ class Renderer
 	Input					input;			// Input
 	TimerSet				timer;			// Time control
 	std::list<ModelData>	models;			// Models (fully initialized)
+	std::list<Texture>		textures;		// Texture set
 
 	// Threads stuff
 	std::thread				thread_loadModels;				// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose

@@ -16,7 +16,7 @@
 		- Indices
 		- Descriptor set:
 			- UBO (MVP matrices, normal matrix...)
-			- Texture samplers
+			- Texture samplers (diffuse, specular...)
 		- Shaders (vertex, fragment...)
 */
 
@@ -31,7 +31,6 @@
 		Dynamic states (graphics pipeline)
 		Push constants
 		Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
-		Bug: Some drag click produces camera jump
 
 		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
 		Destroy Vulkan buffers (UBO) outside semaphores
@@ -41,12 +40,13 @@
 		- Points, lines, triangles
 		- 2D graphics
 		- Transparencies
-		Draw in front of some rendering (used for weapons)
+		> Scene plane: Draw in front of some rendering (used for skybox or weapons)
 		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
-		> Abstract descriptor set creation
+		> fsUBO implementation in shader
+		> Many renders: Now, UBO is passes many times, so View and Projection matrix are redundant. 
 		> Generalize loadModel() (VertexPCT, etc.) 
 		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
@@ -63,6 +63,10 @@
 		Usar numMM o MM.size()?
 		Profiling
 		Skybox borders (could be fixed with VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)
+
+	Abstract:
+		> Textures set (share textures)
+		> Descriptor set
 
 	BUGS:
 		Sometimes camera continue moving backwards/left indefinetely

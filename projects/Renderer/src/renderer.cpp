@@ -84,8 +84,8 @@ void Renderer::createCommandBuffers()
 		renderPassInfo.pClearValues			= clearValues.data();							// ... used as load operation for the color attachment and depth buffer.
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
-		std::cout << "CB 1" << std::endl;
-		// Basic drawing commands (for each model)
+		
+		// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
 		{
 			if (it->vsDynUBO.count == 0) continue;
@@ -100,11 +100,12 @@ void Renderer::createCommandBuffers()
 
 			for (size_t j = 0; j < it->vsDynUBO.count; j++)
 			{
-				if(it->vsDynUBO.range)
+				if(it->vsDynUBO.range)	// has UBO
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
 				else
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-				if (it->indices.size())
+				
+				if (it->indices.size())	// has indices
 					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 				else
 					vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
@@ -126,7 +127,6 @@ void Renderer::createCommandBuffers()
 		vkCmdEndRenderPass(commandBuffers[i]);
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
-		std::cout << "CB 2" << std::endl;
 	}
 }
 
@@ -334,7 +334,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 		{
 			for (size_t i = 0; i < it->vsDynUBO.count; i++)
 			{
-				//it->dynUBO.setModel(i, it->MM[i]);	// <<< MM EXISTS FOR MULTITHREADING ISSUES. SHOULD I RESTORE IT?
+				//it->dynUBO.setModel(i, it->MM[i]);
 				it->vsDynUBO.setViewM(i, 0, view);
 				it->vsDynUBO.setProjM(i, 0, proj);
 				//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));	
