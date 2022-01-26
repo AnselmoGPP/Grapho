@@ -1,5 +1,5 @@
 @ECHO OFF
-ECHO Building project:
+ECHO Building project...
 ECHO Current directory: 
 CD
 

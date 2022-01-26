@@ -5,18 +5,12 @@
 												< getModelMatrix callbacks
 								< Input			< Camera
 
-	set of modelConfig (callbacks + paths) > Renderer > set of ModelData
-
 	Data passed:
-		- Vertex data:
-			- Vertex coordinates
-			- Color
-			- Texture coordinates
-			- Normals
+		- Vertex (positions, colors, texture coords, normals...)
 		- Indices
-		- Descriptor set:
-			- UBO (MVP matrices, normal matrix...)
-			- Texture samplers (diffuse, specular...)
+		- Descriptors:
+			- UBOs (MVP matrices, M matrix for normals...)
+			- Textures/maps (diffuse, specular...)
 		- Shaders (vertex, fragment...)
 */
 

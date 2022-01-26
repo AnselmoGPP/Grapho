@@ -32,7 +32,9 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	src/environment.cpp
 	src/renderer.cpp
 	src/models.cpp
-	src/models_2.cpp
+	src/vertex.cpp
+	src/texture.cpp
+	src/ubo.cpp
 	src/camera.cpp
 	src/input.cpp
 	src/timer.cpp
@@ -42,7 +44,9 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	include/renderer.hpp
 	include/environment.hpp
 	include/models.hpp
-	include/models_2.hpp
+	include/vertex.hpp
+	include/texture.hpp
+	include/ubo.hpp
 	include/camera.hpp
 	include/input.hpp
 	include/timer.hpp

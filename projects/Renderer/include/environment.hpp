@@ -150,4 +150,8 @@ private:
 	VkBool32				wideLinesSupported();
 };
 
+
+/// Function used as friend in modelData, UBO and Texture
+void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+
 #endif

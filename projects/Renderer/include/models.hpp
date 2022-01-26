@@ -13,7 +13,9 @@
 #include <glm/gtc/matrix_transform.hpp>		// Generate transformations matrices with glm::rotate (model), glm::lookAt (view), glm::perspective (projection).
 #include <glm/gtx/hash.hpp>
 
-#include "models_2.hpp"
+#include "vertex.hpp"
+#include "ubo.hpp"
+#include "texture.hpp"
 
 /*
 	Basic ModelData interface:
