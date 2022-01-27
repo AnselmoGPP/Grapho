@@ -408,6 +408,16 @@ void Renderer::deleteModel(modelIterator model)
 	modelsToDelete.insert(modelsToDelete.cend(), model);
 }
 
+texIterator Renderer::newTexture(std::vector<Texture>& textures)
+{
+	return texIterator();
+}
+
+void Renderer::deleteTexture(texIterator texture)
+{
+
+}
+
 void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 {
 	if (model->vsDynUBO.count != numberOfRenders)

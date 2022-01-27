@@ -94,6 +94,7 @@
 #include "geometry.hpp"
 
 std::map<std::string, modelIterator> assets;
+std::map<std::string, texIterator> textures;
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
 
@@ -146,7 +147,6 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-
 // Update model's model matrix each frame
 void update(Renderer& r)
 {
@@ -170,6 +170,7 @@ void update(Renderer& r)
 		assets["cottage"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 }
 
+
 void setSun(Renderer& app)
 {
 	std::vector<VertexPT> v_sun;
@@ -177,6 +178,9 @@ void setSun(Renderer& app)
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
+	//textures["sun"] = app.newTexture(Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()));
+	//std::vector<Texture> useTextures = { textures["sun"] };
+
 	assets["sun"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),

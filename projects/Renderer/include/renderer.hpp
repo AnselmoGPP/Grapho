@@ -38,6 +38,9 @@
 typedef std::list<ModelData>::iterator modelIterator;
 typedef std::list<Texture>::iterator texIterator;
 
+/*
+*   @brief Used for the user to specify what primitive type represents the vertex data. 
+*/
 enum primitiveTopology {
 	point		= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
 	line		= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
@@ -45,13 +48,16 @@ enum primitiveTopology {
 };
 
 // LOOK Restart the Renderer object after finishing the render loop
+/*
+*   @brief Responsible for making the rendering (render loop). Manages models, textures, input, camera...
+*/
 class Renderer
 {
 	VulkanEnvironment		e;				// Environment
 	Input					input;			// Input
 	TimerSet				timer;			// Time control
 	std::list<ModelData>	models;			// Models (fully initialized)
-	std::list<Texture>		textures;		// Texture set
+	//std::list<Texture>	textures;		// Texture set
 
 	// Threads stuff
 	std::thread				thread_loadModels;				// Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
@@ -64,6 +70,8 @@ class Renderer
 
 	std::list<ModelData>				modelsToLoad;		// Models waiting for being included in m (partially initialized).
 	std::list<modelIterator>			modelsToDelete;		// Iterators to the loaded models that have to be deleted from Vulkan.
+	//std::list<Texture>				texturesToLoad;
+	//std::list<Texture>				texturesToDelete;
 	std::map<modelIterator*, size_t>	rendersToSet;
 
 	// Private parameters:
@@ -112,8 +120,11 @@ public:
 
 	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& VsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency = false);
 	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency = false);
-
 	void			deleteModel(modelIterator model);
+
+	texIterator		newTexture(std::vector<Texture>& textures);
+	void			deleteTexture(texIterator texture);
+
 	void			setRenders(modelIterator& model, size_t numberOfRenders);
 };
 
