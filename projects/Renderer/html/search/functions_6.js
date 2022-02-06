@@ -1,4 +1,0 @@
-var searchData=
-[
-  ['modeldata_0',['ModelData',['../classModelData.html#a093dcf8c3725c0cb321fa31ff044d304',1,'ModelData::ModelData(VulkanEnvironment &amp;environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype &amp;vsUboType, const UBOtype &amp;fsUboType, const char *modelPath, std::vector&lt; Texture &gt; &amp;textures, const char *VSpath, const char *FSpath, VertexType vertexType, bool transparency)'],['../classModelData.html#afed5b8e9d0b74830a084acb36e9ada3e',1,'ModelData::ModelData(VulkanEnvironment &amp;environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype &amp;vsUboType, const UBOtype &amp;fsUboType, const VertexType &amp;vertexType, size_t numVertex, const void *vertexData, std::vector&lt; uint32_t &gt; &amp;indices, std::vector&lt; Texture &gt; &amp;textures, const char *VSpath, const char *FSpath, bool transparency)']]]
-];

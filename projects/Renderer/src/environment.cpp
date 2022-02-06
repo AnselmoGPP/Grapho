@@ -10,6 +10,7 @@
 #include "environment.hpp"
 
 
+/// Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture. Used as friend in ModelData, Texture and UBO.
 void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 {
 	// Create buffer.
@@ -37,6 +38,15 @@ void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags us
 		throw std::runtime_error("Failed to allocate buffer memory!");
 
 	vkBindBufferMemory(e.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
+}
+
+/// Copy a C-style string in destination from source. Used in ModelData and Texture.
+void copyCString(const char*& destination, const char* source)
+{
+	size_t siz = strlen(source) + 1;
+	char* address = new char[siz];
+	strncpy(address, source, siz);
+	destination = address;
 }
 
 bool QueueFamilyIndices::isComplete()
@@ -82,6 +92,7 @@ void VulkanEnvironment::initWindow()
 }
 
 // (1) 
+/// Describe application, select extensions and validation layers, create Vulkan instance (stores application state).
 void VulkanEnvironment::createInstance()
 {
 	// Check validation layer support
@@ -174,10 +185,12 @@ bool VulkanEnvironment::checkValidationLayerSupport(const std::vector<const char
 }
 
 /**
- * Specify the details about the messenger and its callback
- * There are a lot more settings for the behavior of validation layers than just the flags specified in the
- * VkDebugUtilsMessengerCreateInfoEXT struct. The file "$VULKAN_SDK/Config/vk_layer_settings.txt" explains how to configure the layers.
- * @param createInfo Struct that this method will use for setting the type of messages to receive, and the callback function.
+*	@brief Specify the details about the messenger and its callback.
+* 
+*	Specify the details about the messenger and its callback
+*	There are a lot more settings for the behavior of validation layers than just the flags specified in the
+*	VkDebugUtilsMessengerCreateInfoEXT struct. The file "$VULKAN_SDK/Config/vk_layer_settings.txt" explains how to configure the layers.
+*	@param createInfo Struct that this method will use for setting the type of messages to receive, and the callback function.
  */
 void VulkanEnvironment::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
 {
@@ -195,6 +208,8 @@ void VulkanEnvironment::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCr
 }
 
 /**
+	@brief Callback for handling ourselves the validation layer's debug messages and decide which kind of messages to see.
+
    The validation layers will print debug messages to the standard output by default.
    But by providing a callback we can handle them ourselves and decide which kind of messages to see.
    This callback function is added with the PFN_vkDebugUtilsMessengerCallbackEXT prototype.
@@ -291,7 +306,9 @@ bool VulkanEnvironment::checkExtensionSupport(const char* const* requiredExtensi
 
 // (2)
 /**
- *	Specify the details about the messenger and its callback (there are more ways to configure validation layer messages and debug callbacks), and create the debug messenger.
+	@brief Specify the details about the messenger and its callback, and create the debug messenger.
+
+	Specify the details about the messenger and its callback (there are more ways to configure validation layer messages and debug callbacks), and create the debug messenger.
  */
 void VulkanEnvironment::setupDebugMessenger()
 {
@@ -329,8 +346,9 @@ VkResult VulkanEnvironment::CreateDebugUtilsMessengerEXT(VkInstance instance, co
 
 // (3)
 /**
- * Create a window surface (interface for interacting with the window system). Requires to use WSI (Window System Integration), which is provided by GLFW.
- *
+	@brief Create a window surface (interface for interacting with the window system)
+
+	Create a window surface (interface for interacting with the window system). Requires to use WSI (Window System Integration), which is provided by GLFW.
  */
 void VulkanEnvironment::createSurface()
 {
@@ -340,7 +358,9 @@ void VulkanEnvironment::createSurface()
 
 // (4)
 /**
- * Look for and select a graphics card in the system that supports the features we need (Vulkan support).
+	@brief Look for and select a graphics card in the system that supports the features we need.
+
+	Look for and select a graphics card in the system that supports the features we need (Vulkan support).
  */
 void VulkanEnvironment::pickPhysicalDevice()
 {
@@ -407,16 +427,18 @@ void VulkanEnvironment::pickPhysicalDevice()
 }
 
 /**
- * Evaluate a device and check if it is suitable for the operations we want to perform.
- * @param device Device to evaluate
- * @param mode Mode of evaluation:
- * 		<ul>
- *			<li>1: Check Vulkan support.</li>
- *			<li>2: Check for dedicated GPU supporting geometry shaders.</li>
- *			<li>3: Rate the device (give it a score).</li>
- *		</ul>
- * @return If 0 is returned the device is not suitable
- */
+*	@brief Evaluate a device and check if it is suitable for the operations we want to perform.
+* 
+*	Evaluate a device and check if it is suitable for the operations we want to perform.
+*	@param device Device to evaluate
+*	@param mode Mode of evaluation:
+*	<ul>
+*		<li>1: Check Vulkan support.</li>
+*		<li>2: Check for dedicated GPU supporting geometry shaders.</li>
+*		<li>3: Rate the device (give it a score).</li>
+*	</ul>
+*	@return If 0 is returned the device is not suitable
+*/
 int VulkanEnvironment::isDeviceSuitable(VkPhysicalDevice device, const int mode)
 {
 	// Get basic device properties: Name, type, supported Vulkan version...
@@ -576,6 +598,7 @@ SwapChainSupportDetails VulkanEnvironment::querySwapChainSupport(VkPhysicalDevic
 	return details;
 }
 
+/// Get the maximum number of samples (for MSAA) according to the physical device.
 VkSampleCountFlagBits VulkanEnvironment::getMaxUsableSampleCount(bool getMinimum)
 {
 	if (getMinimum) return VK_SAMPLE_COUNT_1_BIT;
@@ -595,6 +618,7 @@ VkSampleCountFlagBits VulkanEnvironment::getMaxUsableSampleCount(bool getMinimum
 }
 
 // (5)
+/// Set up a logical device (describes the features we want to use) to interface with the physical device.
 void VulkanEnvironment::createLogicalDevice()
 {
 	// Get the queue families supported by the physical device.
@@ -647,6 +671,7 @@ void VulkanEnvironment::createLogicalDevice()
 }
 
 // (6)
+/// Set up and create the swap chain.
 void VulkanEnvironment::createSwapChain()
 {
 	// Get some properties
@@ -710,6 +735,7 @@ void VulkanEnvironment::createSwapChain()
 	swapChainExtent = extent;
 }
 
+/// Chooses the surface format (color depth) for the swap chain.
 VkSurfaceFormatKHR VulkanEnvironment::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	// Return our favourite surface format, if it exists
@@ -724,9 +750,8 @@ VkSurfaceFormatKHR VulkanEnvironment::chooseSwapSurfaceFormat(const std::vector<
 	return availableFormats[0];
 }
 
-/**
-* The swap extent is set here. The swap extent is the resolution (in pixels) of the swap chain images, which is almost always equal to the resolution of the window where we are drawing (use {WIDHT, HEIGHT}), except when you're using a high DPI display (then, use glfwGetFramebufferSize).
-*/
+/// Chooses the swap extent (resolution of images in swap chain) for the swap chain.
+/** The swap extent is set here. The swap extent is the resolution (in pixels) of the swap chain images, which is almost always equal to the resolution of the window where we are drawing (use {WIDHT, HEIGHT}), except when you're using a high DPI display (then, use glfwGetFramebufferSize). */
 VkExtent2D VulkanEnvironment::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 {
 	// If width and height is set to the maximum value of UINT32_MAX, it indicates that the surface size will be determined by the extent of a swapchain targeting the surface. 
@@ -749,6 +774,8 @@ VkExtent2D VulkanEnvironment::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& c
 }
 
 /**
+*	@brief Chooses the presentation mode (conditions for "swapping" images to the screen) for the swap chain.
+* 
 * Presentation mode represents the conditions for showing images to the screen. Four possible modes available in Vulkan:
 * 		<ul>
 			<li>VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away (may cause tearing).</li>
@@ -770,6 +797,7 @@ VkPresentModeKHR VulkanEnvironment::chooseSwapPresentMode(const std::vector<VkPr
 }
 
 // (7)
+/// Creates a basic image view for every image in the swap chain so that we can use them as color targets later on.
 void VulkanEnvironment::createImageViews()
 {
 	swapChainImageViews.resize(swapChainImages.size());
@@ -780,7 +808,9 @@ void VulkanEnvironment::createImageViews()
 
 // (8)
 /*
-* 	Specify subpasses and their attachments.
+	@brief Tells Vulkan the framebuffer attachments that will be used while rendering (color, depth, multisampled images). A render-pass denotes more explicitly how your rendering happens.
+
+	Specify subpasses and their attachments.
 		- Subpasses: A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example: a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance. 
 		- Attachment references: Every subpass references one or more of the attachments that we've described.
 */
@@ -935,9 +965,8 @@ VkImageView VulkanEnvironment::createImageView(VkImage image, VkFormat format, V
 	return imageView;
 }
 
-/**
-*	Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil).
-*/
+/// Find the right format for a depth image.
+/** Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil). */
 VkFormat VulkanEnvironment::findDepthFormat()
 {
 	return findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
@@ -946,6 +975,8 @@ VkFormat VulkanEnvironment::findDepthFormat()
 }
 
 /**
+* 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.
+*	
 *	Graphic cards can offer different types of memory to allocate from. Each type of memory varies in terms of allowed operations and performance characteristics.
 *	@param typeFilter Specifies the bit field of memory types that are suitable.
 *	@param properties Specifies the bit field of the desired properties of such memory types.
@@ -969,6 +1000,8 @@ uint32_t VulkanEnvironment::findMemoryType(uint32_t typeFilter, VkMemoryProperty
 }
 
 /**
+*	@brief Take a list of candidate formats in order from most desirable to least desirable, and checks which is the first one that is supported.
+* 
 *	@param candidates
 *	@param tiling The support of a format depends on the tiling mode.
 *	@param features The support of a format depends on the usage.
@@ -991,6 +1024,7 @@ VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& can
 }
 
 // (11) <<<
+/// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
 void VulkanEnvironment::createCommandPool()
 {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);	// <<< wrapped method
@@ -1006,6 +1040,7 @@ void VulkanEnvironment::createCommandPool()
 }
 
 // (12)<<<
+/// Create resources needed for MSAA (MultiSampling AntiAliasing). Create a multisampled color buffer.
 void VulkanEnvironment::createColorResources()
 {
 	VkFormat colorFormat = swapChainImageFormat;
@@ -1029,6 +1064,8 @@ void VulkanEnvironment::createColorResources()
 
 // (13)<<<
 /**
+*	@brief Create depth buffer.
+* 
 *	A depth image should have the same resolution as the color attachment, defined by the swap chain extent
 */
 void VulkanEnvironment::createDepthResources()
@@ -1211,7 +1248,7 @@ void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 }
 
 // (14)
-/// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image)
+/// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void VulkanEnvironment::createFramebuffers()
 {
 	swapChainFramebuffers.resize(swapChainImageViews.size());

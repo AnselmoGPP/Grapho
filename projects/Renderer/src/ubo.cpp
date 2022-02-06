@@ -8,7 +8,6 @@
 
 const std::array<size_t, 5> UBOtype::attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12, sizeof(Light) };	// 64, 64, 64, 36+12, 176 (including padding for getting alignment with 16 bits)
 
-
 UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN, size_t numLights)
 {
 	numEachAttrib[0] = numM;
@@ -67,9 +66,6 @@ void UBO::resize(size_t newCount)// <<< what to do in modelData if uboType == 0
 // (21)
 void UBO::createUniformBuffers()
 {
-	std::cout << range << " + " << count << " = " << totalBytes << std::endl;
-
-	std::cout << "createUniformBuffers" << std::endl;
 	uniformBuffers.resize(e.swapChainImages.size());
 	uniformBuffersMemory.resize(e.swapChainImages.size());
 	
@@ -84,8 +80,6 @@ void UBO::createUniformBuffers()
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				uniformBuffers[i],
 				uniformBuffersMemory[i]);
-
-	std::cout << "Finish!" << std::endl;
 }
 
 void UBO::destroyUniformBuffers()

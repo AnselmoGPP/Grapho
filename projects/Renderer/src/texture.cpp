@@ -14,10 +14,15 @@ Texture::Texture(const char* path) : path(nullptr), e(nullptr)
 
 Texture::Texture(const Texture& obj)
 {
-	copyCString(this->path, obj.path);
+	if (this == &obj) return;
+	this->path = nullptr;
+	this->e = nullptr;
 
-	if (e)
+	if (!e)
+		copyCString(this->path, obj.path);
+	else
 	{
+		copyCString(this->path, obj.path);
 		this->e = obj.e;
 		this->mipLevels = obj.mipLevels;
 		this->textureImage = obj.textureImage;
@@ -49,7 +54,6 @@ void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 }
 
 // (15)
-/// Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer
 void Texture::createTextureImage()
 {
 	// Load an image (usually, the most expensive process)
@@ -294,10 +298,3 @@ void Texture::createTextureSampler()
 	*/
 }
 
-void Texture::copyCString(const char*& destination, const char* source)
-{
-	size_t siz = strlen(source) + 1;
-	char* address = new char[siz];
-	strncpy(address, source, siz);
-	destination = address;
-}

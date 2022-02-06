@@ -21,13 +21,13 @@
 */
 class Camera
 {
-    glm::vec3 Right;                    ///< Camera right vector
+    glm::vec3 Right;                    ///< camera right vector
  
 public:
     GLFWwindow* window;
 
     // Camera options
-    float MovementSpeed     = 50.0f;    ///< Camera speed
+    float MovementSpeed     = 50.0f;    ///< camera speed
     float MouseSensitivity  = 0.1f;     ///< Mouse sensitivity
     float scrollSpeed       = 5.0f;     ///< Scroll speed
     float fov               = 60.0f;    ///< FOV (degrees)
@@ -35,28 +35,27 @@ public:
     float farViewPlane      = 5000.0f;  ///< Near view plane
 
     // Camera attributes (configurable)
-    glm::vec3 Position      = glm::vec3(30.0f, -30.0f, 30.0f);  ///< Camera position
-    glm::vec3 Front;                                            ///< Camera front vector
-    glm::vec3 CamUp;                                            ///< Camera up vector (used in lookAt()) (computed from cross(right, front))
+    glm::vec3 Position      = glm::vec3(30.0f, -30.0f, 30.0f);  ///< camera position
+    glm::vec3 Front;                                            ///< camera front vector
+    glm::vec3 CamUp;                                            ///< camera up vector (used in lookAt()) (computed from cross(right, front))
     glm::vec3 WorldUp       = glm::vec3(0.0f, 0.0f, 1.0f);      ///< World up vector (used for computing camera's right vector) (got from up param. in constructor)
 
     // Euler angles
-    float Yaw               =  90.0f;   ///< Camera yaw (Euler angle)
-    float Pitch             =  10.0f;   ///< Camera pitch (Euler angle)
-    float Roll              =  0.f;     ///< Camera roll (Euler angle)
+    float Yaw               =  90.0f;   ///< camera yaw (Euler angle)
+    float Pitch             =  10.0f;   ///< camera pitch (Euler angle)
+    float Roll              =  0.f;     ///< camera roll (Euler angle)
 
-    /**
-        @brief Construction using default values.
-    */
+    /// Construction using default values.
     Camera(GLFWwindow* window);
 
     /**
      * @brief Construction using vectors
-     * @param position Camera position
-     * @param up Camera up vector
-     * @param yaw Camera yaw
-     * @param pitch Camera pitch
-     * @param roll Camera roll
+     * 
+     * @param position camera position
+     * @param worldUp camera up vector
+     * @param yaw camera yaw
+     * @param pitch camera pitch
+     * @param roll camera roll
      */
     Camera(GLFWwindow* window, glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, float roll = 0);
 
@@ -73,20 +72,17 @@ public:
     glm::mat4 GetProjectionMatrix(const float& aspectRatio);
 
 
-    double yScrollOffset;
+    double yScrollOffset;       ///< Used for storing the mouse scroll offset
 
 private:
     /**
     * @brief Processes input received from any keyboard-like input system
-    * @param direction Camera type of movement (forward, backward, left, right)
     * @param deltaTime Time between one frame and the next
     */
     void ProcessKeyboard(float deltaTime);
 
     /**
      * @brief Processes input received from a mouse input system
-     * @param xoffset Mouse X position difference from one frame to the next
-     * @param yoffset Mouse Y position difference from one frame to the next
      * @param constrainPitch Limit camera's pitch movement (minimum and maximum value)
      */
     void ProcessMouseMovement(bool constrainPitch);

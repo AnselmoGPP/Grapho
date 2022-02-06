@@ -20,8 +20,8 @@ public:
 
 	bool framebufferResized = false;	///< Many drivers/platforms trigger VK_ERROR_OUT_OF_DATE_KHR after window resize, but it's not guaranteed. This variable handles resizes explicitly.
 
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);		///< Callback for window resizing.
+	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);	///< Callback for mouse scroll.
 };
 
 #endif

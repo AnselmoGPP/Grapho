@@ -73,15 +73,7 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-/*
-	Render same model with different descriptors
-		- You technically don't have multiple uniform buffers; you just have one. But you can use the offset(s) provided to vkCmdBindDescriptorSets
-		to shift where in that buffer the next rendering command(s) will get their data from. Basically, you rebind your descriptor sets, but with
-		different pDynamicOffset array values.
-		- Your pipeline layout has to explicitly declare those descriptors as being dynamic descriptors. And every time you bind the set, you'll need
-		to provide the offset into the buffer used by that descriptor.
-		- More: https://stackoverflow.com/questions/45425603/vulkan-is-there-a-way-to-draw-multiple-objects-in-different-locations-like-in-d
-*/
+// TODO now: UBO for fragment shader / Shared textures / [Generalize loadModel] / Reorganize 2nd thread / Parallel thread manager
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -129,7 +121,11 @@ void setTerrain	(Renderer& app);
 int main(int argc, char* argv[])
 {
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update);		std::cout << "------------------------------" << std::endl;
+	Renderer app(update);		
+	
+	std::cout << "------------------------------" << std::endl;
+	TimerSet time;
+	std::cout << time.getDate() << std::endl;
 
 	setPoints(app);
 	setAxis(app);
@@ -184,8 +180,8 @@ void setSun(Renderer& app)
 	assets["sun"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 0, 1), numVertex, v_sun.data(),
+		noUBO,
+		VertexType(1, 0, 1, 0), numVertex, v_sun.data(),
 		i_sun,
 		textures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
@@ -204,9 +200,9 @@ void setReticule(Renderer& app)
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
 	assets["reticule"] = app.newModel( 
 		1, primitiveTopology::triangle,
-		UBOtype(), // UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 0, 1), numVertex, v_ret.data(),
+		noUBO,
+		noUBO,
+		VertexType(1, 0, 1, 0), numVertex, v_ret.data(),
 		i_ret,
 		textures,
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
@@ -219,8 +215,8 @@ void setPoints(Renderer& app)
 	assets["points"] = app.newModel( 
 		1, primitiveTopology::point,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 1, 0), 9, v_points.data(),
+		noUBO,
+		VertexType(1, 1, 0, 0), 9, v_points.data(),
 		noIndices,
 		noTextures,
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
@@ -239,8 +235,8 @@ void setAxis(Renderer& app)
 	assets["axis"] = app.newModel( 
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 1, 0), numVertex, v_axis.data(),
+		noUBO,
+		VertexType(1, 1, 0, 0), numVertex, v_axis.data(),
 		i_axis,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
@@ -259,8 +255,8 @@ void setGrid(Renderer& app)
 	assets["grid"] = app.newModel( 
 		1, primitiveTopology::line,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 1, 0), numVertex, v_grid.data(),
+		noUBO,
+		VertexType(1, 1, 0, 0), numVertex, v_grid.data(),
 		i_grid,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
@@ -276,8 +272,8 @@ void setSkybox(Renderer& app)
 	assets["skyBox"] = app.newModel(
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 0, 1), 14, v_cube.data(),
+		noUBO,
+		VertexType(1, 0, 1, 0), 14, v_cube.data(),
 		i_inCube,
 		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
@@ -292,12 +288,12 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel( 
 		0, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
+		noUBO,
+		VertexType(1, 1, 1, 0),
 		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		textures,
 		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
 		(SHADERS_DIR  + "f_trianglePCT.spv").c_str(),
-		VertexType(1, 1, 1),
 		false );
 
 	// Delete a model you passed previously.
@@ -307,12 +303,12 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
+		noUBO,
+		VertexType(1, 1, 1, 1),
 		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
-		VertexType(sizeof(VertexPCT), 1, 1, 1),
 		false );
 }
 
@@ -323,12 +319,12 @@ void setRoom(Renderer& app)
 	assets["room"] = app.newModel( 
 		2, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
+		noUBO,
+		VertexType(1, 1, 1, 0),
 		(MODELS_DIR + "viking_room.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
-		VertexType(1, 1, 1),
 		false );
 
 	assets["room"]->setMM(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
@@ -344,8 +340,8 @@ void setFloor(Renderer& app)
 	assets["floor"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 0),
-		UBOtype(),
-		VertexType(1, 0, 1), 4, v_floor.data(),
+		noUBO,
+		VertexType(1, 0, 1, 0), 4, v_floor.data(),
 		i_floor,
 		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
@@ -366,7 +362,7 @@ void setTerrain(Renderer& app)
 	assets["terrain"] = app.newModel( 
 		1, primitiveTopology::triangle,
 		UBOtype(1, 1, 1, 1),
-		UBOtype(),//UBOtype(0, 0, 0, 0, 1),
+		noUBO,//UBOtype(0, 0, 0, 0, 1),
 		VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
 		terrGen.indices,
 		textures,

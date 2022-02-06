@@ -1,7 +1,4 @@
-// Definir principales objetos/elementes
-// Abstraer creación de modelos
 
-//<<< Create a global VulkanEnvironment variable for sharing between ModelData objects <<<
 
 #include <iostream>
 #include <stdexcept>
@@ -14,6 +11,7 @@
 #include <unordered_map>		// For storing unique vertices from the model
 
 #include "renderer.hpp"
+
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
 	: input(e.window), userUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
@@ -92,7 +90,7 @@ void Renderer::createCommandBuffers()
 
 			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 			VkDeviceSize offsets[] = { 0 };	// <<<
-
+		
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
 			if(it->indices.size())
@@ -114,13 +112,6 @@ void Renderer::createCommandBuffers()
 				//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
 				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
 			}
-
-			// Instance rendering allows to perform a single draw call. As I understood, UBO can be passed in the following Ways:
-			// - In a non-dynamic descriptor (problem: shader has to contain the declaration of one UBO for each instance).
-			// - As a buffer's attribute (problem: it is non-modifyable).
-			// - In a dynamic descriptor (solves both previous problems), but requires many draw calls (defeats the whole purpose of instance rendering).
-			// https://stackoverflow.com/questions/54619507/whats-the-correct-way-to-implement-instanced-rendering-in-vulkan
-			// https://www.reddit.com/r/vulkan/comments/hhoktq/rendering_multiple_objects/
 		}
 
 		// Finish up
@@ -131,7 +122,6 @@ void Renderer::createCommandBuffers()
 }
 
 // (25)
-/// Create semaphores and fences for synchronizing the events occuring in each frame (drawFrame()).
 void Renderer::createSyncObjects()
 {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -184,18 +174,6 @@ void Renderer::stopThread()
 	if (thread_loadModels.joinable()) thread_loadModels.join();
 }
 
-/**
-*	Acquire image from swap chain, execute command buffer with that image as attachment in the framebuffer, and return the image to the swap chain for presentation.
-*	This method performs 3 operations asynchronously (the function call returns before the operations are finished, with undefined order of execution):
-*	<ul>
-*		<li>Acquire an image from the swap chain</li>
-*		<li>Execute the command buffer with that image as attachment in the framebuffer</li>
-*		<li>Return the image to the swap chain for presentation</li>
-*	</ul>
-*	Each of the operations depends on the previous one finishing, so we need to synchronize the swap chain events.
-*	Two ways: semaphores (mainly designed to synchronize within or accross command queues. Best fit here) and fences (mainly designed to synchronize your application itself with rendering operation).
-*	Synchronization examples: https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples#swapchain-image-acquire-and-present
-*/
 void Renderer::drawFrame()
 {
 	// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
@@ -279,7 +257,6 @@ void Renderer::drawFrame()
 	// vkQueueWaitIdle(presentQueue);							// Make the whole graphics pipeline to be used only one frame at a time (instead of using this, we use multiple semaphores for processing frames concurrently).
 }
 
-/// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
 void Renderer::recreateSwapChain()
 {
 	int width = 0, height = 0;
@@ -309,7 +286,6 @@ void Renderer::recreateSwapChain()
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
 }
 
-/// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
 void Renderer::updateUniformBuffer(uint32_t currentImage)
 {
 	// Compute time difference
@@ -348,7 +324,6 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	}
 }
 
-/// Cleanup after render loop terminated
 void Renderer::cleanup()
 {
 	// Cleanup renderer
@@ -372,7 +347,6 @@ void Renderer::cleanup()
 	e.cleanup(); 
 }
 
-// Used in recreateSwapChain()
 void Renderer::cleanupSwapChain()
 {
 	// Renderer (free Command buffers)
@@ -386,8 +360,7 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-// Inserts a partially initialized model. The thread_loadModels thread will fully initialize it as soon as possible. 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
+modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, VertexType vertexType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
@@ -431,7 +404,6 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 	}
 }
 
-// Check for models pending full initialization.
 void Renderer::loadModels_Thread()
 {
 	std::cout << "Start thread" << std::endl;

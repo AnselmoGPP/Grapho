@@ -69,6 +69,13 @@ long double TimerSet::getTimeNow()
     return std::chrono::duration<long double, std::chrono::seconds::period>(timeNow - startTime).count();
 }
 
+std::string TimerSet::getDate()
+{
+    std::chrono::system_clock::time_point timePoint = std::chrono::system_clock::now();
+    std::time_t date = std::chrono::system_clock::to_time_t(timePoint);
+    return std::ctime(&date);
+}
+
 int TimerSet::getFPS() { return FPS; }
 
 int TimerSet::getMaxPossibleFPS() { return maxPossibleFPS; }

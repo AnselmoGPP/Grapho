@@ -7,7 +7,7 @@
 Input::Input(GLFWwindow* window)
 	: window(window), cam(Camera(window))
 {
-	glfwSetWindowUserPointer(window, this);				// Set this class as windowUserPointer (for making it accessible from callbacks)
+	glfwSetWindowUserPointer(window, this);								// Set this class as windowUserPointer (for making it accessible from callbacks)
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// Set callback (signals famebuffer resizing)
 	glfwSetScrollCallback(window, mouseScroll_callback);				// Set callback (get mouse scrolling)
 }

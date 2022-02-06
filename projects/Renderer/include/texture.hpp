@@ -6,26 +6,25 @@
 
 class Texture
 {
-	const char* path;
-	VulkanEnvironment* e;				///< Pointer, instead of a reference, because it is assign in loadAndCreateTexture().
+	const char* path;									///< Path to the texture file.
+	VulkanEnvironment* e;								///< Pointer, instead of a reference, because it is not defined at object creation but when calling loadAndCreateTexture().
 
-	void createTextureImage();			///< Load an image and upload it into a Vulkan object.
-	void createTextureImageView();		///< Create an image view for the texture (images are accessed through image views rather than directly).
-	void createTextureSampler();		///< Create a sampler for the textures (it applies filtering and transformations).
+	void createTextureImage();							///< Load an image and upload it into a Vulkan object. Process: Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer.
+	void createTextureImageView();						///< Create an image view for the texture (images are accessed through image views rather than directly).
+	void createTextureSampler();						///< Create a sampler for the textures (it applies filtering and transformations).
 
-	void copyCString(const char*& destination, const char* source);
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);							///< Used in createTextureImage() for copying the staging buffer (VkBuffer) to the texture image (VkImage). 
+	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);	///< Generate mipmaps
 
-	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
+	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	friend void copyCString(const char*& destination, const char* source);
 
 public:
-	Texture(const char* path);
-	Texture(const Texture& obj);
+	Texture(const char* path);							///< Construction using the path to a texture file.
+	Texture(const Texture& obj);						///< Copy constructor.
 	~Texture();
 
-	void loadAndCreateTexture(VulkanEnvironment& e);
-
+	void loadAndCreateTexture(VulkanEnvironment& e);	///< Load image and create the VkImage, VkImageView and VkSampler.
 
 	uint32_t					 mipLevels;				///< Number of levels (mipmaps)
 	VkImage						 textureImage;			///< Opaque handle to an image object.

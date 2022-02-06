@@ -18,7 +18,7 @@
 glm::mat4 modelMatrix();
 
 /// Get a user-defined Model Matrix 
-glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation);
+glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translation);
 
 /// Print content of a glm::mat4 object
 void printMat4(glm::mat4 matrix);
@@ -47,7 +47,7 @@ extern std::vector<uint32_t> i_inCube;
 
 extern double pi;
 
-/// This class checks if X argument (float) is bigger than some other argument (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
+/// This class checks if argument X (float) is bigger than argument Y (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
 class ifOnce
 {
 	std::vector<float> checked;
@@ -56,7 +56,8 @@ public:
 	bool ifBigger(float a, float b);
 };
 
-/*  @brief Get Model matrix for the sun.
+/**
+    @brief Get Model matrix for the sun.
         @param pos Camera position.
         @param dayTime Time of the day (12,5 = 12:30). It determines the sun angle.
         @param sunDist Sun distance from camPos.
@@ -64,6 +65,7 @@ public:
 */
 glm::mat4 sunMM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist);
 
+/// Get light direction from sun, given a day time. Used for directional and spot lights.
 glm::vec3 sunLightDirection(float dayTime);
 
 #endif

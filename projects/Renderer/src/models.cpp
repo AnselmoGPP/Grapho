@@ -3,11 +3,11 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+
 std::vector<Texture> noTextures;
 std::vector<uint32_t> noIndices;
+UBOtype noUBO;
 
-
-/// Constructor. Requires model path and texture path.
 ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
 	: e(environment), 
 	primitiveTopology(primitiveTopology), 
@@ -32,7 +32,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPri
 	vertices = VertexSet(VertexType(1, 1, 1, 0));	// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 }
 
-/// Constructor. Requires vertex data, indices data, and texture path.
 ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment), 
 	primitiveTopology(primitiveTopology), 
@@ -74,7 +73,6 @@ ModelData::~ModelData()
 
 ModelData& ModelData::fullConstruction()
 {
-std::cout << "full 1" << std::endl;
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
 	
@@ -88,17 +86,9 @@ std::cout << "full 1" << std::endl;
 	vsDynUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-std::cout << "full 2" << std::endl;
+
 	fullyConstructed = true;
 	return *this;
-}
-
-void ModelData::copyCString(const char*& destination, const char* source)
-{
-	size_t siz = strlen(source) + 1;
-	char* address = new char[siz];
-	strncpy(address, source, siz);
-	destination = address;
 }
 
 // (9)
@@ -157,22 +147,6 @@ void ModelData::createDescriptorSetLayout()
 }
 
 // (10)
-/**
-*	Graphics pipeline: Sequence of operations that take the vertices and textures of your meshes all the way to the pixels in the render targets. Stages (F: fixed-function stages, P: programable):
-* 		<ul>
-			<li>Vertex/Index buffer: Raw vertex data.</li>
-			<li>Input assembler (F): Collects data from the buffers and may use an index buffer to repeat certain elements without duplicating the vertex data.</li>
-			<li>Vertex shader (P): Run for every vertex. Generally, applies transformations to turn vertex positions from model space to screen space. Also passes per-vertex data down the pipeline.</li>
-			<li>Tessellation shader (P): Subdivides geometry based on certain rules to increase mesh quality (example: make brick walls look less flat from nearby).</li>
-			<li>Geometry shader (P): Run for every primitive (triangle, line, point). It can discard the primitive or output more new primitives. Similar to tessellation shader, more flexible but with worse performance.</li>
-			<li>Rasterization (F): Discretizes primitives into fragments (pixel elements that fill the framebuffer). Attributes outputted by the vertex shaders are interpolated across fragments. Fragments falling outside the screen are discarded. Usually, fragments behind others are discarded (depth testing).</li>
-			<li>Fragment shader (P): Run for every surviving fragment. Determines which framebuffer/s the fragments are written to and with which color and depth values (uses interpolated data from vertex shader, and may include things like texture coordinates, normals for lighting).</li>
-			<li>Color blending (F): Mixes different fragments that map to the same pixel in the framebuffer (overwrite each other, add up, or mix based upon transparency).</li>
-			<li>Framebuffer.</li>
-		</ul>
-	Some programmable stages are optional (example: tessellation and geometry stages).
-	In Vulkan, the graphics pipeline is almost completely immutable. You will have to create a number of pipelines representing all of the different combinations of states you want to use.
-*/
 void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 {
 	// Create pipeline layout   <<< sameMod
@@ -404,10 +378,6 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 }
 
 // (18)
-/**
-*	Fill the members vertices and indices.
-*	An OBJ file consists of positions, normals, texture coordinates and faces. Faces consist of an arbitrary amount of vertices, where each vertex refers to a position, normal and/or texture coordinate by index.
-*/
 void ModelData::loadModel(const char* obj_file)
 {
 	// Load model
@@ -504,7 +474,9 @@ void ModelData::createVertexBuffer()
 }
 
 /**
-*	Memory transfer operations are executed using command buffers (like drawing commands), so we allocate a temporary command buffer. You may wish to create a separate command pool for these kinds of short-lived buffers, because the implementation could apply memory allocation optimizations. You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
+	@brief Copies some amount of data (size) from srcBuffer into dstBuffer. Used in createVertexBuffer() and createIndexBuffer().
+
+	Memory transfer operations are executed using command buffers (like drawing commands), so we allocate a temporary command buffer. You may wish to create a separate command pool for these kinds of short-lived buffers, because the implementation could apply memory allocation optimizations. You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
 */
 void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
@@ -700,9 +672,9 @@ void ModelData::recreateSwapChain()
 {
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
-	vsDynUBO.createUniformBuffers();				// Uniform buffers depend on the number of swap chain images.
-	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
-	createDescriptorSets();				// Descriptor sets
+	vsDynUBO.createUniformBuffers();		// Uniform buffers depend on the number of swap chain images.
+	createDescriptorPool();					// Descriptor pool depends on the swap chain images.
+	createDescriptorSets();					// Descriptor sets
 }
 
 void ModelData::cleanupSwapChain()
@@ -774,7 +746,7 @@ void ModelData::setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue)
 		vsDynUBO.setMNorm(posDynUbo, attrib, glm::mat3(glm::transpose(glm::inverse(newValue))));
 }
 
-bool ModelData::isDataFromFile() { return dataFromFile; }
+//bool ModelData::isDataFromFile() { return dataFromFile; }
 
 //size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[2]; }
 

@@ -23,7 +23,7 @@ glm::mat4 modelMatrix()
 }
 
 /// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees, and positive if clockwise (looking from each axis).
-glm::mat4 modelMatrix(glm::vec3 scale, glm::vec3 rotation, glm::vec3 translation)
+glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translation)
 {
 	glm::mat4 mm = glm::mat4(1.0f);
 

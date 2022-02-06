@@ -18,7 +18,7 @@
 #include "texture.hpp"
 
 /*
-	Basic ModelData interface:
+	Basic ModelData interface ():
 
 		- ModelData obj(...)		// Create basic model object
 		- obj.fullConstruction()	// Load model data into the object (useful in a second thread)
@@ -41,91 +41,140 @@
 
 extern std::vector<Texture> noTextures;
 extern std::vector<uint32_t> noIndices;
+extern UBOtype noUBO;
 
 
-//template <typename Vertex>
+/**
+	@class ModelData
+	@brief Stores the data directly related to a graphic object. 
+	
+	Manages vertex, indices, UBOs, textures (pointers), etc.
+*/
 class ModelData
 {
 	VulkanEnvironment& e;
 
-	const char* modelPath;
-
-	const char* VSpath;
-	const char* FSpath;
-
-	VkPrimitiveTopology primitiveTopology;	///< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
-	//VkDeviceSize usefulUBOsize;
-	bool dataFromFile;						///< Flags if vertex-color-texture_index comes from file or from code
-	bool fullyConstructed;					///< Flags if this object has been fully constructed (i.e. has a model loaded)
-	bool hasTransparencies;					///< Flags if textures contain transparencies (alpha channel)
+	const char* modelPath;					//!< Path to model to load (set of vertex and indices)
+	
+	const char* VSpath;						//!< Path to vertex shader
+	const char* FSpath;						//!< Path to fragment shader
+	
+	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
+	bool dataFromFile;						//!< Flags if vertex-color-texture_index comes from file or from code
+	bool fullyConstructed;					//!< Flags if this object has been fully constructed (i.e. has a model loaded)
+	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
 
-	void createDescriptorSetLayout();		///< Layout for the descriptor set (descriptor: handle or pointer into a resource (buffer, sampler, texture...))
-	void createGraphicsPipeline(const char* VSpath, const char* FSpath);///< Create the graphics pipeline.
+	/// Layout for the descriptor set (descriptor: handle or pointer into a resource (buffer, sampler, texture...))
+	void createDescriptorSetLayout();
 
-	//void createTextureImage(const char* path);///< Load an image and upload it into a Vulkan object.
-	//void createTextureImageView();			///< Create an image view for the texture (images are accessed through image views rather than directly).
-	//void createTextureSampler();			///< Create a sampler for the textures (it applies filtering and transformations).
-	void loadModel(const char* obj_file);	///< Populate the vertices and indices members with the vertex data from the mesh (OBJ file).
-	void createVertexBuffer();				///< Vertex buffer creation.
-	void createIndexBuffer();				///< Index buffer creation
-	void createUniformBuffers();			///< Uniform buffer creation (type of descriptors that can be bound), one for each swap chain image.
-	void createDescriptorPool();			///< Descriptor pool creation (a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor).
-	void createDescriptorSets();			///< Descriptor sets creation.
+	/**
+		@brief Create the graphics pipeline.
 
+		Graphics pipeline: Sequence of operations that take the vertices and textures of your meshes all the way to the pixels in the render targets. Stages (F: fixed-function stages, P: programable):
+			<ul>
+				<li>Vertex/Index buffer: Raw vertex data.</li>
+				<li>Input assembler (F): Collects data from the buffers and may use an index buffer to repeat certain elements without duplicating the vertex data.</li>
+				<li>Vertex shader (P): Run for every vertex. Generally, applies transformations to turn vertex positions from model space to screen space. Also passes per-vertex data down the pipeline.</li>
+				<li>Tessellation shader (P): Subdivides geometry based on certain rules to increase mesh quality (example: make brick walls look less flat from nearby).</li>
+				<li>Geometry shader (P): Run for every primitive (triangle, line, point). It can discard the primitive or output more new primitives. Similar to tessellation shader, more flexible but with worse performance.</li>
+				<li>Rasterization (F): Discretizes primitives into fragments (pixel elements that fill the framebuffer). Attributes outputted by the vertex shaders are interpolated across fragments. Fragments falling outside the screen are discarded. Usually, fragments behind others are discarded (depth testing).</li>
+				<li>Fragment shader (P): Run for every surviving fragment. Determines which framebuffer/s the fragments are written to and with which color and depth values (uses interpolated data from vertex shader, and may include things like texture coordinates, normals for lighting).</li>
+				<li>Color blending (F): Mixes different fragments that map to the same pixel in the framebuffer (overwrite each other, add up, or mix based upon transparency).</li>
+				<li>Framebuffer.</li>
+			</ul>
+		Some programmable stages are optional (example: tessellation and geometry stages).
+		In Vulkan, the graphics pipeline is almost completely immutable. You will have to create a number of pipelines representing all of the different combinations of states you want to use.
+	*/
+	void createGraphicsPipeline(const char* VSpath, const char* FSpath);
+
+	/**
+	*	@brief Populate the vertices and indices members with the vertex data from the mesh (OBJ file).
+	*
+	*	Fill the members vertices and indices.
+	*	An OBJ file consists of positions, normals, texture coordinates and faces. Faces consist of an arbitrary amount of vertices, where each vertex refers to a position, normal and/or texture coordinate by index.
+	*/
+	void loadModel(const char* obj_file);
+
+	/// Vertex buffer creation.
+	void createVertexBuffer();
+
+	/// Index buffer creation
+	void createIndexBuffer();
+
+	/// Descriptor pool creation (a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor).
+	void createDescriptorPool();
+
+	/// Descriptor sets creation.
+	void createDescriptorSets();
+
+	/// Clear descriptor sets, vertex and indices. Called by destructor.
 	void cleanup();
 
 	// Helper methods:
 
-	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);	///< Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
-	VkShaderModule				createShaderModule(const std::vector<char>& code);				///< Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
-	//void						createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);	///< Helper function for creating a buffer (VkBuffer and VkDeviceMemory).
-	//void						copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-	//void						generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	void						copyCString(const char*& destination, const char* source);
+	/// Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
+	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);
 
-	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	/// Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
+	VkShaderModule				createShaderModule(const std::vector<char>& code);
+	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	friend void					copyCString(const char*& destination, const char* source);
+	friend void					createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 public:
-	/// Data from file 
+
+	/// Data from file. Requires model path.
 	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
-	/// Data passed as argument
+
+	/// Data passed as argument. Requires vertex data and indices data.
 	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	virtual ~ModelData();
 
+	/// Creates graphic pipeline and descriptor sets, and loads data for creating buffers (vertex, indices, textures). Useful in a second thread
 	ModelData& fullConstruction();
-	void recreateSwapChain();							///< Called by Renderer for window resizing
+
+	/// Destroys graphic pipeline and descriptor sets. Called by destructor, and for window resizing (by Renderer::recreateSwapChain()::cleanupSwapChain()).
 	void cleanupSwapChain();
 
-	VkDescriptorSetLayout		 descriptorSetLayout;	///< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
-	VkPipelineLayout			 pipelineLayout;		///< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
-	VkPipeline					 graphicsPipeline;		///< Opaque handle to a pipeline object.
+	/// Creates graphic pipeline and descriptor sets. Called for window resizing (by Renderer::recreateSwapChain()).
+	void recreateSwapChain();
 
-	std::vector<Texture>		 textures;
+	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
+	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.
 
-	VertexSet					 vertices;				///< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
-	std::vector<uint32_t>		 indices;				///< Indices of our model (indices(
-	VkBuffer					 vertexBuffer;			///< Opaque handle to a buffer object (here, vertex buffer).
-	VkDeviceMemory				 vertexBufferMemory;	///< Opaque handle to a device memory object (here, memory for the vertex buffer).
-	VkBuffer					 indexBuffer;			///< Opaque handle to a buffer object (here, index buffer).
-	VkDeviceMemory				 indexBufferMemory;		///< Opaque handle to a device memory object (here, memory for the index buffer).
+	std::vector<Texture>		 textures;				//!< Set of textures used by this model.
 
-	UBO							 vsDynUBO;				///< Stores the set of dynamic UBOs that will be passed to the vertex shader
-	UBO							 fsUBO;					///< Stores the UBO that will be passed to the fragment shader
-	//std::vector<VkBuffer>		 uniformBuffers;		///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
-	//std::vector<VkDeviceMemory>uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
-	VkDescriptorPool			 descriptorPool;		///< Opaque handle to a descriptor pool object.
-	std::vector<VkDescriptorSet> descriptorSets;		///< List. Opaque handle to a descriptor set object. One for each swap chain image.
+	VertexSet					 vertices;				//!< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
+	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).
+	VkDeviceMemory				 vertexBufferMemory;	//!< Opaque handle to a device memory object (here, memory for the vertex buffer).
 
-	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	///< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
-	//glm::mat4(*getModelMatrix) (float time);
+	std::vector<uint32_t>		 indices;				//!< Indices of our model
+	VkBuffer					 indexBuffer;			//!< Opaque handle to a buffer object (here, index buffer).
+	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 
-	void resizeUBOset(size_t newSize);		///< Set up dynamic offsets and number of MM (model matrices)
+	UBO							 vsDynUBO;				//!< Stores the set of dynamic UBOs that will be passed to the vertex shader
+	UBO							 fsUBO;					//!< Stores the UBO that will be passed to the fragment shader
+	VkDescriptorSetLayout		 descriptorSetLayout;	//!< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
+	VkDescriptorPool			 descriptorPool;		//!< Opaque handle to a descriptor pool object.
+	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
+
+	/// Set number of MM and dynamic offsets.
+	void resizeUBOset(size_t newSize);
+
+	/**
+		@brief Set Model matrix (MM).
+		@param posDynUbo Which dynamic UBO?
+		@param attrib Within the set of MMs, which one?
+		@param newValue New model matrix (MM)
+	*/
 	void setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue);
 
-	bool isDataFromFile();
+	//bool isDataFromFile();											//!< True if vertex/index data came from a file. <<< not used
+
+	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	//!< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
+	//glm::mat4(*getModelMatrix) (float time);
 };
 
 

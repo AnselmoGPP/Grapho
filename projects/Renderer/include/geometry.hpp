@@ -14,9 +14,8 @@
 */
 
 
-/*
+/**
 *   @brief Computes the coherent noise (FBM) value for specific 2D coordinates (x,y). Range = [0, maxHeight]
-* 
 *   Parameters used:
 *   <ul>
 *    <li>Noise type</li>
