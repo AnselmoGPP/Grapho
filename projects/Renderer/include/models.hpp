@@ -16,6 +16,7 @@
 #include "vertex.hpp"
 #include "ubo.hpp"
 #include "texture.hpp"
+#include "loaddata.hpp"
 
 /*
 	Basic ModelData interface ():
@@ -53,6 +54,7 @@ extern UBOtype noUBO;
 class ModelData
 {
 	VulkanEnvironment& e;
+	VertexLoader* vertexLoader;
 
 	const char* modelPath;					//!< Path to model to load (set of vertex and indices)
 	
@@ -88,14 +90,6 @@ class ModelData
 		In Vulkan, the graphics pipeline is almost completely immutable. You will have to create a number of pipelines representing all of the different combinations of states you want to use.
 	*/
 	void createGraphicsPipeline(const char* VSpath, const char* FSpath);
-
-	/**
-	*	@brief Populate the vertices and indices members with the vertex data from the mesh (OBJ file).
-	*
-	*	Fill the members vertices and indices.
-	*	An OBJ file consists of positions, normals, texture coordinates and faces. Faces consist of an arbitrary amount of vertices, where each vertex refers to a position, normal and/or texture coordinate by index.
-	*/
-	void loadModel(const char* obj_file);
 
 	/// Vertex buffer creation.
 	void createVertexBuffer();

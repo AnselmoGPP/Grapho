@@ -8,7 +8,6 @@
 #include <algorithm>			// std::min / std::max
 #include <fstream>
 #include <chrono>
-#include <unordered_map>		// For storing unique vertices from the model
 
 #include "renderer.hpp"
 
@@ -406,7 +405,8 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 
 void Renderer::loadModels_Thread()
 {
-	std::cout << "Start thread" << std::endl;
+	std::cout << "Start loading thread" << std::endl;
+
 	modelIterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
 	std::list<modelIterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
 	std::map<modelIterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
@@ -502,6 +502,8 @@ void Renderer::loadModels_Thread()
 				deathRow.clear();				// Delete models
 		}
 	}
+
+	std::cout << "Finish loading thread" << std::endl;
 }
 
 TimerSet& Renderer::getTimer() { return timer; }

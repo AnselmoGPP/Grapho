@@ -37,6 +37,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	src/ubo.cpp
 	src/camera.cpp
 	src/input.cpp
+	src/loaddata.cpp
 	src/timer.cpp
 	src/toolkit.cpp
 	src/data.cpp
@@ -49,6 +50,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	include/ubo.hpp
 	include/camera.hpp
 	include/input.hpp
+	include/loaddata.hpp
 	include/timer.hpp
 	include/toolkit.hpp
 	include/data.hpp

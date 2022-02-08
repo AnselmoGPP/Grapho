@@ -8,7 +8,7 @@ MKDIR ..\..\_BUILD
 MKDIR ..\..\_BUILD\projects
 CD ..\..\_BUILD\projects
 
-cmake -G"Visual Studio 17 2022" ..\..\projects
+"C:\Program Files\CMake\bin\cmake" -G"Visual Studio 17 2022" ..\..\projects
 PAUSE
 
 REM The next step is to build the binaries:

@@ -189,6 +189,8 @@ void setSun(Renderer& app)
 		true);
 
 	sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
+
+	std::cout << __func__ << std::endl;
 }
 
 void setReticule(Renderer& app)
@@ -208,6 +210,8 @@ void setReticule(Renderer& app)
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),
 		true );
+
+	std::cout << __func__ << std::endl;
 }
 
 void setPoints(Renderer& app)
@@ -224,6 +228,8 @@ void setPoints(Renderer& app)
 		false );
 
 	//assets["points"]->setMM(0, modelMatrix());
+
+	std::cout << __func__ << std::endl;
 }
 
 void setAxis(Renderer& app)
@@ -244,6 +250,8 @@ void setAxis(Renderer& app)
 		false );
 
 	//assets["axis"]->setMM(0, modelMatrix());
+
+	std::cout << __func__ << std::endl;
 }
 
 void setGrid(Renderer& app)
@@ -264,6 +272,8 @@ void setGrid(Renderer& app)
 		false );
 
 	//assets["grid"]->setMM(0, modelMatrix());
+
+	std::cout << __func__ << std::endl;
 }
 
 void setSkybox(Renderer& app)
@@ -279,6 +289,8 @@ void setSkybox(Renderer& app)
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		false);
+
+	std::cout << __func__ << std::endl;
 }
 
 void setCottage(Renderer& app)
@@ -310,6 +322,8 @@ void setCottage(Renderer& app)
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		false );
+
+	std::cout << __func__ << std::endl;
 }
 
 void setRoom(Renderer& app)
@@ -331,6 +345,8 @@ void setRoom(Renderer& app)
 	assets["room"]->setMM(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+
+	std::cout << __func__ << std::endl;
 }
 
 void setFloor(Renderer& app)
@@ -349,6 +365,8 @@ void setFloor(Renderer& app)
 		false );
 
 	//assets["floor"]->setMM(0, modelMatrix());
+
+	std::cout << __func__ << std::endl;
 }
 
 void setTerrain(Renderer& app)
@@ -369,4 +387,6 @@ void setTerrain(Renderer& app)
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
 		false );
+
+	std::cout << __func__ << std::endl;
 }
