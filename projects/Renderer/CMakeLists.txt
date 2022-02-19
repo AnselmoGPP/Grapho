@@ -40,7 +40,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	src/loaddata.cpp
 	src/timer.cpp
 	src/toolkit.cpp
-	src/data.cpp
+	src/commons.cpp
 
 	include/renderer.hpp
 	include/environment.hpp
@@ -53,7 +53,7 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	include/loaddata.hpp
 	include/timer.hpp
 	include/toolkit.hpp
-	include/data.hpp
+	include/commons.hpp
 
 	include/geometry.hpp
 	include/world.hpp

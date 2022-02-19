@@ -10,45 +10,6 @@
 #include "environment.hpp"
 
 
-/// Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture. Used as friend in ModelData, Texture and UBO.
-void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-	// Create buffer.
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = usage;									// For multiple purposes use a bitwise or.
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;			// Like images in the swap chain, buffers can also be owned by a specific queue family or be shared between multiple at the same time. Since the buffer will only be used from the graphics queue, we use EXCLUSIVE.
-	bufferInfo.flags = 0;										// Used to configure sparse buffer memory.
-
-	if (vkCreateBuffer(e.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)	// vkCreateBuffer creates a new buffer object and returns it to a pointer to a VkBuffer provided by the caller.
-		throw std::runtime_error("Failed to create buffer!");
-
-	// Get buffer requirements.
-	VkMemoryRequirements memRequirements;		// Members: size (amount of memory in bytes. May differ from bufferInfo.size), alignment (offset in bytes where the buffer begins in the allocated region. Depends on bufferInfo.usage and bufferInfo.flags), memoryTypeBits (bit field of the memory types that are suitable for the buffer).
-	vkGetBufferMemoryRequirements(e.device, buffer, &memRequirements);
-
-	// Allocate memory for the buffer.
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = e.findMemoryType(memRequirements.memoryTypeBits, properties);		// Properties parameter: We need to be able to write our vertex data to that memory. The properties define special features of the memory, like being able to map it so we can write to it from the CPU.
-
-	if (vkAllocateMemory(e.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate buffer memory!");
-
-	vkBindBufferMemory(e.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
-}
-
-/// Copy a C-style string in destination from source. Used in ModelData and Texture.
-void copyCString(const char*& destination, const char* source)
-{
-	size_t siz = strlen(source) + 1;
-	char* address = new char[siz];
-	strncpy(address, source, siz);
-	destination = address;
-}
-
 bool QueueFamilyIndices::isComplete()
 {
 	return	graphicsFamily.has_value() &&

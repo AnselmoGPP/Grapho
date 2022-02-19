@@ -167,8 +167,4 @@ private:
 };
 
 
-void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-
-void copyCString(const char*& destination, const char* source);
-
 #endif

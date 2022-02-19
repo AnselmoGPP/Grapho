@@ -359,18 +359,20 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, VertexType vertexType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, vsUboType, fsUboType, modelPath, textures, VSpath, FSpath, vertexType, transparency);
-}
-
-modelIterator Renderer::newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
-{
-	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
-	
-	return modelsToLoad.emplace(modelsToLoad.cend(), e, numberOfRenderings, (VkPrimitiveTopology)primitiveTopology, vsUboType, fsUboType, vertexType, numVertex, vertexData, indices, textures, VSpath, FSpath, transparency);
+	return modelsToLoad.emplace(
+		modelsToLoad.cend(), 
+		e, 
+		numRenderings, 
+		(VkPrimitiveTopology) primitiveTopology, 
+		vertexLoader,
+		vsUboType, fsUboType, 
+		textures, 
+		VSpath, FSpath, 
+		transparency);
 }
 
 void Renderer::deleteModel(modelIterator model)

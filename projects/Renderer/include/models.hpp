@@ -40,9 +40,9 @@
 
 #define LINE_WIDTH 1.0f
 
-extern std::vector<Texture> noTextures;
-extern std::vector<uint32_t> noIndices;
-extern UBOtype noUBO;
+extern std::vector<Texture> noTextures;		// Vector with 0 Texture objects
+extern std::vector<uint32_t> noIndices;		// Vector with 0 indices
+extern UBOtype noUBO;						// UBOtype with 0 elements
 
 
 /**
@@ -55,14 +55,11 @@ class ModelData
 {
 	VulkanEnvironment& e;
 	VertexLoader* vertexLoader;
+	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 
-	const char* modelPath;					//!< Path to model to load (set of vertex and indices)
-	
 	const char* VSpath;						//!< Path to vertex shader
 	const char* FSpath;						//!< Path to fragment shader
 	
-	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
-	bool dataFromFile;						//!< Flags if vertex-color-texture_index comes from file or from code
 	bool fullyConstructed;					//!< Flags if this object has been fully constructed (i.e. has a model loaded)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
@@ -114,16 +111,10 @@ class ModelData
 	/// Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
 	VkShaderModule				createShaderModule(const std::vector<char>& code);
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	friend void					copyCString(const char*& destination, const char* source);
-	friend void					createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 public:
+	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
-	/// Data from file. Requires model path.
-	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency);
-
-	/// Data passed as argument. Requires vertex data and indices data.
-	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	virtual ~ModelData();
 
 	/// Creates graphic pipeline and descriptor sets, and loads data for creating buffers (vertex, indices, textures). Useful in a second thread

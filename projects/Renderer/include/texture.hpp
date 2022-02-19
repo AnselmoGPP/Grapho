@@ -3,7 +3,6 @@
 
 #include "environment.hpp"
 
-
 class Texture
 {
 	const char* path;									///< Path to the texture file.
@@ -15,9 +14,6 @@ class Texture
 
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);							///< Used in createTextureImage() for copying the staging buffer (VkBuffer) to the texture image (VkImage). 
 	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);	///< Generate mipmaps
-
-	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-	friend void copyCString(const char*& destination, const char* source);
 
 public:
 	Texture(const char* path);							///< Construction using the path to a texture file.

@@ -20,7 +20,7 @@ glm::mat4 modelMatrix();
 /// Get a user-defined Model Matrix 
 glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translation);
 
-/// Print content of a glm::mat4 object
+/// Print content of a glm::mat4 object. Useful for debugging.
 void printMat4(glm::mat4 matrix);
 
 // Vertex sets -----------------------------------------------------------------
@@ -31,15 +31,13 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 /// Get a set of lines that form a grid
 size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, glm::vec3 color);
 
-/// (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix.
+/// (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix (example: sun).
 size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
 
-/// (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix.
+/// (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix (example: reticule).
 size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);
 
 /// Skybox
-extern std::vector<VertexPT> v_posx, v_posy, v_posz, v_negx, v_negy, v_negz;
-extern std::vector<uint32_t> i_square;
 extern std::vector<VertexPT> v_cube;
 extern std::vector<uint32_t> i_inCube;
 
@@ -67,5 +65,23 @@ glm::mat4 sunMM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist
 
 /// Get light direction from sun, given a day time. Used for directional and spot lights.
 glm::vec3 sunLightDirection(float dayTime);
+
+/// Icosahedron data (vertices, colors, indices, normals)
+struct Icosahedron
+{
+    Icosahedron(float multiplier = 30.f);
+
+    const int numIndicesx3  = 20 * 3;
+    const int numVerticesx3 = 12 * 3;
+    const int numColorsx4   = 12 * 4;
+
+    static float vertices   [12 * 3];
+    static float colors     [12 * 4];
+    static unsigned indices [20 * 3];
+    static float normals    [12 * 3];
+
+    static std::vector<float> icos;     // Vertices & colors (without alpha)
+    static std::vector<float> index;    // Indices
+};
 
 #endif

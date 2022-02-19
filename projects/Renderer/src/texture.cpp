@@ -5,6 +5,7 @@
 #include "stb_image.h"
 
 #include "texture.hpp"
+#include "commons.hpp"
 
 
 Texture::Texture(const char* path) : path(nullptr), e(nullptr)

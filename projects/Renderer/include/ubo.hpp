@@ -90,8 +90,6 @@ struct UBO
 	std::vector<VkBuffer>		uniformBuffers;			///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
 	std::vector<VkDeviceMemory>	uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
-	friend void createBuffer(VulkanEnvironment& e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-
 private:
 	VulkanEnvironment& e;
 

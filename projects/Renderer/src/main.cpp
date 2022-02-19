@@ -73,7 +73,7 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// TODO now: UBO for fragment shader / Shared textures / [Generalize loadModel] / Reorganize 2nd thread / Parallel thread manager
+// TODO now: UBO for fragment shader / Shared textures / Reorganize 2nd thread / Parallel thread manager
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -82,19 +82,47 @@
 
 #include "renderer.hpp"
 #include "toolkit.hpp"
-#include "data.hpp"
 #include "geometry.hpp"
 
-std::map<std::string, modelIterator> assets;
-std::map<std::string, texIterator> textures;
-int gridStep = 50;
-ifOnce check;			// LOOK implement as functor (function with state)
+//===============================================================================
 
+// File's paths
+#if defined(__unix__)
+const std::string shaders_dir("../../../projects/Renderer/shaders/SPIRV/");
+const std::string textures_dir("../../../textures/");
+#elif _WIN64 || _WIN32
+const std::string SHADERS_DIR("../../../projects/Renderer/shaders/SPIRV/");
+const std::string MODELS_DIR("../../../models/");
+const std::string TEXTURES_DIR("../../../textures/");
+#endif
+
+// Models & textures
+std::map<std::string, modelIterator> assets;	// Model iterators
+std::map<std::string, texIterator> textures;	// Texture iterators
+
+// Sun & light
 float dayTime = 15.00;
 float sunDist = 500;
 float sunAngDist = 3.14/10;
 Light sun;
 
+// Others
+int gridStep = 50;
+ifOnce check;			// LOOK implement as functor (function with state)
+
+std::vector<VertexPC> v_points = {
+	VertexPC(glm::vec3(-10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(0, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(-10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(0,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(-10,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(0,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
+	VertexPC(glm::vec3(10,  10,  10), glm::vec3(1.f, 0.f, 0.f))
+};
+
+// Terrain
 terrainGenerator terrGen;
 noiseSet noiser( 
 	5, 1.5, 0.28f,					// Octaves, Lacunarity, Persistance
@@ -105,7 +133,14 @@ noiseSet noiser(
 	false,							// Random offset
 	0);								// Seed
 
-void update		(Renderer& r);
+// Data to update
+long double frameTime;
+size_t fps;
+size_t maxfps;
+glm::vec3 pos;
+
+// Functions declarations
+void update		(Renderer& r);		// Update model's MM (model matrix) each frame
 void setReticule(Renderer& app);
 void setPoints	(Renderer& app);
 void setAxis	(Renderer& app);
@@ -113,10 +148,10 @@ void setGrid	(Renderer& app);
 void setSkybox	(Renderer& app);
 void setCottage	(Renderer& app);
 void setRoom	(Renderer& app);
-void setFloor	(Renderer& app);
 void setSun		(Renderer& app);
 void setTerrain	(Renderer& app);
 
+//===============================================================================
 
 int main(int argc, char* argv[])
 {
@@ -133,7 +168,6 @@ int main(int argc, char* argv[])
 	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
-	setFloor(app);
 	setTerrain(app);
 	setSun(app);
 	setReticule(app);
@@ -143,15 +177,15 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-// Update model's model matrix each frame
+
 void update(Renderer& r)
 {
-	long double time	= r.getTimer().getTime();
-	size_t fps			= r.getTimer().getFPS();
-	size_t maxfps		= r.getTimer().getMaxPossibleFPS();
-	glm::vec3 pos		= r.getCamera().Position;
+	frameTime	= r.getTimer().getTime();
+	fps			= r.getTimer().getFPS();
+	maxfps		= r.getTimer().getMaxPossibleFPS();
+	pos			= r.getCamera().Position;
 
-	if (check.ifBigger(time, 5)) std::cout << "5 seconds in" << std::endl;
+	if (check.ifBigger(frameTime, 5)) std::cout << "5 seconds in" << std::endl;
 
 	if (assets.find("skyBox") != assets.end())
 		assets["skyBox"]->setMM(0, 0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
@@ -163,179 +197,211 @@ void update(Renderer& r)
 		assets["grid"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
 
 	if (assets.find("cottage") != assets.end())
-		assets["cottage"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, time * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+		assets["cottage"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, frameTime * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 }
 
 
 void setSun(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<VertexPT> v_sun;
 	std::vector<uint32_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
-	//textures["sun"] = app.newTexture(Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()));
-	//std::vector<Texture> useTextures = { textures["sun"] };
 
-	assets["sun"] = app.newModel( 
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
+
+	assets["sun"] = app.newModel(
 		1, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 0, 1, 0), numVertex, v_sun.data(),
-		i_sun,
 		textures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		true);
 
 	sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
-
-	std::cout << __func__ << std::endl;
 }
 
 void setReticule(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<VertexPT> v_ret;
 	std::vector<uint32_t> i_ret;
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
-	assets["reticule"] = app.newModel( 
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
+
+	assets["reticule"] = app.newModel(
 		1, primitiveTopology::triangle,
+		vertexLoader,
 		noUBO,
 		noUBO,
-		VertexType(1, 0, 1, 0), numVertex, v_ret.data(),
-		i_ret,
 		textures,
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),
-		true );
-
-	std::cout << __func__ << std::endl;
+		true);
 }
 
 void setPoints(Renderer& app)
 {
-	assets["points"] = app.newModel( 
+	std::cout << "> " << __func__ << std::endl;
+
+	Icosahedron icos;	// Just created for calling destructor, which applies a multiplier.
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size()/6, Icosahedron::icos.data(), noIndices, false);
+
+	assets["points"] = app.newModel(
 		1, primitiveTopology::point,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 0, 0), 9, v_points.data(),
-		noIndices,
 		noTextures,
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
 		(SHADERS_DIR + "f_pointPC.spv").c_str(),
-		false );
+		false);
 
 	//assets["points"]->setMM(0, modelMatrix());
+}
 
-	std::cout << __func__ << std::endl;
+void setPoints2(Renderer& app)
+{
+	std::cout << "> " << __func__ << std::endl;
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), 9, v_points.data(), noIndices, false);
+
+	assets["points"] = app.newModel(
+		1, primitiveTopology::point,
+		vertexLoader,
+		UBOtype(1, 1, 1, 0),
+		noUBO,
+		noTextures,
+		(SHADERS_DIR + "v_pointPC.spv").c_str(),
+		(SHADERS_DIR + "f_pointPC.spv").c_str(),
+		false);
+
+	//assets["points"]->setMM(0, modelMatrix());
 }
 
 void setAxis(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<VertexPC> v_axis;
 	std::vector<uint32_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
 
-	assets["axis"] = app.newModel( 
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
+
+	assets["axis"] = app.newModel(
 		1, primitiveTopology::line,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 0, 0), numVertex, v_axis.data(),
-		i_axis,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
-		false );
+		false);
 
 	//assets["axis"]->setMM(0, modelMatrix());
-
-	std::cout << __func__ << std::endl;
 }
 
 void setGrid(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, glm::vec3(0.1, 0.1, 0.6));
 
-	assets["grid"] = app.newModel( 
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
+
+	assets["grid"] = app.newModel(
 		1, primitiveTopology::line,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 0, 0), numVertex, v_grid.data(),
-		i_grid,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
-		false );
+		false);
 
 	//assets["grid"]->setMM(0, modelMatrix());
-
-	std::cout << __func__ << std::endl;
 }
 
 void setSkybox(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 14, v_cube.data(), i_inCube, false);
+
 	assets["skyBox"] = app.newModel(
 		1, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 0, 1, 0), 14, v_cube.data(),
-		i_inCube,
 		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		false);
-
-	std::cout << __func__ << std::endl;
 }
 
 void setCottage(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
-	assets["cottage"] = app.newModel( 
+	VertexLoader* vertexLoader;
+	
+	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
+
+	assets["cottage"] = app.newModel(
 		0, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 1, 0),
-		(MODELS_DIR   + "cottage_obj.obj").c_str(),
 		textures,
-		(SHADERS_DIR  + "V_trianglePCT.spv").c_str(),
-		(SHADERS_DIR  + "f_trianglePCT.spv").c_str(),
-		false );
+		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
+		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
+		false);
 
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);
 
-	// Add the same model again.
-	assets["cottage"] = app.newModel( 
+	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
+
+	assets["cottage"] = app.newModel(
 		1, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 1, 1),
-		(MODELS_DIR + "cottage_obj.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
-		false );
-
-	std::cout << __func__ << std::endl;
+		false);
 }
 
 void setRoom(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
 
-	assets["room"] = app.newModel( 
+	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
+
+	assets["room"] = app.newModel(
 		2, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 0),
 		noUBO,
-		VertexType(1, 1, 1, 0),
-		(MODELS_DIR + "viking_room.obj").c_str(),
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
@@ -345,48 +411,29 @@ void setRoom(Renderer& app)
 	assets["room"]->setMM(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
 	//assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
-
-	std::cout << __func__ << std::endl;
-}
-
-void setFloor(Renderer& app)
-{
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "grass.png").c_str()) };
-
-	assets["floor"] = app.newModel( 
-		1, primitiveTopology::triangle,
-		UBOtype(1, 1, 1, 0),
-		noUBO,
-		VertexType(1, 0, 1, 0), 4, v_floor.data(),
-		i_floor,
-		textures,
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
-		false );
-
-	//assets["floor"]->setMM(0, modelMatrix());
-
-	std::cout << __func__ << std::endl;
 }
 
 void setTerrain(Renderer& app)
 {
+	std::cout << "> " << __func__ << std::endl;
+
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
-	std::vector<Texture> textures = { 
+
+	std::vector<Texture> textures = 
+	{ 
 		Texture((TEXTURES_DIR + "squares.png").c_str()),
 		Texture((TEXTURES_DIR + "grass.png").c_str())
 	};
 
-	assets["terrain"] = app.newModel( 
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,	terrGen.indices, true);
+
+	assets["terrain"] = app.newModel(
 		1, primitiveTopology::triangle,
+		vertexLoader,
 		UBOtype(1, 1, 1, 1),
 		noUBO,//UBOtype(0, 0, 0, 0, 1),
-		VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,
-		terrGen.indices,
 		textures,
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
-		false );
-
-	std::cout << __func__ << std::endl;
+		false);
 }

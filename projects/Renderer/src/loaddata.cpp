@@ -7,20 +7,51 @@
 #include "tiny_obj_loader.h"
 
 #include "loaddata.hpp"
+#include "commons.hpp"
 
 
-VertexFromFile::VertexFromFile(const char* OBJfile)
+//VertexFromUser::VertexFromUser(size_t vertexCount, const void* vertexData, size_t indicesCount, const uint32_t* indices)
+//	: vertexCount(vertexCount), vertexData(vertexData), indicesCount(indicesCount), indices(indices) { }
+
+// VertexFromUser -------------------------------------------------------
+
+VertexFromUser::VertexFromUser(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint32_t>& indices, bool loadNow)
+	: VertexLoader(), sourceVertexCount(vertexCount), sourceVertices(vertexData), sourceIndices(indices), immediateMode(loadNow) 
 {
-	copyCString(this->OBJfile, OBJfile);
+	this->vertexType = vertexType; 
 }
 
-VertexFromFile::~VertexFromFile()
-{
+VertexFromUser::~VertexFromUser() { }
 
+void VertexFromUser::setDestination(VertexSet& vertices, std::vector<uint32_t>& indices)
+{
+	this->destVertices = &vertices;
+	this->destIndices = &indices;
+	
+	if (immediateMode) loadData();
 }
+
+void VertexFromUser::loadVertex() { if (!immediateMode) loadData(); }
+
+void VertexFromUser::loadData()
+{
+	destVertices->reset(vertexType, sourceVertexCount, sourceVertices);
+	*destIndices = sourceIndices;
+}
+
+
+// VertexFromFile -------------------------------------------------------
+
+VertexFromFile::VertexFromFile(const VertexType& vertexType, const char* modelPath) : VertexLoader()
+{
+	this->vertexType = vertexType;
+	copyCString(this->OBJfilePath, modelPath);
+}
+
+VertexFromFile::~VertexFromFile() { delete OBJfilePath; }
 
 // (18)
-void VertexFromFile::loadVertex(VertexSet& vertices, std::vector<uint32_t>& indices)
+void VertexFromFile::loadVertex()
 {
 	// Load model
 	tinyobj::attrib_t					 attrib;			// Holds all of the positions, normals and texture coordinates.
@@ -28,7 +59,7 @@ void VertexFromFile::loadVertex(VertexSet& vertices, std::vector<uint32_t>& indi
 	std::vector<tinyobj::material_t>	 materials;			// OBJ models can also define a material and texture per face, but we will ignore those.
 	std::string							 warn, err;			// Errors and warnings that occur while loading the file.
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, OBJfile))
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, OBJfilePath))
 		throw std::runtime_error(warn + err);
 
 	// Combine all the faces in the file into a single model
@@ -56,11 +87,12 @@ void VertexFromFile::loadVertex(VertexSet& vertices, std::vector<uint32_t>& indi
 			// Check if we have already seen this vertex. If not, assign an index to it and save the vertex.
 			if (uniqueVertices.count(vertex) == 0)			// Using a user-defined type (Vertex struct) as key in a hash table requires us to implement two functions: equality test (override operator ==) and hash calculation (implement a hash function for Vertex).
 			{
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());	// Set new index for this vertex
-				vertices.push_back(&vertex);										// Save vertex
+				uniqueVertices[vertex] = static_cast<uint32_t>(destVertices->size());	// Set new index for this vertex
+				destVertices->push_back(&vertex);										// Save vertex
 			}
 
 			// Save the index
-			indices.push_back(uniqueVertices[vertex]);								// Save index
+			destIndices->push_back(uniqueVertices[vertex]);								// Save index
 		}
 }
+

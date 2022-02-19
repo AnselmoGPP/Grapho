@@ -29,16 +29,18 @@ class VertexType
 {
 public:
 	VertexType(size_t numP, size_t numC, size_t numT, size_t numN);	/// Constructor. Set the following variables: Position, Color, Texture coords, Normal.
+	VertexType(const VertexType& obj);								/// Copy constructor. Not used
 	~VertexType();
 	VertexType& operator=(const VertexType& obj);					///< Copy assignment operator overloading. Required for copying a VertexSet object.
 
 	VkVertexInputBindingDescription getBindingDescription();					///< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
 	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();	///< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
 
-	const std::array<size_t, 4> attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };	///< Size of each attribute type.
-	std::array<size_t, 4> numEachAttrib;	///< Amount of each type of attribute
-	size_t vertexSize;						///< Size in bytes of a vertex object (computed in the constructor).
+	static const std::array<size_t, 4> attribsSize;	///< Size of each attribute type.
+	std::array<size_t, 4> numEachAttrib;			///< Amount of each type of attribute
+	size_t vertexSize;								///< Size in bytes of a vertex object (computed in the constructor).
 };
+
 
 /// VertexSet serves as a container for any object type, similarly to a std::vector, but storing such objects directly in bytes (char array). This allows ModelData objects store different Vertex types in a clean way (otherwise, templates and inheritance would be required, but code would be less clean).
 class VertexSet
@@ -60,6 +62,7 @@ public:
 	size_t size() const;
 	char* data() const;
 	void push_back(const void* element);
+	void reset(VertexType vertexType, size_t numOfVertex, const void* buffer);	/// Similar to a copy constructor, but just using its parameters instead of an already existing object.
 	void* getElement(size_t i) const;		///< For debugging purposes
 
 private:

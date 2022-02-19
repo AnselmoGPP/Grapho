@@ -1,61 +1,30 @@
-#include "models.hpp"
 
-//#define TINYOBJLOADER_IMPLEMENTATION
-//#include "tiny_obj_loader.h"
+#include "models.hpp"
+#include "commons.hpp"
 
 
 std::vector<Texture> noTextures;
 std::vector<uint32_t> noIndices;
 UBOtype noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, VertexType vertexType, bool transparency)
-	: e(environment), 
-	primitiveTopology(primitiveTopology), 
-	dataFromFile(true), 
-	fullyConstructed(false), 
-	hasTransparencies(transparency), 
-	vertices(vertexType), 
-	textures(textures), 
-	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment), 
-	fsUBO(e, 0, fsUboType, e.minUniformBufferOffsetAlignment)
-{
-	copyCString(this->modelPath, modelPath);
-	copyCString(this->VSpath, VSpath);
-	copyCString(this->FSpath, FSpath);
-
-	vertexLoader = new VertexFromFile(modelPath);
-
-	if (fsUBO.range) fsUBO.resize(1);
-	resizeUBOset(numRenderings);
-
-	vertices = VertexSet(VertexType(1, 1, 1, 0));	// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
-}
-
-ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
-	: e(environment), 
-	primitiveTopology(primitiveTopology), 
-	dataFromFile(false), 
-	fullyConstructed(false), 
-	hasTransparencies(transparency), 
-	vertices(vertexType, numVertex, vertexData), 
-	indices(indices), 
-	textures(textures), 
-	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment), 
+ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+	: e(environment),
+	primitiveTopology(primitiveTopology),
+	fullyConstructed(false),
+	hasTransparencies(transparency),
+	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
+	textures(textures),
+	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment),
 	fsUBO(e, 0, fsUboType, e.minUniformBufferOffsetAlignment)
 {
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
 
-	vertexLoader = new VertexFromUser();
+	this->vertexLoader = vertexLoader;
+	this->vertexLoader->setDestination(vertices, indices);
 
-	// Set up UBOs
 	if (fsUBO.range) fsUBO.resize(1);
 	resizeUBOset(numRenderings);
-
-	// Copy buffers: vertex (vertices, colors, texture coordinates) and indices (indices)
-	//vertices = vertexData;
-	//if (indicesData) indices = *indicesData;		// LOOK can I optimize this? i.e. make this copy in the second thread?
-	//else indices = std::vector<uint32_t>(0);
 }
 
 ModelData::~ModelData()
@@ -65,7 +34,8 @@ ModelData::~ModelData()
 		cleanup();
 	}
 
-	if (dataFromFile) delete[] modelPath;
+	delete vertexLoader;
+
 	delete[] VSpath;
 	delete[] FSpath;
 }
@@ -78,7 +48,7 @@ ModelData& ModelData::fullConstruction()
 	for(size_t i = 0; i < textures.size(); i++)
 		textures[i].loadAndCreateTexture(e);
 
-	vertexLoader->loadVertex(vertices, indices);
+	vertexLoader->loadVertex();
 	createVertexBuffer();
 	if(indices.size()) createIndexBuffer();
 	

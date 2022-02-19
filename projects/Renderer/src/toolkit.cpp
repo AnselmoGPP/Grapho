@@ -8,7 +8,6 @@
 
 double pi = 3.14159265359;
 
-
 // Model Matrix -----------------------------------------------------------------
 
 glm::mat4 modelMatrix()
@@ -127,31 +126,22 @@ size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_
 }
 
 // Skybox
-std::vector<VertexPT> v_posx = { VertexPT(glm::vec3( 1,  1,  1), glm::vec2(0, 0)),  VertexPT(glm::vec3( 1,  1, -1), glm::vec2(0, 1)),  VertexPT(glm::vec3( 1, -1, -1), glm::vec2(1, 1)),  VertexPT(glm::vec3( 1, -1,  1), glm::vec2(1, 0)) };
-std::vector<VertexPT> v_posy = { VertexPT(glm::vec3(-1,  1,  1), glm::vec2(0, 0)),  VertexPT(glm::vec3(-1,  1, -1), glm::vec2(0, 1)),  VertexPT(glm::vec3( 1,  1, -1), glm::vec2(1, 1)),  VertexPT(glm::vec3( 1,  1,  1), glm::vec2(1, 0)) };
-std::vector<VertexPT> v_posz = { VertexPT(glm::vec3(-1, -1,  1), glm::vec2(0, 0)),  VertexPT(glm::vec3(-1,  1,  1), glm::vec2(0, 1)),  VertexPT(glm::vec3( 1,  1,  1), glm::vec2(1, 1)),  VertexPT(glm::vec3( 1, -1,  1), glm::vec2(1, 0)) };
-std::vector<VertexPT> v_negx = { VertexPT(glm::vec3(-1, -1,  1), glm::vec2(0, 0)),  VertexPT(glm::vec3(-1, -1, -1), glm::vec2(0, 1)),  VertexPT(glm::vec3(-1,  1, -1), glm::vec2(1, 1)),  VertexPT(glm::vec3(-1,  1,  1), glm::vec2(1, 0)) };
-std::vector<VertexPT> v_negy = { VertexPT(glm::vec3( 1, -1,  1), glm::vec2(0, 0)),  VertexPT(glm::vec3( 1, -1, -1), glm::vec2(0, 1)),  VertexPT(glm::vec3(-1, -1, -1), glm::vec2(1, 1)),  VertexPT(glm::vec3(-1, -1,  1), glm::vec2(1, 0)) };
-std::vector<VertexPT> v_negz = { VertexPT(glm::vec3(-1,  1, -1), glm::vec2(0, 0)),  VertexPT(glm::vec3(-1, -1, -1), glm::vec2(0, 1)),  VertexPT(glm::vec3( 1, -1, -1), glm::vec2(1, 1)),  VertexPT(glm::vec3( 1,  1, -1), glm::vec2(1, 0)) };
-
-std::vector<uint32_t> i_square = { 0, 1, 3,  1, 2, 3 };
-
 std::vector<VertexPT> v_cube =
 {
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(0., 1/3.)),
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(0., 2/3.)),
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2( 0., 1/3.)), 
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2( 0., 2/3.)), 
 	VertexPT(glm::vec3(-1,  1,  1), glm::vec2(.25, 1/3.)),
 	VertexPT(glm::vec3(-1,  1, -1), glm::vec2(.25, 2/3.)),
-	VertexPT(glm::vec3( 1,  1,  1), glm::vec2(.5, 1/3.)),
-	VertexPT(glm::vec3( 1,  1, -1), glm::vec2(.5, 2/3.)),
+	VertexPT(glm::vec3( 1,  1,  1), glm::vec2( .5, 1/3.)), 
+	VertexPT(glm::vec3( 1,  1, -1), glm::vec2( .5, 2/3.)), 
 	VertexPT(glm::vec3( 1, -1,  1), glm::vec2(.75, 1/3.)),
 	VertexPT(glm::vec3( 1, -1, -1), glm::vec2(.75, 2/3.)),
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(1., 1/3.)),
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(1., 2/3.)),
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(.25, 0.)),
-	VertexPT(glm::vec3( 1, -1,  1), glm::vec2(.5, 0.)),
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(.25, 1.)),
-	VertexPT(glm::vec3( 1, -1, -1), glm::vec2(.5, 1.))
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2( 1., 1/3.)), 
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2( 1., 2/3.)), 
+	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(.25, 0.  )),  
+	VertexPT(glm::vec3( 1, -1,  1), glm::vec2( .5, 0.  )),   
+	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(.25, 1.  )),  
+	VertexPT(glm::vec3( 1, -1, -1), glm::vec2( .5, 1.  ))    
 };
 
 std::vector<uint32_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };
@@ -193,3 +183,125 @@ glm::vec3 sunLightDirection(float dayTime)
 
 	return direction;
 }
+
+Icosahedron::Icosahedron(float multiplier)
+{
+	for (size_t i = 0; i < 12; i++)
+	{
+		icos[i * 6 + 0] *= multiplier;
+		icos[i * 6 + 1] *= multiplier;
+		icos[i * 6 + 2] *= multiplier;
+	}
+}
+
+float Icosahedron::vertices[12 * 3] =
+{
+	 0.f,       -0.525731f,  0.850651f,
+	 0.850651f,  0.f,        0.525731f,
+	 0.850651f,  0.f,       -0.525731f,
+	-0.850651f,  0.f,       -0.525731f,
+	-0.850651f,  0.f,        0.525731f,
+	-0.525731f,  0.850651f,  0.f,
+	 0.525731f,  0.850651f,  0.f,
+	 0.525731f, -0.850651f,  0.f,
+	-0.525731f, -0.850651f,  0.f,
+	 0.f,       -0.525731f, -0.850651f,
+	 0.f,        0.525731f, -0.850651f,
+	 0.f,        0.525731f,  0.850651f
+};
+
+float Icosahedron::colors[12 * 4] =
+{
+	1.0, 0.0, 0.0, 1.0,
+	1.0, 0.5, 0.0, 1.0,
+	1.0, 1.0, 0.0, 1.0,
+	0.5, 1.0, 0.0, 1.0,
+	0.0, 1.0, 0.0, 1.0,
+	0.0, 1.0, 0.5, 1.0,
+	0.0, 1.0, 1.0, 1.0,
+	0.0, 0.5, 1.0, 1.0,
+	0.0, 0.0, 1.0, 1.0,
+	0.5, 0.0, 1.0, 1.0,
+	1.0, 0.0, 1.0, 1.0,
+	1.0, 0.0, 0.5, 1.0
+};
+
+unsigned indices[20 * 3] =
+{
+	1,  2,  6,
+	1,  7,  2,
+	3,  4,  5,
+	4,  3,  8,
+	6,  5,  11,
+	5,  6,  10,
+	9,  10, 2,
+	10, 9,  3,
+	7,  8,  9,
+	8,  7,  0,
+	11, 0,  1,
+	0,  11, 4,
+	6,  2,  10,
+	1,  6,  11,
+	3,  5,  10,
+	5,  4,  11,
+	2,  7,  9,
+	7,  1,  0,
+	3,  9,  8,
+	4,  8,  0
+};
+
+float normals[12 * 3] =
+{
+	 0.000000f, -0.417775f,  0.675974f,
+	 0.675973f,  0.000000f,  0.417775f,
+	 0.675973f, -0.000000f, -0.417775f,
+	-0.675973f,  0.000000f, -0.417775f,
+	-0.675973f, -0.000000f,  0.417775f,
+	-0.417775f,  0.675974f,  0.000000f,
+	 0.417775f,  0.675973f, -0.000000f,
+	 0.417775f, -0.675974f,  0.000000f,
+	-0.417775f, -0.675974f,  0.000000f,
+	 0.000000f, -0.417775f, -0.675973f,
+	 0.000000f,  0.417775f, -0.675974f,
+	 0.000000f,  0.417775f,  0.675973f
+};
+
+std::vector<float> Icosahedron::icos =
+{
+	 0.f,       -0.525731f,  0.850651f, 1.0, 0.0, 0.0,
+	 0.850651f,  0.f,        0.525731f, 1.0, 0.5, 0.0,
+	 0.850651f,  0.f,       -0.525731f, 1.0, 1.0, 0.0,
+	-0.850651f,  0.f,       -0.525731f, 0.5, 1.0, 0.0,
+	-0.850651f,  0.f,        0.525731f, 0.0, 1.0, 0.0,
+	-0.525731f,  0.850651f,  0.f,	    0.0, 1.0, 0.5,
+	 0.525731f,  0.850651f,  0.f,	    0.0, 1.0, 1.0,
+	 0.525731f, -0.850651f,  0.f,	    0.0, 0.5, 1.0,
+	-0.525731f, -0.850651f,  0.f,	    0.0, 0.0, 1.0,
+	 0.f,       -0.525731f, -0.850651f, 0.5, 0.0, 1.0,
+	 0.f,        0.525731f, -0.850651f, 1.0, 0.0, 1.0,
+	 0.f,        0.525731f,  0.850651f, 1.0, 0.0, 0.5
+};
+
+std::vector<float> Icosahedron::index =
+{
+	1,  2,  6,
+	1,  7,  2,
+	3,  4,  5,
+	4,  3,  8,
+	6,  5,  11,
+	5,  6,  10,
+	9,  10, 2,
+	10, 9,  3,
+	7,  8,  9,
+	8,  7,  0,
+	11, 0,  1,
+	0,  11, 4,
+	6,  2,  10,
+	1,  6,  11,
+	3,  5,  10,
+	5,  4,  11,
+	2,  7,  9,
+	7,  1,  0,
+	3,  9,  8,
+	4,  8,  0
+};

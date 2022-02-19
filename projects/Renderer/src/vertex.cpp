@@ -5,6 +5,8 @@
 
 //VertexType -----------------------------------------------------------------
 
+const std::array<size_t, 4> VertexType::attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };
+
 VertexType::VertexType(size_t numP, size_t numC, size_t numT, size_t numN)
 { 
 	vertexSize = numP * attribsSize[0] + numC * attribsSize[1] + numT * attribsSize[2] + numN * attribsSize[3];
@@ -17,6 +19,16 @@ VertexType::VertexType(size_t numP, size_t numC, size_t numT, size_t numN)
 	//std::cout << "Vertex size: " << vertexSize << std::endl;
 	//std::cout << "   Attributes: " << numEachAttrib[0] << ", " << numEachAttrib[1] << ", " << numEachAttrib[2] << std::endl;
 	//std::cout << "   Sizes: " << attribsSize[0] << ", " << attribsSize[1] << ", " << attribsSize[2] << std::endl;
+}
+
+VertexType::VertexType(const VertexType& obj)
+{
+	numEachAttrib[0] = obj.numEachAttrib[0];
+	numEachAttrib[1] = obj.numEachAttrib[1];
+	numEachAttrib[2] = obj.numEachAttrib[2];
+	numEachAttrib[3] = obj.numEachAttrib[3];
+
+	vertexSize = numEachAttrib[0] * attribsSize[0] + numEachAttrib[1] * attribsSize[1] + numEachAttrib[2] * attribsSize[2] + numEachAttrib[3] * attribsSize[3];
 }
 
 VertexType::~VertexType() { }
@@ -160,6 +172,18 @@ void VertexSet::push_back(const void* element)
 
 	std::memcpy(&buffer[totalBytes()], (char*)element, Vtype.vertexSize);
 	numVertex++;
+}
+
+void VertexSet::reset(VertexType vertexType, size_t numOfVertex, const void* buffer)
+{
+	delete[] this->buffer;
+
+	Vtype = vertexType;
+	numVertex = numOfVertex;
+
+	capacity = pow(2, 1 + (int)(log(numOfVertex) / log(2)));		// log b (M) = ln(M) / ln(b)
+	this->buffer = new char[capacity * vertexType.vertexSize];
+	std::memcpy(this->buffer, buffer, totalBytes());
 }
 
 

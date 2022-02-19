@@ -179,8 +179,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, VertexType vertexType, const char* modelPath, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency = false);
-	modelIterator	newModel(size_t numberOfRenderings, primitiveTopology primitiveTopology, const UBOtype& vsUboType, const UBOtype& fsUboType, const VertexType& vertexType, size_t numVertex, const void* vertexData, std::vector<uint32_t>& indices, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency = false);
+	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(std::vector<Texture>& textures);
