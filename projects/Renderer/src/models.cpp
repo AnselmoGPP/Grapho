@@ -53,6 +53,7 @@ ModelData& ModelData::fullConstruction()
 	if(indices.size()) createIndexBuffer();
 	
 	vsDynUBO.createUniformBuffers();
+	fsUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 
@@ -596,6 +597,7 @@ void ModelData::recreateSwapChain()
 	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
 	vsDynUBO.createUniformBuffers();		// Uniform buffers depend on the number of swap chain images.
+	fsUBO.createUniformBuffers();
 	createDescriptorPool();					// Descriptor pool depends on the swap chain images.
 	createDescriptorSets();					// Descriptor sets
 }

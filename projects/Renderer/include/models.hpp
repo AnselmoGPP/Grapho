@@ -145,7 +145,7 @@ public:
 	VkDescriptorPool			 descriptorPool;		//!< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
-	/// Set number of MM and dynamic offsets.
+	/// Set number of MM and dynamic offsets. Param: Number of renderings
 	void resizeUBOset(size_t newSize);
 
 	/**

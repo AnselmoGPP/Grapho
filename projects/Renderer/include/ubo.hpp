@@ -81,12 +81,12 @@ struct UBO
 
 	size_t						count;					///< Number of dynamic UBOs
 	size_t						dirtyCount;				///< Number of dynamic UBOs, including those generated with dirtyResize()
-	VkDeviceSize				range;					///< Size (bytes) of an aligned dynamic UBO (example: 4)
+	VkDeviceSize				range;					///< Size (bytes) of an aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
 	size_t						totalBytes;				///< Size (bytes) of the set of dynamic UBOs (example: 12)
 	std::vector<uint32_t>		dynamicOffsets;			///< Offsets for each dynamic UBO
 	std::array<size_t, 5>		numEachAttrib;			///< Number of attributes of each type.
 
-	std::vector<char>			ubo;					///< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
+	std::vector<uint8_t>		ubo;					///< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
 	std::vector<VkBuffer>		uniformBuffers;			///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
 	std::vector<VkDeviceMemory>	uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 

@@ -110,18 +110,6 @@ Light sun;
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
 
-std::vector<VertexPC> v_points = {
-	VertexPC(glm::vec3(-10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(0, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(10, -10,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(-10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(0,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(10,   0,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(-10,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(0,  10,  10), glm::vec3(1.f, 0.f, 0.f)),
-	VertexPC(glm::vec3(10,  10,  10), glm::vec3(1.f, 0.f, 0.f))
-};
-
 // Terrain
 terrainGenerator terrGen;
 noiseSet noiser( 
@@ -139,19 +127,18 @@ size_t fps;
 size_t maxfps;
 glm::vec3 pos;
 
-// Functions declarations
-void update		(Renderer& r);		// Update model's MM (model matrix) each frame
-void setReticule(Renderer& app);
-void setPoints	(Renderer& app);
-void setAxis	(Renderer& app);
-void setGrid	(Renderer& app);
-void setSkybox	(Renderer& app);
-void setCottage	(Renderer& app);
-void setRoom	(Renderer& app);
-void setSun		(Renderer& app);
-void setTerrain	(Renderer& app);
-
 //===============================================================================
+
+void update(Renderer& r);		// Update model's MM (model matrix) each frame
+void setPoints(Renderer& app);
+void setAxis(Renderer& app);
+void setGrid(Renderer& app);
+void setSkybox(Renderer& app);
+void setCottage(Renderer& app);
+void setRoom(Renderer& app);
+void setTerrain(Renderer& app);
+void setSun(Renderer& app);
+void setReticule(Renderer& app);
 
 int main(int argc, char* argv[])
 {
@@ -255,25 +242,6 @@ void setPoints(Renderer& app)
 
 	Icosahedron icos;	// Just created for calling destructor, which applies a multiplier.
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size()/6, Icosahedron::icos.data(), noIndices, false);
-
-	assets["points"] = app.newModel(
-		1, primitiveTopology::point,
-		vertexLoader,
-		UBOtype(1, 1, 1, 0),
-		noUBO,
-		noTextures,
-		(SHADERS_DIR + "v_pointPC.spv").c_str(),
-		(SHADERS_DIR + "f_pointPC.spv").c_str(),
-		false);
-
-	//assets["points"]->setMM(0, modelMatrix());
-}
-
-void setPoints2(Renderer& app)
-{
-	std::cout << "> " << __func__ << std::endl;
-
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), 9, v_points.data(), noIndices, false);
 
 	assets["points"] = app.newModel(
 		1, primitiveTopology::point,
@@ -431,9 +399,14 @@ void setTerrain(Renderer& app)
 		1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOtype(1, 1, 1, 1),
-		noUBO,//UBOtype(0, 0, 0, 0, 1),
+		UBOtype(0, 0, 0, 0, 1),
 		textures,
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
 		false);
+
+	Light sun;
+	//sun.setDirectional();
+	//assets["terrain"]->fsUBO.setLight()
+	
 }

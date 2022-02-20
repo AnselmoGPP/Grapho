@@ -18,11 +18,14 @@ UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN, size_t num
 	numEachAttrib[4] = numLights;
 }
 
+/// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, dynamicOffsets).
 UBO::UBO(VulkanEnvironment& e, size_t dynUBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment)
-	: count(0), range(0), dirtyCount(0), e(e)
+	: count(dynUBOcount), dirtyCount(dynUBOcount), range(0), e(e)
 {
-	for(size_t i = 0; i < numEachAttrib.size(); i++)
-		numEachAttrib[i] = uboType.numEachAttrib[i];
+	//for(size_t i = 0; i < numEachAttrib.size(); i++)
+	//	numEachAttrib[i] = uboType.numEachAttrib[i];
+
+	numEachAttrib = uboType.numEachAttrib;
 
 	size_t usefulUBOsize = 0;					///< Section of the range that will be actually used(example: 3)
 	for (size_t i = 0; i < numEachAttrib.size(); i++)
@@ -31,7 +34,23 @@ UBO::UBO(VulkanEnvironment& e, size_t dynUBOcount, const UBOtype& uboType, VkDev
 	if (usefulUBOsize)
 		range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
 
-	resize(dynUBOcount);
+	//resize(dynUBOcount);
+
+	totalBytes = range * dynUBOcount;
+
+	ubo.resize(totalBytes);
+	dynamicOffsets.resize(dynUBOcount);
+
+	// Initialize dynamicOffsets, MM, and MMN (Model Matrices & Model Matrices for Normals)
+	glm::mat4 defaultMM(1.0f);
+	glm::mat3 defaultMMN = glm::mat3(glm::transpose(glm::inverse(defaultMM)));
+
+	for (size_t i = 0; i < dynUBOcount; ++i)
+	{
+		for (size_t j = 0; j < numEachAttrib[0]; ++j) setModelM(i, 0, defaultMM);
+		for (size_t j = 0; j < numEachAttrib[3]; ++j) setMNorm (i, 0, defaultMMN);
+		dynamicOffsets[i] = i * range;
+	}
 }
 
 void UBO::resize(size_t newCount)// <<< what to do in modelData if uboType == 0
