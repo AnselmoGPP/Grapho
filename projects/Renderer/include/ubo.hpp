@@ -12,13 +12,6 @@
 
 #include "environment.hpp"
 
-/*
-	Content:
-		- UBOtype
-		- UBOdynamic (UBOset)
-			- UBO_MVP
-			- UBO_MVPN
-*/
 
 /// Class used for configuring the dynamic UBO. UBO attributes: Model/View/Projection matrices, Model matrix for normals, Lights.
 class UBOtype
@@ -30,7 +23,17 @@ public:
 	std::array<size_t, 5> numEachAttrib;				///< Number of attributes of each type. Defined by the user at construction.
 };
 
-/// Data structure for light. Sent to fragment shader.
+/**
+	@struct Light
+	@brief Data structure for light. Sent to fragment shader.
+
+	Usual values:
+	<ul>
+		<li>Ambient: Low value</li>
+		<li>Diffuse: Exact color of the light</li>
+		<li>Specular: Full intensity (vec3(1.0)</li>
+	</ul>
+*/
 struct Light
 {
 	Light();
@@ -56,10 +59,31 @@ struct Light
 };
 
 /**
-*	Structure used for storing a set of UBOs in the same structure in order to allow us to render the same model many times.
+	@struct Material
+	@brief Data structure for a material (diffuse, specular, shininess)
+
+	Usual values:
+	<ul>
+		<li>Ambient (not included): Object color</li>
+		<li>Diffuse: Object color</li>
+		<li>Specular: Specular map</li>
+		<li>Shininess: Object shininess</li>
+	</ul>
+*/
+struct Material
+{
+	//sampler2D diffuseT;
+	glm::vec3 diffuse;
+	//sampler2D specularT;
+	glm::vec3 specular;
+	float shininess;
+};
+
+/**
+*	Structure used for storing a set of UBOs in the same structure (many UBOs can be used for rendering the same model many times).
 *	Attributes of a single UBO: Model, View, Projection, ModelForNormals, Lights
 *	We may create a set of dynamic UBOs (count), each one containing a number of different attributes (5), each one containing 0 or more attributes of their type (numEachAttrib).
-*	If count == 0, the buffer created will have size == range (not totalBytes). If range == 0, no buffer is created.
+*	If count == 0, the buffer created will have size == range (instead of totalBytes, which is == 0). If range == 0, no buffer is created.
 *	User should call destroyUniformBuffers() before createUniformBuffers().
 *	Model matrix for Normals: Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
 */
@@ -69,7 +93,7 @@ struct UBO
 	~UBO() = default;
 
 	void resize(size_t newCount);			///< Set the number of dynamic UBO in the UBO.
-	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later).
+	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later) (see Renderer::setRenders()).
 	void createUniformBuffers();			///< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
 	void destroyUniformBuffers();			///< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 

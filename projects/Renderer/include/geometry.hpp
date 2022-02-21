@@ -126,9 +126,9 @@ public:
     ~terrainGenerator();                                        ///< Destructor
     terrainGenerator& operator = (const terrainGenerator& obj); ///< Operator =  overloading (copy assignment)
 
-    float        (*vertex)[8];      ///< VBO (vertex position, texture coordinates, normals)
+    float (*vertex)[8];             ///< VBO (vertex position, texture coordinates, normals)
     std::vector<uint32_t> indices;  ///< EBO
-    //unsigned int (*indices)[3];     ///< EBO
+    //unsigned int (*indices)[3];   ///< EBO
 
     /*
     *   @brief Compute VBO and EBO (creates some terrain specified by the user)

@@ -26,18 +26,18 @@ layout(set = 0, binding = 1) uniform lightBlock {
 
 struct Material
 {
-    sampler2D diffuseT;
+    sampler2D diffuseT;		// object color
     vec3 diffuse;
-    sampler2D specularT;
+    sampler2D specularT;	// specular map
     vec3 specular;
-    float shininess;
+    float shininess;		// shininess
 };
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[2];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0) in vec2 inTexCoord;
-layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec3 inPosition;
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec2 inTexCoord;
+layout(location = 2) in vec3 inNormal;
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -45,15 +45,15 @@ vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float
 
 void main()
 {
-	sun.light;
 	//outColor = vec4(inColor, 1.0);
-	outColor = texture(texSampler[0], inTexCoord);
+	//outColor = texture(texSampler[0], inTexCoord);
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
+	outColor = vec4(directionalLightColor(sun.light, texture(texSampler[0], inTexCoord).rgb, texture(texSampler[0], inTexCoord).rgb, 0.01), 1.0);
 }
 
 vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
-    vec3 camPos = vec3(30., -30., 30);
+    vec3 camPos = vec3(0, 0, 100);
 
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient * diffuseMap;
@@ -71,5 +71,6 @@ vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float
     vec3 specular = light.specular * spec * specularMap;
 
     // ----- Result -----
-    return vec3(ambient + diffuse + specular);
+    //return vec3(ambient + diffuse + specular);
+	return vec3(ambient + diffuse + specular);
 }

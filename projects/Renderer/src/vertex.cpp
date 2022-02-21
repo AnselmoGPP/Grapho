@@ -124,15 +124,15 @@ VertexSet::VertexSet(VertexType vertexType)
 { 
 	this->buffer = new char[capacity * vertexType.vertexSize];
 }
-
+/*
 VertexSet::VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer)
-	: numVertex(numOfVertex), Vtype(vertexType)
+	: Vtype(vertexType), numVertex(numOfVertex)
 {
 	capacity = pow(2, 1 + (int)(log(numOfVertex)/log(2)));		// log b (M) = ln(M) / ln(b)
 	this->buffer = new char[capacity * vertexType.vertexSize];
 	std::memcpy(this->buffer, buffer, totalBytes());
 }
-
+*/
 VertexSet::~VertexSet() { delete[] buffer; };
 
 VertexSet& VertexSet::operator=(const VertexSet& obj)

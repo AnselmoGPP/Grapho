@@ -47,7 +47,7 @@ class VertexSet
 {
 public:
 	VertexSet(VertexType vertexType);
-	VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer);
+	//VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer);
 	~VertexSet();
 	VertexSet& operator=(const VertexSet& obj);	// Not used
 

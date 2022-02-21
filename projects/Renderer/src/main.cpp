@@ -74,6 +74,10 @@
 */
 
 // TODO now: UBO for fragment shader / Shared textures / Reorganize 2nd thread / Parallel thread manager
+// Pass camPos to FS
+// Pass material to FS
+// Fix MMN (model matrix for normals)
+// Fix shininess
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -149,15 +153,15 @@ int main(int argc, char* argv[])
 	TimerSet time;
 	std::cout << time.getDate() << std::endl;
 
-	setPoints(app);
-	setAxis(app);
-	setGrid(app);
-	setSkybox(app);
-	setCottage(app);
-	setRoom(app);
+	//setPoints(app);
+	//setAxis(app);
+	//setGrid(app);
+	//setSkybox(app);
+	//setCottage(app);
+	//setRoom(app);
 	setTerrain(app);
-	setSun(app);
-	setReticule(app);
+	//setSun(app);
+	//setReticule(app);
 
 	app.run();		// Start rendering
 	
@@ -394,6 +398,10 @@ void setTerrain(Renderer& app)
 	};
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,	terrGen.indices, true);
+	
+	//for (size_t i = 0; i < terrGen.getNumVertex(); i++)
+	//	std::cout << i << ": " << terrGen.vertex[i][5] << ", " << terrGen.vertex[i][6] << ", " << terrGen.vertex[i][7] << '\n';
+	//std::cout << "Total: " << terrGen.getNumVertex() << '\n' << std::endl;
 
 	assets["terrain"] = app.newModel(
 		1, primitiveTopology::triangle,
@@ -406,7 +414,6 @@ void setTerrain(Renderer& app)
 		false);
 
 	Light sun;
-	//sun.setDirectional();
-	//assets["terrain"]->fsUBO.setLight()
-	
+	sun.setDirectional(glm::vec3(0, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(0.9, 0.9, 1), glm::vec3(1, 1, 1));
+	assets["terrain"]->fsUBO.setLight(0, 0, sun);
 }

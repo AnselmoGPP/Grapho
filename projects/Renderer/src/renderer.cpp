@@ -312,13 +312,22 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 				//it->dynUBO.setModel(i, it->MM[i]);
 				it->vsDynUBO.setViewM(i, 0, view);
 				it->vsDynUBO.setProjM(i, 0, proj);
-				//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));	
+				//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));
+				//it->vsDynUBO.setLight(i, 0, light);
 			}
 
 			void* data;
 			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
 			vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+		}
+
+		if (it->fsUBO.totalBytes)
+		{
+			void* data;
+			vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
+			memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
+			vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
 		}
 	}
 }

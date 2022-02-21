@@ -365,7 +365,7 @@ void terrainGenerator::computeGridNormals(float (*vertex)[8], unsigned numVertex
             tempNormals[posB] += Bnormal;
             tempNormals[posC] += Cnormal;
             tempNormals[posD] += Dnormal;
-        }
+       }
 
     // Special cases: Vertex at the border
     for (size_t y = 1; y < numVertexY - 1; y++)

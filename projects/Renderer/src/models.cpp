@@ -395,6 +395,10 @@ void ModelData::createVertexBuffer()
 	// Clean up
 	vkDestroyBuffer(e.device, stagingBuffer, nullptr);
 	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
+
+	//std::cout << "Vertex count: " << bufferSize/32 << std::endl;
+	//for (size_t i = 0; i < bufferSize/32; i++)
+	//	std::cout << i << ": " << ((float*)(vertices.data()))[i * 8 + 0] << ", " << ((float*)(vertices.data()))[i * 8 + 1] << ", " << ((float*)(vertices.data()))[i * 8 + 2] << ", " << ((float*)(vertices.data()))[i * 8 + 3] << ", " << ((float*)(vertices.data()))[i * 8 + 4] << ", " << ((float*)(vertices.data()))[i * 8 + 5] << ", " << ((float*)(vertices.data()))[i * 8 + 6] << ", " << ((float*)(vertices.data()))[i * 8 + 7] << std::endl;
 }
 
 /**
@@ -520,7 +524,7 @@ void ModelData::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo_vs{};
 		if (vsDynUBO.range) bufferInfo_vs.buffer = vsDynUBO.uniformBuffers[i];
 		bufferInfo_vs.offset = 0;
-		bufferInfo_vs.range  = vsDynUBO.range;
+		bufferInfo_vs.range = vsDynUBO.range;
 
 		VkDescriptorBufferInfo bufferInfo_fs{};
 		if(fsUBO.range) bufferInfo_fs.buffer = fsUBO.uniformBuffers[i];
@@ -529,8 +533,7 @@ void ModelData::createDescriptorSets()
 
 		//VkDescriptorImageInfo* imageInfo = new VkDescriptorImageInfo[textures.size()];
 		std::vector<VkDescriptorImageInfo> imageInfo(textures.size());
-		for (size_t i = 0; i < textures.size(); i++) 
-		{
+		for (size_t i = 0; i < textures.size(); i++) {
 			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			imageInfo[i].imageView = textures[i].textureImageView;
 			imageInfo[i].sampler = textures[i].textureSampler;
