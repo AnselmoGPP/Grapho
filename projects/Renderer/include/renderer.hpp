@@ -127,8 +127,25 @@ class Renderer
 	void updateUniformBuffer(uint32_t currentImage);
 	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
-	/// Check for models pending full initialization.
-	void loadModels_Thread();
+	/*
+		@brief Check for pending items to load ().
+
+		<ul>Checking and loading process:
+			<li>[mutex_resizingWindow] </li>
+			<li>  Check for models pending full initialization > fullInitialization() </li>
+			<li>  [mutex_modelsAndCommandBuffers] </li>
+			<li>    [mutex_modelsToLoad] </li>
+			<li>      Move new models to the models list </li>
+			<li>    [mutex_modelsToDelete] </li>
+			<li>      Extract models to delete from the models list </li>
+			<li>    Delete command buffer </li>
+			<li>    [mutex_rendersToSet] </li>
+			<li>      Resize UBOs for those models whose number of renders changed </li>
+			<li>    Generate new command buffer </li>
+			<li>  Delete models pending deletion </li>
+		</ul>
+	*/
+	void loadingThread();
 
 	/// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
 	void recreateSwapChain();

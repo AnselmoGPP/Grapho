@@ -18,7 +18,7 @@
 	TODO:
 		- Axis
 		- Sun billboard (transparencies)
-		> Terrain
+		- Terrain
 		> Modify terrainGenerator for it to have some state (noiseSet...) and generate buffers outside itself
 		Make the renderer a static library
 		Add ProcessInput() maybe
@@ -35,17 +35,14 @@
 		- 2D graphics
 		- Transparencies
 		> Scene plane: Draw in front of some rendering (used for skybox or weapons)
-		Shading stuff (lights, diffuse, ...)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
-		> fsUBO implementation in shader
 		> Many renders: Now, UBO is passes many times, so View and Projection matrix are redundant. 
 		> Generalize loadModel() (VertexPCT, etc.) 
 		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
 		X VkDrawIndex instanceCount -> check this way of multiple renderings
-		X In a single draw, draw skybox from one mesh and many textures.
 	
 		- Allow to update MM immediately after addModel() or addRender()
 		- Only dynamic UBOs
@@ -73,8 +70,9 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// TODO now: Shared textures / Reorganize 2nd thread / Parallel thread manager
+// Shared textures / Reorganize 2nd thread / Parallel thread manager
 // Pass material to FS
+// Scene plane: Draw in front of some rendering (used for skybox or weapons)
 
 
 #include <iostream>
@@ -141,6 +139,7 @@ void setRoom(Renderer& app);
 void setTerrain(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
+
 
 int main(int argc, char* argv[])
 {

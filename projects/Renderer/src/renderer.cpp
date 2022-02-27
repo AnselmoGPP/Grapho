@@ -28,7 +28,7 @@ int Renderer::run()
 		createSyncObjects();
 
 		runThread = true;
-		thread_loadModels = std::thread(&Renderer::loadModels_Thread, this);
+		thread_loadModels = std::thread(&Renderer::loadingThread, this);
 
 		mainLoop();
 		cleanup();
@@ -405,7 +405,7 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 	}
 }
 
-void Renderer::loadModels_Thread()
+void Renderer::loadingThread()
 {
 	std::cout << "Start loading thread" << std::endl;
 
@@ -416,7 +416,7 @@ void Renderer::loadModels_Thread()
 	size_t models_to_delete;
 	size_t renders_to_set;
 	std::list<ModelData> deathRow;			// Vulkan models that are going to be deleted
-	bool commandBufferNotCreatedYet;		// True if run() has not been called yet (i.e. a command buffer has not been created yet)					
+	//bool commandBufferNotCreatedYet;		// True if run() has not been called yet (i.e. a command buffer has not been created yet)					
 	
 	while (runThread)
 	{
@@ -455,7 +455,7 @@ void Renderer::loadModels_Thread()
 						models.splice(models.cend(), modelsToLoad, lBegin, lEnd);
 					}
 				}
-								
+				
 				// Mark objects in models list for deleting them (they're pointed by the modelsToDelete list)
 				if(models_to_delete)
 				{
@@ -473,12 +473,12 @@ void Renderer::loadModels_Thread()
 				}
 				
 				// Delete existing command buffers
-				commandBufferNotCreatedYet = (commandBuffers.size() == 0);
-				if (!commandBufferNotCreatedYet)
-				{
+				//commandBufferNotCreatedYet = (commandBuffers.size() == 0);
+				//if (!commandBufferNotCreatedYet)
+				//{
 					vkDeviceWaitIdle(e.device);
 					vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-				}
+				//}
 
 				// Set the number of renders for certain models in models list (this has to be here, since descriptors (and therefore, UBOs) are used by the command buffer
 				if (renders_to_set)
@@ -496,7 +496,7 @@ void Renderer::loadModels_Thread()
 				}
 				
 				// Generate new command buffer
-				if (!commandBufferNotCreatedYet)
+				//if (!commandBufferNotCreatedYet)
 					createCommandBuffers();		// Create command buffers for all the models in the models list.
 			}
 
