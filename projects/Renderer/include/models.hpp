@@ -42,7 +42,7 @@
 
 extern std::vector<Texture> noTextures;		// Vector with 0 Texture objects
 extern std::vector<uint32_t> noIndices;		// Vector with 0 indices
-extern UBOtype noUBO;						// UBOtype with 0 elements
+extern UBOconfig noUBO;						// UBOtype with 0 elements
 
 
 /**
@@ -113,7 +113,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	virtual ~ModelData();
 

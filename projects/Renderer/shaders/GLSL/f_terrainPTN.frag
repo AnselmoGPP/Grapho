@@ -3,26 +3,18 @@
 
 struct Light
 {
-    int lightType;
-    vec3 position;
-    vec3 direction;
+    vec4 lightType;		// int
+	
+    vec4 position;		// vec3
+    vec4 direction;		// vec3
 
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec4 ambient;		// vec3
+    vec4 diffuse;		// vec3
+    vec4 specular;		// vec3
 
-    float constant;
-    float linear;
-    float quadratic;
-
-    float cutOff;
-    float outerCutOff;
+    vec4 degree;		// vec3
+    vec4 cutOff;		// vec2
 };
-
-// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
-layout(set = 0, binding = 1) uniform lightBlock {
-    Light light;
-} sun;
 
 struct Material
 {
@@ -32,6 +24,13 @@ struct Material
     vec3 specular;
     float shininess;		// shininess
 };
+
+// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
+layout(set = 0, binding = 1) uniform dataBlock 
+{
+    Light light;
+	vec4 camPos;		// vec3
+} sun;
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[2];		// sampler1D, sampler2D, sampler3D
 
@@ -48,29 +47,34 @@ void main()
 	//outColor = vec4(inColor, 1.0);
 	//outColor = texture(texSampler[0], inTexCoord);
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
-	outColor = vec4(directionalLightColor(sun.light, texture(texSampler[0], inTexCoord).rgb, texture(texSampler[0], inTexCoord).rgb, 0.01), 1.0);
+	outColor = vec4( directionalLightColor(sun.light, texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4),  1.0 );
+
+	//outColor = vec4(sun.camPos[0], sun.camPos[1], sun.camPos[2], 1.f);
+	//outColor = vec4(sun.constant, sun.linear, sun.quadratic, 1.f);
+	//outColor = vec4(sun.light.degree[0], sun.light.degree[1], sun.light.degree[2], 1.f);
 }
 
 vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
-    vec3 camPos = vec3(0, 0, 100);
-
+    vec3 norm = normalize(inNormal);
+	vec3 lightDir = normalize(light.direction.xyz);
+	
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient * diffuseMap;
+    vec3 ambient = light.ambient.xyz * diffuseMap;
 
     // ----- Diffuse lighting -----
-    vec3 lightDir = normalize(light.direction);
-    vec3 norm = normalize(inNormal);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * diffuseMap;
+    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(camPos - inPosition);
+    vec3 viewDir = normalize(sun.camPos.xyz - inPosition);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular * spec * specularMap;
+    vec3 specular = light.specular.xyz * spec * specularMap;
 
     // ----- Result -----
-    //return vec3(ambient + diffuse + specular);
 	return vec3(ambient + diffuse + specular);
 }
+
+
+// mod(%) = a - (b * floor(a/b))

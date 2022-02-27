@@ -10,21 +10,12 @@ double pi = 3.14159265359;
 
 // Model Matrix -----------------------------------------------------------------
 
-glm::mat4 modelMatrix()
-{
-	glm::mat4 mm = glm::mat4(1.0f);
-
-	//mm = glm::translate(mm, glm::vec3(0.0f, 0.0f, 0.0f));
-	//mm = glm::rotate(mm, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//mm = glm::scale(mm, glm::vec3(1.0f, 1.0f, 1.0f));
-
-	return mm;
-}
+glm::mat4 modelMatrix() { return glm::mat4(1.0f); }
 
 /// Get a model matrix depending on the provided arguments. Vector elements: X, Y, Z. Rotations specified in sexagesimal degrees, and positive if clockwise (looking from each axis).
-glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translation)
+glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const glm::vec3& translation)
 {
-	glm::mat4 mm = glm::mat4(1.0f);
+	glm::mat4 mm(1.0f);
 
 	mm = glm::translate(mm, translation);
 	mm = glm::rotate(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -35,20 +26,10 @@ glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translat
 	return mm;
 }
 
-/// Print the contents of a glm::mat4
-void printMat4(glm::mat4 matrix)
+glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix)
 {
-	double array[16] = { 0.0 };
-
-	const float* pSource = (const float*)glm::value_ptr(matrix);
-
-	for (int i = 0; i < 16; ++i)
-		array[i] = pSource[i];
-
-	std::cout << array[0]  << "  " << array[1]  << "  " << array[2]  << "  " << array[3] << std::endl;
-	std::cout << array[4]  << "  " << array[5]  << "  " << array[6]  << "  " << array[7] << std::endl;
-	std::cout << array[8]  << "  " << array[9]  << "  " << array[10] << "  " << array[11] << std::endl;
-	std::cout << array[12] << "  " << array[13] << "  " << array[14] << "  " << array[15] << std::endl;
+	//return toMat3(glm::transpose(glm::inverse(modelMatrix)));
+	return glm::transpose(glm::inverse(modelMatrix));
 }
 
 

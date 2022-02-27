@@ -12,26 +12,49 @@
 
 #include "environment.hpp"
 
+/*
+	UBO memory organization in the GPU: 
+		- The UBO has to be aligned with "minUBOffsetAlignment" bytes.
+		- The variables or members of structs that you pass to the shader have to be aligned with 16 bytes (but variables or struct members created inside the shader doesn't).
+		- Due to the 16-bytes alignment requirement, you should pass variables that fit 16 bytes (example: vec4, float[4], int[4]...) or fit your variables in packages of 16 bytes (example: float + int + vec2).
+
+|--------------------------------minUBOffsetAlignment(256)-----------------------------|
+
+|---------16---------||---------16---------||---------16---------||---------16---------|
+
+|----------------------------my struct---------------------------||--int--|
+
+|-float-|             |----vec3----|        |--------vec4--------|
+
+*/
+
+extern size_t UniformAlignment;	// Alignment required for each uniform in the UBO (usually, 16 bytes).
+extern size_t MMsize;			// Model matrix
+extern size_t VMsize;			// View matrix
+extern size_t PMsize;			// Proyection matrix
+extern size_t MMNsize;			// Model matrix for Normals
+extern size_t lightSize;		// Light
+extern size_t vec4size;			// glm::vec4
 
 /// Class used for configuring the dynamic UBO. UBO attributes: Model/View/Projection matrices, Model matrix for normals, Lights.
-class UBOtype
+struct UBOconfig
 {
-public:
-	UBOtype(size_t numM = 0, size_t numV = 0, size_t numP = 0, size_t numMN = 0, size_t numLights = 0);	///< Constructor. Parameters: numM (model matrices), numV (view matrices), numP (projection matrices), numMN (model matrices for normals), numLights (lights).
+	UBOconfig(size_t dynBlocks = 0, size_t size1 = 0, size_t size2 = 0, size_t size3 = 0, size_t size4 = 0, size_t size5 = 0);
 
-	static const std::array<size_t, 5>	attribsSize;	///< Size of each type of attribute. attribsSize = { 64, 64, 64, 36+12, 176 } (includes padding for getting alignment with 16 bits)
-	std::array<size_t, 5> numEachAttrib;				///< Number of attributes of each type. Defined by the user at construction.
+	size_t dynBlocksCount;
+	std::vector<size_t> attribsSize;
 };
 
 /**
 	@struct Light
 	@brief Data structure for light. Sent to fragment shader.
 
-	Usual values:
+	Maybe their members should be 16-bytes aligned (alignas(16)).
+	Usual light values:
 	<ul>
 		<li>Ambient: Low value</li>
 		<li>Diffuse: Exact color of the light</li>
-		<li>Specular: Full intensity (vec3(1.0)</li>
+		<li>Specular: Full intensity: vec3(1.0)</li>
 	</ul>
 */
 struct Light
@@ -42,7 +65,8 @@ struct Light
 	void setPoint(glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
 	void setSpot(glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
 
-	alignas(16) int lightType;			///< Possible values:  0: no light, 1: directional, 2: point, 3: spot
+	alignas(16) int lightType;			//!< 0: no light, 1: directional, 2: point, 3: spot
+
 	alignas(16) glm::vec3 position;
 	alignas(16) glm::vec3 direction;
 
@@ -50,12 +74,8 @@ struct Light
 	alignas(16) glm::vec3 diffuse;
 	alignas(16) glm::vec3 specular;
 
-	alignas(16) float constant;
-	alignas(16) float linear;
-	alignas(16) float quadratic;
-
-	alignas(16) float cutOff;
-	alignas(16) float outerCutOff;
+	alignas(16) glm::vec3 degree;		//!< vec3( constant, linear, quadratic )
+	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
 };
 
 /**
@@ -85,40 +105,47 @@ struct Material
 *	We may create a set of dynamic UBOs (count), each one containing a number of different attributes (5), each one containing 0 or more attributes of their type (numEachAttrib).
 *	If count == 0, the buffer created will have size == range (instead of totalBytes, which is == 0). If range == 0, no buffer is created.
 *	User should call destroyUniformBuffers() before createUniformBuffers().
-*	Model matrix for Normals: Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors.
+*	Model matrix for Normals: Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors: mat3(transpose(inverse(model))) * aNormal.
 */
 struct UBO
 {
-	UBO(VulkanEnvironment& e, size_t dynUBOcount, const UBOtype& uboType, VkDeviceSize minUBOffsetAlignment);	///< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
+	UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
 	~UBO() = default;
 
-	void resize(size_t newCount);			///< Set the number of dynamic UBO in the UBO.
-	void dirtyResize(size_t newCount);		///< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later) (see Renderer::setRenders()).
-	void createUniformBuffers();			///< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
-	void destroyUniformBuffers();			///< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
+	template<typename T>
+	void setUniform(size_t dynBlock, size_t uniform, T &newValue, size_t offset = 0);
+	void resize(size_t newDynBlocksCount);				//!< Set the number of dynamic UBO in the UBO.
+	void hiddenResize(size_t newDynBlocksCount);		//!< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later) (see Renderer::setRenders()).
 
-	void setModelM(size_t posDyn, size_t attrib, const glm::mat4& matrix);	///< Assign a Model matrix (matrix) to a given dynamic UBO (posDyn) and attribute position (attrib) (a dynamic UBO can have more than one attribute of the same type).
-	void setViewM (size_t posDyn, size_t attrib, const glm::mat4& matrix);	///< Assign a View matrix (matrix) to a given dynamic UBO (posDyn) and attribute position (attrib) (a dynamic UBO can have more than one attribute of the same type).
-	void setProjM (size_t posDyn, size_t attrib, const glm::mat4& matrix);	///< Assign a Projection matrix (matrix) to a given dynamic UBO (posDyn) and attribute position (attrib) (a dynamic UBO can have more than one attribute of the same type).
-	void setMNorm (size_t posDyn, size_t attrib, const glm::mat3& matrix);	///< Assign a Model-matrix-for-normals (matrix) to a given dynamic UBO (posDyn) and attribute position (attrib) (a dynamic UBO can have more than one attribute of the same type).
-	void setLight (size_t posDyn, size_t attrib, Light& light);				///< Assign a light (light) to a given dynamic UBO (posDyn) and attribute position (attrib) (a dynamic UBO can have more than one attribute of the same type).
+	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
+	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 
-	size_t						count;					///< Number of dynamic UBOs
-	size_t						dirtyCount;				///< Number of dynamic UBOs, including those generated with dirtyResize()
-	VkDeviceSize				range;					///< Size (bytes) of an aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
-	size_t						totalBytes;				///< Size (bytes) of the set of dynamic UBOs (example: 12)
-	std::vector<uint32_t>		dynamicOffsets;			///< Offsets for each dynamic UBO
-	std::array<size_t, 5>		numEachAttrib;			///< Number of attributes of each type.
+	size_t						dynBlocksCount;			//!< Number of dynamic UBOs
+	size_t						hiddenCount;			//!< Actual number of dynamic UBOs, including those generated with hiddenResize().
 
-	std::vector<uint8_t>		ubo;					///< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
-	std::vector<VkBuffer>		uniformBuffers;			///< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
-	std::vector<VkDeviceMemory>	uniformBuffersMemory;	///< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
+	VkDeviceSize				range;					//!< Size (bytes) of an aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
+	size_t						totalBytes;				//!< Size (bytes) of the set of dynamic UBOs (example: 12)
+
+	std::vector<size_t>			attribsSize;
+	std::vector<uint32_t>		dynamicOffsets;			//!< Offsets for each dynamic UBO
+
+	std::vector<uint8_t>		ubo;					//!< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
+	std::vector<VkBuffer>		uniformBuffers;			//!< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
+	std::vector<VkDeviceMemory>	uniformBuffersMemory;	//!< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
 private:
 	VulkanEnvironment& e;
 
-	size_t getPos(size_t dynUBO, size_t attribSet, size_t attrib);	///< Get position of some attribute in UBO::ubo. Three dimensions: dynUBO (dynamic UBO), attribSet (attribute type), attrib (attribute position).
+	std::vector<size_t> uniformsOffsets;
 };
+
+
+template<typename T>
+void UBO::setUniform(size_t dynBlock, size_t uniform, T& newValue, size_t offset)
+{
+	uint8_t* destination = ubo.data() + (dynBlock * range + uniformsOffsets[uniform] + offset);
+	memcpy(destination, &newValue, sizeof(T));
+}
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
 struct UBO_MVP {

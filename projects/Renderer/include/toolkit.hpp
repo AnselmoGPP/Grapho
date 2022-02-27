@@ -18,10 +18,42 @@
 glm::mat4 modelMatrix();
 
 /// Get a user-defined Model Matrix 
-glm::mat4 modelMatrix(glm::vec3& scale, glm::vec3& rotation, glm::vec3& translation);
+glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const glm::vec3& translation);
 
-/// Print content of a glm::mat4 object. Useful for debugging.
-void printMat4(glm::mat4 matrix);
+/// Model matrix for Normals (it's really a mat3, but a mat4 is returned because it is easier to pass to shader since mat4 is aligned with 16 bytes). Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors: mat3(transpose(inverse(model))) * vec3(normal).
+glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix);
+
+/// Get a mat3 from a mat4
+template<typename T>
+glm::mat3 toMat3(const T &matrix)
+{
+    //const float* pSource = (const float*)glm::value_ptr(matrix);
+    glm::mat3 result;
+
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+            result[i][j] = matrix[i][j];
+
+    return result;
+}
+
+/// Print the contents of a glm::matX. Useful for debugging.
+template<typename T>
+void printMat(const T& matrix)
+{
+    //const float* pSource = (const float*)glm::value_ptr(matrix);
+    glm::length_t length = matrix.length();
+    float output;
+
+    for (int i = 0; i < length; i++)
+    {
+        for (int j = 0; j < length; j++)
+            std::cout << ((abs(matrix[i][j]) < 0.0001) ? 0 : matrix[i][j]) << "  ";
+            //std::cout << ((abs(pSource[i * length + j]) < 0.0005) ? 0 : pSource[i * length + j]) << "  ";
+
+        std::cout << std::endl;
+    }
+}
 
 // Vertex sets -----------------------------------------------------------------
 
@@ -69,7 +101,7 @@ glm::vec3 sunLightDirection(float dayTime);
 /// Icosahedron data (vertices, colors, indices, normals)
 struct Icosahedron
 {
-    Icosahedron(float multiplier = 30.f);
+    Icosahedron(float multiplier = 1.f);
 
     const int numIndicesx3  = 20 * 3;
     const int numVerticesx3 = 12 * 3;

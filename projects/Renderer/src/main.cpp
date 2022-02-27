@@ -73,11 +73,9 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// TODO now: UBO for fragment shader / Shared textures / Reorganize 2nd thread / Parallel thread manager
-// Pass camPos to FS
+// TODO now: Shared textures / Reorganize 2nd thread / Parallel thread manager
 // Pass material to FS
-// Fix MMN (model matrix for normals)
-// Fix shininess
+
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -133,7 +131,7 @@ glm::vec3 pos;
 
 //===============================================================================
 
-void update(Renderer& r);		// Update model's MM (model matrix) each frame
+void update(Renderer& r, glm::mat4 view, glm::mat4 proj);		// Update UBOs each frame
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
 void setGrid(Renderer& app);
@@ -153,15 +151,15 @@ int main(int argc, char* argv[])
 	TimerSet time;
 	std::cout << time.getDate() << std::endl;
 
-	//setPoints(app);
-	//setAxis(app);
-	//setGrid(app);
-	//setSkybox(app);
-	//setCottage(app);
-	//setRoom(app);
+	setPoints(app);
+	setAxis(app);
+	setGrid(app);
+	setSkybox(app);
+	setCottage(app);
+	setRoom(app);
 	setTerrain(app);
-	//setSun(app);
-	//setReticule(app);
+	setSun(app);
+	setReticule(app);
 
 	app.run();		// Start rendering
 	
@@ -169,100 +167,95 @@ int main(int argc, char* argv[])
 }
 
 
-void update(Renderer& r)
+void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 {
 	frameTime	= r.getTimer().getTime();
 	fps			= r.getTimer().getFPS();
 	maxfps		= r.getTimer().getMaxPossibleFPS();
 	pos			= r.getCamera().Position;
+	size_t i;
 
 	if (check.ifBigger(frameTime, 5)) std::cout << "5 seconds in" << std::endl;
 
-	if (assets.find("skyBox") != assets.end())
-		assets["skyBox"]->setMM(0, 0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+	if (assets.find("points") != assets.end())
+		for (i = 0; i < assets["points"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["points"]->vsDynUBO.setUniform(i, 1, view);
+			assets["points"]->vsDynUBO.setUniform(i, 2, proj);
+		}
 
-	if (assets.find("sun") != assets.end())
-		assets["sun"]->setMM(0, 0, sunMM(pos, dayTime, sunDist, sunAngDist));
+	if (assets.find("axis") != assets.end())
+		for (i = 0; i < assets["axis"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["axis"]->vsDynUBO.setUniform(i, 1, view);
+			assets["axis"]->vsDynUBO.setUniform(i, 2, proj);
+		}
 
 	if (assets.find("grid") != assets.end())
-		assets["grid"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep*((int)pos.x/gridStep), gridStep*((int)pos.y/gridStep), 0.0f)));
+		for (i = 0; i < assets["grid"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["grid"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep * ((int)pos.x / gridStep), gridStep * ((int)pos.y / gridStep), 0.0f)));
+			assets["grid"]->vsDynUBO.setUniform(i, 1, view);
+			assets["grid"]->vsDynUBO.setUniform(i, 2, proj);
+		}
+
+	if (assets.find("skyBox") != assets.end())
+		for (i = 0; i < assets["skyBox"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["skyBox"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+			assets["skyBox"]->vsDynUBO.setUniform(i, 1, view);
+			assets["skyBox"]->vsDynUBO.setUniform(i, 2, proj);
+		}
 
 	if (assets.find("cottage") != assets.end())
-		assets["cottage"]->setMM(0, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, frameTime * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+		for (i = 0; i < assets["cottage"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["cottage"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, frameTime * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+			assets["cottage"]->vsDynUBO.setUniform(i, 1, view);
+			assets["cottage"]->vsDynUBO.setUniform(i, 2, proj);
+		}
+		
+	if (assets.find("room") != assets.end())
+		for (i = 0; i < assets["room"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["room"]->vsDynUBO.setUniform(i, 1, view);
+			assets["room"]->vsDynUBO.setUniform(i, 2, proj);
+		}
+
+	if (assets.find("terrain") != assets.end()) {
+		for (i = 0; i < assets["terrain"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["terrain"]->vsDynUBO.setUniform(i, 1, view);
+			assets["terrain"]->vsDynUBO.setUniform(i, 2, proj);
+		}
+		assets["terrain"]->fsUBO.setUniform(0, 1, pos);
+	}
+
+	if (assets.find("sun") != assets.end())
+		for (i = 0; i < assets["sun"]->vsDynUBO.dynBlocksCount; i++) {
+			assets["sun"]->vsDynUBO.setUniform(i, 0, sunMM(pos, dayTime, sunDist, sunAngDist));
+			assets["sun"]->vsDynUBO.setUniform(i, 1, view);
+			assets["sun"]->vsDynUBO.setUniform(i, 2, proj);
+		}
 }
 
-
-void setSun(Renderer& app)
-{
-	std::cout << "> " << __func__ << std::endl;
-
-	std::vector<VertexPT> v_sun;
-	std::vector<uint32_t> i_sun;
-	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
-
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
-
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
-
-	assets["sun"] = app.newModel(
-		1, primitiveTopology::triangle,
-		vertexLoader,
-		UBOtype(1, 1, 1, 0),
-		noUBO,
-		textures,
-		(SHADERS_DIR + "v_sunPT.spv").c_str(),
-		(SHADERS_DIR + "f_sunPT.spv").c_str(),
-		true);
-
-	sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
-}
-
-void setReticule(Renderer& app)
-{
-	std::cout << "> " << __func__ << std::endl;
-
-	std::vector<VertexPT> v_ret;
-	std::vector<uint32_t> i_ret;
-	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
-
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
-
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
-
-	assets["reticule"] = app.newModel(
-		1, primitiveTopology::triangle,
-		vertexLoader,
-		noUBO,
-		noUBO,
-		textures,
-		(SHADERS_DIR + "v_hudPT.spv").c_str(),
-		(SHADERS_DIR + "f_hudPT.spv").c_str(),
-		true);
-}
 
 void setPoints(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
-	Icosahedron icos;	// Just created for calling destructor, which applies a multiplier.
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size()/6, Icosahedron::icos.data(), noIndices, false);
+	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
 
 	assets["points"] = app.newModel(
 		1, primitiveTopology::point,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		noTextures,
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
 		(SHADERS_DIR + "f_pointPC.spv").c_str(),
 		false);
 
-	//assets["points"]->setMM(0, modelMatrix());
+	assets["points"]->vsDynUBO.setUniform(0, 0, modelMatrix());
 }
 
 void setAxis(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint32_t> i_axis;
@@ -273,19 +266,19 @@ void setAxis(Renderer& app)
 	assets["axis"] = app.newModel(
 		1, primitiveTopology::line,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		false);
 
-	//assets["axis"]->setMM(0, modelMatrix());
+	assets["axis"]->vsDynUBO.setUniform(0, 0, modelMatrix());
 }
 
 void setGrid(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
@@ -296,19 +289,17 @@ void setGrid(Renderer& app)
 	assets["grid"] = app.newModel(
 		1, primitiveTopology::line,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		false);
-
-	//assets["grid"]->setMM(0, modelMatrix());
 }
 
 void setSkybox(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
 
@@ -317,7 +308,7 @@ void setSkybox(Renderer& app)
 	assets["skyBox"] = app.newModel(
 		1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		textures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
@@ -327,18 +318,18 @@ void setSkybox(Renderer& app)
 
 void setCottage(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
 	VertexLoader* vertexLoader;
-	
+
 	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
 		0, primitiveTopology::triangle,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(0, MMsize, VMsize, PMsize),
 		noUBO,
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -353,7 +344,7 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel(
 		1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
@@ -363,7 +354,7 @@ void setCottage(Renderer& app)
 
 void setRoom(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
 
@@ -372,48 +363,95 @@ void setRoom(Renderer& app)
 	assets["room"] = app.newModel(
 		2, primitiveTopology::triangle,
 		vertexLoader,
-		UBOtype(1, 1, 1, 0),
+		UBOconfig(2, MMsize, VMsize, PMsize),
 		noUBO,
 		textures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
-		false );
+		false);
 
-	assets["room"]->setMM(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
-	assets["room"]->setMM(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
-	//assets["room"]->setMM(2, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f,  90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-	//assets["room"]->setMM(3, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+	assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
+	assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
+	//assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+	//assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 }
 
 void setTerrain(Renderer& app)
 {
-	std::cout << "> " << __func__ << std::endl;
+	std::cout << "> " << __func__ << "()" << std::endl;
 
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
 
-	std::vector<Texture> textures = 
-	{ 
+	std::vector<Texture> textures =
+	{
 		Texture((TEXTURES_DIR + "squares.png").c_str()),
 		Texture((TEXTURES_DIR + "grass.png").c_str())
 	};
 
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex,	terrGen.indices, true);
-	
-	//for (size_t i = 0; i < terrGen.getNumVertex(); i++)
-	//	std::cout << i << ": " << terrGen.vertex[i][5] << ", " << terrGen.vertex[i][6] << ", " << terrGen.vertex[i][7] << '\n';
-	//std::cout << "Total: " << terrGen.getNumVertex() << '\n' << std::endl;
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
 
 	assets["terrain"] = app.newModel(
 		1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOtype(1, 1, 1, 1),
-		UBOtype(0, 0, 0, 0, 1),
+		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
+		UBOconfig(1, lightSize, vec4size),
 		textures,
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
 		false);
 
-	Light sun;
-	sun.setDirectional(glm::vec3(0, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(0.9, 0.9, 1), glm::vec3(1, 1, 1));
-	assets["terrain"]->fsUBO.setLight(0, 0, sun);
+	assets["terrain"]->vsDynUBO.setUniform(0, 0, modelMatrix());
+	assets["terrain"]->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
+
+	sun.setDirectional(glm::vec3(0, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1., 1., 1.), glm::vec3(1, 1, 1));
+	assets["terrain"]->fsUBO.setUniform(0, 0, sun);
 }
+
+void setSun(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	std::vector<VertexPT> v_sun;
+	std::vector<uint32_t> i_sun;
+	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
+
+	assets["sun"] = app.newModel(
+		1, primitiveTopology::triangle,
+		vertexLoader,
+		UBOconfig(1, MMsize, VMsize, PMsize),
+		noUBO,
+		textures,
+		(SHADERS_DIR + "v_sunPT.spv").c_str(),
+		(SHADERS_DIR + "f_sunPT.spv").c_str(),
+		true);
+
+	//sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
+}
+
+void setReticule(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	std::vector<VertexPT> v_ret;
+	std::vector<uint32_t> i_ret;
+	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
+
+	assets["reticule"] = app.newModel(
+		1, primitiveTopology::triangle,
+		vertexLoader,
+		UBOconfig(1),
+		noUBO,
+		textures,
+		(SHADERS_DIR + "v_hudPT.spv").c_str(),
+		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		true);
+}
+

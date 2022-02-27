@@ -12,7 +12,7 @@
 #include "renderer.hpp"
 
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&))
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj))
 	: input(e.window), userUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
 
 Renderer::~Renderer() 
@@ -84,34 +84,33 @@ void Renderer::createCommandBuffers()
 		
 		// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
-		{
-			if (it->vsDynUBO.count == 0) continue;
-
-			//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
-			VkDeviceSize offsets[] = { 0 };	// <<<
-		
-			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
-			if(it->indices.size())
-				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
-
-			for (size_t j = 0; j < it->vsDynUBO.count; j++)
+			if (it->vsDynUBO.dynBlocksCount)
 			{
-				if(it->vsDynUBO.range)	// has UBO
-					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
-				else
-					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-				
-				if (it->indices.size())	// has indices
-					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
-				else
-					vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
+				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
+				VkDeviceSize offsets[] = { 0 };	// <<<
+			
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
+				if(it->indices.size())
+					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
-				//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
-				//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
-				//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
+				for (size_t j = 0; j < it->vsDynUBO.dynBlocksCount; j++)
+				{
+					if(it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
+					else
+						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
+					
+					if (it->indices.size())	// has indices
+						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+					else
+						vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
+
+					//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
+					//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
+					//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
+				}
 			}
-		}
 
 		// Finish up
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -294,12 +293,13 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	input.cam.ProcessCameraInput(timer.getDeltaTime());
 	glm::mat4 view = input.cam.GetViewMatrix();
 	glm::mat4 proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+
 	//UniformBufferObject ubo{};
 	//ubo.view = input.cam.GetViewMatrix();
 	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
 
 	// Update model matrices and other things (user defined)
-	userUpdate(*this);
+	userUpdate(*this, view, proj);
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
@@ -307,15 +307,6 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	{
 		if (it->vsDynUBO.totalBytes)
 		{
-			for (size_t i = 0; i < it->vsDynUBO.count; i++)
-			{
-				//it->dynUBO.setModel(i, it->MM[i]);
-				it->vsDynUBO.setViewM(i, 0, view);
-				it->vsDynUBO.setProjM(i, 0, proj);
-				//it->dynUBO.setMNor(i, glm::mat3(glm::transpose(glm::inverse(view))));
-				//it->vsDynUBO.setLight(i, 0, light);
-			}
-
 			void* data;
 			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
@@ -368,7 +359,7 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
@@ -378,7 +369,7 @@ modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primiti
 		numRenderings, 
 		(VkPrimitiveTopology) primitiveTopology, 
 		vertexLoader,
-		vsUboType, fsUboType, 
+		vsUboConfig, fsUboConfig, 
 		textures, 
 		VSpath, FSpath, 
 		transparency);
@@ -403,14 +394,14 @@ void Renderer::deleteTexture(texIterator texture)
 
 void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 {
-	if (model->vsDynUBO.count != numberOfRenders)
+	if (model->vsDynUBO.dynBlocksCount != numberOfRenders)
 	{
 		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 
 		rendersToSet[&model] = numberOfRenders;
 
-		if(numberOfRenders > model->vsDynUBO.count)		// Done to allow the user to update the new UBOs immediately
-			model->vsDynUBO.dirtyResize(numberOfRenders);
+		if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
+			model->vsDynUBO.hiddenResize(numberOfRenders);
 	}
 }
 
@@ -520,3 +511,5 @@ void Renderer::loadModels_Thread()
 TimerSet& Renderer::getTimer() { return timer; }
 
 Camera& Renderer::getCamera() { return input.cam; }
+
+Input& Renderer::getInput() { return input; };

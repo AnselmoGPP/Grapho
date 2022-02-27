@@ -125,7 +125,7 @@ class Renderer
 
 	/// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
 	void updateUniformBuffer(uint32_t currentImage);
-	void(*userUpdate) (Renderer& rend);
+	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
 	/// Check for models pending full initialization.
 	void loadModels_Thread();
@@ -153,7 +153,7 @@ public:
 
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&));
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj));
 	~Renderer();
 
 	/// Create command buffer and start render loop.
@@ -164,6 +164,9 @@ public:
 
 	/// Returns the camera object (provides access to camera data).
 	Camera&			getCamera();
+
+
+	Input&			getInput();
 
 	/**
 		@brief Inserts a partially initialized model object.The loadModels_Thread() thread will fully initialize it as soon as possible.
@@ -179,7 +182,8 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	//modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(std::vector<Texture>& textures);

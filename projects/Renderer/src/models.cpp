@@ -5,17 +5,17 @@
 
 std::vector<Texture> noTextures;
 std::vector<uint32_t> noIndices;
-UBOtype noUBO;
+UBOconfig noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOtype& vsUboType, const UBOtype& fsUboType, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
 	fullyConstructed(false),
 	hasTransparencies(transparency),
 	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	textures(textures),
-	vsDynUBO(e, 0, vsUboType, e.minUniformBufferOffsetAlignment),
-	fsUBO(e, 0, fsUboType, e.minUniformBufferOffsetAlignment)
+	vsDynUBO(e, vsUboConfig, e.minUniformBufferOffsetAlignment),
+	fsUBO(e, fsUboConfig, e.minUniformBufferOffsetAlignment)
 {
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
@@ -646,7 +646,7 @@ void ModelData::cleanup()
 void ModelData::resizeUBOset(size_t newSize)
 {
 	// Resize UBO and dynamic offsets
-	size_t oldSize = vsDynUBO.count;
+	size_t oldSize = vsDynUBO.dynBlocksCount;
 	vsDynUBO.resize(newSize);
 
 	// Destroy and recreate uniform buffers, descriptor pool and descriptor set
@@ -666,12 +666,12 @@ void ModelData::resizeUBOset(size_t newSize)
 void ModelData::setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue)
 {
 	// Model matrix (MM)
-	if (posDynUbo < vsDynUBO.dirtyCount)
-		vsDynUBO.setModelM(posDynUbo, attrib, newValue);
+	//if (posDynUbo < vsDynUBO.hiddenCount)
+	//	vsDynUBO.setModelM(posDynUbo, attrib, newValue);
 
 	// MM for normals (Used when MM applies non-uniform scaling since normals won't be scaled correctly. Otherwise, use glm::vec3(model))
-	if (vsDynUBO.numEachAttrib[3])
-		vsDynUBO.setMNorm(posDynUbo, attrib, glm::mat3(glm::transpose(glm::inverse(newValue))));
+	//if (vsDynUBO.numEachAttrib[3])
+	//	vsDynUBO.setMNorm(posDynUbo, attrib, glm::mat3(glm::transpose(glm::inverse(newValue))));
 }
 
 //bool ModelData::isDataFromFile() { return dataFromFile; }
