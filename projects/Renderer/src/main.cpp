@@ -70,10 +70,10 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Shared textures
 // Pass material to FS
 // Scene plane: Draw in front of some rendering (used for skybox or weapons)
 // Multithread loading / Reorganize 2nd thread / Parallel thread manager
+// Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion.
 
 
 #include <iostream>
@@ -131,6 +131,9 @@ glm::vec3 pos;
 //===============================================================================
 
 void update(Renderer& r, glm::mat4 view, glm::mat4 proj);		// Update UBOs each frame
+
+void loadTextures(Renderer& app);
+
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
 void setGrid(Renderer& app);
@@ -150,6 +153,8 @@ int main(int argc, char* argv[])
 	std::cout << "------------------------------" << std::endl;
 	TimerSet time;
 	std::cout << time.getDate() << std::endl;
+
+	loadTextures(app);
 
 	setPoints(app);
 	setAxis(app);
@@ -232,6 +237,17 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 		}
 }
 
+void loadTextures(Renderer& app)
+{
+	textures["skybox"] = app.newTexture((TEXTURES_DIR + "sky_box/space1.jpg").c_str());
+	textures["cottage"] = app.newTexture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str());
+	textures["room"] = app.newTexture((TEXTURES_DIR + "viking_room.png").c_str());
+	textures["squares"] = app.newTexture((TEXTURES_DIR + "squares.png").c_str());
+	textures["grass"] = app.newTexture((TEXTURES_DIR + "grass.png").c_str());
+	textures["sun"] = app.newTexture((TEXTURES_DIR + "Sun/sun2_1.png").c_str());
+	textures["reticule"] = app.newTexture((TEXTURES_DIR + "HUD/reticule_1.png").c_str());
+}
+
 
 void setPoints(Renderer& app)
 {
@@ -301,7 +317,8 @@ void setSkybox(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
+	std::vector<texIterator> usedTextures = { textures["skybox"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 14, v_cube.data(), i_inCube, false);
 
@@ -310,7 +327,7 @@ void setSkybox(Renderer& app)
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
 		false);
@@ -321,17 +338,17 @@ void setCottage(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
-	VertexLoader* vertexLoader;
+	std::vector<texIterator> usedTextures = { textures["cottage"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
 
-	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
+	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
 		0, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(0, MMsize, VMsize, PMsize),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		false);
@@ -346,7 +363,7 @@ void setCottage(Renderer& app)
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		false);
@@ -356,7 +373,8 @@ void setRoom(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
+	std::vector<texIterator> usedTextures = { textures["room"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
 
@@ -365,7 +383,7 @@ void setRoom(Renderer& app)
 		vertexLoader,
 		UBOconfig(2, MMsize, VMsize, PMsize),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		false);
@@ -382,11 +400,7 @@ void setTerrain(Renderer& app)
 
 	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
 
-	std::vector<Texture> textures =
-	{
-		Texture((TEXTURES_DIR + "squares.png").c_str()),
-		Texture((TEXTURES_DIR + "grass.png").c_str())
-	};
+	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
 
@@ -395,7 +409,7 @@ void setTerrain(Renderer& app)
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
 		UBOconfig(1, lightSize, vec4size),
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
 		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
 		false);
@@ -415,7 +429,8 @@ void setSun(Renderer& app)
 	std::vector<uint32_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
+	std::vector<texIterator> usedTextures = { textures["sun"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
 
@@ -424,7 +439,7 @@ void setSun(Renderer& app)
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		true);
@@ -440,7 +455,8 @@ void setReticule(Renderer& app)
 	std::vector<uint32_t> i_ret;
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
+	std::vector<texIterator> usedTextures = { textures["reticule"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
@@ -449,9 +465,8 @@ void setReticule(Renderer& app)
 		vertexLoader,
 		UBOconfig(1),
 		noUBO,
-		textures,
+		usedTextures,
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),
 		true);
 }
-

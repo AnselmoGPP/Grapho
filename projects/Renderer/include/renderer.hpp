@@ -33,8 +33,6 @@
 #include "input.hpp"
 #include "timer.hpp"
 
-typedef std::list<ModelData>::iterator modelIterator;
-typedef std::list<Texture>::iterator texIterator;
 
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {
@@ -42,6 +40,8 @@ enum primitiveTopology {
 	line		= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
 	triangle	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 };
+
+typedef std::list<ModelData>::iterator modelIterator;
 
 // LOOK Restart the Renderer object after finishing the render loop
 /**
@@ -205,7 +205,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(const char* path);

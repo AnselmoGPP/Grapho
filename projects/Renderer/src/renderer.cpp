@@ -341,6 +341,9 @@ void Renderer::cleanup()
 	models.clear();
 	modelsToLoad.clear();
 	
+	// Cleanup textures
+	textures.clear();
+
 	// Cleanup environment
 	e.cleanupSwapChain();
 	e.cleanup(); 
@@ -359,7 +362,7 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 

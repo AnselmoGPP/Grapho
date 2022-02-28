@@ -40,7 +40,9 @@
 
 #define LINE_WIDTH 1.0f
 
-extern std::vector<Texture> noTextures;		// Vector with 0 Texture objects
+typedef std::list<Texture>::iterator texIterator;
+
+extern std::vector<texIterator> noTextures;		// Vector with 0 Texture objects
 extern std::vector<uint32_t> noIndices;		// Vector with 0 indices
 extern UBOconfig noUBO;						// UBOtype with 0 elements
 
@@ -113,7 +115,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	virtual ~ModelData();
 
@@ -129,7 +131,8 @@ public:
 	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.
 
-	std::vector<Texture>		 textures;				//!< Set of textures used by this model.
+	//std::vector<Texture>		 textures;				//!< Set of textures used by this model.
+	std::vector<texIterator>	 textures;				//!< Set of textures used by this model.
 
 	VertexSet					 vertices;				//!< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
 	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).

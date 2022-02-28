@@ -3,11 +3,11 @@
 #include "commons.hpp"
 
 
-std::vector<Texture> noTextures;
+std::vector<texIterator> noTextures;
 std::vector<uint32_t> noIndices;
 UBOconfig noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
 	fullyConstructed(false),
@@ -45,8 +45,8 @@ ModelData& ModelData::fullConstruction()
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
 	
-	for(size_t i = 0; i < textures.size(); i++)
-		textures[i].loadAndCreateTexture(e);
+	//for(size_t i = 0; i < textures.size(); i++)
+	//	textures[i].loadAndCreateTexture(e);
 
 	vertexLoader->loadVertex();
 	createVertexBuffer();
@@ -535,10 +535,10 @@ void ModelData::createDescriptorSets()
 		std::vector<VkDescriptorImageInfo> imageInfo(textures.size());
 		for (size_t i = 0; i < textures.size(); i++) {
 			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo[i].imageView = textures[i].textureImageView;
-			imageInfo[i].sampler = textures[i].textureSampler;
+			imageInfo[i].imageView = textures[i]->textureImageView;
+			imageInfo[i].sampler = textures[i]->textureSampler;
 		}
-	
+		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;
 		uint32_t binding = 0;
@@ -622,7 +622,7 @@ void ModelData::cleanupSwapChain()
 void ModelData::cleanup()
 {
 	// Textures
-	textures.clear();
+	//textures.clear();
 	
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);

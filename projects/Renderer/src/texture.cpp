@@ -39,8 +39,8 @@ Texture::~Texture()
 	if (e)
 	{
 		vkDestroySampler(e->device, textureSampler, nullptr);
-		vkDestroyImageView(e->device, textureImageView, nullptr);
 		vkDestroyImage(e->device, textureImage, nullptr);
+		vkDestroyImageView(e->device, textureImageView, nullptr);
 		vkFreeMemory(e->device, textureImageMemory, nullptr);
 	}
 }
