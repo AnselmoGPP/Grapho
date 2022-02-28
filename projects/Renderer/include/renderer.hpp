@@ -52,32 +52,36 @@ enum primitiveTopology {
 class Renderer
 {
 	VulkanEnvironment		e;
-	Input					input;			//!< Input data
-	TimerSet				timer;			//!< Time control
-	std::list<ModelData>	models;			//!< Models (fully initialized)
-	//std::list<Texture>	textures;		//!< Texture set
+	Input					input;		//!< Input data
+	TimerSet				timer;		//!< Time control
+	std::list<ModelData>	models;		//!< Models (fully initialized)
+	std::list<Texture>		textures;	//!< Texture set
 
 	// Threads stuff
-	std::thread				thread_loadModels;				//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 
-	std::mutex				mutex_modelsAndCommandBuffers;	//!< Controls access to models list and the command buffer
-	std::mutex				mutex_modelsToLoad;				//!< Controls access to modelsToLoad list
-	std::mutex				mutex_modelsToDelete;			//!< Controls access to modelsToDelete list
-	std::mutex				mutex_rendersToSet;				//!< Controls access to rendersToSet map
-	std::mutex				mutex_resizingWindow;			//!< Controls any change to Vulkan objects (for 2nd thread & resizing window)
+	std::mutex mutex_resizingWindow;				//!< Controls any change to Vulkan objects (for 2nd thread & resizing window)
+	std::mutex mutex_modelsAndCommandBuffers;		//!< Controls access to models list and the command buffer
 
-	std::list<ModelData>				modelsToLoad;		//!< Models waiting for being included in m (partially initialized).
-	std::list<modelIterator>			modelsToDelete;		//!< Iterators to the loaded models that have to be deleted from Vulkan.
-	//std::list<Texture>				texturesToLoad;
-	//std::list<Texture>				texturesToDelete;
-	std::map<modelIterator*, size_t>	rendersToSet;		//!< Number of renderings per model.
+	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
+	std::mutex mutex_modelsToLoad;					//!< Controls access to modelsToLoad list
+
+	std::list<modelIterator> modelsToDelete;		//!< Iterators to the loaded models that have to be deleted from Vulkan.
+	std::mutex mutex_modelsToDelete;				//!< Controls access to modelsToDelete list
+
+	std::map<modelIterator*, size_t> rendersToSet;	//!< Number of renderings per model.
+	std::mutex mutex_rendersToSet;					//!< Controls access to rendersToSet map
+
+	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
+
+	std::list<texIterator> texturesToDelete;		//!< Textures waiting for being deleted.
 
 	// Private parameters:
 
 	const int MAX_FRAMES_IN_FLIGHT		= 2;				//!< How many frames should be processed concurrently.
 	VkClearColorValue backgroundColor	= { 50/255.f, 150/255.f, 255/255.f, 1.0f };
 	int maxFPS							= 80;
-	int waitTime						= 500;
+	int waitTime						= 500;				//!< Time the loading-thread wait till next check.
 
 	// Main methods:
 
@@ -132,7 +136,8 @@ class Renderer
 
 		<ul>Checking and loading process:
 			<li>[mutex_resizingWindow] </li>
-			<li>  Check for models pending full initialization > fullInitialization() </li>
+			<li>  Load textures </li>
+			<li>  Full initialize new models to load </li>
 			<li>  [mutex_modelsAndCommandBuffers] </li>
 			<li>    [mutex_modelsToLoad] </li>
 			<li>      Move new models to the models list </li>
@@ -143,6 +148,7 @@ class Renderer
 			<li>      Resize UBOs for those models whose number of renders changed </li>
 			<li>    Generate new command buffer </li>
 			<li>  Delete models pending deletion </li>
+			<li>  Delete textures pending deletion </li>
 		</ul>
 	*/
 	void loadingThread();
@@ -200,10 +206,9 @@ public:
 		@param transparency
 	*/
 	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
-	//modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<Texture>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	void			deleteModel(modelIterator model);
 
-	texIterator		newTexture(std::vector<Texture>& textures);
+	texIterator		newTexture(const char* path);
 	void			deleteTexture(texIterator texture);
 
 	void			setRenders(modelIterator& model, size_t numberOfRenders);

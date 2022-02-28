@@ -382,14 +382,14 @@ void Renderer::deleteModel(modelIterator model)
 	modelsToDelete.insert(modelsToDelete.cend(), model);
 }
 
-texIterator Renderer::newTexture(std::vector<Texture>& textures)
+texIterator Renderer::newTexture(const char* path)
 {
-	return texIterator();
+	return texturesToLoad.emplace(texturesToLoad.cend(), path);
 }
 
 void Renderer::deleteTexture(texIterator texture)
 {
-
+	texturesToDelete.insert(texturesToDelete.cend(), texture);
 }
 
 void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
@@ -414,22 +414,43 @@ void Renderer::loadingThread()
 	std::map<modelIterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
 	size_t models_to_load;
 	size_t models_to_delete;
+	size_t textures_to_load;
+	size_t textures_to_delete;
 	size_t renders_to_set;
 	std::list<ModelData> deathRow;			// Vulkan models that are going to be deleted
 	//bool commandBufferNotCreatedYet;		// True if run() has not been called yet (i.e. a command buffer has not been created yet)					
 	
 	while (runThread)
 	{
-		if (!rendersToSet.size() && !modelsToLoad.size() && !modelsToDelete.size())
+		if (!modelsToLoad.size() && 
+			!modelsToDelete.size() &&
+			!texturesToLoad.size() &&
+			!texturesToDelete.size() &&
+			!rendersToSet.size() )
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
-			continue;
+			//continue;
 		}
 		else
 		{
+			renders_to_set = rendersToSet.size();	//<<< right position?
 			models_to_delete = modelsToDelete.size();
-			models_to_load   = modelsToLoad.size();
-			renders_to_set   = rendersToSet.size();
+			models_to_load = modelsToLoad.size();
+			textures_to_delete = texturesToDelete.size();
+			textures_to_load = texturesToLoad.size();
+
+			// Load textures in the texturesToLoad list and move them to the textures list.
+			if (textures_to_load)
+			{
+				texIterator begin, end;
+				begin = end = texturesToLoad.begin();
+				std::advance(end, textures_to_load);
+
+				for (texIterator it = begin; it != end; it++)
+					it->loadAndCreateTexture(e);
+
+				textures.splice(textures.cend(), texturesToLoad, begin, end);
+			}
 
 			const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
 
@@ -502,6 +523,18 @@ void Renderer::loadingThread()
 
 			if (models_to_delete) 
 				deathRow.clear();				// Delete models
+
+			if (textures_to_delete)
+			{
+				std::list<texIterator>::iterator begin, end;
+				begin = end = texturesToDelete.begin();
+				std::advance(end, textures_to_delete);
+				auto a = **begin;
+				for (std::list<texIterator>::iterator it = begin; it != end; it++)
+					textures.erase(*it);
+
+				texturesToDelete.erase(begin, end);
+			}
 		}
 	}
 

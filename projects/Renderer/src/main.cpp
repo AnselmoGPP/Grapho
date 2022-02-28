@@ -70,9 +70,10 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Shared textures / Reorganize 2nd thread / Parallel thread manager
+// Shared textures
 // Pass material to FS
 // Scene plane: Draw in front of some rendering (used for skybox or weapons)
+// Multithread loading / Reorganize 2nd thread / Parallel thread manager
 
 
 #include <iostream>
