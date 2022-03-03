@@ -70,10 +70,17 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Pass material to FS
+// Light types
 // Scene plane: Draw in front of some rendering (used for skybox or weapons)
-// Multithread loading / Reorganize 2nd thread / Parallel thread manager
-// Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion.
+// DeleteModel()
+// SetRenders()
+// Camera
+// Inputs
+// GUI
+// Later: Readme.md
+// Pass material to Fragment Shader
+// Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
+// Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
 
 
 #include <iostream>
@@ -147,12 +154,12 @@ void setReticule(Renderer& app);
 
 int main(int argc, char* argv[])
 {
+	TimerSet time;
+
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update);		
 	
-	std::cout << "------------------------------" << std::endl;
-	TimerSet time;
-	std::cout << time.getDate() << std::endl;
+	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
 	loadTextures(app);
 
@@ -246,6 +253,9 @@ void loadTextures(Renderer& app)
 	textures["grass"] = app.newTexture((TEXTURES_DIR + "grass.png").c_str());
 	textures["sun"] = app.newTexture((TEXTURES_DIR + "Sun/sun2_1.png").c_str());
 	textures["reticule"] = app.newTexture((TEXTURES_DIR + "HUD/reticule_1.png").c_str());
+
+	// <<< You could build materials (make sets of textures) here
+	// <<< Then, user could make sets of materials and send them to a modelObject
 }
 
 

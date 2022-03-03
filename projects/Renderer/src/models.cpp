@@ -621,9 +621,6 @@ void ModelData::cleanupSwapChain()
 
 void ModelData::cleanup()
 {
-	// Textures
-	//textures.clear();
-	
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);
 	

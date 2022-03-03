@@ -35,6 +35,7 @@ extern size_t PMsize;			// Proyection matrix
 extern size_t MMNsize;			// Model matrix for Normals
 extern size_t lightSize;		// Light
 extern size_t vec4size;			// glm::vec4
+extern size_t materialSize;		// Material
 
 /// Class used for configuring the dynamic UBO. UBO attributes: Model/View/Projection matrices, Model matrix for normals, Lights.
 struct UBOconfig
@@ -80,27 +81,32 @@ struct Light
 
 /**
 	@struct Material
-	@brief Data structure for a material (diffuse, specular, shininess)
+	@brief Data structure for a material. Passed to shader as UBO. No textures, just values for Diffuse, Specular & Shininess.
 
-	Usual values:
+	Basic values:
 	<ul>
 		<li>Ambient (not included): Object color</li>
-		<li>Diffuse: Object color</li>
+		<li>Diffuse (albedo): Object color</li>
 		<li>Specular: Specular map</li>
 		<li>Shininess: Object shininess</li>
 	</ul>
+	Examples: http://devernay.free.fr/cours/opengl/materials.html
 */
 struct Material
 {
-	//sampler2D diffuseT;
-	glm::vec3 diffuse;
-	//sampler2D specularT;
-	glm::vec3 specular;
-	float shininess;
+	Material(glm::vec3& diffuse, glm::vec3& specular, float shininess);
+
+	// alignas(16) vec3 ambient;		// Already controlled with the light
+	alignas(16) glm::vec3 diffuse;		// or sampler2D diffuseT;
+	alignas(16) glm::vec3 specular;		// or sampler2D specularT;
+	alignas(16) float shininess;
 };
 
+
 /**
-*	Structure used for storing a set of UBOs in the same structure (many UBOs can be used for rendering the same model many times).
+*	@struct UBO
+*	@brief Structure used for storing a set of UBOs in the same structure (many UBOs can be used for rendering the same model many times).
+*	
 *	Attributes of a single UBO: Model, View, Projection, ModelForNormals, Lights
 *	We may create a set of dynamic UBOs (count), each one containing a number of different attributes (5), each one containing 0 or more attributes of their type (numEachAttrib).
 *	If count == 0, the buffer created will have size == range (instead of totalBytes, which is == 0). If range == 0, no buffer is created.

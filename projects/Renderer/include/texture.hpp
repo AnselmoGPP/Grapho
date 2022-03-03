@@ -1,7 +1,10 @@
 #ifndef TEXTURE_HPP
 #define TEXTURE_HPP
 
+#include <list>
+
 #include "environment.hpp"
+
 
 class Texture
 {
@@ -27,6 +30,29 @@ public:
 	VkDeviceMemory				 textureImageMemory;	///< Opaque handle to a device memory object.
 	VkImageView					 textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler					 textureSampler;		///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
+};
+
+typedef std::list<Texture>::iterator texIterator;
+
+/**
+	@struct PBRmaterial
+	@brief Set of texture maps used for PBR (Physically Based Rendering). Passed to shader as textures.
+
+	Commonly used maps:
+	<ul>
+		<li>Diffuse/Albedo </li>
+		<li>Specular/Roughness/Smoothness(inverted) </li>
+		<li>Shininess (Metallic?) </li>
+		<li> Normals </li>
+		<li>Ambient occlusion </li>
+		<li>Height maps (for geometry shader?) </li>
+		<li>Emissive </li>
+		<li>Subsurface scattering </li>
+	</ul>
+*/
+struct PBRmaterial
+{
+	std::vector<texIterator> texMaps;
 };
 
 #endif

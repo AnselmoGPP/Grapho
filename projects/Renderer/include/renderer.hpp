@@ -41,8 +41,6 @@ enum primitiveTopology {
 	triangle	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 };
 
-typedef std::list<ModelData>::iterator modelIterator;
-
 // LOOK Restart the Renderer object after finishing the render loop
 /**
 *   @brief Responsible for making the rendering (render loop). Manages models, textures, input, camera...

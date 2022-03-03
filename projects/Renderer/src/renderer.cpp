@@ -410,7 +410,7 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
 
 void Renderer::loadingThread()
 {
-	std::cout << "Start loading thread" << std::endl;
+	std::cout << "Start " << __func__ << "()" << std::endl;
 
 	modelIterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
 	std::list<modelIterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
@@ -425,22 +425,20 @@ void Renderer::loadingThread()
 	
 	while (runThread)
 	{
-		if (!modelsToLoad.size() && 
-			!modelsToDelete.size() &&
-			!texturesToLoad.size() &&
-			!texturesToDelete.size() &&
-			!rendersToSet.size() )
+		if (modelsToLoad.size() || 
+			modelsToDelete.size() ||
+			texturesToLoad.size() ||
+			texturesToDelete.size() ||
+			rendersToSet.size() )
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
-			//continue;
-		}
-		else
-		{
-			renders_to_set = rendersToSet.size();	//<<< right position?
-			models_to_delete = modelsToDelete.size();
-			models_to_load = modelsToLoad.size();
-			textures_to_delete = texturesToDelete.size();
-			textures_to_load = texturesToLoad.size();
+			{
+				// lock_guard here, maybe... <<<
+				textures_to_delete = texturesToDelete.size();		// What if it's checked after models_to_delete? Some another model could be marked for deletion for the next iteration, but its texture would be deleted now.
+				models_to_delete = modelsToDelete.size();			// What if it's checked after models_to_load? A new model could be marked for loading the next cycle, but its deletion could be marked for now.
+				renders_to_set = rendersToSet.size();				// What if it's checked after models_to_load? Some another model could be marked to be loaded in the next cycle, but we might have to alter the number of renders of it now. - What if it's checked before models_to_delete? Some model could be marked for deletion now, but any of the could be marked for a change in the number of renderings in the next cycle.
+				models_to_load = modelsToLoad.size();				// What if it's checked before models_to_delete? See models_to_delete comment.
+				textures_to_load = texturesToLoad.size();			// What if it's checked before models_to_load? Some model could be marked for loading now, but its texture could be marked to be loaded in the next cycle.
+			}
 
 			// Load textures in the texturesToLoad list and move them to the textures list.
 			if (textures_to_load)
@@ -539,9 +537,11 @@ void Renderer::loadingThread()
 				texturesToDelete.erase(begin, end);
 			}
 		}
+		else
+			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 	}
 
-	std::cout << "Finish loading thread" << std::endl;
+	std::cout << "End " << __func__ << "()" << std::endl;
 }
 
 TimerSet& Renderer::getTimer() { return timer; }

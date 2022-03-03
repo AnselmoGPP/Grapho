@@ -40,9 +40,7 @@
 
 #define LINE_WIDTH 1.0f
 
-typedef std::list<Texture>::iterator texIterator;
-
-extern std::vector<texIterator> noTextures;		// Vector with 0 Texture objects
+extern std::vector<texIterator> noTextures;	// Vector with 0 Texture objects
 extern std::vector<uint32_t> noIndices;		// Vector with 0 indices
 extern UBOconfig noUBO;						// UBOtype with 0 elements
 
@@ -165,5 +163,6 @@ public:
 	//glm::mat4(*getModelMatrix) (float time);
 };
 
+typedef std::list<ModelData>::iterator modelIterator;
 
 #endif

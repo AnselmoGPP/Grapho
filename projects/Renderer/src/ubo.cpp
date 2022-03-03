@@ -14,6 +14,7 @@ size_t PMsize			= sizeof(glm::mat4);
 size_t MMNsize			= sizeof(glm::mat4);		// vec3
 size_t lightSize		= sizeof(Light);
 size_t vec4size			= sizeof(glm::vec4);
+size_t materialSize		= sizeof(Material);
 
 UBOconfig::UBOconfig(size_t dynBlocksCount, size_t size1, size_t size2, size_t size3, size_t size4, size_t size5)
 {
@@ -32,18 +33,6 @@ UBOconfig::UBOconfig(size_t dynBlocksCount, size_t size1, size_t size2, size_t s
 	//if (size4) attribsSize.push_back(size4 % UniformAlignment ? size4 + UniformAlignment - (size4 % UniformAlignment) : size4);
 	//if (size5) attribsSize.push_back(size5 % UniformAlignment ? size5 + UniformAlignment - (size5 % UniformAlignment) : size5);
 }
-
-//const std::array<size_t, 6> UBOtype::attribsSize = { sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat4), sizeof(glm::mat3) + 12, sizeof(Light), 16 };	// 64, 64, 64, 36+12, 176 (including padding for getting alignment with 16 bits), 16
-
-//UBOtype::UBOtype(size_t numM, size_t numV, size_t numP, size_t numMN, size_t numLights, size_t misc)
-//{
-//	numEachAttrib[0] = numM;
-//	numEachAttrib[1] = numV;
-//	numEachAttrib[2] = numP;
-//	numEachAttrib[3] = numMN;
-//	numEachAttrib[4] = numLights;
-//	numEachAttrib[5] = misc;
-//}
 
 /// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, dynamicOffsets).
 UBO::UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment)
@@ -139,6 +128,9 @@ void UBO::hiddenResize(size_t newDynBlocksCount)
 	ubo.resize(range * newDynBlocksCount);
 	hiddenCount = newDynBlocksCount;
 }
+
+Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)
+	: diffuse(diffuse), specular(specular), shininess(shininess) { }
 
 
 // Light -----------------------------------------------------------------
