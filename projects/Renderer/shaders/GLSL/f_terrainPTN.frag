@@ -3,7 +3,7 @@
 
 struct Light
 {
-    vec4 lightType;		// int
+    int lightType;		// int
 	
     vec4 position;		// vec3
     vec4 direction;		// vec3
@@ -12,8 +12,8 @@ struct Light
     vec4 diffuse;		// vec3
     vec4 specular;		// vec3
 
-    vec4 degree;		// vec3
-    vec4 cutOff;		// vec2
+    vec4 degree;		// vec3	(constant, linear, quadratic)
+    vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
 };
 
 struct Material
@@ -30,7 +30,7 @@ layout(set = 0, binding = 1) uniform dataBlock
 {
     Light light;
 	vec4 camPos;		// vec3
-} sun;
+} ubo;
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[2];		// sampler1D, sampler2D, sampler3D
 
@@ -41,34 +41,42 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
 vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
-//vec4 PointLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess, float alpha);
-//vec4 SpotLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess, float alpha);
-//vec4 applyFog(vec4 fragment);
+vec3 PointLightColor	  (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 SpotLightColor		  (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 applyFog			  (vec3 fragment);
 
 void main()
 {
 	//outColor = vec4(inColor, 1.0);
 	//outColor = texture(texSampler[0], inTexCoord);
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
-	outColor = vec4( directionalLightColor(sun.light, texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4),  1.0 );
+
+	if(ubo.light.lightType == 1)
+		outColor = vec4( directionalLightColor(ubo.light, texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4),  1.0 );
+	else if(ubo.light.lightType == 2)
+		outColor = vec4( PointLightColor(ubo.light, texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4),  1.0 );
+	else if(ubo.light.lightType == 3)
+		outColor = vec4( SpotLightColor(ubo.light, texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4),  1.0 );
+	else
+		outColor = outColor = texture(texSampler[0], inTexCoord);
 }
 
 
 vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
-    vec3 norm = normalize(inNormal);
-	vec3 lightDir = normalize(light.direction.xyz);
+	vec3 fragLightDir = normalize(light.direction.xyz);
+	vec3 norm = normalize(inNormal);
 	
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient.xyz * diffuseMap;
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(norm, lightDir), 0.0);
+    float diff = max(dot(norm, fragLightDir), 0.0);
     vec3 diffuse = light.diffuse.xyz * diff * diffuseMap;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(sun.camPos.xyz - inPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
+    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
+    vec3 reflectDir = reflect(-fragLightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     vec3 specular = light.specular.xyz * spec * specularMap;
 
@@ -76,68 +84,72 @@ vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float
 	return vec3(ambient + diffuse + specular);
 }
 
-/*
-vec4 PointLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess, float alpha )
+
+vec3 PointLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
-    float distance = length(light.position - FragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
+    float distance = length(light.position.xyz - inPosition);
+    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
+	vec3 fragLightDir = normalize(light.position.xyz - inPosition);
+	vec3 norm = normalize(inNormal);
 
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient * diffuseMap * attenuation;
+    vec3 ambient = light.ambient.xyz * diffuseMap * attenuation;
 
     // ----- Diffuse lighting -----
-    vec3 lightDir = normalize(light.position - FragPos);
-    vec3 norm = normalize(Normal);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * diffuseMap *attenuation;
+    float diff = max(dot(norm, fragLightDir), 0.0);
+    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap * attenuation;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(camPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
+    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
+    vec3 reflectDir = reflect(-fragLightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular * spec * specularMap * attenuation;
+    vec3 specular = light.specular.xyz * spec * specularMap * attenuation;
 
     // ----- Result -----
-    return vec4(vec3(ambient + diffuse + specular), alpha);
+    return vec3(ambient + diffuse + specular);
 }
 
 
-vec4 SpotLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess, float alpha )
+vec3 SpotLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
 {
-    float distance = length(light.position - FragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
-
+    float distance = length(light.position.xyz - inPosition);
+    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
+    vec3 fragLightDir = normalize(light.position.xyz - inPosition);
+    vec3 norm = normalize(inNormal);
+	
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient * diffuseMap * attenuation;
+    vec3 ambient = light.ambient.xyz * diffuseMap * attenuation;
 
     // ----- Diffuse lighting -----
-    vec3 lightDir = normalize(light.position - FragPos);
-    float theta = dot(lightDir, normalize(light.direction));
+    float theta = dot(fragLightDir, normalize(light.direction.xyz));	// The closer to 1, the more direct the light gets to fragment.
+    if(theta < light.cutOff[1]) return vec3(ambient);
 
-    if(theta < light.outerCutOff) return vec4(ambient, 1.0);
-
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    vec3 norm = normalize(Normal);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * diffuseMap * attenuation * intensity;
+    float epsilon = light.cutOff[0] - light.cutOff[1];
+    float intensity = clamp((theta - light.cutOff[1]) / epsilon, 0.0, 1.0);
+    float diff = max(dot(norm, fragLightDir), 0.0);
+    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap * attenuation * intensity;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(camPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
+    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
+    vec3 reflectDir = reflect(-fragLightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular * spec * specularMap * attenuation * intensity;
+    vec3 specular = light.specular.xyz * spec * specularMap * attenuation * intensity;
 
     // ----- Result -----
-    return vec4(vec3(ambient + diffuse + specular), alpha);
+    return vec3(ambient + diffuse + specular);
 }
 
 
-vec4 applyFog(vec4 fragment)
+vec3 applyFog(vec3 fragment)
 {
-    float squareDistance = (FragPos.x - camPos.x) * (FragPos.x - camPos.x) +
-                           (FragPos.y - camPos.y) * (FragPos.y - camPos.y) +
-                           (FragPos.z - camPos.z) * (FragPos.z - camPos.z);
+	float fogMinSquareRadius = 1000;
+	float fogMaxSquareRadius = 5000;
+	vec3 skyColor = {0, 0, 0};
+	//float distance = length(ubo.camPos - inPosition);
+	
+    float squareDistance = (inPosition.x - ubo.camPos.x) * (inPosition.x - ubo.camPos.x) +
+                           (inPosition.y - ubo.camPos.y) * (inPosition.y - ubo.camPos.y) +
+                           (inPosition.z - ubo.camPos.z) * (inPosition.z - ubo.camPos.z);
 
     if(squareDistance > fogMinSquareRadius)
         if(squareDistance > fogMaxSquareRadius)
@@ -145,11 +157,11 @@ vec4 applyFog(vec4 fragment)
         else
     {
         float ratio  = (squareDistance - fogMinSquareRadius) / (fogMaxSquareRadius - fogMinSquareRadius);
-        fragment = vec4(fragment.xyz * (1-ratio) + skyColor.xyz * ratio, fragment.a);
+        fragment = vec3(fragment * (1-ratio) + skyColor * ratio);
     }
 
     return fragment;
 }
-*/
+
 
 // mod(%) = a - (b * floor(a/b))

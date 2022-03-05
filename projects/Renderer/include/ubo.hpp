@@ -69,7 +69,7 @@ struct Light
 	alignas(16) int lightType;			//!< 0: no light, 1: directional, 2: point, 3: spot
 
 	alignas(16) glm::vec3 position;
-	alignas(16) glm::vec3 direction;
+	alignas(16) glm::vec3 direction;	//!< Direction towards the light source
 
 	alignas(16) glm::vec3 ambient;
 	alignas(16) glm::vec3 diffuse;

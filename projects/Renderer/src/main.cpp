@@ -70,13 +70,13 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Light types
 // Scene plane: Draw in front of some rendering (used for skybox or weapons)
 // DeleteModel()
 // SetRenders()
 // Camera
 // Inputs
 // GUI
+// learnopengl.com
 // Later: Readme.md
 // Pass material to Fragment Shader
 // Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
@@ -427,7 +427,10 @@ void setTerrain(Renderer& app)
 	assets["terrain"]->vsDynUBO.setUniform(0, 0, modelMatrix());
 	assets["terrain"]->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
 
-	sun.setDirectional(glm::vec3(0, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1., 1., 1.), glm::vec3(1, 1, 1));
+	//sun.turnOff();
+	//sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	//sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
+	sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
 	assets["terrain"]->fsUBO.setUniform(0, 0, sun);
 }
 

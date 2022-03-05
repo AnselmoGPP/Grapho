@@ -22,7 +22,6 @@ void main()
 	outPosition = vec3(ubo.model * vec4(inPosition, 1.0));
 	outTexCoord = inTexCoord;
 	outNormal = mat3(ubo.normalMatrix) * inNormal;
-
 }
 
 
