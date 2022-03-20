@@ -777,7 +777,7 @@ void VulkanEnvironment::createImageViews()
 */
 void VulkanEnvironment::createRenderPass()
 {
-	// Color attachment
+	// Color attachment (for multisampling)
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapChainImageFormat;
 	colorAttachment.samples = msaaSamples;								// Single color buffer attachment, or many (multisampling).
@@ -810,7 +810,7 @@ void VulkanEnvironment::createRenderPass()
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	// Multisampling. Multisampled images cannot be presented directly. We first need to resolve them to a regular image (this doesn't apply to the depth buffer, since it is never presented).
+	// Final color attachment. Multisampled images cannot be presented directly. We first need to resolve them to a regular image (this doesn't apply to the depth buffer, since it is never presented).
 	VkAttachmentDescription colorAttachmentResolve{};
 	colorAttachmentResolve.format = swapChainImageFormat;
 	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -826,8 +826,10 @@ void VulkanEnvironment::createRenderPass()
 	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
-	std::array<VkAttachmentDescription, 3> attachments;
-	attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
+	std::vector<VkAttachmentDescription> attachments;
+	if (add_MSAA) attachments.push_back(colorAttachment);
+	attachments.push_back(depthAttachment);
+	attachments.push_back(colorAttachmentResolve);
 
 	// Subpass (we make a subpass containing the previous 3 attachments, by reference)
 	VkSubpassDescription subpass{};
@@ -1020,7 +1022,6 @@ void VulkanEnvironment::createColorResources()
 
 	colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
-
 
 
 // (13)<<<
@@ -1222,14 +1223,14 @@ void VulkanEnvironment::createFramebuffers()
 			attachments = {
 				colorImageView,				// Multisampled color buffer
 				depthImageView,				// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
-				swapChainImageViews[i]
+				swapChainImageViews[i]		// 
 			};
 		}
 		else
 		{
 			attachments = {
-				swapChainImageViews[i],
-				depthImageView
+				depthImageView,
+				swapChainImageViews[i]
 			};
 		}
 

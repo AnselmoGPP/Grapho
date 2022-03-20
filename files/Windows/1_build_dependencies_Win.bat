@@ -5,7 +5,8 @@ CD
 MKDIR ..\..\_BUILD
 MKDIR ..\..\_BUILD\extern
 CD ..\..\_BUILD\extern
-cmake -G"Visual Studio 17 2022" -A"x64" ..\..\extern
+REM cmake -G"Visual Studio 17 2022" -A"x64" ..\..\extern
+"C:\Program Files\CMake\bin\cmake" -G"Visual Studio 17 2022" -A"x64" ..\..\extern
 PAUSE
 
 REM The next step is to build the libraries (your dependencies for hansvisual):

@@ -82,25 +82,33 @@ void Renderer::createCommandBuffers()
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 		
+		//VkClearAttachment attachmentToClear;
+		//attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		//attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
+		//VkClearRect rectangleToClear;
+		//rectangleToClear.rect.offset = { 0, 0 };
+		//rectangleToClear.rect.extent = e.swapChainExtent;
+
 		// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
 		for (modelIterator it = models.begin(); it != models.end(); it++)
+		{
 			if (it->vsDynUBO.dynBlocksCount)
 			{
 				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
 				VkDeviceSize offsets[] = { 0 };	// <<<
-			
+				
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
-				if(it->indices.size())
+				if (it->indices.size())
 					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
 
 				for (size_t j = 0; j < it->vsDynUBO.dynBlocksCount; j++)
 				{
-					if(it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+					if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
 					else
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-					
+
 					if (it->indices.size())	// has indices
 						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 					else
@@ -111,6 +119,9 @@ void Renderer::createCommandBuffers()
 					//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
 				}
 			}
+
+			//vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);
+		}
 
 		// Finish up
 		vkCmdEndRenderPass(commandBuffers[i]);

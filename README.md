@@ -184,3 +184,4 @@ Models with 0 renders have a descriptor set (like every model) but, since it is 
 - [Vulkan notes](https://sciencesoftcode.wordpress.com/2021/11/08/vulkan-notes/)
 - [Vulkan SDK (getting started)](https://vulkan.lunarg.com/doc/sdk/1.2.170.0/linux/getting_started.html)
 - [Vulkan tutorial](https://vulkan-tutorial.com/)
+- [Diagrams](https://github.com/David-DiGioia/vulkan-diagrams)
