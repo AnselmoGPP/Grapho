@@ -16,6 +16,7 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+typedef std::vector<VkFramebuffer> framebufferSet;
 
 /// Structure for storing vector indices of the queue families we want. 
 /** Note that graphicsFamilyand presentFamily could refer to the same queue family, but we included them separately because sometimes they are in different queue families. */
@@ -35,6 +36,27 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR>	presentModes;		// Available presentation modes
 };
 
+/// Structure for storing all the attachments of a set of VkFramebuffer.
+/** Each framebuffer has a number of attachments. Each swapChainImage has one or more framebuffers associated (framebufferSet). Each framebufferSet have the same attachments the other sets have (i.e. they share a common group of attachments)  */
+struct Framebuffer
+{
+	VkRenderPass				renderPass;
+
+	std::vector<framebufferSet> swapChainFramebuffer;	///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][numRenderPasses].
+
+	VkImage			colorImage;			///< For MSAA. One per render pass
+	VkDeviceMemory	colorImageMemory;	///< For MSAA. One per render pass
+	VkImageView		colorImageView;		///< For MSAA. RenderPass attachment. One per render pass
+
+	VkImage			depthImage;			///< Depth buffer (image object). One per render pass
+	VkDeviceMemory	depthImageMemory;	///< Depth buffer memory (memory object). One per render pass
+	VkImageView		depthImageView;		///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
+
+	//std::vector<VkImageView>	swapChainImageViews;
+};
+
+typedef std::vector<Framebuffer> framebufferSet_2;
+
 
 /**
 	@class VulkanEnvironment
@@ -48,6 +70,7 @@ struct SwapChainSupportDetails
 		<li>physical device</li>
 		<li>logical device (+ queues, swap chain)
 		<li>render pass</li>
+		<li>framebuffer</li>
 		<li>command pool</li>
 	</ul>
 */
@@ -69,7 +92,7 @@ public:
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
 	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 
-	VulkanEnvironment();
+	VulkanEnvironment(size_t layers = 1);
 
 	// Public methods:
 
@@ -87,42 +110,43 @@ public:
 
 	// Main member variables:
 
-	GLFWwindow*					 window;								///< Opaque window object.
+	GLFWwindow*					window;								///< Opaque window object.
 
-	VkInstance					 instance;								///< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
-	VkDebugUtilsMessengerEXT	 debugMessenger;						///< Opaque handle to a debug messenger object (the debug callback is part of it).
-	VkSurfaceKHR				 surface;								///< Opaque handle to a surface object (abstract type of surface to present rendered images to)
+	VkInstance					instance;							///< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
+	VkDebugUtilsMessengerEXT	debugMessenger;						///< Opaque handle to a debug messenger object (the debug callback is part of it).
+	VkSurfaceKHR				surface;							///< Opaque handle to a surface object (abstract type of surface to present rendered images to)
 
-	VkPhysicalDevice			 physicalDevice = VK_NULL_HANDLE;		///< Opaque handle to a physical device object.
-	VkSampleCountFlagBits		 msaaSamples = VK_SAMPLE_COUNT_1_BIT;	///< Number of samples for MSAA (MultiSampling AntiAliasing)
-	VkDevice					 device;								///< Opaque handle to a device object.
+	VkPhysicalDevice			physicalDevice = VK_NULL_HANDLE;	///< Opaque handle to a physical device object.
+	VkSampleCountFlagBits		msaaSamples = VK_SAMPLE_COUNT_1_BIT;///< Number of samples for MSAA (MultiSampling AntiAliasing)
+	VkDevice					device;								///< Opaque handle to a device object.
 
-	VkQueue						 graphicsQueue;							///< Opaque handle to a queue object (computer graphics).
-	VkQueue						 presentQueue;							///< Opaque handle to a queue object (presentation to window surface).
+	VkQueue						graphicsQueue;						///< Opaque handle to a queue object (computer graphics).
+	VkQueue						presentQueue;						///< Opaque handle to a queue object (presentation to window surface).
 
-	VkSwapchainKHR				 swapChain;								///< Swap chain object.
-	VkFormat					 swapChainImageFormat;					///< Swap chain format.
-	VkExtent2D					 swapChainExtent;						///< Swap chain extent.
-	std::vector<VkImage>		 swapChainImages;						///< List. Opaque handle to an image object.
-	std::vector<VkImageView>	 swapChainImageViews;					///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
-	std::vector<VkFramebuffer>	 swapChainFramebuffers;					///< List. Opaque handle to a framebuffer object.
+	VkSwapchainKHR				swapChain;							///< Swap chain object.
+	VkFormat					swapChainImageFormat;				///< Swap chain format.
+	VkExtent2D					swapChainExtent;					///< Swap chain extent.
+	std::vector<VkImage>		swapChainImages;					///< List. Opaque handle to an image object.
+	std::vector<VkImageView>	swapChainImageViews;				///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkRenderPass				 renderPass;							///< Opaque handle to a render pass object.
+	VkRenderPass				renderPass;							///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	size_t						framebuffersCount;					//!< Number of swapChainFramebuffers per swapChainImage (usually used for implementing "layers").
+	std::vector<framebufferSet>	swapChainFramebuffers;				///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][numRenderPasses].
 
-	VkCommandPool				 commandPool;							///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
+	std::vector<VkImage>		colorImage;							///< For MSAA. One per render pass
+	std::vector<VkDeviceMemory>	colorImageMemory;					///< For MSAA. One per render pass
+	std::vector<VkImageView>	colorImageView;						///< For MSAA. RenderPass attachment. One per render pass
 
-	VkImage						 colorImage;							///< For MSAA
-	VkDeviceMemory				 colorImageMemory;						///< For MSAA
-	VkImageView					 colorImageView;						///< For MSAA
+	std::vector<VkImage>		depthImage;							///< Depth buffer (image object). One per render pass
+	std::vector<VkDeviceMemory>	depthImageMemory;					///< Depth buffer memory (memory object). One per render pass
+	std::vector<VkImageView>	depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
 
-	VkImage						 depthImage;							///< Depth buffer (image object).
-	VkDeviceMemory				 depthImageMemory;						///< Depth buffer memory (memory object).
-	VkImageView					 depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly).
+	VkCommandPool				commandPool;						///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
 	// Additional variables
 
-	VkDeviceSize				 minUniformBufferOffsetAlignment;		///< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
-	std::mutex					 queueMutex;							///< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
+	VkDeviceSize				 minUniformBufferOffsetAlignment;	///< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
+	std::mutex					 queueMutex;						///< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
 
 private:
 	// Main methods:
