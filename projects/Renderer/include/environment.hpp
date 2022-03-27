@@ -89,8 +89,8 @@ class VulkanEnvironment
 public:
 	// Public parameters:
 
-	const bool add_MSAA = true;		//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
-	const bool add_SS   = true;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
+	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 
 	VulkanEnvironment(size_t layers);
 

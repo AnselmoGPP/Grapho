@@ -70,7 +70,6 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Scene plane: Draw in front of some rendering (used for skybox or weapons)
 // DeleteModel()
 // SetRenders()
 // Camera
@@ -157,7 +156,7 @@ int main(int argc, char* argv[])
 	TimerSet time;
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update, 2);		
+	Renderer app(update, 3);		
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
@@ -166,7 +165,7 @@ int main(int argc, char* argv[])
 	setPoints(app);
 	setAxis(app);
 	setGrid(app);
-	//setSkybox(app);
+	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
 	setTerrain(app);
@@ -210,7 +209,7 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 
 	if (assets.find("skyBox") != assets.end())
 		for (i = 0; i < assets["skyBox"]->vsDynUBO.dynBlocksCount; i++) {
-			assets["skyBox"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(2048.0f, 2048.0f, 2048.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
+			assets["skyBox"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 			assets["skyBox"]->vsDynUBO.setUniform(i, 1, view);
 			assets["skyBox"]->vsDynUBO.setUniform(i, 2, proj);
 		}
@@ -238,7 +237,7 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.dynBlocksCount; i++) {
-			assets["sun"]->vsDynUBO.setUniform(i, 0, sunMM(pos, dayTime, sunDist, sunAngDist));
+			assets["sun"]->vsDynUBO.setUniform(i, 0, sunMM(pos, dayTime, 0.5f, sunAngDist));
 			assets["sun"]->vsDynUBO.setUniform(i, 1, view);
 			assets["sun"]->vsDynUBO.setUniform(i, 2, proj);
 		}
@@ -267,7 +266,7 @@ void setPoints(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
 
 	assets["points"] = app.newModel(
-		0, 1, primitiveTopology::point,
+		1, 1, primitiveTopology::point,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -290,7 +289,7 @@ void setAxis(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 
 	assets["axis"] = app.newModel(
-		0, 1, primitiveTopology::line,
+		2, 1, primitiveTopology::line,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -354,7 +353,7 @@ void setCottage(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
-		0, 0, primitiveTopology::triangle,
+		1, 0, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(0, MMsize, VMsize, PMsize),
 		noUBO,
@@ -369,7 +368,7 @@ void setCottage(Renderer& app)
 	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
-		0, 1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -389,7 +388,7 @@ void setRoom(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
-		0, 2, primitiveTopology::triangle,
+		1, 2, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(2, MMsize, VMsize, PMsize),
 		noUBO,
@@ -415,7 +414,7 @@ void setTerrain(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
 
 	assets["terrain"] = app.newModel(
-		0, 1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
 		UBOconfig(1, lightSize, vec4size),
@@ -474,7 +473,7 @@ void setReticule(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
 	assets["reticule"] = app.newModel(
-		1, 1, primitiveTopology::triangle,
+		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1),
 		noUBO,
