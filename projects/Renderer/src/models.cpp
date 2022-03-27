@@ -7,7 +7,7 @@ std::vector<texIterator> noTextures;
 std::vector<uint32_t> noIndices;
 UBOconfig noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
 	fullyConstructed(false),
@@ -15,7 +15,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPri
 	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	textures(textures),
 	vsDynUBO(e, vsUboConfig, e.minUniformBufferOffsetAlignment),
-	fsUBO(e, fsUboConfig, e.minUniformBufferOffsetAlignment)
+	fsUBO(e, fsUboConfig, e.minUniformBufferOffsetAlignment),
+	layer(layer)
 {
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
@@ -214,9 +215,9 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	multisampling.sampleShadingEnable = (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
 	if (e.add_SS)
 		multisampling.minSampleShading = .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
-	multisampling.pSampleMask = nullptr;							// [Optional]
+	multisampling.pSampleMask = nullptr;									// [Optional]
 	multisampling.alphaToCoverageEnable = VK_FALSE;							// [Optional]
-	multisampling.alphaToOneEnable = VK_FALSE;							// [Optional]
+	multisampling.alphaToOneEnable = VK_FALSE;								// [Optional]
 
 	// Depth and stencil testing. Used if you are using a depth and/or stencil buffer.
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};

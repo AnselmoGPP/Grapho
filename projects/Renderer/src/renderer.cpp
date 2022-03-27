@@ -12,8 +12,8 @@
 #include "renderer.hpp"
 
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj))
-	: input(e.window), userUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers)
+	: e(layers), input(e.window), numLayers(layers), userUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
 
 Renderer::~Renderer() 
 { 
@@ -44,8 +44,7 @@ int Renderer::run()
 void Renderer::createCommandBuffers()
 {
 	// Commmand buffer allocation
-	commandBuffers.resize(e.swapChainImages.size());						// One commandBuffer per swapChainImage
-	//commandBuffers.resize(e.swapChainFramebuffers.size());				// One commandBuffer per swapChainFramebuffer
+	commandBuffers.resize(e.swapChainImages.size());
 
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -56,7 +55,7 @@ void Renderer::createCommandBuffers()
 	if (vkAllocateCommandBuffers(e.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
 	
-	// Start command buffer recording (one per swap chain framebuffer) and a render pass
+	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
 		// Start command buffer recording
@@ -72,60 +71,66 @@ void Renderer::createCommandBuffers()
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass			= e.renderPass;
-		renderPassInfo.framebuffer			= e.swapChainFramebuffers[0][0];
+		renderPassInfo.framebuffer			= e.swapChainFramebuffers[i];
 		renderPassInfo.renderArea.offset	= { 0, 0 };
 		renderPassInfo.renderArea.extent	= e.swapChainExtent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
 		std::array<VkClearValue, 3> clearValues{};										// The order of clearValues should be identical to the order of your attachments.
+		clearValues[0].color = backgroundColor;											// Background color (alpha = 1 means 100% opacity)
 		clearValues[1].depthStencil			= { 1.0f, 0 };								// Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
-		clearValues[2].color				= backgroundColor;							// Background color (alpha = 1 means 100% opacity)
+		clearValues[2].color = backgroundColor;
 		renderPassInfo.clearValueCount		= static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
 		renderPassInfo.pClearValues			= clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
 
-		for (size_t j = 0; j < e.framebuffersCount; j++)
+		VkClearAttachment attachmentToClear;
+		attachmentToClear.aspectMask				= VK_IMAGE_ASPECT_DEPTH_BIT;
+		attachmentToClear.clearValue.depthStencil	= { 1.0f, 0 };
+		VkClearRect rectangleToClear;
+		rectangleToClear.rect.offset				= { 0, 0 };
+		rectangleToClear.rect.extent				= e.swapChainExtent;
+		rectangleToClear.baseArrayLayer				= 0;
+		rectangleToClear.layerCount					= 1;
+
+		//renderPassInfo.framebuffer = e.swapChainFramebuffers[i];
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+
+		// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
+		for (size_t j = 0; j < numLayers; j++)
 		{
-			renderPassInfo.framebuffer = e.swapChainFramebuffers[i][j];
-			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);	// <<<
 
-			//VkClearAttachment attachmentToClear;
-			//attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			//attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
-			//VkClearRect rectangleToClear;
-			//rectangleToClear.rect.offset = { 0, 0 };
-			//rectangleToClear.rect.extent = e.swapChainExtent;
-
-			// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
 			for (modelIterator it = models.begin(); it != models.end(); it++)
-				if (it->vsDynUBO.dynBlocksCount)
+			{
+				if (it->layer != j) continue;
+				if (!it->vsDynUBO.dynBlocksCount) continue;
+
+				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
+				VkDeviceSize offsets[] = { 0 };	// <<<
+
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
+				if (it->indices.size())
+					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
+
+				for (size_t j = 0; j < it->vsDynUBO.dynBlocksCount; j++)	// for each model rendering
 				{
-					//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
-					VkDeviceSize offsets[] = { 0 };	// <<<
+					if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
+					else
+						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 
-					vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-					vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
-					if (it->indices.size())
-						vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
+					if (it->indices.size())	// has indices
+						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+					else
+						vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
 
-					for (size_t j = 0; j < it->vsDynUBO.dynBlocksCount; j++)
-					{
-						if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
-							vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
-						else
-							vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-
-						if (it->indices.size())	// has indices
-							vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
-						else
-							vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
-
-						//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
-						//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
-						//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
-					}
+					//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
+					//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
+					//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
 				}
-			//vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);	// <<<
-
-			vkCmdEndRenderPass(commandBuffers[i]);
+			}
 		}
+
+		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
@@ -375,13 +380,14 @@ void Renderer::cleanupSwapChain()
 	e.cleanupSwapChain();
 }
 
-modelIterator Renderer::newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
 		e, 
+		layer,
 		numRenderings, 
 		(VkPrimitiveTopology) primitiveTopology, 
 		vertexLoader,

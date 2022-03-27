@@ -16,7 +16,7 @@ bool QueueFamilyIndices::isComplete()
 		presentFamily.has_value();
 }
 
-VulkanEnvironment::VulkanEnvironment(size_t layers) : framebuffersCount(layers)
+VulkanEnvironment::VulkanEnvironment(size_t layers)
 {
 	initWindow();
 
@@ -40,6 +40,8 @@ VulkanEnvironment::VulkanEnvironment(size_t layers) : framebuffersCount(layers)
 
 void VulkanEnvironment::initWindow()
 {
+	std::cout << __func__ << std::endl;
+
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);	// Tell GLFW not to create an OpenGL context
@@ -56,6 +58,8 @@ void VulkanEnvironment::initWindow()
 /// Describe application, select extensions and validation layers, create Vulkan instance (stores application state).
 void VulkanEnvironment::createInstance()
 {
+	std::cout << __func__ << std::endl;
+
 	// Check validation layer support
 	if (enableValidationLayers && !checkValidationLayerSupport(requiredValidationLayers))
 		throw std::runtime_error("Validation layers requested, but not available!");
@@ -273,6 +277,8 @@ bool VulkanEnvironment::checkExtensionSupport(const char* const* requiredExtensi
  */
 void VulkanEnvironment::setupDebugMessenger()
 {
+	std::cout << __func__ << std::endl;
+
 	if (!enableValidationLayers) return;
 
 	// Fill in a structure with details about the messenger and its callback
@@ -313,6 +319,8 @@ VkResult VulkanEnvironment::CreateDebugUtilsMessengerEXT(VkInstance instance, co
  */
 void VulkanEnvironment::createSurface()
 {
+	std::cout << __func__ << std::endl;
+
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
 }
@@ -325,6 +333,8 @@ void VulkanEnvironment::createSurface()
  */
 void VulkanEnvironment::pickPhysicalDevice()
 {
+	std::cout << __func__ << std::endl;
+
 	// Get all devices with Vulkan support.
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -582,6 +592,8 @@ VkSampleCountFlagBits VulkanEnvironment::getMaxUsableSampleCount(bool getMinimum
 /// Set up a logical device (describes the features we want to use) to interface with the physical device.
 void VulkanEnvironment::createLogicalDevice()
 {
+	std::cout << __func__ << std::endl;
+
 	// Get the queue families supported by the physical device.
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
@@ -635,6 +647,8 @@ void VulkanEnvironment::createLogicalDevice()
 /// Set up and create the swap chain.
 void VulkanEnvironment::createSwapChain()
 {
+	std::cout << __func__ << std::endl;
+
 	// Get some properties
 	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
@@ -761,6 +775,8 @@ VkPresentModeKHR VulkanEnvironment::chooseSwapPresentMode(const std::vector<VkPr
 /// Creates a basic image view for every image in the swap chain so that we can use them as color targets later on.
 void VulkanEnvironment::createImageViews()
 {
+	std::cout << __func__ << std::endl;
+
 	swapChainImageViews.resize(swapChainImages.size());
 
 	for (uint32_t i = 0; i < swapChainImages.size(); i++)
@@ -777,20 +793,22 @@ void VulkanEnvironment::createImageViews()
 */
 void VulkanEnvironment::createRenderPass()
 {
-	// Final color attachment. Multisampled images cannot be presented directly. We first need to resolve them to a regular image (this doesn't apply to the depth buffer, since it is never presented).
-	VkAttachmentDescription colorAttachmentResolve{};
-	colorAttachmentResolve.format = swapChainImageFormat;
-	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	std::cout << __func__ << std::endl;
 
-	VkAttachmentReference colorAttachmentResolveRef{};
-	colorAttachmentResolveRef.attachment = 0;
-	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// Color attachment (for multisampling or not).
+	VkAttachmentDescription colorAttachment{};
+	colorAttachment.format = swapChainImageFormat;
+	colorAttachment.samples = msaaSamples;									// Single color buffer attachment, or many (multisampling).
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;					// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;		// What to do with the stencil data in the attachment before rendering.
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;		// What to do with the stencil data in the attachment after rendering.
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
+
+	VkAttachmentReference colorAttachmentRef{};
+	colorAttachmentRef.attachment = add_MSAA ? 0 : 2;										// Specify which attachment to reference by its index in the attachment descriptions array.
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
 
 	// Depth attachment
 	VkAttachmentDescription depthAttachment{};
@@ -800,45 +818,48 @@ void VulkanEnvironment::createRenderPass()
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;			// Here, we don't care because it will not be used after drawing has finished
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// We don't care about previous depth contents
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			// We don't care about previous depth contents
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthAttachmentRef{};
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	// Color attachment (for multisampling).
-	VkAttachmentDescription colorAttachment{};
-	colorAttachment.format = swapChainImageFormat;
-	colorAttachment.samples = msaaSamples;								// Single color buffer attachment, or many (multisampling).
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// What to do with the stencil data in the attachment before rendering.
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;			// What to do with the stencil data in the attachment after rendering.
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
+	// Final color attachment. Multisampled images cannot be presented directly. We first need to resolve them to a regular image (this doesn't apply to the depth buffer, since it is never presented).
+	VkAttachmentDescription colorAttachmentResolve{};
+	colorAttachmentResolve.format = swapChainImageFormat;
+	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachmentResolve.loadOp = add_MSAA ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-	VkAttachmentReference colorAttachmentRef{};
-	colorAttachmentRef.attachment = 2;										// Specify which attachment to reference by its index in the attachment descriptions array.
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
-
+	VkAttachmentReference colorAttachmentResolveRef{};
+	colorAttachmentResolveRef.attachment = add_MSAA ? 2 : 0;
+	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
 	std::vector<VkAttachmentDescription> attachments;
-	attachments.push_back(colorAttachmentResolve);
-	attachments.push_back(depthAttachment);
-	if (add_MSAA) attachments.push_back(colorAttachment);
+	if (add_MSAA) attachments = std::vector<VkAttachmentDescription>{ colorAttachment, depthAttachment, colorAttachmentResolve };
+	else attachments = std::vector<VkAttachmentDescription>{ colorAttachmentResolve, depthAttachment };
+	//attachments.push_back(colorAttachment);
+	//attachments.push_back(depthAttachment);
+	//if (add_MSAA) attachments.push_back(colorAttachmentResolve);
 
 	// Subpass (we make a subpass containing the previous 3 attachments, by reference)
 	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;		// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
 	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;					// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;				// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
+	subpass.pColorAttachments = add_MSAA ? &colorAttachmentRef : &colorAttachmentResolveRef;	// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;			// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
 	if (add_MSAA)
-		subpass.pResolveAttachments = &colorAttachmentResolveRef;		// Attachments used for multisampling color attachments.
-	subpass.pInputAttachments;											// Attachments read from a shader.
-	subpass.pPreserveAttachments;										// Attachment not used by this subpass, but for which the data must be preserved.
+		subpass.pResolveAttachments = &colorAttachmentResolveRef;	// Attachments used for multisampling color attachments.
+	subpass.inputAttachmentCount;
+	subpass.pInputAttachments;										// Attachments read from a shader.
+	subpass.preserveAttachmentCount;
+	subpass.pPreserveAttachments;									// Attachment not used by this subpass, but for which the data must be preserved.
 
 	// Subpass dependencies
 	VkSubpassDependency dependency{};
@@ -852,7 +873,7 @@ void VulkanEnvironment::createRenderPass()
 	// Create the Render pass
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = (add_MSAA ? static_cast<uint32_t>(attachments.size()) : static_cast<uint32_t>(attachments.size()) - 1);
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;			// Array of subpasses
@@ -989,6 +1010,8 @@ VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& can
 /// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
 void VulkanEnvironment::createCommandPool()
 {
+	std::cout << __func__ << std::endl;
+
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);	// <<< wrapped method
 
 	// Command buffers are executed by submitting them on one of the device queues we retrieved (graphics queue, presentation queue, etc.). Each command pool can only allocate command buffers that are submitted on a single type of queue.
@@ -1005,28 +1028,27 @@ void VulkanEnvironment::createCommandPool()
 /// Create resources needed for MSAA (MultiSampling AntiAliasing). Create a multisampled color buffer.
 void VulkanEnvironment::createColorResources()
 {
-	colorImage.resize(framebuffersCount);
-	colorImageMemory.resize(framebuffersCount);
-	colorImageView.resize(framebuffersCount);
+	std::cout << __func__ << std::endl;
+
+	//colorImage.resize(framebuffersCount);
+	//colorImageMemory.resize(framebuffersCount);
+	//colorImageView.resize(framebuffersCount);
 
 	VkFormat colorFormat = swapChainImageFormat;
 
-	for (size_t i = 0; i < framebuffersCount; i++)
-	{
-		createImage(
-			swapChainExtent.width,
-			swapChainExtent.height,
-			1,
-			msaaSamples,
-			colorFormat,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			colorImage[i],
-			colorImageMemory[i]);
+	createImage(
+		swapChainExtent.width,
+		swapChainExtent.height,
+		1,
+		msaaSamples,
+		colorFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		colorImage,
+		colorImageMemory);
 
-		colorImageView[i] = createImageView(colorImage[i], colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-	}
+	colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 
@@ -1038,30 +1060,29 @@ void VulkanEnvironment::createColorResources()
 */
 void VulkanEnvironment::createDepthResources()
 {
-	depthImage.resize(framebuffersCount);
-	depthImageMemory.resize(framebuffersCount);
-	depthImageView.resize(framebuffersCount);
+	std::cout << __func__ << std::endl;
+
+	//depthImage.resize(framebuffersCount);
+	//depthImageMemory.resize(framebuffersCount);
+	//depthImageView.resize(framebuffersCount);
 
 	VkFormat depthFormat = findDepthFormat();
 
-	for (size_t i = 0; i < framebuffersCount; i++)
-	{
-		createImage(swapChainExtent.width,
-			swapChainExtent.height,
-			1,
-			msaaSamples,
-			depthFormat,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			depthImage[i],
-			depthImageMemory[i]);
+	createImage(swapChainExtent.width,
+		swapChainExtent.height,
+		1,
+		msaaSamples,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depthImage,
+		depthImageMemory);
 
-		depthImageView[i] = createImageView(depthImage[i], depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
-		// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
-		transitionImageLayout(depthImage[i], depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
-	}
+	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
+	transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 }
 
 
@@ -1226,43 +1247,34 @@ void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 /// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void VulkanEnvironment::createFramebuffers()
 {
+	std::cout << __func__ << std::endl;
+
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
-	for (size_t i = 0; i < swapChainImageViews.size(); i++)
-		swapChainFramebuffers[i].resize(framebuffersCount);
+	//for (size_t i = 0; i < swapChainImageViews.size(); i++)
+	//	swapChainFramebuffers[i].resize(framebuffersCount);
 
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
-		for(size_t j = 0; j < framebuffersCount; j++)
-		{
-			std::array<VkImageView, 3> attachments;
-			if (add_MSAA)
-			{
-				attachments = {
-					swapChainImageViews[i],
-					depthImageView[j],				// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
-					colorImageView[j]				// Multisampled color buffer
-				};
-			}
-			else
-			{
-				attachments = {
-					swapChainImageViews[i],
-					depthImageView[j]
-				};
-			}
+	{
+		std::vector<VkImageView> attachments;
+		if (add_MSAA) attachments = std::vector<VkImageView>{ colorImageView, depthImageView, swapChainImageViews[i]};
+		else attachments = std::vector<VkImageView>{ swapChainImageViews[i], depthImageView};
+		//attachments.push_back(colorImageView[j]);	// Multisampled color buffer
+		//attachments.push_back(depthImageView[j]);
+		//if (add_MSAA) attachments.push_back(swapChainImageViews[i]);			// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
 
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-			framebufferInfo.attachmentCount = (add_MSAA ? static_cast<uint32_t>(attachments.size()) : static_cast<uint32_t>(attachments.size()) - 1);
-			framebufferInfo.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-			framebufferInfo.width = swapChainExtent.width;
-			framebufferInfo.height = swapChainExtent.height;
-			framebufferInfo.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
-			
-			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i][j]) != VK_SUCCESS)
-				throw std::runtime_error("Failed to create framebuffer!");
-		}
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = renderPass;								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+		framebufferInfo.width = swapChainExtent.width;
+		framebufferInfo.height = swapChainExtent.height;
+		framebufferInfo.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+		
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer!");
+	}
 }
 
 void VulkanEnvironment::recreateSwapChain()
@@ -1281,25 +1293,20 @@ void VulkanEnvironment::cleanupSwapChain()
 {
 	// MSAA buffer
 	if (add_MSAA)
-		for (size_t i = 0; i < framebuffersCount; i++)
-		{
-			vkDestroyImageView(device, colorImageView[i], nullptr);				// MSAA buffer		(VkImageView)
-			vkDestroyImage(device, colorImage[i], nullptr);						// MSAA buffer		(VkImage)
-			vkFreeMemory(device, colorImageMemory[i], nullptr);					// MSAA buffer		(VkDeviceMemory)
-		}
+	{
+		vkDestroyImageView(device, colorImageView, nullptr);		// MSAA buffer		(VkImageView)
+		vkDestroyImage(device, colorImage, nullptr);				// MSAA buffer		(VkImage)
+		vkFreeMemory(device, colorImageMemory, nullptr);			// MSAA buffer		(VkDeviceMemory)
+	}
 	
 	// Depth buffer
-	for (size_t i = 0; i < framebuffersCount; i++)
-	{
-		vkDestroyImageView(device, depthImageView[i], nullptr);					// Depth buffer		(VkImageView)
-		vkDestroyImage(device, depthImage[i], nullptr);							// Depth buffer		(VkImage)
-		vkFreeMemory(device, depthImageMemory[i], nullptr);						// Depth buffer		(VkDeviceMemory)
-	}
+	vkDestroyImageView(device, depthImageView, nullptr);			// Depth buffer		(VkImageView)
+	vkDestroyImage(device, depthImage, nullptr);					// Depth buffer		(VkImage)
+	vkFreeMemory(device, depthImageMemory, nullptr);				// Depth buffer		(VkDeviceMemory)
 
 	// Framebuffers
-	for(auto framebuffersPerImage : swapChainFramebuffers)
-		for(auto framebuffer : framebuffersPerImage)
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
+	for(auto framebuffer : swapChainFramebuffers)
+		vkDestroyFramebuffer(device, framebuffer, nullptr);
 
 	// Command buffers 
 	//vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());

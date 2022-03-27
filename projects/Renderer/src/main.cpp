@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
 	TimerSet time;
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update);		
+	Renderer app(update, 2);		
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
 	setPoints(app);
 	setAxis(app);
 	setGrid(app);
-	setSkybox(app);
+	//setSkybox(app);
 	setCottage(app);
 	setRoom(app);
 	setTerrain(app);
@@ -267,7 +267,7 @@ void setPoints(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
 
 	assets["points"] = app.newModel(
-		1, primitiveTopology::point,
+		0, 1, primitiveTopology::point,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -290,7 +290,7 @@ void setAxis(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 
 	assets["axis"] = app.newModel(
-		1, primitiveTopology::line,
+		0, 1, primitiveTopology::line,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -313,7 +313,7 @@ void setGrid(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
 
 	assets["grid"] = app.newModel(
-		1, primitiveTopology::line,
+		1, 1, primitiveTopology::line,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -333,7 +333,7 @@ void setSkybox(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 14, v_cube.data(), i_inCube, false);
 
 	assets["skyBox"] = app.newModel(
-		1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -354,7 +354,7 @@ void setCottage(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
-		0, primitiveTopology::triangle,
+		0, 0, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(0, MMsize, VMsize, PMsize),
 		noUBO,
@@ -369,7 +369,7 @@ void setCottage(Renderer& app)
 	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
-		1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -389,7 +389,7 @@ void setRoom(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
-		2, primitiveTopology::triangle,
+		0, 2, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(2, MMsize, VMsize, PMsize),
 		noUBO,
@@ -415,7 +415,7 @@ void setTerrain(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
 
 	assets["terrain"] = app.newModel(
-		1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
 		UBOconfig(1, lightSize, vec4size),
@@ -448,7 +448,7 @@ void setSun(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
 
 	assets["sun"] = app.newModel(
-		1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
@@ -474,7 +474,7 @@ void setReticule(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
 	assets["reticule"] = app.newModel(
-		1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1),
 		noUBO,

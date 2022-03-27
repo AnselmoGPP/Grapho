@@ -49,11 +49,12 @@ enum primitiveTopology {
 */
 class Renderer
 {
-	VulkanEnvironment		e;
-	Input					input;		//!< Input data
-	TimerSet				timer;		//!< Time control
-	std::list<ModelData>	models;		//!< Models (fully initialized)
-	std::list<Texture>		textures;	//!< Texture set
+	VulkanEnvironment					e;
+	Input								input;		//!< Input data
+	TimerSet							timer;		//!< Time control
+	std::list<ModelData>				models;		//!< Models (fully initialized). Each model is associated to one of the framebuffer (layer).
+	std::list<Texture>					textures;	//!< Texture set
+	size_t								numLayers;
 
 	// Threads stuff
 	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
@@ -71,7 +72,6 @@ class Renderer
 	std::mutex mutex_rendersToSet;					//!< Controls access to rendersToSet map
 
 	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
-
 	std::list<texIterator> texturesToDelete;		//!< Textures waiting for being deleted.
 
 	// Private parameters:
@@ -174,7 +174,7 @@ public:
 
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj));
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers);
 	~Renderer();
 
 	/// Create command buffer and start render loop.
@@ -203,7 +203,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(const char* path);

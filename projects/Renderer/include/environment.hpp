@@ -89,10 +89,10 @@ class VulkanEnvironment
 public:
 	// Public parameters:
 
-	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
-	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_MSAA = true;		//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
+	const bool add_SS   = true;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 
-	VulkanEnvironment(size_t layers = 1);
+	VulkanEnvironment(size_t layers);
 
 	// Public methods:
 
@@ -130,16 +130,16 @@ public:
 	std::vector<VkImageView>	swapChainImageViews;				///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
 	VkRenderPass				renderPass;							///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	size_t						framebuffersCount;					//!< Number of swapChainFramebuffers per swapChainImage (usually used for implementing "layers").
-	std::vector<framebufferSet>	swapChainFramebuffers;				///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][numRenderPasses].
+	//size_t					framebuffersCount;					//!< Number of swapChainFramebuffers per swapChainImage (usually used for implementing "layers").
+	std::vector<VkFramebuffer>	swapChainFramebuffers;				///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages].
 
-	std::vector<VkImage>		colorImage;							///< For MSAA. One per render pass
-	std::vector<VkDeviceMemory>	colorImageMemory;					///< For MSAA. One per render pass
-	std::vector<VkImageView>	colorImageView;						///< For MSAA. RenderPass attachment. One per render pass
+	VkImage						colorImage;							///< For MSAA. One per render pass
+	VkDeviceMemory				colorImageMemory;					///< For MSAA. One per render pass
+	VkImageView					colorImageView;						///< For MSAA. RenderPass attachment. One per render pass
 
-	std::vector<VkImage>		depthImage;							///< Depth buffer (image object). One per render pass
-	std::vector<VkDeviceMemory>	depthImageMemory;					///< Depth buffer memory (memory object). One per render pass
-	std::vector<VkImageView>	depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
+	VkImage						depthImage;							///< Depth buffer (image object). One per render pass
+	VkDeviceMemory				depthImageMemory;					///< Depth buffer memory (memory object). One per render pass
+	VkImageView					depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
 
 	VkCommandPool				commandPool;						///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 

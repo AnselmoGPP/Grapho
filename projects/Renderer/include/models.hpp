@@ -113,7 +113,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t layer, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	virtual ~ModelData();
 
@@ -145,6 +145,8 @@ public:
 	VkDescriptorSetLayout		 descriptorSetLayout;	//!< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
 	VkDescriptorPool			 descriptorPool;		//!< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
+
+	size_t						 layer;					//!< Layer where this model will be drawn.
 
 	/// Set number of MM and dynamic offsets. Param: Number of renderings
 	void resizeUBOset(size_t newSize);
