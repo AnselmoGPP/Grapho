@@ -8,7 +8,7 @@
 #include "commons.hpp"
 
 
-Texture::Texture(const char* path) : path(nullptr), e(nullptr)
+Texture::Texture(const char* path) : path(nullptr), e(nullptr), fullyConstructed(false)
 {
 	copyCString(this->path, path);
 }
@@ -25,6 +25,7 @@ Texture::Texture(const Texture& obj)
 	{
 		copyCString(this->path, obj.path);
 		this->e = obj.e;
+		this->fullyConstructed = obj.fullyConstructed;
 		this->mipLevels = obj.mipLevels;
 		this->textureImage = obj.textureImage;
 		this->textureImageMemory = obj.textureImageMemory;
@@ -52,6 +53,8 @@ void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
+
+	fullyConstructed = true;
 }
 
 // (15)

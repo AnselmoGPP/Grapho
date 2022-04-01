@@ -25,6 +25,8 @@ public:
 
 	void loadAndCreateTexture(VulkanEnvironment& e);	///< Load image and create the VkImage, VkImageView and VkSampler.
 
+	bool fullyConstructed;
+
 	uint32_t					 mipLevels;				///< Number of levels (mipmaps)
 	VkImage						 textureImage;			///< Opaque handle to an image object.
 	VkDeviceMemory				 textureImageMemory;	///< Opaque handle to a device memory object.
@@ -43,7 +45,7 @@ typedef std::list<Texture>::iterator texIterator;
 		<li>Diffuse/Albedo </li>
 		<li>Specular/Roughness/Smoothness(inverted) </li>
 		<li>Shininess (Metallic?) </li>
-		<li> Normals </li>
+		<li>Normals </li>
 		<li>Ambient occlusion </li>
 		<li>Height maps (for geometry shader?) </li>
 		<li>Emissive </li>

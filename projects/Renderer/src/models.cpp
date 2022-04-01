@@ -52,7 +52,7 @@ ModelData& ModelData::fullConstruction()
 	vertexLoader->loadVertex();
 	createVertexBuffer();
 	if(indices.size()) createIndexBuffer();
-	
+
 	vsDynUBO.createUniformBuffers();
 	fsUBO.createUniformBuffers();
 	createDescriptorPool();

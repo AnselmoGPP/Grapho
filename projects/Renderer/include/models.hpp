@@ -60,7 +60,6 @@ class ModelData
 	const char* VSpath;						//!< Path to vertex shader
 	const char* FSpath;						//!< Path to fragment shader
 	
-	bool fullyConstructed;					//!< Flags if this object has been fully constructed (i.e. has a model loaded)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
@@ -147,6 +146,8 @@ public:
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	size_t						 layer;					//!< Layer where this model will be drawn.
+
+	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded)
 
 	/// Set number of MM and dynamic offsets. Param: Number of renderings
 	void resizeUBOset(size_t newSize);

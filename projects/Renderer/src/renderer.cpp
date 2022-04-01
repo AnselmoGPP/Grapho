@@ -13,7 +13,17 @@
 
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers)
-	: e(layers), input(e.window), numLayers(layers), userUpdate(graphicsUpdate), currentFrame(0), runThread(false) { }
+	: e(layers), 
+	input(e.window), 
+	numLayers(layers), 
+	updateCommandBuffer(false), 
+	userUpdate(graphicsUpdate), 
+	currentFrame(0), 
+	runThread(false),
+	models_to_load(0),
+	models_to_delete(0),
+	textures_to_load(0),
+	textures_to_delete(0) { }
 
 Renderer::~Renderer() 
 { 
@@ -213,9 +223,13 @@ void Renderer::drawFrame()
 	{
 		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);	// Controls access to model list and command buffer
 		
-		// Update uniforms
-		updateUniformBuffer(imageIndex);
-		
+		// Update uniforms & models state
+		{
+			const std::lock_guard<std::mutex> lock(mutSnapshot);
+			updateUniformBuffer(imageIndex);
+			updateModelsState();
+		}
+
 		// Submit the command buffer
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -382,7 +396,7 @@ void Renderer::cleanupSwapChain()
 
 modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
-	const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
+	//const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
 
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
@@ -397,11 +411,19 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 		transparency);
 }
 
-void Renderer::deleteModel(modelIterator model)
+void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
-	const std::lock_guard<std::mutex> lock(mutex_modelsToDelete);
-	
-	modelsToDelete.insert(modelsToDelete.cend(), model);
+	bool notLoadedYet = false;
+	for(modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
+		if (it == model) { notLoadedYet = true; break; }
+
+	if(notLoadedYet)
+		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);
+	else
+	{
+		modelsToDelete.splice(modelsToDelete.cend(), models, model);
+		updateCommandBuffer = true;
+	}
 }
 
 texIterator Renderer::newTexture(const char* path)
@@ -409,21 +431,32 @@ texIterator Renderer::newTexture(const char* path)
 	return texturesToLoad.emplace(texturesToLoad.cend(), path);
 }
 
-void Renderer::deleteTexture(texIterator texture)
+void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
-	texturesToDelete.insert(texturesToDelete.cend(), texture);
+	bool notLoadedYet = false;
+	for (texIterator it = texturesToLoad.begin(); it != texturesToLoad.end(); it++)
+		if (it == texture) { notLoadedYet = true; break; }
+
+	if (notLoadedYet)
+		texturesToDelete.splice(texturesToDelete.cend(), texturesToLoad, texture);
+	else
+		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)
+void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)	// <<< TODO
 {
 	if (model->vsDynUBO.dynBlocksCount != numberOfRenders)
 	{
-		const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
+		//const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
 
-		rendersToSet[&model] = numberOfRenders;
+		//rendersToSet[&model] = numberOfRenders;
 
-		if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
-			model->vsDynUBO.hiddenResize(numberOfRenders);
+		//if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
+		//	model->vsDynUBO.hiddenResize(numberOfRenders);
+
+		model->vsDynUBO.resize(numberOfRenders);
+
+		updateCommandBuffer = true;	// <<< We are flagging commandBuffer for update even if our model isn't in list "model"
 	}
 }
 
@@ -431,136 +464,113 @@ void Renderer::loadingThread()
 {
 	std::cout << "Start " << __func__ << "()" << std::endl;
 
-	modelIterator								lBegin, lEnd, lIt;	// Iterators for modelsToLoad (and deathRow)
-	std::list<modelIterator>::iterator			dBegin, dEnd, dIt;	// Iterators for modelsToDelete
-	std::map<modelIterator*, size_t>::iterator	rBegin, rEnd, rIt;	// Iterators for rendersToSet
-	size_t models_to_load;
-	size_t models_to_delete;
-	size_t textures_to_load;
-	size_t textures_to_delete;
-	size_t renders_to_set;
-	std::list<ModelData> deathRow;			// Vulkan models that are going to be deleted
-	//bool commandBufferNotCreatedYet;		// True if run() has not been called yet (i.e. a command buffer has not been created yet)					
-	
+	texIterator beginTexLoad;
+	modelIterator beginModLoad;
+	size_t countTexLoad;
+	size_t countModLoad;
+	size_t countModDelete;
+	size_t countTexDelete;
+
 	while (runThread)
 	{
-		if (modelsToLoad.size() || 
-			modelsToDelete.size() ||
-			texturesToLoad.size() ||
-			texturesToDelete.size() ||
-			rendersToSet.size() )
+		// Snapshot of lists state: Get iterator to first non-constructed element, and the number of elements to construct.
 		{
+			const std::lock_guard<std::mutex> lock(mutSnapshot);
+
+			if (texturesToLoad.size() && !(--texturesToLoad.end())->fullyConstructed)
 			{
-				// lock_guard here, maybe... <<<
-				textures_to_delete = texturesToDelete.size();		// What if it's checked after models_to_delete? Some another model could be marked for deletion for the next iteration, but its texture would be deleted now.
-				models_to_delete = modelsToDelete.size();			// What if it's checked after models_to_load? A new model could be marked for loading the next cycle, but its deletion could be marked for now.
-				renders_to_set = rendersToSet.size();				// What if it's checked after models_to_load? Some another model could be marked to be loaded in the next cycle, but we might have to alter the number of renders of it now. - What if it's checked before models_to_delete? Some model could be marked for deletion now, but any of the could be marked for a change in the number of renderings in the next cycle.
-				models_to_load = modelsToLoad.size();				// What if it's checked before models_to_delete? See models_to_delete comment.
-				textures_to_load = texturesToLoad.size();			// What if it's checked before models_to_load? Some model could be marked for loading now, but its texture could be marked to be loaded in the next cycle.
-			}
-
-			// Load textures in the texturesToLoad list and move them to the textures list.
-			if (textures_to_load)
-			{
-				texIterator begin, end;
-				begin = end = texturesToLoad.begin();
-				std::advance(end, textures_to_load);
-
-				for (texIterator it = begin; it != end; it++)
-					it->loadAndCreateTexture(e);
-
-				textures.splice(textures.cend(), texturesToLoad, begin, end);
-			}
-
-			const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
-
-			// Fully initialize ModelData objects in the modelsToLoad list
-			if (models_to_load)
-			{
-				lBegin = modelsToLoad.begin();
-				lEnd   = modelsToLoad.end();
-
-				for (lIt = lBegin; lIt != lEnd; ++lIt)
-					lIt->fullConstruction();		// Load object data from memory and create Vulkan objects.
-			}
-			
-			{
-				const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);
-				
-				// Move objects from modelsToLoad list to models list
-				if (models_to_load)
+				countTexLoad = texturesToLoad.size();
+				for (beginTexLoad = texturesToLoad.begin(); beginTexLoad != texturesToLoad.end(); beginTexLoad++)
 				{
-					{
-						const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);
-
-						models.splice(models.cend(), modelsToLoad, lBegin, lEnd);
-					}
+					if (beginTexLoad->fullyConstructed) --countTexLoad;
+					else break;
 				}
-				
-				// Mark objects in models list for deleting them (they're pointed by the modelsToDelete list)
-				if(models_to_delete)
-				{
-					{
-						const std::lock_guard<std::mutex> lock(mutex_modelsToDelete);
-
-						dBegin = modelsToDelete.begin();
-						dEnd = modelsToDelete.end();
-
-						for (dIt = dBegin; dIt != dEnd; dIt++)		// Move models to deathRow list
-							deathRow.splice(deathRow.cend(), models, *dIt);
-
-						modelsToDelete.erase(dBegin, dEnd);			// Delete iterators used
-					}
-				}
-				
-				// Delete existing command buffers
-				//commandBufferNotCreatedYet = (commandBuffers.size() == 0);
-				//if (!commandBufferNotCreatedYet)
-				//{
-					vkDeviceWaitIdle(e.device);
-					vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-				//}
-
-				// Set the number of renders for certain models in models list (this has to be here, since descriptors (and therefore, UBOs) are used by the command buffer
-				if (renders_to_set)
-				{
-					{
-						const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
-
-						rBegin = rendersToSet.begin();
-						rEnd = rendersToSet.end();
-						for (rIt = rBegin; rIt != rEnd; ++rIt)
-							(*rIt->first)->resizeUBOset(rendersToSet[rIt->first]);
-
-						rendersToSet.erase(rBegin, rEnd);
-					}
-				}
-				
-				// Generate new command buffer
-				//if (!commandBufferNotCreatedYet)
-					createCommandBuffers();		// Create command buffers for all the models in the models list.
 			}
 
-			if (models_to_delete) 
-				deathRow.clear();				// Delete models
-
-			if (textures_to_delete)
+			if (modelsToLoad.size() && !(--modelsToLoad.end())->fullyConstructed)
 			{
-				std::list<texIterator>::iterator begin, end;
-				begin = end = texturesToDelete.begin();
-				std::advance(end, textures_to_delete);
-				auto a = **begin;
-				for (std::list<texIterator>::iterator it = begin; it != end; it++)
-					textures.erase(*it);
-
-				texturesToDelete.erase(begin, end);
+				countModLoad = modelsToLoad.size();
+				for (beginModLoad = modelsToLoad.begin(); beginModLoad != modelsToLoad.end(); beginModLoad++)
+				{
+					if (beginModLoad->fullyConstructed) --countModLoad;
+					else break;
+				}
 			}
+
+			countModDelete = modelsToDelete.size();
+
+			countTexDelete = texturesToDelete.size();
+		}
+
+		if (countTexLoad || countModLoad || countModDelete || countTexDelete)
+		{
+			// Textures to load
+			if(countTexLoad)
+			{
+				while (countTexLoad)
+				{
+					beginTexLoad->loadAndCreateTexture(e);
+					++beginTexLoad;
+					--countTexLoad;
+				}
+			}
+
+			// Models to load
+			if (countModLoad)
+			{
+				while (countModLoad)
+				{
+					beginModLoad->fullConstruction();
+					++beginModLoad;
+					--countModLoad;
+				}
+			}
+
+			// Models to delete
+			if (countModDelete)
+				modelsToDelete.clear();
+
+			// Textures to delete
+			if (countTexDelete)
+				texturesToDelete.clear();
 		}
 		else
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 	}
-
+	
 	std::cout << "End " << __func__ << "()" << std::endl;
+}
+
+void Renderer::updateModelsState()
+{
+	// IF render loop is running...
+
+	// Up textures
+	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
+	{
+		texIterator begin, end;
+		begin = end = texturesToLoad.begin();
+		while (end->fullyConstructed && end != texturesToLoad.end()) ++end;
+		textures.splice(textures.cend(), texturesToLoad, begin, end);
+	}
+
+	if (modelsToLoad.size() && modelsToLoad.begin()->fullyConstructed)
+	{
+		modelIterator begin, end;
+		begin = end = modelsToLoad.begin();
+		while (end->fullyConstructed && end != modelsToLoad.end()) ++end;
+		models.splice(models.cend(), modelsToLoad, begin, end);
+		updateCommandBuffer = true;
+	}
+
+	if (updateCommandBuffer)
+	{
+		//vkDeviceWaitIdle(e.device);
+		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		createCommandBuffers();
+
+		updateCommandBuffer = false;
+	}
 }
 
 TimerSet& Renderer::getTimer() { return timer; }

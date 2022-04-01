@@ -34,11 +34,12 @@
 		- Points, lines, triangles
 		- 2D graphics
 		- Transparencies
-		> Scene plane: Draw in front of some rendering (used for skybox or weapons)
+		- Scene plane: Draw in front of some rendering (used for skybox or weapons)
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
 		> Many renders: Now, UBO is passes many times, so View and Projection matrix are redundant. 
+		> update(): Projection matrix should be updated only when it has changed
 		> Generalize loadModel() (VertexPCT, etc.) 
 		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
 		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
@@ -70,7 +71,10 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// DeleteModel()
+// Clean mutex and 2nd thread old stuff
+// Try to get nodes from a list (so you can move it to another list more easily, without checkins)
+// deleteTexture() / newTexture()
+// deleteModel() / newModel()
 // SetRenders()
 // Camera
 // Inputs
@@ -133,6 +137,7 @@ long double frameTime;
 size_t fps;
 size_t maxfps;
 glm::vec3 pos;
+Renderer* appPtr;
 
 //===============================================================================
 
@@ -156,7 +161,8 @@ int main(int argc, char* argv[])
 	TimerSet time;
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update, 3);		
+	Renderer app(update, 3);
+	appPtr = &app;
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
@@ -186,8 +192,23 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 	pos			= r.getCamera().Position;
 	size_t i;
 
-	if (check.ifBigger(frameTime, 5)) std::cout << "5 seconds in" << std::endl;
+	// Delete object at second 5.
+	if (check.ifBigger(frameTime, 5))
+		if (assets.find("room") != assets.end())
+		{
+			appPtr->deleteModel(assets["room"]); // <<<
+			assets.erase("room");
+		}
 
+	// Add object again at second 6
+	if (check.ifBigger(frameTime, 6))
+		setRoom(*appPtr);
+
+	// TODO:
+	// - Object moves with the camera before dissapearing
+	// - When deletion and creation are close in time, object doesn't appear again.
+
+	// Update UBOs
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.dynBlocksCount; i++) {
 			assets["points"]->vsDynUBO.setUniform(i, 1, view);
@@ -353,9 +374,9 @@ void setCottage(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
-		1, 0, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(0, MMsize, VMsize, PMsize),
+		UBOconfig(1, MMsize, VMsize, PMsize),
 		noUBO,
 		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),

@@ -56,23 +56,34 @@ class Renderer
 	std::list<Texture>					textures;	//!< Texture set
 	size_t								numLayers;
 
+	bool updateCommandBuffer;
+
 	// Threads stuff
 	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 
 	std::mutex mutex_resizingWindow;				//!< Controls any change to Vulkan objects (for 2nd thread & resizing window)
 	std::mutex mutex_modelsAndCommandBuffers;		//!< Controls access to models list and the command buffer
 
-	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
 	std::mutex mutex_modelsToLoad;					//!< Controls access to modelsToLoad list
 
-	std::list<modelIterator> modelsToDelete;		//!< Iterators to the loaded models that have to be deleted from Vulkan.
 	std::mutex mutex_modelsToDelete;				//!< Controls access to modelsToDelete list
 
-	std::map<modelIterator*, size_t> rendersToSet;	//!< Number of renderings per model.
 	std::mutex mutex_rendersToSet;					//!< Controls access to rendersToSet map
 
+
 	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
-	std::list<texIterator> texturesToDelete;		//!< Textures waiting for being deleted.
+	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
+	std::map<modelIterator*, size_t> rendersToSet;	//!< Number of renderings per model.
+	std::list<ModelData> modelsToDelete;		//!< Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<Texture> texturesToDelete;		//!< Textures waiting for being deleted.
+
+	size_t models_to_load;
+	size_t models_to_delete;
+	size_t textures_to_load;
+	size_t textures_to_delete;
+	//size_t renders_to_set;
+
+	std::mutex mutSnapshot;
 
 	// Private parameters:
 
@@ -129,26 +140,34 @@ class Renderer
 	void updateUniformBuffer(uint32_t currentImage);
 	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
-	/*
-		@brief Check for pending items to load ().
+	void updateModelsState();
 
-		<ul>Checking and loading process:
-			<li>[mutex_resizingWindow] </li>
-			<li>  Load textures </li>
-			<li>  Full initialize new models to load </li>
-			<li>  [mutex_modelsAndCommandBuffers] </li>
-			<li>    [mutex_modelsToLoad] </li>
-			<li>      Move new models to the models list </li>
-			<li>    [mutex_modelsToDelete] </li>
-			<li>      Extract models to delete from the models list </li>
-			<li>    Delete command buffer </li>
-			<li>    [mutex_rendersToSet] </li>
-			<li>      Resize UBOs for those models whose number of renders changed </li>
-			<li>    Generate new command buffer </li>
-			<li>  Delete models pending deletion </li>
-			<li>  Delete textures pending deletion </li>
-		</ul>
-	*/
+	/*
+	@brief Check for pending items to load/delete (textures & models) and resize number of renders.
+	Load textures
+	Load models
+	x Resize render set
+	New command buffer
+	Delete models
+	Delete texture
+
+	<ul>Checking and loading process:
+		<li>[mutex_resizingWindow] </li>
+		<li>  Load textures </li>
+		<li>  Fully initialize new models to load </li>
+		<li>  [mutex_modelsAndCommandBuffers] </li>
+		<li>    [mutex_modelsToLoad] </li>
+		<li>      Move new models to the models list </li>
+		<li>    [mutex_modelsToDelete] </li>
+		<li>      Extract models to delete from the models list </li>
+		<li>    Delete command buffer </li>
+		<li>    [mutex_rendersToSet] </li>
+		<li>      Resize UBOs for those models whose number of renders changed </li>
+		<li>    Generate new command buffer </li>
+		<li>  Delete models pending deletion </li>
+		<li>  Delete textures pending deletion </li>
+	</ul>
+*/
 	void loadingThread();
 
 	/// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
@@ -190,7 +209,7 @@ public:
 	Input&			getInput();
 
 	/**
-		@brief Inserts a partially initialized model object.The loadModels_Thread() thread will fully initialize it as soon as possible.
+		@brief Insert a partially initialized model object in modelsToLoad list.The loadModels_Thread() thread will fully initialize it as soon as possible.
 
 		@param numberOfRenderings Number of times this model can be rendered in the same model
 		@param primitiveTopology Primitive topology that the vertex data represents
@@ -204,11 +223,25 @@ public:
 		@param transparency
 	*/
 	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+
+	/**
+	*	@brief
+	*/
 	void			deleteModel(modelIterator model);
 
+	/**
+	*	@brief Insert a partially initialized texture object in texturesToLoad list.
+	*/
 	texIterator		newTexture(const char* path);
+
+	/**
+	*	@brief 
+	*/
 	void			deleteTexture(texIterator texture);
 
+	/**
+	*	@brief 
+	*/
 	void			setRenders(modelIterator& model, size_t numberOfRenders);
 };
 
