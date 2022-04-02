@@ -1197,6 +1197,8 @@ bool VulkanEnvironment::hasStencilComponent(VkFormat format)
 */
 VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 {
+	const std::lock_guard<std::mutex> lock(mutCommandPool);
+
 	// Allocate the command buffer.
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1222,6 +1224,8 @@ VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 */
 void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
+	const std::lock_guard<std::mutex> lock(mutCommandPool);
+
 	vkEndCommandBuffer(commandBuffer);		// Stop recording (this command buffer only contains the copy command, so we can stop recording now).
 
 	// Execute the command buffer (only contains the copy command) to complete the transfer of buffers.

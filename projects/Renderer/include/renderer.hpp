@@ -60,37 +60,20 @@ class Renderer
 
 	// Threads stuff
 	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
-
-	std::mutex mutex_resizingWindow;				//!< Controls any change to Vulkan objects (for 2nd thread & resizing window)
-	std::mutex mutex_modelsAndCommandBuffers;		//!< Controls access to models list and the command buffer
-
-	std::mutex mutex_modelsToLoad;					//!< Controls access to modelsToLoad list
-
-	std::mutex mutex_modelsToDelete;				//!< Controls access to modelsToDelete list
-
-	std::mutex mutex_rendersToSet;					//!< Controls access to rendersToSet map
-
+	std::mutex mutSnapshot;							//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
 
 	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
 	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
 	std::map<modelIterator*, size_t> rendersToSet;	//!< Number of renderings per model.
-	std::list<ModelData> modelsToDelete;		//!< Iterators to the loaded models that have to be deleted from Vulkan.
-	std::list<Texture> texturesToDelete;		//!< Textures waiting for being deleted.
-
-	size_t models_to_load;
-	size_t models_to_delete;
-	size_t textures_to_load;
-	size_t textures_to_delete;
-	//size_t renders_to_set;
-
-	std::mutex mutSnapshot;
+	std::list<ModelData> modelsToDelete;			//!< Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<Texture> texturesToDelete;			//!< Textures waiting for being deleted.
 
 	// Private parameters:
 
-	const int MAX_FRAMES_IN_FLIGHT		= 2;				//!< How many frames should be processed concurrently.
+	const int MAX_FRAMES_IN_FLIGHT		= 2;		//!< How many frames should be processed concurrently.
 	VkClearColorValue backgroundColor	= { 50/255.f, 150/255.f, 255/255.f, 1.0f };
 	int maxFPS							= 80;
-	int waitTime						= 500;				//!< Time the loading-thread wait till next check.
+	int waitTime						= 500;		//!< Time the loading-thread wait till next check.
 
 	// Main methods:
 
@@ -143,29 +126,18 @@ class Renderer
 	void updateModelsState();
 
 	/*
-	@brief Check for pending items to load/delete (textures & models) and resize number of renders.
-	Load textures
-	Load models
-	x Resize render set
-	New command buffer
-	Delete models
-	Delete texture
-
+	@brief Check for pending items to load/delete (textures & models).
+	
 	<ul>Checking and loading process:
-		<li>[mutex_resizingWindow] </li>
-		<li>  Load textures </li>
-		<li>  Fully initialize new models to load </li>
-		<li>  [mutex_modelsAndCommandBuffers] </li>
-		<li>    [mutex_modelsToLoad] </li>
-		<li>      Move new models to the models list </li>
-		<li>    [mutex_modelsToDelete] </li>
-		<li>      Extract models to delete from the models list </li>
-		<li>    Delete command buffer </li>
-		<li>    [mutex_rendersToSet] </li>
-		<li>      Resize UBOs for those models whose number of renders changed </li>
-		<li>    Generate new command buffer </li>
-		<li>  Delete models pending deletion </li>
-		<li>  Delete textures pending deletion </li>
+		<li> [mutSnapshot]: </li>
+		<li>  texturesToLoad </li>
+		<li>  modelsToLoad </li>
+		<li>  modelsToDelete </li>
+		<li>  texturesToDelete </li>
+		<li> Texture::loadAndCreateTexture </li>
+		<li> ModelData::fullConstruction </li>
+		<li> modelsToDelete.erase </li>
+		<li> texturesToDelete.erase </li>
 	</ul>
 */
 	void loadingThread();
@@ -187,7 +159,7 @@ class Renderer
 	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
 
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
-	bool						runThread;					//!< Signals whether the secondary thread (thread_loadModels) should be running.
+	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
 
 public:
 

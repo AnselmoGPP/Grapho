@@ -79,6 +79,7 @@
 // Camera
 // Inputs
 // GUI
+// Profiling
 // learnopengl.com
 // Later: Readme.md
 // Pass material to Fragment Shader
@@ -196,13 +197,32 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
 		{
-			appPtr->deleteModel(assets["room"]); // <<<
+			appPtr->deleteModel(assets["room"]);		// TEST (in render loop): deleteModel
 			assets.erase("room");
+
+			appPtr->deleteTexture(textures["room"]);	// TEST (in render loop): deleteTexture
+			textures.erase("room");
 		}
+
+	/*
+		Solve:
+
+		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
+		THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0x22fc and thread 0x44a4
+
+		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
+		THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0x2b40 and thread 0x23c8
+
+		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
+		THREADING ERROR : vkBeginCommandBuffer(): object of type VkCommandPool is simultaneously used in thread 0xf30 and thread 0x38a8
+	*/
 
 	// Add object again at second 6
 	if (check.ifBigger(frameTime, 6))
-		setRoom(*appPtr);
+	{
+		textures["room"] = appPtr->newTexture((TEXTURES_DIR + "viking_room.png").c_str());	// TEST (in render loop): newTexture
+		setRoom(*appPtr);																	// TEST (in render loop): newModel
+	}
 
 	// TODO:
 	// - Object moves with the camera before dissapearing
@@ -273,6 +293,9 @@ void loadTextures(Renderer& app)
 	textures["grass"] = app.newTexture((TEXTURES_DIR + "grass.png").c_str());
 	textures["sun"] = app.newTexture((TEXTURES_DIR + "Sun/sun2_1.png").c_str());
 	textures["reticule"] = app.newTexture((TEXTURES_DIR + "HUD/reticule_1.png").c_str());
+
+	app.deleteTexture(textures["skybox"]);												// TEST (before render loop): deleteTexture
+	textures["skybox"] = app.newTexture((TEXTURES_DIR + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
 
 	// <<< You could build materials (make sets of textures) here
 	// <<< Then, user could make sets of materials and send them to a modelObject
@@ -373,7 +396,7 @@ void setCottage(Renderer& app)
 
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
-	assets["cottage"] = app.newModel(
+	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1, MMsize, VMsize, PMsize),
@@ -384,7 +407,7 @@ void setCottage(Renderer& app)
 		false);
 
 	// Delete a model you passed previously.
-	app.deleteModel(assets["cottage"]);
+	app.deleteModel(assets["cottage"]);			// TEST (before render loop): deleteModel
 
 	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 

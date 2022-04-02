@@ -130,7 +130,6 @@ public:
 	std::vector<VkImageView>	swapChainImageViews;				///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
 	VkRenderPass				renderPass;							///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	//size_t					framebuffersCount;					//!< Number of swapChainFramebuffers per swapChainImage (usually used for implementing "layers").
 	std::vector<VkFramebuffer>	swapChainFramebuffers;				///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages].
 
 	VkImage						colorImage;							///< For MSAA. One per render pass
@@ -145,8 +144,9 @@ public:
 
 	// Additional variables
 
-	VkDeviceSize				 minUniformBufferOffsetAlignment;	///< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
-	std::mutex					 queueMutex;						///< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
+	VkDeviceSize minUniformBufferOffsetAlignment;	///< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
+	std::mutex  queueMutex;							///< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
+	std::mutex mutCommandPool;						//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateModelsState), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction).
 
 private:
 	// Main methods:

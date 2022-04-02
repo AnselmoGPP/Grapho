@@ -19,16 +19,9 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
-	runThread(false),
-	models_to_load(0),
-	models_to_delete(0),
-	textures_to_load(0),
-	textures_to_delete(0) { }
+	runThread(false) { }
 
-Renderer::~Renderer() 
-{ 
-	//stopThread();
-}
+Renderer::~Renderer() { }
 
 int Renderer::run()
 {
@@ -221,8 +214,6 @@ void Renderer::drawFrame()
 	// Update uniforms and submit command buffer
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };		// Which semaphores to signal once the command buffers have finished execution.
 	{
-		const std::lock_guard<std::mutex> lock(mutex_modelsAndCommandBuffers);	// Controls access to model list and command buffer
-		
 		// Update uniforms & models state
 		{
 			const std::lock_guard<std::mutex> lock(mutSnapshot);
@@ -295,8 +286,6 @@ void Renderer::recreateSwapChain()
 		glfwGetFramebufferSize(e.window, &width, &height);
 		glfwWaitEvents();
 	}
-
-	const std::lock_guard<std::mutex> lock(mutex_resizingWindow);
 
 	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
 
@@ -447,8 +436,6 @@ void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)	// <<< T
 {
 	if (model->vsDynUBO.dynBlocksCount != numberOfRenders)
 	{
-		//const std::lock_guard<std::mutex> lock(mutex_rendersToSet);
-
 		//rendersToSet[&model] = numberOfRenders;
 
 		//if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
@@ -466,6 +453,8 @@ void Renderer::loadingThread()
 
 	texIterator beginTexLoad;
 	modelIterator beginModLoad;
+	modelIterator endModDelete;
+	texIterator endTexDelete;
 	size_t countTexLoad;
 	size_t countModLoad;
 	size_t countModDelete;
@@ -528,11 +517,21 @@ void Renderer::loadingThread()
 
 			// Models to delete
 			if (countModDelete)
-				modelsToDelete.clear();
+			{
+				endModDelete = modelsToDelete.begin();
+				std::advance(endModDelete, countModDelete);
+				modelsToDelete.erase(modelsToDelete.begin(), endModDelete);
+				//modelsToDelete.clear();
+			}
 
 			// Textures to delete
 			if (countTexDelete)
-				texturesToDelete.clear();
+			{
+				endTexDelete = texturesToDelete.begin();
+				std::advance(endTexDelete, countTexDelete);
+				texturesToDelete.erase(texturesToDelete.begin(), endTexDelete);
+				//texturesToDelete.clear();
+			}
 		}
 		else
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
@@ -565,6 +564,8 @@ void Renderer::updateModelsState()
 
 	if (updateCommandBuffer)
 	{
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+
 		//vkDeviceWaitIdle(e.device);
 		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 		createCommandBuffers();
