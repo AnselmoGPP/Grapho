@@ -429,18 +429,13 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-void Renderer::setRenders(modelIterator model, size_t numberOfRenders)	// <<< TODO
+void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 {
 	if (numberOfRenders != model->vsDynUBO.dynBlocksCount)
 	{
-		//rendersToSet[&model] = numberOfRenders;
-
-		//if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
-		//	model->vsDynUBO.hiddenResize(numberOfRenders);
-
 		model->setRenderCount(numberOfRenders);
 
-		updateCommandBuffer = true;	// We are flagging commandBuffer for update even if our model isn't in list "model"
+		updateCommandBuffer = true;		//We are flagging commandBuffer for update assuming that our model is in list "model"
 	}
 }
 
@@ -540,8 +535,6 @@ void Renderer::loadingThread()
 
 void Renderer::updateModelsState()
 {
-	// IF render loop is running...
-
 	// Up textures
 	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
 	{

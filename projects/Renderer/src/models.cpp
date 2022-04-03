@@ -638,9 +638,10 @@ void ModelData::cleanup()
 
 void ModelData::setRenderCount(size_t numRenders)
 {
+	this->activeRenders = numRenders;
+
 	if (numRenders > vsDynUBO.dynBlocksCount)
 	{
-		this->activeRenders = numRenders;
 		vsDynUBO.resizeUBO(numRenders);
 
 		if (fullyConstructed)
@@ -653,6 +654,4 @@ void ModelData::setRenderCount(size_t numRenders)
 			createDescriptorSets();				// Contains the UBO
 		}
 	}
-	else
-		this->activeRenders = numRenders;
 }
