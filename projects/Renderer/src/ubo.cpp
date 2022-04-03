@@ -40,58 +40,39 @@ UBO::UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffset
 {	
 	attribsSize = config.attribsSize;
 
-	size_t usefulUBOsize = 0;		///< Section of the range that will be actually used(example: 3)
+	// range
+	size_t usefulUBOsize = 0;						// Section of the range that will be actually used(example: 3)
 	for (size_t i = 0; i < attribsSize.size(); i++)
 		usefulUBOsize += attribsSize[i];
 
 	if (usefulUBOsize)
 		range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
 
-	dynBlocksCount = hiddenCount = config.dynBlocksCount;
+	// dynBlocksCount, totalBytes, UBO, dynamicOffsets
+	resizeUBO(config.dynBlocksCount);
 
-	totalBytes = range * dynBlocksCount;
-
-	ubo.resize(totalBytes);
-
-	dynamicOffsets.resize(dynBlocksCount);
-	for (size_t i = 0; i < dynamicOffsets.size(); ++i)
-		dynamicOffsets[i] = i * range;
-
+	// uniformsOffsets
 	uniformsOffsets.resize(attribsSize.size());
 	if (uniformsOffsets.size()) uniformsOffsets[0] = 0;
 	for (size_t i = 1; i < uniformsOffsets.size(); i++)
 		uniformsOffsets[i] = uniformsOffsets[i - 1] + attribsSize[i - 1];
-
 }
 
-void UBO::resize(size_t newDynBlocksCount)// <<< what to do in modelData if uboType == 0
+void UBO::resizeUBO(size_t newDynBlocksCount)// <<< what to do in modelData if uboType == 0
 {	
-	//size_t oldCount = count;
-	//
-	//count = dirtyCount = newCount;
-	//totalBytes = newCount * range;
-	//
-	//ubo.resize(totalBytes);
-	//dynamicOffsets.resize(newCount);
-	//
-	//// Initialize the new Model matrices and Model matrices for normals
-	//if (newCount > oldCount)
-	//{
-	//	glm::mat4 defaultM;
-	//	defaultM = glm::mat4(1.0f);
-	//	//defaultM = glm::translate(defaultM, glm::vec3(0.0f, 0.0f, 0.0f));//<<< comment this
-	//	//defaultM = glm::rotate(defaultM, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//	//defaultM = glm::scale(defaultM, glm::vec3(1.0f, 1.0f, 1.0f));
-	//
-	//	glm::mat3 defaultMNor = glm::mat3(glm::transpose(glm::inverse(defaultM)));
-	//
-	//	for (size_t i = oldCount; i < newCount; ++i)
-	//	{
-	//		for (size_t j = 0; j < numEachAttrib[0]; ++j) setModelM(i, 0, defaultM);
-	//		for (size_t j = 0; j < numEachAttrib[3]; ++j) setMNorm (i, 0, defaultMNor);
-	//		dynamicOffsets[i] = i * range;
-	//	}
-	//}
+	// dynBlocksCount
+	dynBlocksCount = newDynBlocksCount;
+
+	// totalBytes
+	totalBytes = range * dynBlocksCount;
+
+	// UBO
+	ubo.resize(totalBytes);
+
+	// dynamicOffsets
+	dynamicOffsets.resize(dynBlocksCount);
+	for (size_t i = 0; i < dynamicOffsets.size(); ++i)
+		dynamicOffsets[i] = i * range;
 }
 
 // (21)
@@ -121,12 +102,6 @@ void UBO::destroyUniformBuffers()
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
 			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 		}
-}
-
-void UBO::hiddenResize(size_t newDynBlocksCount)
-{
-	ubo.resize(range * newDynBlocksCount);
-	hiddenCount = newDynBlocksCount;
 }
 
 Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)

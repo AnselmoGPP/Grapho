@@ -18,26 +18,6 @@
 #include "texture.hpp"
 #include "loaddata.hpp"
 
-/*
-	Basic ModelData interface ():
-
-		- ModelData obj(...)		// Create basic model object
-		- obj.fullConstruction()	// Load model data into the object (useful in a second thread)
-		- setUBO(...)				// Used by final user for updating some UBO
-
-		- dynamicOffsets			// For command buffer creation
-		- MM						// For command buffer creation, UBO update, and setRenders
-		- numMM						// For command buffer creation, UBO update, and setRenders (MM.size() and numMM may be different)
-		- getUBORange()				// For updating command buffer
-		- isDataFromFile()
-		- numTextures()
-
-		- resizeUBOset(...)			// For modifying the number of renders
-
-		- cleanupSwapChain()		// For recreating swapchain (for window resize)
-		- recreateSwapChain()		// For recreating swapchain (for window resize)
-*/
-
 #define LINE_WIDTH 1.0f
 
 extern std::vector<texIterator> noTextures;	// Vector with 0 Texture objects
@@ -112,7 +92,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t layer, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	virtual ~ModelData();
 
@@ -146,19 +126,13 @@ public:
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	size_t						 layer;					//!< Layer where this model will be drawn.
+	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
+
 
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded)
 
-	/// Set number of MM and dynamic offsets. Param: Number of renderings
-	void resizeUBOset(size_t newSize);
-
-	/**
-		@brief Set Model matrix (MM).
-		@param posDynUbo Which dynamic UBO?
-		@param attrib Within the set of MMs, which one?
-		@param newValue New model matrix (MM)
-	*/
-	void setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue);
+	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
+	void setRenderCount(size_t numRenders);
 
 	//bool isDataFromFile();											//!< True if vertex/index data came from a file. <<< not used
 

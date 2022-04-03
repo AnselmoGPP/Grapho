@@ -7,7 +7,7 @@ std::vector<texIterator> noTextures;
 std::vector<uint32_t> noIndices;
 UBOconfig noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t numRenderings, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
 	fullyConstructed(false),
@@ -16,7 +16,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t numRen
 	textures(textures),
 	vsDynUBO(e, vsUboConfig, e.minUniformBufferOffsetAlignment),
 	fsUBO(e, fsUboConfig, e.minUniformBufferOffsetAlignment),
-	layer(layer)
+	layer(layer),
+	activeRenders(activeRenders)
 {
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
@@ -24,8 +25,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t numRen
 	this->vertexLoader = vertexLoader;
 	this->vertexLoader->setDestination(vertices, indices);
 
-	if (fsUBO.range) fsUBO.resize(1);
-	resizeUBOset(numRenderings);
+	//if (fsUBO.range) fsUBO.resize(1);
+	//resizeUBOset(numRenderings);
 }
 
 ModelData::~ModelData()
@@ -45,9 +46,6 @@ ModelData& ModelData::fullConstruction()
 {
 	createDescriptorSetLayout();
 	createGraphicsPipeline(VSpath, FSpath);
-	
-	//for(size_t i = 0; i < textures.size(); i++)
-	//	textures[i].loadAndCreateTexture(e);
 
 	vertexLoader->loadVertex();
 	createVertexBuffer();
@@ -638,44 +636,23 @@ void ModelData::cleanup()
 
 }
 
-// LOOK 2th thread adds/delete MMs, while the user may assign values to them (while they still doesn't exist
-// LOOK what if I call this and immediately modify a not yet existing MM element?
-// LOOK change name from MM to UB
-void ModelData::resizeUBOset(size_t newSize)
+void ModelData::setRenderCount(size_t numRenders)
 {
-	// Resize UBO and dynamic offsets
-	size_t oldSize = vsDynUBO.dynBlocksCount;
-	vsDynUBO.resize(newSize);
-
-	// Destroy and recreate uniform buffers, descriptor pool and descriptor set
-	if (fullyConstructed && newSize > oldSize)
+	if (numRenders > vsDynUBO.dynBlocksCount)
 	{
-		vsDynUBO.destroyUniformBuffers();
+		this->activeRenders = numRenders;
+		vsDynUBO.resizeUBO(numRenders);
 
-		// Destroy Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid)
-		vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
+		if (fullyConstructed)
+		{
+			vsDynUBO.destroyUniformBuffers();
+			vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
-		vsDynUBO.createUniformBuffers();		// Create a UBO with the new size
-		createDescriptorPool();		// Required for creating descriptor sets
-		createDescriptorSets();		// Contains the UBO
+			vsDynUBO.createUniformBuffers();	// Create a UBO with the new size
+			createDescriptorPool();				// Required for creating descriptor sets
+			createDescriptorSets();				// Contains the UBO
+		}
 	}
+	else
+		this->activeRenders = numRenders;
 }
-
-void ModelData::setMM(size_t posDynUbo, size_t attrib, glm::mat4& newValue)
-{
-	// Model matrix (MM)
-	//if (posDynUbo < vsDynUBO.hiddenCount)
-	//	vsDynUBO.setModelM(posDynUbo, attrib, newValue);
-
-	// MM for normals (Used when MM applies non-uniform scaling since normals won't be scaled correctly. Otherwise, use glm::vec3(model))
-	//if (vsDynUBO.numEachAttrib[3])
-	//	vsDynUBO.setMNorm(posDynUbo, attrib, glm::mat3(glm::transpose(glm::inverse(newValue))));
-}
-
-//bool ModelData::isDataFromFile() { return dataFromFile; }
-
-//size_t ModelData::numTextures() { return vertices.Vtype.numEachAttrib[2]; }
-
-//size_t ModelData::getNumDescriptors() { return 1 + numTextures(); } // 1 UBO + X textures
-
-//bool ModelData::hasIndices() { return indices.size(); }

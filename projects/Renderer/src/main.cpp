@@ -38,7 +38,7 @@
 		Make classes more secure (hide sensitive variables)
 		Parallel loading (many threads)
 		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
-		> Many renders: Now, UBO is passes many times, so View and Projection matrix are redundant. 
+		> Many renders: Now, UBO is passed many times, so View and Projection matrix are redundant. 
 		> update(): Projection matrix should be updated only when it has changed
 		> Generalize loadModel() (VertexPCT, etc.) 
 		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
@@ -71,18 +71,13 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
-// Clean mutex and 2nd thread old stuff
-// Try to get nodes from a list (so you can move it to another list more easily, without checkins)
-// deleteTexture() / newTexture()
-// deleteModel() / newModel()
-// SetRenders()
 // Camera
 // Inputs
 // GUI
 // Profiling
+// Pass material to Fragment Shader
 // learnopengl.com
 // Later: Readme.md
-// Pass material to Fragment Shader
 // Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
 // Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
 
@@ -193,7 +188,6 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 	pos			= r.getCamera().Position;
 	size_t i;
 
-	// Delete object at second 5.
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
 		{
@@ -204,29 +198,24 @@ void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
 			textures.erase("room");
 		}
 
-	/*
-		Solve:
-
-		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
-		THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0x22fc and thread 0x44a4
-
-		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
-		THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0x2b40 and thread 0x23c8
-
-		Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] Object 0: handle = 0xec4bec000000000b, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
-		THREADING ERROR : vkBeginCommandBuffer(): object of type VkCommandPool is simultaneously used in thread 0xf30 and thread 0x38a8
-	*/
-
-	// Add object again at second 6
 	if (check.ifBigger(frameTime, 6))
 	{
 		textures["room"] = appPtr->newTexture((TEXTURES_DIR + "viking_room.png").c_str());	// TEST (in render loop): newTexture
 		setRoom(*appPtr);																	// TEST (in render loop): newModel
 	}
 
-	// TODO:
-	// - Object moves with the camera before dissapearing
-	// - When deletion and creation are close in time, object doesn't appear again.
+	if (check.ifBigger(frameTime, 8))
+		appPtr->setRenders(assets["room"], 1);			// TEST (in render loop): setRenders (in range)
+
+	if (check.ifBigger(frameTime, 10))
+	{
+		appPtr->setRenders(assets["room"], 4);			// TEST (in render loop): setRenders (out of range)
+		assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
+		assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
+		assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+		assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+
+	}
 
 	// Update UBOs
 	if (assets.find("points") != assets.end())
@@ -432,7 +421,7 @@ void setRoom(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
-		1, 2, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(2, MMsize, VMsize, PMsize),
 		noUBO,
@@ -441,9 +430,12 @@ void setRoom(Renderer& app)
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
 		false);
 
+	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
+	app.setRenders(assets["room"], 3);	// TEST(in render loop) : setRenders(out of range)
+
 	assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
 	assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
-	//assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
+	assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
 	//assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 }
 

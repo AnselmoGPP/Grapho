@@ -1,28 +1,6 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-/*
-	Methods:
-
-		Thread 1:
-			run()
-				- createCommandBuffers (1)
-				- createSyncObjects
-				- mainLoop
-					drawFrame
-						updateUniformBuffer
-							graphicsUpdate
-						recreateSwapChain (for window resize)
-							cleanupSwapChain
-							createCommandBuffers (3)
-						stopThreads
-				- cleanup
-
-		Thread 2:
-			loadModels_Thread
-				createCommandBuffers (2)
-*/
-
 #include <vector>
 #include <map>
 #include <thread>
@@ -80,6 +58,7 @@ class Renderer
 	/*
 		@brief Allocates command buffers and record drawing commands in them.
 
+		Bindings: pipeline > vertex buffer > indices > descriptor set > draw
 		Render same model with different descriptors (used here):
 		<ul>
 			<li>You technically don't have multiple uniform buffers; you just have one. But you can use the offset(s) provided to vkCmdBindDescriptorSets to shift where in that buffer the next rendering command(s) will get their data from. Basically, you rebind your descriptor sets, but with different pDynamicOffset array values.</li>
@@ -214,7 +193,7 @@ public:
 	/**
 	*	@brief 
 	*/
-	void			setRenders(modelIterator& model, size_t numberOfRenders);
+	void			setRenders(modelIterator model, size_t numberOfRenders);
 };
 
 #endif

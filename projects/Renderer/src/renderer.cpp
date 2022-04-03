@@ -96,28 +96,27 @@ void Renderer::createCommandBuffers()
 		//renderPassInfo.framebuffer = e.swapChainFramebuffers[i];
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 
-		// Basic drawing commands (for each model) (binds: pipeline > vertex buffer > indices > descriptor set > draw)
-		for (size_t j = 0; j < numLayers; j++)
+		for (size_t j = 0; j < numLayers; j++)	// for each layer
 		{
-			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);	// <<<
+			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);
 
-			for (modelIterator it = models.begin(); it != models.end(); it++)
+			for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
 			{
 				if (it->layer != j) continue;
-				if (!it->vsDynUBO.dynBlocksCount) continue;
+				if (!it->activeRenders) continue;
 
-				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };	// <<< Why not passing it directly (like the index buffer) instead of copying it? BTW, you are passing a local object to vkCmdBindVertexBuffers, how can it be possible?
-				VkDeviceSize offsets[] = { 0 };	// <<<
+				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };
+				VkDeviceSize offsets[] = { 0 };
 
-				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);				// Bind the vertex buffer to bindings.
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
 				if (it->indices.size())
-					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);		// Bind the index buffer. VK_INDEX_TYPE_ ... UINT16, UINT32.
+					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-				for (size_t j = 0; j < it->vsDynUBO.dynBlocksCount; j++)	// for each model rendering
+				for (size_t k = 0; k < it->activeRenders; k++)	// for each rendering
 				{
 					if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
-						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[j]);
+						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[k]);
 					else
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 
@@ -125,10 +124,6 @@ void Renderer::createCommandBuffers()
 						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 					else
 						vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
-
-					//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, nullptr);	// Bind the right descriptor set for each swap chain image to the descriptors in the shader.
-					//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);	// Draw the triangles using indices. Parameters: command buffer, number of indices, number of instances, offset into the index buffer, offset to add to the indices in the index buffer, offset for instancing. 												
-					//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);				// Draw the triangles without using indices. Parameters: command buffer, vertexCount (we have 3 vertices to draw), instanceCount (0 if you're doing instanced rendering), firstVertex (offset into the vertex buffer, lowest value of gl_VertexIndex), firstInstance (offset for instanced rendering, lowest value of gl_InstanceIndex).
 				}
 			}
 		}
@@ -138,6 +133,8 @@ void Renderer::createCommandBuffers()
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
 	}
+
+	updateCommandBuffer = false;
 }
 
 // (25)
@@ -432,18 +429,18 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-void Renderer::setRenders(modelIterator& model, size_t numberOfRenders)	// <<< TODO
+void Renderer::setRenders(modelIterator model, size_t numberOfRenders)	// <<< TODO
 {
-	if (model->vsDynUBO.dynBlocksCount != numberOfRenders)
+	if (numberOfRenders != model->vsDynUBO.dynBlocksCount)
 	{
 		//rendersToSet[&model] = numberOfRenders;
 
 		//if(numberOfRenders > model->vsDynUBO.dynBlocksCount)		// Done to allow the user to update the new UBOs immediately
 		//	model->vsDynUBO.hiddenResize(numberOfRenders);
 
-		model->vsDynUBO.resize(numberOfRenders);
+		model->setRenderCount(numberOfRenders);
 
-		updateCommandBuffer = true;	// <<< We are flagging commandBuffer for update even if our model isn't in list "model"
+		updateCommandBuffer = true;	// We are flagging commandBuffer for update even if our model isn't in list "model"
 	}
 }
 
@@ -491,6 +488,7 @@ void Renderer::loadingThread()
 			countTexDelete = texturesToDelete.size();
 		}
 
+		// Construct or destroy elements
 		if (countTexLoad || countModLoad || countModDelete || countTexDelete)
 		{
 			// Textures to load
@@ -569,8 +567,6 @@ void Renderer::updateModelsState()
 		//vkDeviceWaitIdle(e.device);
 		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 		createCommandBuffers();
-
-		updateCommandBuffer = false;
 	}
 }
 

@@ -18,14 +18,12 @@
 		- The variables or members of structs that you pass to the shader have to be aligned with 16 bytes (but variables or struct members created inside the shader doesn't).
 		- Due to the 16-bytes alignment requirement, you should pass variables that fit 16 bytes (example: vec4, float[4], int[4]...) or fit your variables in packages of 16 bytes (example: float + int + vec2).
 
-|--------------------------------minUBOffsetAlignment(256)-----------------------------|
-
-|---------16---------||---------16---------||---------16---------||---------16---------|
-
-|----------------------------my struct---------------------------||--int--|
-
-|-float-|             |----vec3----|        |--------vec4--------|
-
+	Dynamic UBO:
+		|--------------------------------minUBOffsetAlignment(256)-----------------------------|
+		|---------16---------||---------16---------||---------16---------||---------16---------|
+	Data passed:
+		|----------------------------my struct---------------------------||--int--|
+		|-float-|             |----vec3----|        |--------vec4--------|
 */
 
 extern size_t UniformAlignment;	// Alignment required for each uniform in the UBO (usually, 16 bytes).
@@ -42,8 +40,8 @@ struct UBOconfig
 {
 	UBOconfig(size_t dynBlocks = 0, size_t size1 = 0, size_t size2 = 0, size_t size3 = 0, size_t size4 = 0, size_t size5 = 0);
 
-	size_t dynBlocksCount;
-	std::vector<size_t> attribsSize;
+	size_t dynBlocksCount;					//!< Number of dynamic UBOs (i.e. the UBO is divided in one or more dynamic UBOs, one per layer)
+	std::vector<size_t> attribsSize;		//!< Size of each attribute used in the UBO
 };
 
 /**
@@ -108,26 +106,24 @@ struct Material
 *	@brief Structure used for storing a set of UBOs in the same structure (many UBOs can be used for rendering the same model many times).
 *	
 *	Attributes of a single UBO: Model, View, Projection, ModelForNormals, Lights
-*	We may create a set of dynamic UBOs (count), each one containing a number of different attributes (5), each one containing 0 or more attributes of their type (numEachAttrib).
+*	We may create a set of dynamic UBOs (dynBlocksCount), each one containing a number of different attributes (5 max), each one containing 0 or more attributes of their type (numEachAttrib).
 *	If count == 0, the buffer created will have size == range (instead of totalBytes, which is == 0). If range == 0, no buffer is created.
-*	User should call destroyUniformBuffers() before createUniformBuffers().
+*	Alignments: minUBOffsetAlignment (For each dynamic UBO. Affects range), UniformAlignment (For each uniform. Affects 
 *	Model matrix for Normals: Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors: mat3(transpose(inverse(model))) * aNormal.
 */
 struct UBO
 {
-	UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
+	UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each dynamic UBO required by the GPU).
 	~UBO() = default;
 
 	template<typename T>
 	void setUniform(size_t dynBlock, size_t uniform, T &newValue, size_t offset = 0);
-	void resize(size_t newDynBlocksCount);				//!< Set the number of dynamic UBO in the UBO.
-	void hiddenResize(size_t newDynBlocksCount);		//!< Modifies ubo size only (useful for allowing input beyond the ubo's end in case you plan to increment size later) (see Renderer::setRenders()).
+	void resizeUBO(size_t newDynBlocksCount);			//!< Set the number of dynamic UBO in the UBO. This doesn't create new Uniform buffer.
 
 	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
 	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 
 	size_t						dynBlocksCount;			//!< Number of dynamic UBOs
-	size_t						hiddenCount;			//!< Actual number of dynamic UBOs, including those generated with hiddenResize().
 
 	VkDeviceSize				range;					//!< Size (bytes) of an aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
 	size_t						totalBytes;				//!< Size (bytes) of the set of dynamic UBOs (example: 12)
@@ -142,7 +138,7 @@ struct UBO
 private:
 	VulkanEnvironment& e;
 
-	std::vector<size_t> uniformsOffsets;
+	std::vector<size_t> uniformsOffsets;				//!< Offsets of each uniform element a dynamic UBO
 };
 
 
