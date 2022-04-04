@@ -34,7 +34,7 @@ Grapho is a lightweight and easy to use project for rendering computer graphics 
 - Define content of the vertex UBO and the fragment UBO
 - Allows transparencies (alpha channel)
 
-**Disclaimer: The following content is outdated, but it will updated soon. This is a work in progress**
+**Disclaimer: The following content is outdated, but it will updated soon. This is a work in progress.**
 
 <h4>Main project content:</h4>
 
