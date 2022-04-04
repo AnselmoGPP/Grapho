@@ -17,7 +17,24 @@ Grapho is a lightweight and easy to use project for rendering computer graphics 
 
 ## Grapho
 
-Grapho allows the programmer to load models and textures (OBJ or raw data), and render them in a 3D space. A single model can be rendered many times simultaneously. Loaded models, or some of their renderings (or all of them), can be removed at any time. The camera system allows to navigate through the rendering. The models are loaded in a parallel thread, so that the render loop doesn't suffer delays.
+<h4>Grapho offers multiple functionalities:</h4>
+
+- Render any primitive: Points, Lines, Triangles
+- 2D and 3D rendering
+- Load models (raw data or OBJ files)
+- Load textures to pool (any model can use any texture from the pool)
+- Define Vertex and Fragment shaders
+- Multiple renderings of the same object in the scene (modifiable at any time)
+- Load/delete models at any time
+- Load/delete textures at any time
+- Parallel thread for loading/deleting models and textures (avoids bottlenecks at the render loop)
+- Camera system (navigate through the scene)
+- Input system
+- Multiple layers (Painter's algorithm)
+- Define content of the vertex UBO and the fragment UBO
+- Allows transparencies (alpha channel)
+
+**Disclaimer: The following content is outdated, but it will updated soon. This is a work in progress**
 
 <h4>Main project content:</h4>
 
