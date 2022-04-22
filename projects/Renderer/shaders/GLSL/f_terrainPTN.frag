@@ -164,4 +164,4 @@ vec3 applyFog(vec3 fragment)
 }
 
 
-// mod(%) = a - (b * floor(a/b))
+// modulus(%) = a - (b * floor(a/b))

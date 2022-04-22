@@ -71,6 +71,7 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
+// Indices to 16 bytes
 // Camera
 // Inputs
 // GUI
@@ -133,11 +134,11 @@ long double frameTime;
 size_t fps;
 size_t maxfps;
 glm::vec3 pos;
-Renderer* appPtr;
+//Renderer* appPtr;
 
 //===============================================================================
 
-void update(Renderer& r, glm::mat4 view, glm::mat4 proj);		// Update UBOs each frame
+void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);		// Update UBOs each frame
 
 void loadTextures(Renderer& app);
 
@@ -158,7 +159,6 @@ int main(int argc, char* argv[])
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 	Renderer app(update, 3);
-	appPtr = &app;
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
@@ -180,36 +180,36 @@ int main(int argc, char* argv[])
 }
 
 
-void update(Renderer& r, glm::mat4 view, glm::mat4 proj)
+void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
-	frameTime	= r.getTimer().getTime();
-	fps			= r.getTimer().getFPS();
-	maxfps		= r.getTimer().getMaxPossibleFPS();
-	pos			= r.getCamera().Position;
+	frameTime	= rend.getTimer().getTime();
+	fps			= rend.getTimer().getFPS();
+	maxfps		= rend.getTimer().getMaxPossibleFPS();
+	pos			= rend.getCamera().Position;
 	size_t i;
 
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
 		{
-			appPtr->deleteModel(assets["room"]);		// TEST (in render loop): deleteModel
+			rend.deleteModel(assets["room"]);		// TEST (in render loop): deleteModel
 			assets.erase("room");
 
-			appPtr->deleteTexture(textures["room"]);	// TEST (in render loop): deleteTexture
+			rend.deleteTexture(textures["room"]);	// TEST (in render loop): deleteTexture
 			textures.erase("room");
 		}
 
 	if (check.ifBigger(frameTime, 6))
 	{
-		textures["room"] = appPtr->newTexture((TEXTURES_DIR + "viking_room.png").c_str());	// TEST (in render loop): newTexture
-		setRoom(*appPtr);																	// TEST (in render loop): newModel
+		textures["room"] = rend.newTexture((TEXTURES_DIR + "viking_room.png").c_str());	// TEST (in render loop): newTexture
+		setRoom(rend);																	// TEST (in render loop): newModel
 	}
 
 	if (check.ifBigger(frameTime, 8))
-		appPtr->setRenders(assets["room"], 1);			// TEST (in render loop): setRenders (in range)
+		rend.setRenders(assets["room"], 1);			// TEST (in render loop): setRenders (in range)
 
 	if (check.ifBigger(frameTime, 10))
 	{
-		appPtr->setRenders(assets["room"], 4);			// TEST (in render loop): setRenders (out of range)
+		rend.setRenders(assets["room"], 4);			// TEST (in render loop): setRenders (out of range)
 		assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
 		assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
 		assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
