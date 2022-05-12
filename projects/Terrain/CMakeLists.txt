@@ -6,9 +6,9 @@ if( UNIX )
 	#set(CMAKE_CXX_COMPILER "/usr/bin/g++-9")
 endif()
 
-PROJECT(Vk_renderer
+PROJECT(Terrain
 	VERSION 1.0
-	DESCRIPTION "Low level Vulkan renderer"
+	DESCRIPTION "Procedural terrain generation"
 	LANGUAGES CXX
 	)
 
@@ -26,34 +26,13 @@ ADD_DEFINITIONS(
 #ADD_COMPILE_DEFINITIONS( IMGUI_IMPL_OPENGL_LOADER_GLEW=1 )
 #ADD_COMPILE_DEFINITIONS( IMGUI_IMPL_OPENGL_LOADER_GLAD=1 )
 
-ADD_LIBRARY(${PROJECT_NAME} STATIC
+ADD_EXECUTABLE(${PROJECT_NAME}
 	src/main.cpp
+	src/noise.cpp
+	src/terrain.cpp
 
-	src/environment.cpp
-	src/renderer.cpp
-	src/models.cpp
-	src/vertex.cpp
-	src/texture.cpp
-	src/ubo.cpp
-	src/camera.cpp
-	src/input.cpp
-	src/loaddata.cpp
-	src/timer.cpp
-	src/toolkit.cpp
-	src/commons.cpp
-
-	include/renderer.hpp
-	include/environment.hpp
-	include/models.hpp
-	include/vertex.hpp
-	include/texture.hpp
-	include/ubo.hpp
-	include/camera.hpp
-	include/input.hpp
-	include/loaddata.hpp
-	include/timer.hpp
-	include/toolkit.hpp
-	include/commons.hpp
+	include/noise.hpp
+	include/terrain.hpp
 
 	../../Readme.md
 	TODO.txt
@@ -74,6 +53,7 @@ TARGET_SOURCES(${PROJECT_NAME} PRIVATE
 
 TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	include
+	../Renderer/include
 	../../extern/glfw/glfw-3.3.2/include
 	../../extern/glm/glm-0.9.9.5
 	../../extern/stb
@@ -101,6 +81,7 @@ elseif( WIN32 )
 	TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/Release/glfw3.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/Release/glm_static.lib
+		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/projects/Renderer/Release/Vk_renderer.lib
 		Vulkan::Vulkan
 	)
 endif()
