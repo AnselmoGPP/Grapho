@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "geometry.hpp"
+#include "noise.hpp"
 
 
 // noiseSet -----------------------------------------------------------------
@@ -227,9 +227,9 @@ void noiseSet::noiseTester(size_t size)
     }
 }
 
-// terrainGenerator -----------------------------------------------------------------
+// NoiseSurface -----------------------------------------------------------------
 
-terrainGenerator::terrainGenerator()
+NoiseSurface::NoiseSurface()
 {
     numVertexX = 0;
     numVertexY = 0;
@@ -239,12 +239,12 @@ terrainGenerator::terrainGenerator()
     vertex     = nullptr;
 }
 
-terrainGenerator::~terrainGenerator()
+NoiseSurface::~NoiseSurface()
 {
     if(vertex  != nullptr) delete[] vertex;
 }
 
-terrainGenerator& terrainGenerator::operator = (const terrainGenerator& obj)
+NoiseSurface& NoiseSurface::operator = (const NoiseSurface& obj)
 {
     numVertexX = obj.numVertexX;
     numVertexY = obj.numVertexY;
@@ -262,7 +262,7 @@ terrainGenerator& terrainGenerator::operator = (const terrainGenerator& obj)
     return *this;
 }
 
-void terrainGenerator::computeTerrain(noiseSet &noise, float x0, float y0, float stride, unsigned numVertexX, unsigned numVertexY, float textureFactor)
+void NoiseSurface::computeTerrain(noiseSet &noise, float x0, float y0, float stride, unsigned numVertexX, unsigned numVertexY, float textureFactor)
 {
     if (this->numVertexX != numVertexX || this->numVertexY != numVertexY)
     {
@@ -313,7 +313,7 @@ void terrainGenerator::computeTerrain(noiseSet &noise, float x0, float y0, float
         }
 }
 
-void terrainGenerator::computeGridNormals(float (*vertex)[8], unsigned numVertexX, unsigned numVertexY, float stride, noiseSet &noise)
+void NoiseSurface::computeGridNormals(float (*vertex)[8], unsigned numVertexX, unsigned numVertexY, float stride, noiseSet &noise)
 {
     // Initialize normals to 0
     unsigned numVertex = numVertexX * numVertexY;
@@ -519,19 +519,19 @@ void terrainGenerator::computeGridNormals(float (*vertex)[8], unsigned numVertex
     delete[] tempNormals;
 }
 
-unsigned terrainGenerator::getXside() const { return numVertexX; }
-unsigned terrainGenerator::getYside() const { return numVertexY; }
-unsigned terrainGenerator::getNumVertex() const { return numVertex; }
-unsigned terrainGenerator::getNumIndices() const { return numIndices; }
+unsigned NoiseSurface::getXside() const { return numVertexX; }
+unsigned NoiseSurface::getYside() const { return numVertexY; }
+unsigned NoiseSurface::getNumVertex() const { return numVertex; }
+unsigned NoiseSurface::getNumIndices() const { return numIndices; }
 
-size_t terrainGenerator::getPos(size_t x, size_t y) const { return y * numVertexX + x; }
+size_t NoiseSurface::getPos(size_t x, size_t y) const { return y * numVertexX + x; }
 
-glm::vec3 terrainGenerator::getVertex(size_t position) const
+glm::vec3 NoiseSurface::getVertex(size_t position) const
 {
     return glm::vec3( vertex[position][0], vertex[position][1], vertex[position][2] );
 }
 
-std::ostream& operator << (std::ostream& os, const terrainGenerator& obj)
+std::ostream& operator << (std::ostream& os, const NoiseSurface& obj)
 {
     os  << "Num. vertex: " << obj.getNumVertex() << "\n"
         << "Num. indices: " << obj.getNumIndices() << "\n"
@@ -542,7 +542,7 @@ std::ostream& operator << (std::ostream& os, const terrainGenerator& obj)
     return os;
 }
 
-std::istream& operator >> (std::istream& is, terrainGenerator& obj)
+std::istream& operator >> (std::istream& is, NoiseSurface& obj)
 {
     //is >> obj.x >> obj.y;
     return is;

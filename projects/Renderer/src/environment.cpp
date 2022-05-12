@@ -12,11 +12,11 @@
 
 bool QueueFamilyIndices::isComplete()
 {
-	return	graphicsFamily.has_value() &&
-		presentFamily.has_value();
+	return	graphicsFamily.has_value() && presentFamily.has_value();
 }
 
 VulkanEnvironment::VulkanEnvironment(size_t layers)
+	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT)
 {
 	initWindow();
 
@@ -203,7 +203,9 @@ void VulkanEnvironment::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCr
  */
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanEnvironment::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-	std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+	//std::cerr << "Validation layer: (" << messageSeverity << '/' << messageType << ") " << pCallbackData->pMessage << std::endl;
+	if (messageType != 1)			// Avoid GENERAL_BIT messages (unrelated to the specification or performance).
+		std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
 	return VK_FALSE;
 }
 
@@ -336,57 +338,32 @@ void VulkanEnvironment::pickPhysicalDevice()
 	std::cout << __func__ << std::endl;
 
 	// Get all devices with Vulkan support.
+
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-	if (deviceCount == 0)	throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-	else					if (printInfo) std::cout << "Devices with Vulkan support: " << deviceCount << std::endl;
+	if (deviceCount == 0) throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+	else if (printInfo) std::cout << "Devices with Vulkan support: " << deviceCount << std::endl;
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-	// Look for a suitable device and select it.
-	const int mode = 1;
-	switch (mode)
+	// Look for the most suitable device and select it.
+
+	std::multimap<int, VkPhysicalDevice> candidates;	// Automatically sorts candidates by score
+
+	for (const auto& device : devices)					// Rate each device
 	{
-	case 1:	// Check Vulkan support.
-
-	case 2:	// Check for dedicated GPU supporting geometry shaders.
-		for (const auto& device : devices)
-			if (isDeviceSuitable(device, mode))
-			{
-				physicalDevice = device;
-				msaaSamples = getMaxUsableSampleCount(add_MSAA ? false : true);
-				break;
-			}
-		break;
-
-	case 3:	// Give each device a score and pick the highest one.
-	{
-		std::multimap<int, VkPhysicalDevice> candidates;	// Automatically sorts candidates by score
-
-		for (const auto& device : devices)					// Rate each device
-		{
-			int score = isDeviceSuitable(device, mode);
-			candidates.insert(std::make_pair(score, device));
-		}
-
-		if (candidates.rbegin()->first > 0)					// Check if the best candidate has score > 0
-		{
-			physicalDevice = candidates.rbegin()->second;
-			msaaSamples = getMaxUsableSampleCount(add_MSAA ? false : true);
-		}
-		else
-			throw std::runtime_error("Failed to find a suitable GPU!");
-		break;
+		int score = evaluateDevice(device);
+		candidates.insert(std::make_pair(score, device));
 	}
 
-	default: // Error. The variable "mode" should have a valid value.
-		throw std::runtime_error("No valid mode for selecting a suitable device!");
-		break;
+	if (candidates.rbegin()->first > 0)					// Check if the best candidate has score > 0
+	{
+		physicalDevice = candidates.rbegin()->second;
+		msaaSamples = getMaxUsableSampleCount(add_MSAA ? false : true);
 	}
-
-	if (physicalDevice == VK_NULL_HANDLE)
+	else
 		throw std::runtime_error("Failed to find a suitable GPU!");
 
 	if (printInfo)
@@ -399,18 +376,13 @@ void VulkanEnvironment::pickPhysicalDevice()
 
 /**
 *	@brief Evaluate a device and check if it is suitable for the operations we want to perform.
-* 
+*
 *	Evaluate a device and check if it is suitable for the operations we want to perform.
 *	@param device Device to evaluate
 *	@param mode Mode of evaluation:
-*	<ul>
-*		<li>1: Check Vulkan support.</li>
-*		<li>2: Check for dedicated GPU supporting geometry shaders.</li>
-*		<li>3: Rate the device (give it a score).</li>
-*	</ul>
-*	@return If 0 is returned the device is not suitable
+*	@return Score for the device (0 means that the device is not suitable). Dedicated GPUs supporting geometry shaders are favored.
 */
-int VulkanEnvironment::isDeviceSuitable(VkPhysicalDevice device, const int mode)
+int VulkanEnvironment::evaluateDevice(VkPhysicalDevice device)
 {
 	// Get basic device properties: Name, type, supported Vulkan version...
 	VkPhysicalDeviceProperties deviceProperties;
@@ -426,18 +398,7 @@ int VulkanEnvironment::isDeviceSuitable(VkPhysicalDevice device, const int mode)
 	// Check whether required device extensions are supported 
 	bool extensionsSupported = checkDeviceExtensionSupport(device);
 
-	if (printInfo)
-	{
-		std::cout << "Queue families: \n"
-			<< "\t- Computer graphics: "
-			<< ((indices.graphicsFamily.has_value() == true) ? "Yes" : "No") << '\n'
-			<< "\t- Presentation to window surface: "
-			<< ((indices.presentFamily.has_value() == true) ? "Yes" : "No") << std::endl;
-
-		std::cout << "Required device extensions supported: " << (extensionsSupported ? "Yes" : "No") << std::endl;
-	}
-
-	// Check whether swap chain extension is compatible with the window surface (adequate supported)
+	// Check whether swap chain extension is compatible with the window surface (adequately supported)
 	bool swapChainAdequate = false;
 	if (extensionsSupported)
 	{
@@ -445,43 +406,24 @@ int VulkanEnvironment::isDeviceSuitable(VkPhysicalDevice device, const int mode)
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();	// Adequate if there's at least one supported image format and one supported presentation mode.
 	}
 
-	// Find out whether the device is suitable
-	switch (mode)
-	{
-		// Check Vulkan support:
-	case 1:
-		return	indices.isComplete() &&				// There should exist the queue families we want.
-			extensionsSupported &&				// The required device extensions should be supported.
-			swapChainAdequate &&				// Swap chain extension support should be adequate (compatible with window surface)
-			deviceFeatures.samplerAnisotropy;	// Physical device should support anisotropic filtering
-		break;
-		// Check for dedicated GPU supporting geometry shaders:
-	case 2:
-		return	indices.isComplete() &&
-			extensionsSupported &&
-			swapChainAdequate &&
-			deviceFeatures.samplerAnisotropy &&
-			deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-			deviceFeatures.geometryShader;
-		break;
-		// Give a score to the device (rate the device):
-	case 3:
-	{
-		int score = 0;
-		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete GPUs have better performance.
-		score += deviceProperties.limits.maxImageDimension2D;	    							// Maximum size of textures.
-		if (!deviceFeatures.geometryShader)	return 0;											// Applications cannot function without geometry shaders.
-		if (!indices.isComplete())			return 0;											// There should exist the queue families we want.
-		if (!extensionsSupported)			return 0;											// The required device extensions should be supported.
-		if (!swapChainAdequate)				return 0;											// Swap chain extension support should be adequate (compatible with window surface)
-		return score;
-		break;
-	}
-	// Check Vulkan support:
-	default:
-		return 1;
-		break;
-	}
+	// Score the device
+	int score = 0;
+
+	if (!indices.isComplete()) return 0;				// The queue families we want should exist (Computer graphics & Presentation to window surface).
+	if (!extensionsSupported) return 0;					// The required device extensions should be supported.
+	if (!swapChainAdequate) return 0;					// Swap chain extension support should be adequate (compatible with window surface).
+	if (!deviceFeatures.geometryShader) return 0;		// Applications cannot function without geometry shaders.
+	score += 1;
+
+	if (deviceFeatures.samplerAnisotropy) score += 1;	// Anisotropic filtering
+	if (deviceFeatures.largePoints) score += 1;
+	if (deviceFeatures.wideLines) score += 1;
+	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete GPUs have better performance (and integrated GPUs, worse).
+	score += deviceProperties.limits.maxImageDimension2D;									// Maximum size of textures.
+	
+	if (printInfo) std::cout << "    (" << score << ") " << deviceProperties.deviceName << std::endl;
+
+	return score;
 }
 
 /**

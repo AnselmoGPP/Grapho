@@ -15,7 +15,7 @@ Pixel area (border's normals) (different LOD areas joints)
 
 learnopengl
 
-Bug:   terrainGenerator terrX = (worldChunks.chunkDict[k]);     // double free or corruption (!prev)
+Bug:   NoiseSurface terrX = (worldChunks.chunkDict[k]);     // double free or corruption (!prev)
 Class encapsulation of OpenGL functions
 ImGui
 Light cast

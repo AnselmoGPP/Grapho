@@ -19,7 +19,7 @@
 		- Axis
 		- Sun billboard (transparencies)
 		- Terrain
-		> Modify terrainGenerator for it to have some state (noiseSet...) and generate buffers outside itself
+		> Modify NoiseSurface for it to have some state (noiseSet...) and generate buffers outside itself
 		Make the renderer a static library
 		Add ProcessInput() maybe
 		Dynamic states (graphics pipeline)
@@ -71,9 +71,10 @@
 		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
 */
 
+// Am I asking GPU for too large heap space?
 // Indices to 16 bytes
 // Camera
-// Inputs
+// Inputs (MVC)
 // GUI
 // Profiling
 // Pass material to Fragment Shader
@@ -90,7 +91,8 @@
 
 #include "renderer.hpp"
 #include "toolkit.hpp"
-#include "geometry.hpp"
+#include "noise.hpp"
+#include "terrain.hpp"
 
 //===============================================================================
 
@@ -119,7 +121,8 @@ int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
 
 // Terrain
-terrainGenerator terrGen;
+//NoiseSurface terrGen;
+Chunk terrChunk(glm::vec3(50, 50, 0), 100, 21, 21);
 noiseSet noiser( 
 	5, 1.5, 0.28f,					// Octaves, Lacunarity, Persistance
 	1, 150,							// Scale, Multiplier
@@ -128,6 +131,9 @@ noiseSet noiser(
 	FastNoiseLite::NoiseType_Perlin,// Noise type
 	false,							// Random offset
 	0);								// Seed
+
+TerrainGrid terrChunks(noiser, glm::vec3(0, 0, 0), 6400, 21, 7, 3, 1);
+
 
 // Data to update
 long double frameTime;
@@ -149,6 +155,7 @@ void setSkybox(Renderer& app);
 void setCottage(Renderer& app);
 void setRoom(Renderer& app);
 void setTerrain(Renderer& app);
+void setTerrainGrid(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
@@ -171,6 +178,7 @@ int main(int argc, char* argv[])
 	setCottage(app);
 	setRoom(app);
 	setTerrain(app);
+	setTerrainGrid(app);
 	setSun(app);
 	setReticule(app);
 
@@ -443,11 +451,14 @@ void setTerrain(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
+	//terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
+	terrChunk.computeTerrain(noiser);
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
 
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
+	//VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
+	
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrChunk.getNumVertex(), terrChunk.vertex.data(), terrChunk.indices, true);
 
 	assets["terrain"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
@@ -467,6 +478,40 @@ void setTerrain(Renderer& app)
 	//sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
 	sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
 	assets["terrain"]->fsUBO.setUniform(0, 0, sun);
+}
+
+void setTerrainGrid(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	terrChunks.updateTree(glm::vec3(0,0,0));
+
+/*
+	//terrChunk.computeTerrain(noiser);
+
+	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrChunk.getNumVertex(), terrChunk.vertex.data(), terrChunk.indices, true);
+	sizeof(float);
+	assets["terrain"] = app.newModel(
+		1, 1, primitiveTopology::triangle,
+		vertexLoader,
+		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
+		UBOconfig(1, lightSize, vec4size),
+		usedTextures,
+		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
+		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
+		false);
+
+	assets["terrain"]->vsDynUBO.setUniform(0, 0, modelMatrix());
+	assets["terrain"]->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
+
+	//sun.turnOff();
+	//sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	//sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
+	sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
+	assets["terrain"]->fsUBO.setUniform(0, 0, sun);
+*/
 }
 
 void setSun(Renderer& app)

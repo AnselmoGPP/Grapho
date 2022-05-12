@@ -78,7 +78,7 @@ class VulkanEnvironment
 {
 	// Private parameters:
 
-	bool printInfo = false;
+	bool printInfo = true;
 
 	const uint32_t WIDTH  = 1920 / 2;	// <<< Does this change when recreating swap chain?
 	const uint32_t HEIGHT = 1080 / 2;
@@ -116,8 +116,8 @@ public:
 	VkDebugUtilsMessengerEXT	debugMessenger;						///< Opaque handle to a debug messenger object (the debug callback is part of it).
 	VkSurfaceKHR				surface;							///< Opaque handle to a surface object (abstract type of surface to present rendered images to)
 
-	VkPhysicalDevice			physicalDevice = VK_NULL_HANDLE;	///< Opaque handle to a physical device object.
-	VkSampleCountFlagBits		msaaSamples = VK_SAMPLE_COUNT_1_BIT;///< Number of samples for MSAA (MultiSampling AntiAliasing)
+	VkPhysicalDevice			physicalDevice;						///< Opaque handle to a physical device object.
+	VkSampleCountFlagBits		msaaSamples;						///< Number of samples for MSAA (MultiSampling AntiAliasing)
 	VkDevice					device;								///< Opaque handle to a device object.
 
 	VkQueue						graphicsQueue;						///< Opaque handle to a queue object (computer graphics).
@@ -155,7 +155,7 @@ private:
 	void createInstance();
 	void setupDebugMessenger();
 	void createSurface();
-	void pickPhysicalDevice();
+	void pickPhysicalDevice();		void pickPhysicalDevice_2();
 	void createLogicalDevice();
 	void createSwapChain();
 	void createImageViews();
@@ -174,7 +174,8 @@ private:
 	std::vector<const char*> getRequiredExtensions();
 	bool					checkExtensionSupport(const char* const* requiredExtensions, uint32_t reqExtCount);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-	int						isDeviceSuitable(VkPhysicalDevice device, const int mode);
+	int						evaluateDevice(VkPhysicalDevice device);
+	int isDeviceSuitable_2(VkPhysicalDevice device, const int mode);
 	VkSampleCountFlagBits	getMaxUsableSampleCount(bool getMinimum = false);
 	QueueFamilyIndices		findQueueFamilies(VkPhysicalDevice device);
 	bool					checkDeviceExtensionSupport(VkPhysicalDevice device);

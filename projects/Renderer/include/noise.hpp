@@ -1,5 +1,5 @@
-#ifndef GEOMETRY_HPP
-#define GEOMETRY_HPP
+#ifndef NOISE_HPP
+#define NOISE_HPP
 
 #include <random>
 
@@ -10,7 +10,7 @@
 
 /*
     noiseSet: Computes noise for some xy point.
-    terrainGenerator: Generates a terrain buffer using a noiseSet object.
+    NoiseSurface: Generates a terrain buffer using a noiseSet object.
 */
 
 
@@ -110,7 +110,7 @@ std::ostream& operator << (std::ostream& os, const noiseSet& obj);      ///< Ope
 // -----------------------------------------------------------------------------------
 
 /// Given a noiseSet object, and the xy dimensions, generates a terrain buffer
-class terrainGenerator
+class NoiseSurface
 {
     size_t    getPos(size_t x, size_t y) const;
     glm::vec3 getVertex(size_t position) const;
@@ -122,9 +122,9 @@ class terrainGenerator
     unsigned numIndices;        // example: a square has 6 indices
 
 public:
-    terrainGenerator();                                         ///< Default constructor
-    ~terrainGenerator();                                        ///< Destructor
-    terrainGenerator& operator = (const terrainGenerator& obj); ///< Operator =  overloading (copy assignment)
+    NoiseSurface();                                         ///< Default constructor
+    ~NoiseSurface();                                        ///< Destructor
+    NoiseSurface& operator = (const NoiseSurface& obj); ///< Operator =  overloading (copy assignment)
 
     float (*vertex)[8];             ///< VBO (vertex position, texture coordinates, normals)
     std::vector<uint32_t> indices;  ///< EBO
@@ -148,8 +148,8 @@ public:
     unsigned getNumIndices() const; ///< Amount of indices in the EBO (example: two triangles = 2*3)
 };
 
-std::ostream& operator << (std::ostream& os, const terrainGenerator& obj);
-std::istream& operator >> (std::istream& is, terrainGenerator& obj);
+std::ostream& operator << (std::ostream& os, const NoiseSurface& obj);
+std::istream& operator >> (std::istream& is, NoiseSurface& obj);
 
 // -----------------------------------------------------------------------------------
 

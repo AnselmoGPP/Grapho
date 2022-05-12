@@ -55,13 +55,13 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	include/toolkit.hpp
 	include/commons.hpp
 
-	include/geometry.hpp
-	include/world.hpp
-	src/geometry.cpp
-	src/world.cpp
+	include/noise.hpp
+	include/terrain.hpp
+	src/noise.cpp
+	src/terrain.cpp
 
-	../../files/TODO.txt
 	../../Readme.md
+	TODO.txt
 	CMakeLists.txt
 )
 
