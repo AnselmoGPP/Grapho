@@ -28,11 +28,14 @@ ADD_DEFINITIONS(
 
 ADD_EXECUTABLE(${PROJECT_NAME}
 	src/main.cpp
+
 	src/noise.cpp
 	src/terrain.cpp
+	src/common.cpp
 
 	include/noise.hpp
 	include/terrain.hpp
+	include/common.hpp
 
 	../../Readme.md
 	TODO.txt

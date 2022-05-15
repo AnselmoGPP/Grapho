@@ -10,7 +10,12 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
+#include "renderer.hpp"
+#include "toolkit.hpp"
+
 #include "noise.hpp"
+#include "common.hpp"
+
 
 // Given camPos, compute maximum terrain margins (array)
 // Given that, compute margins for each node, and their center
@@ -73,6 +78,8 @@ public:
 	//float(*vertex)[8];			///< VBO (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<float> vertex;		///< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<uint32_t> indices;	///< EBO[m][3] (indices[3])
+	modelIterator model;
+	bool modelLoaded;
 
 	void reset(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
 	void reset(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
@@ -89,24 +96,33 @@ public:
 	*/
 	void computeTerrain(noiseSet& noise, float textureFactor = 1.f);
 
+	void render(Renderer *app, std::vector<texIterator> &usedTextures);
+
+	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
 	float getSide() { return sideXSize; }
 };
 
 
-// In map chunks, is it possible that two chunks with different depth have same center?
-// Use int instead of floats for map key?
+/*
+	Aligerar Chunk
+	Follow camera
+	Modify texture multiplier (for now, it's useful for debugging)
+	New noiser
+	Enderezar textura terreno
+*/
 class TerrainGrid
 {
 	QuadNode<Chunk*>* root;
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
 	std::list<QuadNode<Chunk>> recicledNodes;	// <<<
-	std::vector<std::vector<uint32_t>> indices;	// <<<
+	std::vector<uint32_t> indices;	// <<<
+	std::vector<texIterator> textures;
 
+	Renderer *app;
 	noiseSet noiseGenerator;
-	glm::vec3 camPos;
-	size_t nodeCount;
 
 	// Configuration data
 	float rootCellSize;
@@ -116,7 +132,9 @@ class TerrainGrid
 	float distMultiplier;		// Relative distance (when distance camera-node's center is <relDist, the node is subdivided.
 
 	std::tuple<float, float, float> closestCenter();
-	void update(QuadNode<Chunk*> *node, size_t depth);
+
+	void updateTree_help(QuadNode<Chunk*> *node, size_t depth);	// Recursive
+	void updateUBOs_help(QuadNode<Chunk*>* node);				// Recursive (Preorder traversal)
 
 	//void insert(const Chunk& element);
 
@@ -132,7 +150,19 @@ public:
 	TerrainGrid(noiseSet noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	~TerrainGrid();
 
+	void addApp(Renderer& app);
+	void addTextures(const std::vector<texIterator>& textures);
 	void updateTree(glm::vec3 newCamPos);
+	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+
+	glm::vec3 camPos;
+	glm::mat4 view;
+	glm::mat4 proj;
+
+	size_t nodeCount;
+	size_t leafCount;
+	size_t updNodeCount;
+	size_t updLeafCount;
 
 	//void remove(const K& key);
 	//T& find(const K& key) { return (findHelp(root, key))->getElement(); }
@@ -154,6 +184,15 @@ void preorder(QuadNode<T>* root, V* visitor)
 	preorder(root.getRight());
 }
 
+template<typename T, typename V, typename A>
+void preorder(QuadNode<T>* root, V* visitor, A &params)
+{
+	if (!root) return;
+	visitor(root, params);
+	preorder(root.getLeft());
+	preorder(root.getRight());
+}
+
 template<typename T, typename V>
 void postorder(QuadNode<T>* root, V* visitor)
 {
@@ -171,6 +210,8 @@ void inorder(QuadNode<T>* root, V* visitor)
 	visitor(root);
 	inorder(root->getRight());
 }
+
+void updateUBOs_visitor(QuadNode<Chunk*>* node, const TerrainGrid &terrGrid);
 
 template<typename T>
 QuadNode<T>::QuadNode(const T& element, QuadNode* a, QuadNode* b, QuadNode* c, QuadNode* d) 

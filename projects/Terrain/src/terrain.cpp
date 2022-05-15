@@ -3,10 +3,10 @@
 
 
 Chunk::Chunk(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
-    : center(center), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY) { }
+    : center(center), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), modelLoaded(false) { }
 
 Chunk::Chunk(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
-    : sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY) 
+    : sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), modelLoaded(false)
 { 
     this->center.x = std::get<0>(center);
     this->center.y = std::get<1>(center);
@@ -64,8 +64,6 @@ void Chunk::computeTerrain(noiseSet& noise, float textureFactor)
     computeGridNormals(stride, noise);
 
     // Indices
-    //size_t index = 0;
-
     for (size_t y = 0; y < numVertexY - 1; y++)
         for (size_t x = 0; x < numVertexX - 1; x++)
         {
@@ -79,6 +77,43 @@ void Chunk::computeTerrain(noiseSet& noise, float textureFactor)
             indices.push_back(pos + 1);
             indices.push_back(pos + numVertexX + 1);
         }
+}
+
+void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures)
+{
+    VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), numVertexX * numVertexY, vertex.data(), indices, true);
+    
+    model = app->newModel(
+        1, 1, primitiveTopology::triangle,
+        vertexLoader,
+        UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
+        UBOconfig(1, lightSize, vec4size),
+        usedTextures,
+        (SHADERS_DIR + "v_terrainPTN.spv").c_str(),
+        (SHADERS_DIR + "f_terrainPTN.spv").c_str(),
+        false);
+
+    model->vsDynUBO.setUniform(0, 0, modelMatrix());
+    model->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
+
+    //sun.turnOff();
+    sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+    //sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
+    //sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
+    model->fsUBO.setUniform(0, 0, sun);
+
+    modelLoaded = true;
+}
+
+void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
+{
+    if (!modelLoaded) return;
+
+    for (size_t i = 0; i < model->vsDynUBO.dynBlocksCount; i++) {
+        model->vsDynUBO.setUniform(i, 1, view);
+        model->vsDynUBO.setUniform(i, 2, proj);
+    }
+    model->fsUBO.setUniform(0, 1, camPos);
 }
 
 void Chunk::computeGridNormals(float stride, noiseSet& noise)
@@ -296,16 +331,28 @@ glm::vec3 Chunk::getVertex(size_t position) const
 
 
 TerrainGrid::TerrainGrid(noiseSet noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : root(nullptr), noiseGenerator(noiseGenerator), camPos(camPos), nodeCount(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier) { }
+    : root(nullptr), app(nullptr), noiseGenerator(noiseGenerator), camPos(camPos), nodeCount(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier) 
+{ 
 
-TerrainGrid::~TerrainGrid() { }
+}
+
+TerrainGrid::~TerrainGrid() 
+{ 
+    delete root;
+    chunks.clear();
+}
+
+void TerrainGrid::addApp(Renderer& app) { this->app = &app; }
+
+void TerrainGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
 
 void TerrainGrid::updateTree(glm::vec3 newCamPos)
 {
+    nodeCount = leafCount = 0;
+    camPos = newCamPos;
+    if (root) delete root;
     if (!numLevels) return;
 
-    if (root) delete root;
-    camPos = newCamPos;
     std::tuple<float, float, float> center = closestCenter();
     
     if (chunks.find(center) == chunks.end());
@@ -313,51 +360,98 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
 
     root = new QuadNode<Chunk*>(chunks[center]);
 
-    update(root, 0);
+    updateTree_help(root, 0);
 }
 
-void TerrainGrid::update(QuadNode<Chunk*> *node, size_t depth)
+void TerrainGrid::updateTree_help(QuadNode<Chunk*> *node, size_t depth)
 {
+    nodeCount++;
+
     glm::vec3 center = node->getElement()->getCenter();
     float squareSide = node->getElement()->getSide() * node->getElement()->getSide();
     float squareDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y);
 
-    if (squareDist > squareSide * distMultiplier || depth == numLevels - 1)  // Is leaf node > Compute terrain
+    if (depth >= minLevel && (squareDist > squareSide * distMultiplier || depth == numLevels - 1))  // Is leaf node > Compute terrain > Children are nullptr by default
     {
+        leafCount++;
+
         if(!node->getElement()->vertex.size())
-            node->getElement()->computeTerrain(noiseGenerator);
-    }
+            node->getElement()->computeTerrain(noiseGenerator, 1);
+
+        if (!node->getElement()->modelLoaded)
+            node->getElement()->render(app, textures);
+     }
     else // Is not leaf node > Create children > Recursion
     {
         depth++;
-        //glm::vec3 newCenter;
+        
         std::tuple<float, float, float> newCenter;
         float side = node->getElement()->getSide();
+        float halfSide = side / 2;
+        float quarterSide = side / 4;
 
-        newCenter = { center.x - side/4, center.y + side/4, 0};
+        newCenter = { center.x - quarterSide, center.y + quarterSide, 0};
         if (chunks.find(newCenter) == chunks.end())
-            chunks[newCenter] = new Chunk(newCenter, side/2, numSideVertex, numSideVertex);
+            chunks[newCenter] = new Chunk(newCenter, halfSide, numSideVertex, numSideVertex);
         node->setA(new QuadNode<Chunk*>(chunks[newCenter]));
-        update(node->getA(), depth);
+        updateTree_help(node->getA(), depth);
 
-        newCenter = { center.x + side / 4, center.y + side / 4, 0 };
+        newCenter = { center.x + quarterSide, center.y + quarterSide, 0 };
         if (chunks.find(newCenter) == chunks.end())
-            chunks[newCenter] = new Chunk(newCenter, side / 2, numSideVertex, numSideVertex);
+            chunks[newCenter] = new Chunk(newCenter, halfSide, numSideVertex, numSideVertex);
         node->setB(new QuadNode<Chunk*>(chunks[newCenter]));
-        update(node->getB(), depth);
+        updateTree_help(node->getB(), depth);
 
-        newCenter = { center.x - side / 4, center.y - side / 4, 0 };
+        newCenter = { center.x - quarterSide, center.y - quarterSide, 0 };
         if (chunks.find(newCenter) == chunks.end())
-            chunks[newCenter] = new Chunk(newCenter, side / 2, numSideVertex, numSideVertex);
+            chunks[newCenter] = new Chunk(newCenter, halfSide, numSideVertex, numSideVertex);
         node->setC(new QuadNode<Chunk*>(chunks[newCenter]));
-        update(node->getC(), depth);
+        updateTree_help(node->getC(), depth);
 
-        newCenter = { center.x + side / 4, center.y - side / 4, 0 };
+        newCenter = { center.x + quarterSide, center.y - quarterSide, 0 };
         if (chunks.find(newCenter) == chunks.end())
-            chunks[newCenter] = new Chunk(newCenter, side / 2, numSideVertex, numSideVertex);
+            chunks[newCenter] = new Chunk(newCenter, halfSide, numSideVertex, numSideVertex);
         node->setD(new QuadNode<Chunk*>(chunks[newCenter]));
-        update(node->getD(), depth);
+        updateTree_help(node->getD(), depth);
     }
+}
+
+void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
+{
+    updNodeCount = 0;
+    updLeafCount = 0;
+
+    this->camPos = camPos;
+    this->view = view;
+    this->proj = proj;
+
+    //preorder<Chunk*, void (QuadNode<Chunk*>*)>(root, nodeVisitor);
+    updateUBOs_help(root);  // Preorder traversal
+}
+
+void TerrainGrid::updateUBOs_help(QuadNode<Chunk*>* node)
+{
+    updNodeCount++;
+
+    if (!node) return;
+
+    if (node->isLeaf())
+    {
+        updLeafCount++;
+        node->getElement()->updateUBOs(camPos, view, proj);
+        return;
+    }
+
+    updateUBOs_help(node->getA());
+    updateUBOs_help(node->getB());
+    updateUBOs_help(node->getC());
+    updateUBOs_help(node->getD());
+}
+
+void updateUBOs_visitor(QuadNode<Chunk*>* node, const TerrainGrid& terrGrid)
+{
+    if (node->isLeaf())
+        node->getElement()->updateUBOs(terrGrid.camPos, terrGrid.view, terrGrid.proj);
 }
 
 std::tuple<float, float, float> TerrainGrid::closestCenter()
