@@ -116,10 +116,9 @@ noiseSet noiser(
 	false,							// Random offset
 	0);								// Seed
 
-//NoiseSurface terrGen;
 Chunk singleChunk(glm::vec3(50, 50, 0), 100, 21, 21);
-TerrainGrid terrChunks(noiser, glm::vec3(0, 0, 0), 6400, 21, 7, 2, 1);
 
+TerrainGrid terrChunks(noiser, glm::vec3(0, 0, 0), 6400, 21, 7, 2, 1);
 
 // Data to update
 long double frameTime;
@@ -140,9 +139,8 @@ void setGrid(Renderer& app);
 void setSkybox(Renderer& app);
 void setCottage(Renderer& app);
 void setRoom(Renderer& app);
-void setTerrain_1(Renderer& app);
-void setTerrain_2(Renderer& app);
-void setTerrainGrid(Renderer& app);
+void setChunk(Renderer& app);
+void setChunkSet(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
@@ -164,9 +162,8 @@ int main(int argc, char* argv[])
 	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
-	//setTerrain_1(app);
-	setTerrain_2(app);
-	setTerrainGrid(app);
+	//setChunk(app);
+	setChunkSet(app);
 	setSun(app);
 	setReticule(app);
 
@@ -438,50 +435,17 @@ void setRoom(Renderer& app)
 	//assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 }
 
-void setTerrain_1(Renderer& app)
-{
-	std::cout << "> " << __func__ << "()" << std::endl;
-
-	//terrGen.computeTerrain(noiser, 0, 0, 5, 20, 20, 1.f);
-	singleChunk.computeTerrain(noiser);
-
-	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
-
-	//VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), terrGen.getNumVertex(), terrGen.vertex, terrGen.indices, true);
-	
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), singleChunk.getNumVertex(), singleChunk.vertex.data(), singleChunk.indices, true);
-
-	assets["terrain"] = app.newModel(
-		1, 1, primitiveTopology::triangle,
-		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
-		UBOconfig(1, lightSize, vec4size),
-		usedTextures,
-		(SHADERS_DIR + "v_terrainPTN.spv").c_str(),
-		(SHADERS_DIR + "f_terrainPTN.spv").c_str(),
-		false);
-
-	assets["terrain"]->vsDynUBO.setUniform(0, 0, modelMatrix());
-	assets["terrain"]->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
-
-	//sun.turnOff();
-	//sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	//sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
-	sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
-	assets["terrain"]->fsUBO.setUniform(0, 0, sun);
-}
-
-void setTerrain_2(Renderer& app)
+void setChunk(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
 
-	singleChunk.computeTerrain(noiser, 1);
-	singleChunk.render(&app, usedTextures);
+	singleChunk.computeTerrain(noiser, true, 1.f);
+	singleChunk.render(&app, usedTextures, nullptr);
 }
 
-void setTerrainGrid(Renderer& app)
+void setChunkSet(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 

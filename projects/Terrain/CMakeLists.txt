@@ -62,6 +62,8 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/stb
 	../../extern/tinyobjloader
 	../../extern/FastNoiseLite
+	../../extern/FastNoise2/include
+	../../extern/FastNoise2/include
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
 
 	#../../extern/glad/include

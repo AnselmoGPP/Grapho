@@ -35,53 +35,62 @@ void Chunk::reset(std::tuple<float, float, float> center, float sideXSize, unsig
     indices.clear();
 }
 
-void Chunk::computeTerrain(noiseSet& noise, float textureFactor)
+void Chunk::computeTerrain(noiseSet& noise, bool computeIndices, float textureFactor)
 {
-    vertex.reserve(numVertexX * numVertexY * 8);
-    indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
-
     float stride = sideXSize / (numVertexX - 1);
     float x0 = center.x - sideXSize / 2;
     float y0 = center.y - (stride * (numVertexY - 1)) / 2;
 
     // Vertex data
+    vertex.reserve(numVertexX * numVertexY * 8);
+
     for (size_t y = 0; y < numVertexY; y++)
         for (size_t x = 0; x < numVertexX; x++)
         {
             size_t pos = y * numVertexX + x;
 
-            // positions
+            // positions (0, 1, 2)
             vertex[pos * 8 + 0] = x0 + x * stride;
             vertex[pos * 8 + 1] = y0 + y * stride;
             vertex[pos * 8 + 2] = noise.GetNoise((float)vertex[pos * 8 + 0], (float)vertex[pos * 8 + 1]);
 
-            // textures
+            // textures (3, 4)
             vertex[pos * 8 + 3] = x * textureFactor;
             vertex[pos * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
         }
 
-    // Normals
+    // Normals (5, 6, 7)
     computeGridNormals(stride, noise);
 
     // Indices
-    for (size_t y = 0; y < numVertexY - 1; y++)
-        for (size_t x = 0; x < numVertexX - 1; x++)
-        {
-            unsigned int pos = getPos(x, y);
+    if (computeIndices)
+    {
+        indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
 
-            indices.push_back(pos);
-            indices.push_back(pos + numVertexX + 1);
-            indices.push_back(pos + numVertexX);
+        for (size_t y = 0; y < numVertexY - 1; y++)
+            for (size_t x = 0; x < numVertexX - 1; x++)
+            {
+                unsigned int pos = getPos(x, y);
 
-            indices.push_back(pos);
-            indices.push_back(pos + 1);
-            indices.push_back(pos + numVertexX + 1);
-        }
+                indices.push_back(pos);
+                indices.push_back(pos + numVertexX + 1);
+                indices.push_back(pos + numVertexX);
+
+                indices.push_back(pos);
+                indices.push_back(pos + 1);
+                indices.push_back(pos + numVertexX + 1);
+            }
+    }
 }
 
-void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures)
+void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::vector<uint32_t>* indices)
 {
-    VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 1), numVertexX * numVertexY, vertex.data(), indices, true);
+    VertexLoader* vertexLoader = new VertexFromUser(
+        VertexType(1, 0, 1, 1), 
+        numVertexX * numVertexY, 
+        vertex.data(), 
+        indices? *indices : this->indices, 
+        true);
     
     model = app->newModel(
         1, 1, primitiveTopology::triangle,
@@ -94,6 +103,8 @@ void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures)
         false);
 
     model->vsDynUBO.setUniform(0, 0, modelMatrix());
+    //model->vsDynUBO.setUniform(i, 1, view);
+    //model->vsDynUBO.setUniform(i, 2, proj);
     model->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
 
     //sun.turnOff();
@@ -101,6 +112,7 @@ void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures)
     //sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
     //sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
     model->fsUBO.setUniform(0, 0, sun);
+    //model->fsUBO.setUniform(0, 1, camPos);
 
     modelLoaded = true;
 }
@@ -114,6 +126,25 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
         model->vsDynUBO.setUniform(i, 2, proj);
     }
     model->fsUBO.setUniform(0, 1, camPos);
+}
+
+void Chunk::computeIndices(std::vector<uint32_t>& indices)
+{
+    indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
+
+    for (size_t y = 0; y < numVertexY - 1; y++)
+        for (size_t x = 0; x < numVertexX - 1; x++)
+        {
+            unsigned int pos = getPos(x, y);
+
+            indices.push_back(pos);
+            indices.push_back(pos + numVertexX + 1);
+            indices.push_back(pos + numVertexX);
+
+            indices.push_back(pos);
+            indices.push_back(pos + 1);
+            indices.push_back(pos + numVertexX + 1);
+        }
 }
 
 void Chunk::computeGridNormals(float stride, noiseSet& noise)
@@ -171,6 +202,8 @@ void Chunk::computeGridNormals(float stride, noiseSet& noise)
         }
 
     // Special cases: Vertex at the border
+
+    // Left & Right
     for (size_t y = 1; y < numVertexY - 1; y++)
     {
         size_t pos;
@@ -209,12 +242,13 @@ void Chunk::computeGridNormals(float stride, noiseSet& noise)
         tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
     }
 
+    // Upper & Bottom
     for (size_t x = 1; x < numVertexX - 1; x++)
     {
         size_t pos;
         glm::vec3 up, down, left, right, center;
 
-        // Down side:
+        // Bottom side:
         //     -Vertex vectors
         pos = getPos(x, 0);
         center = getVertex(pos);
@@ -247,65 +281,67 @@ void Chunk::computeGridNormals(float stride, noiseSet& noise)
         tempNormals[pos] += glm::cross(up, left) + glm::cross(right, up);
     }
 
-    //     -Corners
-    glm::vec3 topLeft, topRight, lowLeft, lowRight;
-    glm::vec3 right, left, up, down;
+    // Corners
+    glm::vec3 center, right, left, up, down;
     size_t pos;
 
+    //  - Top left
     pos = getPos(0, numVertexY - 1);
-    topLeft = getVertex(pos);
+    center = getVertex(pos);
     right = getVertex(getPos(1, numVertexY - 1));
     down = getVertex(getPos(0, numVertexY - 2));
-    up = glm::vec3(topLeft.x, topLeft.y + stride, noise.GetNoise(topLeft.x, topLeft.y + stride));
-    left = glm::vec3(topLeft.x - stride, topLeft.y, noise.GetNoise(topLeft.x - stride, topLeft.y));
+    up = glm::vec3(center.x, center.y + stride, noise.GetNoise(center.x, center.y + stride));
+    left = glm::vec3(center.x - stride, center.y, noise.GetNoise(center.x - stride, center.y));
 
-    right = right - topLeft;
-    left = left - topLeft;
-    up = up - topLeft;
-    down = down - topLeft;
+    right = right - center;
+    left = left - center;
+    up = up - center;
+    down = down - center;
 
     tempNormals[pos] += glm::cross(right, up) + glm::cross(up, left) + glm::cross(left, down);
 
+    //  - Top right
     pos = getPos(numVertexX - 1, numVertexY - 1);
-    topRight = getVertex(pos);
+    center = getVertex(pos);
     down = getVertex(getPos(numVertexX - 1, numVertexY - 2));
     left = getVertex(getPos(numVertexX - 2, numVertexY - 1));
-    right = glm::vec3(topRight.x + stride, topRight.y, noise.GetNoise(topRight.x + stride, topRight.y));
-    up = glm::vec3(topRight.x, topRight.y + stride, noise.GetNoise(topRight.x, topRight.y + stride));
+    right = glm::vec3(center.x + stride, center.y, noise.GetNoise(center.x + stride, center.y));
+    up = glm::vec3(center.x, center.y + stride, noise.GetNoise(center.x, center.y + stride));
 
-
-    right = right - topRight;
-    left = left - topRight;
-    up = up - topRight;
-    down = down - topRight;
+    right = right - center;
+    left = left - center;
+    up = up - center;
+    down = down - center;
 
     tempNormals[pos] += glm::cross(down, right) + glm::cross(right, up) + glm::cross(up, left);
 
+    //  - Low left
     pos = getPos(0, 0);
-    lowLeft = getVertex(pos);
+    center = getVertex(pos);
     right = getVertex(getPos(1, 0));
     up = getVertex(getPos(0, 1));
-    down = glm::vec3(lowLeft.x, lowLeft.y - stride, noise.GetNoise(lowLeft.x, lowLeft.y - stride));
-    left = glm::vec3(lowLeft.x - stride, lowLeft.y, noise.GetNoise(lowLeft.x - stride, lowLeft.y));
+    down = glm::vec3(center.x, center.y - stride, noise.GetNoise(center.x, center.y - stride));
+    left = glm::vec3(center.x - stride, center.y, noise.GetNoise(center.x - stride, center.y));
 
-    right = right - lowLeft;
-    left = left - lowLeft;
-    up = up - lowLeft;
-    down = down - lowLeft;
+    right = right - center;
+    left = left - center;
+    up = up - center;
+    down = down - center;
 
     tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down) + glm::cross(down, right);
 
+    //  - Low right
     pos = getPos(numVertexX - 1, 0);
-    lowRight = getVertex(pos);
-    right = glm::vec3(lowRight.x + stride, lowRight.y, noise.GetNoise(lowRight.x + 1, lowRight.y));
+    center = getVertex(pos);
     up = getVertex(getPos(numVertexX - 1, 1));
-    down = glm::vec3(lowRight.x, lowRight.y - stride, noise.GetNoise(lowRight.x, lowRight.y - stride));
     left = getVertex(getPos(numVertexX - 2, 0));
+    right = glm::vec3(center.x + stride, center.y, noise.GetNoise(center.x + stride, center.y));
+    down = glm::vec3(center.x, center.y - stride, noise.GetNoise(center.x, center.y - stride));
 
-    right = right - lowRight;
-    left = left - lowRight;
-    up = up - lowRight;
-    down = down - lowRight;
+    right = right - center;
+    left = left - center;
+    up = up - center;
+    down = down - center;
 
     tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right) + glm::cross(right, up);
 
@@ -331,7 +367,7 @@ glm::vec3 Chunk::getVertex(size_t position) const
 
 
 TerrainGrid::TerrainGrid(noiseSet noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : root(nullptr), app(nullptr), noiseGenerator(noiseGenerator), camPos(camPos), nodeCount(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier) 
+    : root(nullptr), app(nullptr), noiseGenerator(noiseGenerator), camPos(camPos), nodeCount(0), leafCount(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier) 
 { 
 
 }
@@ -348,7 +384,6 @@ void TerrainGrid::addTextures(const std::vector<texIterator>& textures) { this->
 
 void TerrainGrid::updateTree(glm::vec3 newCamPos)
 {
-    nodeCount = leafCount = 0;
     camPos = newCamPos;
     if (root) delete root;
     if (!numLevels) return;
@@ -359,6 +394,7 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
         chunks[center] = new Chunk(center, rootCellSize, numSideVertex, numSideVertex);
 
     root = new QuadNode<Chunk*>(chunks[center]);
+    chunks[center]->computeIndices(indices);
 
     updateTree_help(root, 0);
 }
@@ -376,10 +412,10 @@ void TerrainGrid::updateTree_help(QuadNode<Chunk*> *node, size_t depth)
         leafCount++;
 
         if(!node->getElement()->vertex.size())
-            node->getElement()->computeTerrain(noiseGenerator, 1);
+            node->getElement()->computeTerrain(noiseGenerator, false, std::pow(2, numLevels - 1 - depth));
 
         if (!node->getElement()->modelLoaded)
-            node->getElement()->render(app, textures);
+            node->getElement()->render(app, textures, &indices);
      }
     else // Is not leaf node > Create children > Recursion
     {
@@ -418,9 +454,6 @@ void TerrainGrid::updateTree_help(QuadNode<Chunk*> *node, size_t depth)
 
 void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
 {
-    updNodeCount = 0;
-    updLeafCount = 0;
-
     this->camPos = camPos;
     this->view = view;
     this->proj = proj;
@@ -431,13 +464,10 @@ void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, con
 
 void TerrainGrid::updateUBOs_help(QuadNode<Chunk*>* node)
 {
-    updNodeCount++;
-
     if (!node) return;
 
     if (node->isLeaf())
     {
-        updLeafCount++;
         node->getElement()->updateUBOs(camPos, view, proj);
         return;
     }

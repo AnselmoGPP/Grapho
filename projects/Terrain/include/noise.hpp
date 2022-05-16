@@ -3,10 +3,13 @@
 
 #include <random>
 
+#include "FastNoiseLite.h"
+//#include "FastNoise/FastNoise.h"
+//#include "FastSIMD/FastSIMD.h"
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include "FastNoiseLite.h"
 
 /*
     noiseSet: Computes noise for some xy point.

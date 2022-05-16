@@ -4,7 +4,8 @@
 # cmake -G"Visual Studio 15 2017 Win32" ..
 
 CMAKE_MINIMUM_REQUIRED (VERSION 3.12)
-PROJECT (VulkRend)
+PROJECT (Grapho)
+#PROJECT (VulkRend)
 
 MESSAGE(STATUS "CMake version: " ${CMAKE_MAJOR_VERSION} "." ${CMAKE_MINOR_VERSION})
 

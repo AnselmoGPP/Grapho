@@ -94,11 +94,14 @@ public:
 	*   @param numVertex_Y Number of vertex along the Y axis
 	*   @param textureFactor How much of the texture surface will fit in a square of 4 contiguous vertex
 	*/
-	void computeTerrain(noiseSet& noise, float textureFactor = 1.f);
+	void computeTerrain(noiseSet& noise, bool computeIndices, float textureFactor);
 
-	void render(Renderer *app, std::vector<texIterator> &usedTextures);
+	void render(Renderer *app, std::vector<texIterator> &usedTextures, std::vector<uint32_t>* indices);
 
 	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+
+	/// Used for computing indices and saving them in an outside buffer, which is passed by reference. 
+	void computeIndices(std::vector<uint32_t>& indices);
 
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
@@ -107,18 +110,19 @@ public:
 
 
 /*
-	Aligerar Chunk
-	Follow camera
-	Modify texture multiplier (for now, it's useful for debugging)
+	x Aligerar Chunk
+	x Enderezar textura terreno
+	x Modify texture multiplier (for now, it's useful for debugging)
+	x Chunk corners shadows
 	New noiser
-	Enderezar textura terreno
+	Follow camera
 */
 class TerrainGrid
 {
 	QuadNode<Chunk*>* root;
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
 	std::list<QuadNode<Chunk>> recicledNodes;	// <<<
-	std::vector<uint32_t> indices;	// <<<
+	std::vector<uint32_t> indices;
 	std::vector<texIterator> textures;
 
 	Renderer *app;
@@ -152,6 +156,7 @@ public:
 
 	void addApp(Renderer& app);
 	void addTextures(const std::vector<texIterator>& textures);
+
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
 
@@ -161,8 +166,6 @@ public:
 
 	size_t nodeCount;
 	size_t leafCount;
-	size_t updNodeCount;
-	size_t updLeafCount;
 
 	//void remove(const K& key);
 	//T& find(const K& key) { return (findHelp(root, key))->getElement(); }
