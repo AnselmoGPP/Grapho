@@ -17,17 +17,14 @@
 #include "common.hpp"
 
 
-// Given camPos, compute maximum terrain margins (array)
-// Given that, compute margins for each node, and their center
-
 /// Generic Binary Search Tree Node.
 template<typename T>
 class QuadNode
 {
 public:
 	QuadNode() { };
-	QuadNode(const T& element, QuadNode* a = nullptr, QuadNode* b = nullptr, QuadNode* c = nullptr, QuadNode* d = nullptr);
-	~QuadNode();
+	QuadNode(const T& element, QuadNode* a = nullptr, QuadNode* b = nullptr, QuadNode* c = nullptr, QuadNode* d = nullptr) : element(element), a(a), b(b), c(c), d(d) { };
+	~QuadNode() { if (a) delete a; if (b) delete b; if (c) delete c; if (d) delete d; };
 
 	void setElement(const T& newElement) { element = newElement; }
 	void setA(QuadNode<T>* node) { a = node; }
@@ -66,7 +63,7 @@ class Chunk
 	float sideXSize;
 	unsigned numVertexX, numVertexY;
 
-	void computeGridNormals(float stride, noiseSet& noise);
+	void computeGridNormals(float stride, Noiser& noise);
 	size_t getPos(size_t x, size_t y) const;
 	glm::vec3 getVertex(size_t position) const;
 
@@ -94,7 +91,7 @@ public:
 	*   @param numVertex_Y Number of vertex along the Y axis
 	*   @param textureFactor How much of the texture surface will fit in a square of 4 contiguous vertex
 	*/
-	void computeTerrain(noiseSet& noise, bool computeIndices, float textureFactor);
+	void computeTerrain(Noiser& noise, bool computeIndices, float textureFactor);
 
 	void render(Renderer *app, std::vector<texIterator> &usedTextures, std::vector<uint32_t>* indices);
 
@@ -114,7 +111,7 @@ public:
 	x Enderezar textura terreno
 	x Modify texture multiplier (for now, it's useful for debugging)
 	x Chunk corners shadows
-	New noiser
+	x New noiser
 	Follow camera
 */
 class TerrainGrid
@@ -126,7 +123,7 @@ class TerrainGrid
 	std::vector<texIterator> textures;
 
 	Renderer *app;
-	noiseSet noiseGenerator;
+	Noiser noiseGenerator;
 
 	// Configuration data
 	float rootCellSize;
@@ -151,7 +148,7 @@ class TerrainGrid
 	//BSTNode<T>* getMin(BSTNode<T>* node);
 
 public:
-	TerrainGrid(noiseSet noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Noiser noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	~TerrainGrid();
 
 	void addApp(Renderer& app);
@@ -216,72 +213,5 @@ void inorder(QuadNode<T>* root, V* visitor)
 
 void updateUBOs_visitor(QuadNode<Chunk*>* node, const TerrainGrid &terrGrid);
 
-template<typename T>
-QuadNode<T>::QuadNode(const T& element, QuadNode* a, QuadNode* b, QuadNode* c, QuadNode* d) 
-	: element(element), a(a), b(b), c(c), d(d) { }
-
-template<typename T>
-QuadNode<T>::~QuadNode() 
-{ 
-	if (a) delete a; 
-	if (b) delete b; 
-	if (c) delete c; 
-	if (d) delete d; 
-};
-
-
-//-----------------------------------------------------------------------------
-
-/// Bidimensional index (x, y) that satisfies the "Compare" set of requirements for its use in std::map.
-class BinaryKey
-{
-public:
-    int x;
-    int y;
-
-    /// Constructor
-    BinaryKey(int first, int second);
-
-    /// Set (x, y) values simultaneously
-    void set(int first, int second);
-
-    /// Comparison (binary predicate). Strict weak ordering (true if a precedes b)
-    bool operator <( const BinaryKey &rhs ) const;
-
-    /// Equivalence. True if a == b, false otherwise.
-    bool operator ==( const BinaryKey &rhs ) const;
-};
-
-/*
- * TODO:
- * Circular area of chunks
- * Update only new chunks. Move or delete the others
- */
-class terrainChunks
-{
-    //glm::vec3 viewerPosition;
-    //std::vector<std::vector<terrainChunk>> chunk;
-    //std::vector<std::vector<glm::vec2>> chunkName;
-
-public:
-    noiseSet noise;             ///< Noise generator
-    float    maxViewDist;       ///< Maximum view distance from viewer
-    float    chunkSize;         ///< Size of each chunk (meters)
-    int      chunksVisible;     ///< Number of chunkSizes for reaching maxViewDist
-    int      vertexPerSide;     ///< Number of vertex per chunk's side
-
-    std::map<BinaryKey, NoiseSurface> chunkDict;    ///< Collection of all the chunks (as a dictionary)
-
-    terrainChunks(noiseSet noise, float maxViewDist, float chunkSize, unsigned vertexPerSide);
-    ~terrainChunks();
-
-    int getNumVertex();
-    int getNumIndices();
-    int getMaxViewDist();
-
-    void updateVisibleChunks(glm::vec3 viewerPos);
-    void updateTerrainParameters(noiseSet noise, float maxViewDist, float chunkSize, unsigned vertexPerSide);
-    void setNoise(noiseSet newNoise);
-};
 
 #endif

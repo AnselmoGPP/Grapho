@@ -55,13 +55,28 @@ void printMat(const T& matrix)
     }
 }
 
+/// Print the contents of a glm::vecX. Useful for debugging
+template<typename T>
+void printVec(const T& vec)
+{
+    //const float* pSource = (const float*)glm::value_ptr(matrix);
+    glm::length_t length = vec.length();
+    float output;
+
+    for (int i = 0; i < length; i++)
+        std::cout << ((abs(vec[i]) < 0.0001) ? 0 : vec[i]) << "  ";
+
+    std::cout << std::endl;
+}
+
+
 // Vertex sets -----------------------------------------------------------------
 
 /// Get the XYZ axis as 3 RGB lines
 size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int lengthFromCenter, float colorIntensity);
 
 /// Get a set of lines that form a grid
-size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, glm::vec3 color);
+size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color);
 
 /// (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix (example: sun).
 size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize);

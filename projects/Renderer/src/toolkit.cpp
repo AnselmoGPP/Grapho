@@ -53,21 +53,21 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 	return 6;
 }
 
-size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, glm::vec3 color)
+size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
 {
 	// Vertex buffer
 	int start = (stepSize * stepsPerSide) / 2;
 
 	for (int i = 0; i <= stepsPerSide; i++)
 	{
-		vertexDestination.push_back({ glm::vec3(-start, -start + i * stepSize, 0), color });
-		vertexDestination.push_back({ glm::vec3( start, -start + i * stepSize, 0), color });
+		vertexDestination.push_back({ glm::vec3(-start, -start + i * stepSize, height), color });
+		vertexDestination.push_back({ glm::vec3( start, -start + i * stepSize, height), color });
 	}
 
 	for (int i = 0; i <= stepsPerSide; i++)
 	{
-		vertexDestination.push_back({ glm::vec3(-start + i * stepSize, -start, 0), color });
-		vertexDestination.push_back({ glm::vec3(-start + i * stepSize,  start, 0), color });
+		vertexDestination.push_back({ glm::vec3(-start + i * stepSize, -start, height), color });
+		vertexDestination.push_back({ glm::vec3(-start + i * stepSize,  start, height), color });
 	}
 	
 	// Indices buffer

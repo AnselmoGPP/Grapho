@@ -107,14 +107,13 @@ int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
 
 // Terrain
-noiseSet noiser( 
-	5, 1.5, 0.28f,					// Octaves, Lacunarity, Persistance
-	1, 150,							// Scale, Multiplier
-	2,								// Curve degree
-	0, 0,							// X offset, Y offset
+Noiser noiser(
 	FastNoiseLite::NoiseType_Perlin,// Noise type
-	false,							// Random offset
-	0);								// Seed
+	5, 1.5, 0.28f,					// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	1, 200,							// Scale, Multiplier
+	1,								// Curve degree
+	500, 500, 0,					// XYZ offsets
+	4952);							// Seed
 
 Chunk singleChunk(glm::vec3(50, 50, 0), 100, 21, 21);
 
@@ -333,10 +332,10 @@ void setAxis(Renderer& app)
 void setGrid(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
-
+	
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
-	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, glm::vec3(0.1, 0.1, 0.6));
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
 

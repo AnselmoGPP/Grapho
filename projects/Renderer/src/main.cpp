@@ -319,7 +319,7 @@ void setGrid(Renderer& app)
 
 	std::vector<VertexPC> v_grid;
 	std::vector<uint32_t> i_grid;
-	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, glm::vec3(0.1, 0.1, 0.6));
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
 
