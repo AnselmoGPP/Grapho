@@ -50,7 +50,7 @@ class Renderer
 
 	const int MAX_FRAMES_IN_FLIGHT		= 2;		//!< How many frames should be processed concurrently.
 	VkClearColorValue backgroundColor	= { 50/255.f, 150/255.f, 255/255.f, 1.0f };
-	int maxFPS							= 80;
+	int maxFPS							= 60;
 	int waitTime						= 500;		//!< Time the loading-thread wait till next check.
 
 	// Main methods:
@@ -79,7 +79,7 @@ class Renderer
 
 	/// Create semaphores and fences for synchronizing the events occuring in each frame (drawFrame()).
 	void createSyncObjects();
-	void mainLoop();
+	void renderLoop();
 
 	/**
 	*	Acquire image from swap chain, execute command buffer with that image as attachment in the framebuffer, and return the image to the swap chain for presentation.
@@ -140,6 +140,8 @@ class Renderer
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
 	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
 
+	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept.
+
 public:
 
 	// LOOK what if firstModel.size() == 0
@@ -194,6 +196,16 @@ public:
 	*	@brief 
 	*/
 	void			setRenders(modelIterator model, size_t numberOfRenders);
+
+	/**
+	*	@brief Not used
+	*/
+	size_t			getRendersCount(modelIterator model);
+
+	/**
+	*	@brief Not used
+	*/
+	size_t			getFrameCount();
 };
 
 #endif

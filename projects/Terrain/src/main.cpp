@@ -109,15 +109,15 @@ ifOnce check;			// LOOK implement as functor (function with state)
 // Terrain
 Noiser noiser(
 	FastNoiseLite::NoiseType_Perlin,// Noise type
-	5, 1.5, 0.28f,					// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-	1, 200,							// Scale, Multiplier
-	1,								// Curve degree
+	4, 1.5, 0.28f,					// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	1, 50,							// Scale, Multiplier
+	0,								// Curve degree
 	500, 500, 0,					// XYZ offsets
 	4952);							// Seed
 
-Chunk singleChunk(glm::vec3(50, 50, 0), 100, 21, 21);
+Chunk singleChunk(glm::vec3(50, 50, 0), 200, 41, 11);
 
-TerrainGrid terrChunks(noiser, glm::vec3(0, 0, 0), 6400, 21, 7, 2, 1);
+TerrainGrid terrChunks(noiser, 6400, 21, 7, 2, 1);
 
 // Data to update
 long double frameTime;
@@ -258,6 +258,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	singleChunk.updateUBOs(pos, view, proj);
 
+	terrChunks.updateTree(pos);
 	terrChunks.updateUBOs(pos, view, proj);
 
 	if (assets.find("sun") != assets.end())
@@ -452,7 +453,7 @@ void setChunkSet(Renderer& app)
 	terrChunks.addTextures(usedTextures);
 	terrChunks.addApp(app);
 
-	terrChunks.updateTree(glm::vec3(0,0,0));
+	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
 
 void setSun(Renderer& app)

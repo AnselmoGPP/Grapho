@@ -19,7 +19,8 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
-	runThread(false) { }
+	runThread(false),
+	frameCount(0) { }
 
 Renderer::~Renderer() { }
 
@@ -33,7 +34,7 @@ int Renderer::run()
 		runThread = true;
 		thread_loadModels = std::thread(&Renderer::loadingThread, this);
 
-		mainLoop();
+		renderLoop();
 		cleanup();
 	}
 	catch (const std::exception& e) 
@@ -162,13 +163,16 @@ void Renderer::createSyncObjects()
 	}
 }
 
-void Renderer::mainLoop()
+void Renderer::renderLoop()
 {
+	frameCount = 0;
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
 
 	while (!glfwWindowShouldClose(e.window))
 	{
+		++frameCount;
+
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
 
 		drawFrame();
@@ -431,13 +435,17 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 
 void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 {
-	if (numberOfRenders != model->vsDynUBO.dynBlocksCount)
+	if (numberOfRenders != model->activeRenders)
 	{
 		model->setRenderCount(numberOfRenders);
 
 		updateCommandBuffer = true;		//We are flagging commandBuffer for update assuming that our model is in list "model"
 	}
 }
+
+size_t Renderer::getRendersCount(modelIterator model) { return model->activeRenders; }
+
+size_t Renderer::getFrameCount() { return frameCount; }
 
 void Renderer::loadingThread()
 {
@@ -535,7 +543,6 @@ void Renderer::loadingThread()
 
 void Renderer::updateModelsState()
 {
-	// Up textures
 	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
 	{
 		texIterator begin, end;

@@ -72,11 +72,11 @@ public:
 	Chunk(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
 	~Chunk() { };
 
-	//float(*vertex)[8];			///< VBO (vertex position[3], texture coordinates[2], normals[3])
-	std::vector<float> vertex;		///< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
-	std::vector<uint32_t> indices;	///< EBO[m][3] (indices[3])
-	modelIterator model;
-	bool modelLoaded;
+	//float(*vertex)[8];			//!< VBO (vertex position[3], texture coordinates[2], normals[3])
+	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
+	std::vector<uint32_t> indices;	//!< EBO[m][3] (indices[3])
+	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
+	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 
 	void reset(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
 	void reset(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
@@ -103,6 +103,10 @@ public:
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
 	float getSide() { return sideXSize; }
+
+	// Flags (used by TerrainGrid)
+	bool visible;		// Chunk to render
+	//bool inRange;		// Chunk within the limits of the visible area of chunks
 };
 
 
@@ -112,7 +116,17 @@ public:
 	x Modify texture multiplier (for now, it's useful for debugging)
 	x Chunk corners shadows
 	x New noiser
-	Follow camera
+	x (Non-possible) Don't create chunks of non-leaf nodes
+	x (better not) rend to app
+	x node-getElement() to chunk*
+	x Encapsulate chunk/node creation
+	fix gaps when loading chunks (un-render chunks after their replacements have been rendered)
+	exception when going to far -> try your own octaves implementation
+	Destructor TerrainGrid/Chunks that correctly deletes chunks
+	x Follow camera
+	Recicle chunks
+	Remove some non-visible chunks when there are too much of them (saves memory)
+	computeTerrain may cause bottleneck (no second thread loading)
 */
 class TerrainGrid
 {
@@ -136,6 +150,7 @@ class TerrainGrid
 
 	void updateTree_help(QuadNode<Chunk*> *node, size_t depth);	// Recursive
 	void updateUBOs_help(QuadNode<Chunk*>* node);				// Recursive (Preorder traversal)
+	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength);
 
 	//void insert(const Chunk& element);
 
@@ -148,7 +163,7 @@ class TerrainGrid
 	//BSTNode<T>* getMin(BSTNode<T>* node);
 
 public:
-	TerrainGrid(Noiser noiseGenerator, glm::vec3 camPos, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	~TerrainGrid();
 
 	void addApp(Renderer& app);

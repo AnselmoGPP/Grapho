@@ -129,7 +129,7 @@ public:
 	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
 
-	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded)
+	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 
 	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
 	void setRenderCount(size_t numRenders);
