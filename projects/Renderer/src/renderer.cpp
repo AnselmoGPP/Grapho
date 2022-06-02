@@ -26,6 +26,8 @@ Renderer::~Renderer() { }
 
 int Renderer::run()
 {
+	std::cout << __func__ << std::endl;
+
 	try 
 	{
 		createCommandBuffers();
@@ -39,7 +41,7 @@ int Renderer::run()
 	}
 	catch (const std::exception& e) 
 	{
-		std::cerr << e.what() << std::endl;
+		std::cerr << __func__ << "(): " << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 }
@@ -47,6 +49,8 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
+	std::cout << __func__ << std::endl;
+
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChainImages.size());
 
@@ -56,9 +60,11 @@ void Renderer::createCommandBuffers()
 	allocInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;		// VK_COMMAND_BUFFER_LEVEL_ ... PRIMARY (can be submitted to a queue for execution, but cannot be called from other command buffers), SECONDARY (cannot be submitted directly, but can be called from primary command buffers - useful for reusing common operations from primary command buffers).
 	allocInfo.commandBufferCount	= (uint32_t)commandBuffers.size();		// Number of buffers to allocate.
 
+	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+
 	if (vkAllocateCommandBuffers(e.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-	
+
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -103,8 +109,7 @@ void Renderer::createCommandBuffers()
 
 			for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
 			{
-				if (it->layer != j) continue;
-				if (!it->activeRenders) continue;
+				if (it->layer != j || !it->activeRenders) continue;
 
 				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };
 				VkDeviceSize offsets[] = { 0 };
@@ -141,6 +146,8 @@ void Renderer::createCommandBuffers()
 // (25)
 void Renderer::createSyncObjects()
 {
+	std::cout << __func__ << std::endl;
+
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -165,6 +172,8 @@ void Renderer::createSyncObjects()
 
 void Renderer::renderLoop()
 {
+	std::cout << __func__ << std::endl;
+
 	frameCount = 0;
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
@@ -200,10 +209,14 @@ void Renderer::drawFrame()
 	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
-	uint32_t imageIndex;
+	uint32_t imageIndex;		// Swap chain image index (0, 1, 2)
 	VkResult result = vkAcquireNextImageKHR(e.device, e.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) 					// VK_ERROR_OUT_OF_DATE_KHR: The swap chain became incompatible with the surface and can no longer be used for rendering. Usually happens after window resize.
-		{ recreateSwapChain(); return; }
+	{ 
+		std::cout << "VK_ERROR_OUT_OF_DATE_KHR" << std::endl;
+		recreateSwapChain(); 
+		return; 
+	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)	// VK_SUBOPTIMAL_KHR: The swap chain can still be used to successfully present to the surface, but the surface properties are no longer matched exactly.
 		throw std::runtime_error("Failed to acquire swap chain image!");
 
@@ -214,11 +227,11 @@ void Renderer::drawFrame()
 
 	// Update uniforms and submit command buffer
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };		// Which semaphores to signal once the command buffers have finished execution.
+
 	{
-		// Update uniforms & models state
 		{
 			const std::lock_guard<std::mutex> lock(mutSnapshot);
-			updateUniformBuffer(imageIndex);
+			updateUniformBuffer	(imageIndex);
 			updateModelsState();
 		}
 
@@ -267,7 +280,9 @@ void Renderer::drawFrame()
 		result = vkQueuePresentKHR(e.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
 	}
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || input.framebufferResized) {
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || input.framebufferResized) 
+	{
+		std::cout << "Out-of-date/Suboptimal KHR or window resized" << std::endl;
 		input.framebufferResized = false;
 		recreateSwapChain();
 	}
@@ -281,6 +296,8 @@ void Renderer::drawFrame()
 
 void Renderer::recreateSwapChain()
 {
+	std::cout << __func__ << std::endl;
+
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(e.window, &width, &height);
 	while (width == 0 || height == 0) {
@@ -345,14 +362,38 @@ void Renderer::updateUniformBuffer(uint32_t currentImage)
 	}
 }
 
+void Renderer::cleanupSwapChain()
+{
+	std::cout << __func__ << std::endl;
+
+	{
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+		vkQueueWaitIdle(e.graphicsQueue);
+		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	}
+
+	// Models
+	for (modelIterator it = models.begin(); it != models.end(); it++)
+		it->cleanupSwapChain();
+
+	// Environment
+	e.cleanupSwapChain();
+}
+
 void Renderer::cleanup()
 {
+	std::cout << __func__ << std::endl;
+
 	// Cleanup renderer
 	//cleanupSwapChain();
 
 	// Renderer
-	vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
-	
+	{
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+		vkQueueWaitIdle(e.graphicsQueue);
+		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
+	}
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {							// Semaphores (render & image available) & fences (in flight)
 		vkDestroySemaphore(e.device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(e.device, imageAvailableSemaphores[i], nullptr);
@@ -369,19 +410,6 @@ void Renderer::cleanup()
 	// Cleanup environment
 	e.cleanupSwapChain();
 	e.cleanup(); 
-}
-
-void Renderer::cleanupSwapChain()
-{
-	// Renderer (free Command buffers)
-	vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-
-	// Models
-	for (modelIterator it = models.begin(); it != models.end(); it++)
-		it->cleanupSwapChain();
-		
-	// Environment
-	e.cleanupSwapChain();
 }
 
 modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
@@ -442,10 +470,6 @@ void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 		updateCommandBuffer = true;		//We are flagging commandBuffer for update assuming that our model is in list "model"
 	}
 }
-
-size_t Renderer::getRendersCount(modelIterator model) { return model->activeRenders; }
-
-size_t Renderer::getFrameCount() { return frameCount; }
 
 void Renderer::loadingThread()
 {
@@ -511,7 +535,7 @@ void Renderer::loadingThread()
 				while (countModLoad)
 				{
 					beginModLoad->fullConstruction();
-					++beginModLoad;
+					++beginModLoad;						// <<< Problem? updateModelsState Vs loadingThread
 					--countModLoad;
 				}
 			}
@@ -559,13 +583,15 @@ void Renderer::updateModelsState()
 		models.splice(models.cend(), modelsToLoad, begin, end);
 		updateCommandBuffer = true;
 	}
-
+	
 	if (updateCommandBuffer)
 	{
-		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+		{
+			const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+			vkQueueWaitIdle(e.graphicsQueue);
+			vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
+		}
 
-		//vkDeviceWaitIdle(e.device);
-		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 		createCommandBuffers();
 	}
 }
@@ -574,4 +600,10 @@ TimerSet& Renderer::getTimer() { return timer; }
 
 Camera& Renderer::getCamera() { return input.cam; }
 
-Input& Renderer::getInput() { return input; };
+Input& Renderer::getInput() { return input; }
+
+size_t Renderer::getRendersCount(modelIterator model) { return model->activeRenders; }
+
+size_t Renderer::getFrameCount() { return frameCount; }
+
+size_t Renderer::getModelsCount() { return models.size(); }

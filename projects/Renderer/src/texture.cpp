@@ -130,12 +130,17 @@ void Texture::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, 
 	region.imageExtent = { width, height, 1 };			// Indicate to which part of the image we want to copy the pixels
 
 	// Enqueue buffer to image copy operations
-	vkCmdCopyBufferToImage(commandBuffer,
-		buffer,
-		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,			// Layout the image is currently using
-		1,
-		&region);
+	{
+		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
+
+		vkCmdCopyBufferToImage(
+			commandBuffer,
+			buffer,
+			image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,			// Layout the image is currently using
+			1,
+			&region);
+	}
 
 	e->endSingleTimeCommands(commandBuffer);
 }
@@ -177,6 +182,8 @@ void Texture::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWi
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;	// We transition level i - 1 to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. This transition will wait for level i - 1 to be filled, either from the previous blit command, or from vkCmdCopyBufferToImage. The current blit command will wait on this transition.
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
 
 		// Record a barrier (we transition level i - 1 to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. This transition will wait for level i - 1 to be filled, either from the previous blit command, or from vkCmdCopyBufferToImage. The current blit command will wait on this transition).
 		vkCmdPipelineBarrier(commandBuffer,
@@ -230,11 +237,15 @@ void Texture::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWi
 	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 	// Record a barrier (This barrier transitions the last mip level from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. This wasn't handled by the loop, since the last mip level is never blitted from).
-	vkCmdPipelineBarrier(commandBuffer,
-		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier);
+	{
+		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
+
+		vkCmdPipelineBarrier(commandBuffer,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+			0, nullptr,
+			0, nullptr,
+			1, &barrier);
+	}
 
 	e->endSingleTimeCommands(commandBuffer);
 }

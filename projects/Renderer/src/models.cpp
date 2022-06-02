@@ -31,6 +31,7 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 
 ModelData::~ModelData()
 {
+	std::cout << "Model destructor" << std::endl;
 	if (fullyConstructed) {
 		cleanupSwapChain();
 		cleanup();
@@ -626,11 +627,13 @@ void ModelData::cleanup()
 	// Index
 	if (indices.size())
 	{
+		std::cout << "   Indices" << std::endl;
 		vkDestroyBuffer(e.device, indexBuffer, nullptr);
 		vkFreeMemory(e.device, indexBufferMemory, nullptr);
 	}
 
 	// Vertex
+	std::cout << "   Vertex" << std::endl;
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
 

@@ -97,11 +97,14 @@ void UBO::createUniformBuffers()
 void UBO::destroyUniformBuffers()
 {
 	if (range)
+	{
+		std::cout << "   UBOs" << std::endl;
 		for (size_t i = 0; i < e.swapChainImages.size(); i++)
 		{
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);
 			vkFreeMemory(e.device, uniformBuffersMemory[i], nullptr);
 		}
+	}
 }
 
 Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)

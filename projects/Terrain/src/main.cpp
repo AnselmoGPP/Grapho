@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
 	setSkybox(app);
 	setCottage(app);
 	setRoom(app);
-	//setChunk(app);
+	setChunk(app);
 	setChunkSet(app);
 	setSun(app);
 	setReticule(app);
@@ -179,7 +179,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	maxfps		= rend.getTimer().getMaxPossibleFPS();
 	pos			= rend.getCamera().Position;
 	size_t i;
-	
+
+	//std::cout << app->getFrameCount() << std::endl;
+/*
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
 		{
@@ -207,7 +209,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
 		assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
 	}
-
+*/
 	// Update UBOs
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.dynBlocksCount; i++) {

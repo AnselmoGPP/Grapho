@@ -121,7 +121,7 @@ class Renderer
 */
 	void loadingThread();
 
-	/// The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
+	/// Used in drawFrame(). The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
 	void recreateSwapChain();
 
 	/// Used in recreateSwapChain()
@@ -164,7 +164,7 @@ public:
 	/**
 		@brief Insert a partially initialized model object in modelsToLoad list.The loadModels_Thread() thread will fully initialize it as soon as possible.
 
-		@param numberOfRenderings Number of times this model can be rendered in the same model
+		@param numberOfRenderings Number of times this model can be rendered in the same model. Recommendation: set this to the maximum number of rendering that will be.
 		@param primitiveTopology Primitive topology that the vertex data represents
 		@param vsUboType Structure for the vertex shader UBO
 		@param fsUboType Structure for the fragment shader UBO
@@ -202,10 +202,8 @@ public:
 	*/
 	size_t			getRendersCount(modelIterator model);
 
-	/**
-	*	@brief Not used
-	*/
-	size_t			getFrameCount();
+	size_t getFrameCount();
+	size_t getModelsCount();
 };
 
 #endif

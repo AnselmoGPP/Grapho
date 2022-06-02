@@ -70,7 +70,7 @@ class Chunk
 public:
 	Chunk(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
 	Chunk(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
-	~Chunk() { };
+	~Chunk() { };	// <<< Should Chunk delete models? But it would require the Renderer object for each Chunk
 
 	//float(*vertex)[8];			//!< VBO (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
@@ -103,10 +103,6 @@ public:
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
 	float getSide() { return sideXSize; }
-
-	// Flags (used by TerrainGrid)
-	bool visible;		// Chunk to render
-	//bool inRange;		// Chunk within the limits of the visible area of chunks
 };
 
 
@@ -121,6 +117,7 @@ public:
 	x node-getElement() to chunk*
 	x Encapsulate chunk/node creation
 	fix gaps when loading chunks (un-render chunks after their replacements have been rendered)
+	>>> Remove/Recicle out-of-range chunks
 	exception when going to far -> try your own octaves implementation
 	Destructor TerrainGrid/Chunks that correctly deletes chunks
 	x Follow camera
@@ -130,12 +127,13 @@ public:
 */
 class TerrainGrid
 {
-	QuadNode<Chunk*>* root;
+	QuadNode<Chunk*>* root[2];
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
 	std::list<QuadNode<Chunk>> recicledNodes;	// <<<
 	std::vector<uint32_t> indices;
 	std::vector<texIterator> textures;
 
+	unsigned activeTree;
 	Renderer *app;
 	Noiser noiseGenerator;
 
@@ -148,8 +146,11 @@ class TerrainGrid
 
 	std::tuple<float, float, float> closestCenter();
 
-	void updateTree_help(QuadNode<Chunk*> *node, size_t depth);	// Recursive
-	void updateUBOs_help(QuadNode<Chunk*>* node);				// Recursive (Preorder traversal)
+
+	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
+	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
+	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
+	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength);
 
 	//void insert(const Chunk& element);
@@ -198,7 +199,7 @@ void preorder(QuadNode<T>* root, V* visitor)
 	preorder(root.getLeft());
 	preorder(root.getRight());
 }
-
+/*
 template<typename T, typename V, typename A>
 void preorder(QuadNode<T>* root, V* visitor, A &params)
 {
@@ -207,7 +208,7 @@ void preorder(QuadNode<T>* root, V* visitor, A &params)
 	preorder(root.getLeft());
 	preorder(root.getRight());
 }
-
+*/
 template<typename T, typename V>
 void postorder(QuadNode<T>* root, V* visitor)
 {

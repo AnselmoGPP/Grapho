@@ -1085,13 +1085,17 @@ void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, Vk
 		throw std::invalid_argument("Unsupported layout transition!");
 
 	// Submit a pipeline barrier
-	vkCmdPipelineBarrier(commandBuffer,
-		sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
-		destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
-		0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
-		0, nullptr,			// Array of pipeline barriers of type memory barriers
-		0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
-		1, &barrier);		// Array of pipeline barriers of type image memory barriers
+	{
+		const std::lock_guard<std::mutex> lock(mutCommandPool);
+		vkCmdPipelineBarrier(
+			commandBuffer,
+			sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
+			destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
+			0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
+			0, nullptr,			// Array of pipeline barriers of type memory barriers
+			0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
+			1, &barrier);		// Array of pipeline barriers of type image memory barriers
+	}
 
 	endSingleTimeCommands(commandBuffer);
 
@@ -1134,7 +1138,8 @@ bool VulkanEnvironment::hasStencilComponent(VkFormat format)
 }
 
 /**
-*	Allocate the command buffer and start recording it.
+*	Allocate the command buffer and start recording it. Used for a command buffer that will be used only once.
+*	Command buffers generated using beginSingleTimeCommands (allocation, start recording) and endSingleTimeCommands (end recording, submit) are freed once its execution completes.
 *	@return Returns a Vulkan command buffer object.
 */
 VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
@@ -1162,7 +1167,7 @@ VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 }
 
 /**
-*	Stop recording a command buffer and submit it to the queue.
+*	Stop recording a command buffer and submit it to the queue. Used together with beginSingleTimeCommands().
 */
 void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
