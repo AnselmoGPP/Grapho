@@ -367,7 +367,18 @@ glm::vec3 Chunk::getVertex(size_t position) const
 
 
 TerrainGrid::TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : activeTree(0), app(nullptr), noiseGenerator(noiseGenerator), camPos(glm::vec3(0.1f,0.1f,0.1f)), nodeCount(0), leafCount(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
+    : activeTree(0), 
+    app(nullptr), 
+    noiseGenerator(noiseGenerator), 
+    camPos(glm::vec3(0.1f,0.1f,0.1f)), 
+    nodeCount(0), 
+    leafCount(0), 
+    rootCellSize(rootCellSize), 
+    numSideVertex(numSideVertex), 
+    numLevels(numLevels), 
+    minLevel(minLevel), 
+    distMultiplier(distMultiplier),
+    persistence(0)
 { 
     root[0] = root[1] = nullptr;
     Chunk temp(glm::vec3(0, 0, 0), 1, numSideVertex, numSideVertex);
@@ -396,8 +407,6 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
 
     unsigned nonActiveTree = (activeTree + 1) % 2;
 
-    std::cout << app->getFrameCount() << ") " << app->getModelsCount() << std::endl;
-
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
     {
@@ -411,9 +420,12 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
         createTree(root[nonActiveTree], 0);                     // Build tree and load leaf-chunks
     }
 
-    // Check whether non-active tree has fully constructed leaf-chunks > Switch trees
+    // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
     if (fullConstChunks(root[nonActiveTree]))
     {
+        if (persistence < 1) { persistence++;  return; }
+        else persistence = 0;
+
         changeRenders(root[activeTree], false);
         if(root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;
@@ -480,6 +492,7 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
         {
             chunk->computeTerrain(noiseGenerator, false, std::pow(2, numLevels - 1 - depth));
             chunk->render(app, textures, &indices);
+            //chunk->updateUBOs(camPos, view, proj);
             app->setRenders(chunk->model, 0);
         }
 
@@ -593,6 +606,7 @@ void TerrainGrid::updateUBOs_help(QuadNode<Chunk*>* node)
 
     if (node->isLeaf())
     {
+        //if (node->getElement()->modelOrdered) std::cout << '.'; else std::cout << 'X';
         node->getElement()->updateUBOs(camPos, view, proj);
         return;
     }

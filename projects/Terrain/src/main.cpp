@@ -4,86 +4,7 @@
 								< modelConfig	< VulkanEnvironment
 												< getModelMatrix callbacks
 								< Input			< Camera
-
-	Data passed:
-		- Vertex (positions, colors, texture coords, normals...)
-		- Indices
-		- Descriptors:
-			- UBOs (MVP matrices, M matrix for normals...)
-			- Textures/maps (diffuse, specular...)
-		- Shaders (vertex, fragment...)
 */
-
-/*
-	TODO:
-		- Axis
-		- Sun billboard (transparencies)
-		- Terrain
-		> Modify NoiseSurface for it to have some state (noiseSet...) and generate buffers outside itself
-		Make the renderer a static library
-		Add ProcessInput() maybe
-		Dynamic states (graphics pipeline)
-		Push constants
-		Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
-
-		UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
-		Destroy Vulkan buffers (UBO) outside semaphores
-
-	Rendering:
-		- Vertex struct has pos, color, text coord. Different vertex structs are required.
-		- Points, lines, triangles
-		- 2D graphics
-		- Transparencies
-		- Scene plane: Draw in front of some rendering (used for skybox or weapons)
-		Make classes more secure (hide sensitive variables)
-		Parallel loading (many threads)
-		When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
-		> Many renders: Now, UBO is passed many times, so View and Projection matrix are redundant. 
-		> update(): Projection matrix should be updated only when it has changed
-		> Generalize loadModel() (VertexPCT, etc.) 
-		> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
-		> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
-		X VkDrawIndex instanceCount -> check this way of multiple renderings
-	
-		- Allow to update MM immediately after addModel() or addRender()
-		- Only dynamic UBOs
-		- Start thread since run() (objectAlreadyConstructed)
-		- Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
-		Can we take stuff out from thread 2?
-		Optimization: Parallel commandBuffer creation (2 or more commandBuffers exist)
-		model&commandBuffer mutex, think about it
-		Usar numMM o MM.size()?
-		Profiling
-		Skybox borders (could be fixed with VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)
-
-	Abstract:
-		> Textures set (share textures)
-		> Descriptor set
-
-	BUGS:
-		Sometimes camera continue moving backwards/left indefinetely
-		Camera jump when starting to move camera
-
-	Model & Data system:
-		Each ModelData could have: Vertices, Color buffers, textures, texture coords, Indices, UBO class, shaders, vertex struct
-		Unique elements (always): Vertices, indices, shaders
-		Unique elements (sometimes): Color buffer, texture coords,
-		Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
-*/
-
-// TerrainGrid: Use int instead of floats for map key?
-// Am I asking GPU for too large heap space?
-// Indices to 16 bytes
-// Camera
-// Inputs (MVC)
-// GUI
-// Profiling
-// Pass material to Fragment Shader
-// learnopengl.com
-// Later: Readme.md
-// Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
-// Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
-
 
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -96,7 +17,6 @@
 #include "terrain.hpp"
 #include "common.hpp"
 
-//===============================================================================
 
 // Models & textures
 std::map<std::string, modelIterator> assets;	// Model iterators
@@ -108,12 +28,12 @@ ifOnce check;			// LOOK implement as functor (function with state)
 
 // Terrain
 Noiser noiser(
-	FastNoiseLite::NoiseType_Perlin,// Noise type
-	4, 1.5, 0.28f,					// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-	1, 50,							// Scale, Multiplier
-	0,								// Curve degree
-	500, 500, 0,					// XYZ offsets
-	4952);							// Seed
+	FastNoiseLite::NoiseType_Cellular,	// Noise type
+	4, 1.5, 0.28f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	1, 70,								// Scale, Multiplier
+	0,									// Curve degree
+	500, 500, 0,						// XYZ offsets
+	4952);								// Seed
 
 Chunk singleChunk(glm::vec3(50, 50, 0), 200, 41, 11);
 
@@ -124,11 +44,9 @@ long double frameTime;
 size_t fps;
 size_t maxfps;
 glm::vec3 pos;
-//Renderer* appPtr;
 
-//===============================================================================
-
-void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);		// Update UBOs each frame
+// Prototypes
+void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
 void loadTextures(Renderer& app);
 
@@ -155,16 +73,16 @@ int main(int argc, char* argv[])
 
 	loadTextures(app);
 
-	setPoints(app);
-	setAxis(app);
-	setGrid(app);
+	//setPoints(app);
+	//setAxis(app);
+	//setGrid(app);
 	setSkybox(app);
-	setCottage(app);
-	setRoom(app);
-	setChunk(app);
+	//setCottage(app);
+	//setRoom(app);
+	//setChunk(app);
 	setChunkSet(app);
-	setSun(app);
-	setReticule(app);
+	//setSun(app);
+	//setReticule(app);
 
 	app.run();		// Start rendering
 	
@@ -180,7 +98,13 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	pos			= rend.getCamera().Position;
 	size_t i;
 
-	//std::cout << app->getFrameCount() << std::endl;
+	//std::cout << rend.getFrameCount() << ") " << rend.getCommandsCount()/3 << std::endl;
+
+	//singleChunk.updateUBOs(pos, view, proj);
+
+	terrChunks.updateTree(pos);
+	terrChunks.updateUBOs(pos, view, proj);
+
 /*
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
@@ -250,19 +174,6 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			assets["room"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
-	if (assets.find("terrain") != assets.end()) {
-		for (i = 0; i < assets["terrain"]->vsDynUBO.dynBlocksCount; i++) {
-			assets["terrain"]->vsDynUBO.setUniform(i, 1, view);
-			assets["terrain"]->vsDynUBO.setUniform(i, 2, proj);
-		}
-		assets["terrain"]->fsUBO.setUniform(0, 1, pos);
-	}
-
-	singleChunk.updateUBOs(pos, view, proj);
-
-	terrChunks.updateTree(pos);
-	terrChunks.updateUBOs(pos, view, proj);
-
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.dynBlocksCount; i++) {
 			assets["sun"]->vsDynUBO.setUniform(i, 0, sunMM(pos, dayTime, 0.5f, sunAngDist));
@@ -277,12 +188,19 @@ void loadTextures(Renderer& app)
 	textures["cottage"] = app.newTexture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str());
 	textures["room"] = app.newTexture((TEXTURES_DIR + "viking_room.png").c_str());
 	textures["squares"] = app.newTexture((TEXTURES_DIR + "squares.png").c_str());
-	textures["grass"] = app.newTexture((TEXTURES_DIR + "grass.png").c_str());
 	textures["sun"] = app.newTexture((TEXTURES_DIR + "Sun/sun2_1.png").c_str());
 	textures["reticule"] = app.newTexture((TEXTURES_DIR + "HUD/reticule_1.png").c_str());
-
 	app.deleteTexture(textures["skybox"]);												// TEST (before render loop): deleteTexture
 	textures["skybox"] = app.newTexture((TEXTURES_DIR + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
+
+	textures["grass"] = app.newTexture((TEXTURES_DIR + "grass.png").c_str());
+	textures["grassSpec"] = app.newTexture((TEXTURES_DIR + "grass_specular.png").c_str());
+	textures["rock"] = app.newTexture((TEXTURES_DIR + "rock.jpg").c_str());
+	textures["rockSpec"] = app.newTexture((TEXTURES_DIR + "rock_specular.jpg").c_str());
+	textures["sand"] = app.newTexture((TEXTURES_DIR + "sand.jpg").c_str());
+	textures["sandSpec"] = app.newTexture((TEXTURES_DIR + "sand_specular.jpg").c_str());
+	textures["plainSand"] = app.newTexture((TEXTURES_DIR + "plainSand.jpg").c_str());
+	textures["plainSandSpec"] = app.newTexture((TEXTURES_DIR + "plainSand_specular.jpg").c_str());
 
 	// <<< You could build materials (make sets of textures) here
 	// <<< Then, user could make sets of materials and send them to a modelObject

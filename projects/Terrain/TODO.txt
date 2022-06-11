@@ -1,3 +1,90 @@
+TODO:
+	TerrainGrid: Use int instead of floats for map key?
+	TerrainGrid: Update CB only if new chuncks are required (not only when camera doesn't move)
+	Am I asking GPU for too large heap space?
+	Indices to 16 bytes
+	Camera
+	Inputs (MVC)
+	GUI
+	Profiling
+	Pass material to Fragment Shader
+	learnopengl.com
+	Later: Readme.md
+	Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
+	Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
+	Later: Compute MVP matrix and pass it to the shader
+
+	- Axis
+	- Sun billboard (transparencies)
+	- Terrain
+	> Modify NoiseSurface for it to have some state (noiseSet...) and generate buffers outside itself
+	Make the renderer a static library
+	Add ProcessInput() maybe
+	Dynamic states (graphics pipeline)
+	Push constants
+	Deferred rendering (https://gamedevelopment.tutsplus.com/articles/forward-rendering-vs-deferred-rendering--gamedev-12342)
+
+	UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
+	Destroy Vulkan buffers (UBO) outside semaphores
+
+Rendering:
+	- Vertex struct has pos, color, text coord. Different vertex structs are required.
+	- Points, lines, triangles
+	- 2D graphics
+	- Transparencies
+	- Scene plane: Draw in front of some rendering (used for skybox or weapons)
+	Make classes more secure (hide sensitive variables)
+	Parallel loading with many threads.
+	When passing vertex data directly, should I copy it or pass by reference? Ok, a ref is passed to Renderer, which passes a ref to modelData, which copies data in a vector, and later in a VkBuffer. Could we avoid the copy in a vector?
+	> Many renders: Now, UBO is passed many times, so View and Projection matrix are redundant. 
+	> update(): Projection matrix should be updated only when it has changed
+	> Generalize loadModel() (VertexPCT, etc.) 
+	> Can uniforms be destroyed within the UBO class whithout making user responsible for destroying before creating 
+	> Check that different operations work (add/remove renders, add/erase model, 0 renders, ... do it with different primitives)
+	X VkDrawIndex instanceCount -> check this way of multiple renderings
+
+	- Allow to update MM immediately after addModel() or addRender()
+	- Only dynamic UBOs
+	- Start thread since run() (objectAlreadyConstructed)
+	- Improve modelData object destruction (call stuff from destructor, and take code out from Renderer)
+	Can we take stuff out from thread 2?
+	Optimization: Parallel commandBuffer creation (2 or more commandBuffers exist)
+	model&commandBuffer mutex, think about it
+	Usar numMM o MM.size()?
+	Profiling
+	Skybox borders (could be fixed with VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)
+
+Abstract:
+	> Textures set (share textures)
+	> Descriptor set
+
+Model & Data system:
+	Each ModelData could have: Vertices, Color buffers, textures, texture coords, Indices, UBO class, shaders, vertex struct
+	Unique elements (always): Vertices, indices, shaders
+	Unique elements (sometimes): Color buffer, texture coords,
+	Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
+
+BUGS:
+	Sometimes camera continue moving backwards/left indefinetely.
+	Camera jump when starting to move camera.
+	New loaded chuncks aren't rendered in the 1st next frame, but in the 2nd one (bad fixed).
+		Tree process:
+			-renderLoop() > drawFrame()
+				-updateStates(imageIndex)
+					·updateTree(pos): Order to build tree. If fully built, activate renders.
+					·updateUBOs(pos, view, proj): Update UBOs of active tree.
+				-updateCB()
+				-vkQueueSubmit(...)
+		Clues:
+			- New leaf not rendered in 1st frame, but is in 2nd.
+			- Or maybe old chunk dissappears too soon?
+			- Command buffer is filled correctly the 1st time.
+			- 1st frame: Tree has been built, but is not rendered. 2nd frame: It is rendered. Strangely, the new models weren't touched.
+		Possible reasons:
+			- Bad UBO update (don't think so)
+
+--------------------------------------------------------------------------
+
 Make Readme.md for knowing how to build the project
 Upload to git
 Doxygen comments

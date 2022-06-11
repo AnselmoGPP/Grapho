@@ -31,7 +31,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 
 ModelData::~ModelData()
 {
-	std::cout << "Model destructor" << std::endl;
 	if (fullyConstructed) {
 		cleanupSwapChain();
 		cleanup();
@@ -350,7 +349,7 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 // (19)
 void ModelData::createVertexBuffer()
 {
-	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data)
+	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
 	VkDeviceSize   bufferSize = vertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -361,7 +360,7 @@ void ModelData::createVertexBuffer()
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 											// VK_BUFFER_USAGE_ ... TRANSFER_SRC_BIT / TRANSFER_DST_BIT (buffer can be used as source/destination in a memory transfer operation).
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
-		stagingBufferMemory);	// LOOK why creating a staging buffer?
+		stagingBufferMemory);
 
 	// Fill the staging buffer (by mapping the buffer memory into CPU accessible memory: https://en.wikipedia.org/wiki/Memory-mapped_I/O)
 	void* data;
@@ -627,13 +626,11 @@ void ModelData::cleanup()
 	// Index
 	if (indices.size())
 	{
-		std::cout << "   Indices" << std::endl;
 		vkDestroyBuffer(e.device, indexBuffer, nullptr);
 		vkFreeMemory(e.device, indexBufferMemory, nullptr);
 	}
 
 	// Vertex
-	std::cout << "   Vertex" << std::endl;
 	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
 	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
 

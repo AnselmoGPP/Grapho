@@ -20,7 +20,8 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
 	runThread(false),
-	frameCount(0) { }
+	frameCount(0),
+	commandsCount(0) { }
 
 Renderer::~Renderer() { }
 
@@ -49,7 +50,8 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
-	std::cout << __func__ << std::endl;
+	//std::cout << __func__ << std::endl;
+	commandsCount = 0;
 
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChainImages.size());
@@ -121,6 +123,8 @@ void Renderer::createCommandBuffers()
 
 				for (size_t k = 0; k < it->activeRenders; k++)	// for each rendering
 				{
+					commandsCount++;
+
 					if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[k]);
 					else
@@ -183,10 +187,7 @@ void Renderer::renderLoop()
 		++frameCount;
 
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
-
 		drawFrame();
-		
-		//if(modelsToLoad.size() > 0) addModelAndupdateCommandBuffers();
 
 		if (glfwGetKey(e.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			glfwSetWindowShouldClose(e.window, true);
@@ -231,8 +232,8 @@ void Renderer::drawFrame()
 	{
 		{
 			const std::lock_guard<std::mutex> lock(mutSnapshot);
-			updateUniformBuffer	(imageIndex);
-			updateModelsState();
+			updateStates(imageIndex);
+			updateCB();
 		}
 
 		// Submit the command buffer
@@ -323,7 +324,7 @@ void Renderer::recreateSwapChain()
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
 }
 
-void Renderer::updateUniformBuffer(uint32_t currentImage)
+void Renderer::updateStates(uint32_t currentImage)
 {
 	// Compute time difference
 	timer.computeDeltaTime();
@@ -499,6 +500,7 @@ void Renderer::loadingThread()
 					else break;
 				}
 			}
+			else countTexLoad = 0;
 
 			if (modelsToLoad.size() && !(--modelsToLoad.end())->fullyConstructed)
 			{
@@ -509,6 +511,7 @@ void Renderer::loadingThread()
 					else break;
 				}
 			}
+			else countModLoad = 0;
 
 			countModDelete = modelsToDelete.size();
 
@@ -535,7 +538,7 @@ void Renderer::loadingThread()
 				while (countModLoad)
 				{
 					beginModLoad->fullConstruction();
-					++beginModLoad;						// <<< Problem? updateModelsState Vs loadingThread
+					++beginModLoad;						// <<< Problem? updateCB Vs loadingThread
 					--countModLoad;
 				}
 			}
@@ -557,15 +560,16 @@ void Renderer::loadingThread()
 				texturesToDelete.erase(texturesToDelete.begin(), endTexDelete);
 				//texturesToDelete.clear();
 			}
+
 		}
-		else
+		else 
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 	}
 	
 	std::cout << "End " << __func__ << "()" << std::endl;
 }
 
-void Renderer::updateModelsState()
+void Renderer::updateCB()
 {
 	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
 	{
@@ -607,3 +611,5 @@ size_t Renderer::getRendersCount(modelIterator model) { return model->activeRend
 size_t Renderer::getFrameCount() { return frameCount; }
 
 size_t Renderer::getModelsCount() { return models.size(); }
+
+size_t Renderer::getCommandsCount() { return commandsCount; };

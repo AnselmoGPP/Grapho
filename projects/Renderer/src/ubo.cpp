@@ -98,7 +98,6 @@ void UBO::destroyUniformBuffers()
 {
 	if (range)
 	{
-		std::cout << "   UBOs" << std::endl;
 		for (size_t i = 0; i < e.swapChainImages.size(); i++)
 		{
 			vkDestroyBuffer(e.device, uniformBuffers[i], nullptr);

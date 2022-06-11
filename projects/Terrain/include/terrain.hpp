@@ -143,9 +143,9 @@ class TerrainGrid
 	size_t numLevels;			// Levels of resolution
 	size_t minLevel;			// Minimum level used (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
 	float distMultiplier;		// Relative distance (when distance camera-node's center is <relDist, the node is subdivided.
+	int persistence;			// Used for fixing the bug that doesn't render the new chunks after a new tree is set. This fix should be correctly fixed instead of using this bad fix.
 
 	std::tuple<float, float, float> closestCenter();
-
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)

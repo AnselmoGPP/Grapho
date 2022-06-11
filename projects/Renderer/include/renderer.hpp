@@ -56,8 +56,9 @@ class Renderer
 	// Main methods:
 
 	/*
-		@brief Allocates command buffers and record drawing commands in them.
-
+		@brief Allocates command buffers and record drawing commands in them. 
+		
+		Commands issued depends upon: SwapChainImages · Layer · Model · numRenders
 		Bindings: pipeline > vertex buffer > indices > descriptor set > draw
 		Render same model with different descriptors (used here):
 		<ul>
@@ -98,11 +99,11 @@ class Renderer
 	/// Cleanup after render loop terminates
 	void cleanup();
 
-	/// Update Uniform buffer. It will generate a new transformation every frame to make the geometry spin around.
-	void updateUniformBuffer(uint32_t currentImage);
+	/// Update states (UBOs and objects rendered). Transformation matrices (MVP) will be generated each frame.
+	void updateStates(uint32_t currentImage);
 	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
-	void updateModelsState();
+	void updateCB();
 
 	/*
 	@brief Check for pending items to load/delete (textures & models).
@@ -140,7 +141,8 @@ class Renderer
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
 	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
 
-	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept.
+	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
+	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
 
 public:
 
@@ -204,6 +206,7 @@ public:
 
 	size_t getFrameCount();
 	size_t getModelsCount();
+	size_t getCommandsCount();
 };
 
 #endif

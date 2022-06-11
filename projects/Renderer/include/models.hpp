@@ -136,7 +136,7 @@ public:
 
 	//bool isDataFromFile();											//!< True if vertex/index data came from a file. <<< not used
 
-	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	//!< Callbacks required in loopManager::updateUniformBuffer() for each model to render.
+	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	//!< Callbacks required in loopManager::updateStates() for each model to render.
 	//glm::mat4(*getModelMatrix) (float time);
 };
 
