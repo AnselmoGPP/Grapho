@@ -27,14 +27,19 @@ enum primitiveTopology {
 */
 class Renderer
 {
+	// Hardcoded parameters
+	const int MAX_FRAMES_IN_FLIGHT = 2;		//!< How many frames should be processed concurrently.
+	VkClearColorValue backgroundColor = { 50 / 255.f, 150 / 255.f, 255 / 255.f, 1.0f };
+	int maxFPS = 60;
+	int waitTime = 500;		//!< Time the loading-thread wait till next check.
+
+	// Main parameters
 	VulkanEnvironment					e;
 	Input								input;		//!< Input data
 	TimerSet							timer;		//!< Time control
 	std::list<ModelData>				models;		//!< Models (fully initialized). Each model is associated to one of the framebuffer (layer).
 	std::list<Texture>					textures;	//!< Texture set
 	size_t								numLayers;
-
-	bool updateCommandBuffer;
 
 	// Threads stuff
 	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
@@ -46,12 +51,20 @@ class Renderer
 	std::list<ModelData> modelsToDelete;			//!< Iterators to the loaded models that have to be deleted from Vulkan.
 	std::list<Texture> texturesToDelete;			//!< Textures waiting for being deleted.
 
-	// Private parameters:
+	// Member variables:
+	std::vector<VkCommandBuffer> commandBuffers;			//!< <<< List. Opaque handle to command buffer object. One for each swap chain framebuffer.
+	bool updateCommandBuffer;
 
-	const int MAX_FRAMES_IN_FLIGHT		= 2;		//!< How many frames should be processed concurrently.
-	VkClearColorValue backgroundColor	= { 50/255.f, 150/255.f, 255/255.f, 1.0f };
-	int maxFPS							= 60;
-	int waitTime						= 500;		//!< Time the loading-thread wait till next check.
+	std::vector<VkSemaphore>	imageAvailableSemaphores;	//!< Signals that an image has been acquired from the swap chain and is ready for rendering. Each frame has a semaphore for concurrent processing. Allows multiple frames to be in-flight while still bounding the amount of work that piles up. One for each possible frame in flight.
+	std::vector<VkSemaphore>	renderFinishedSemaphores;	//!< Signals that rendering has finished (CB has been executed) and presentation can happen. Each frame has a semaphore for concurrent processing. Allows multiple frames to be in-flight while still bounding the amount of work that piles up. One for each possible frame in flight.
+	std::vector<VkFence>		framesInFlight;				//!< Similar to semaphores, but fences actually wait in our own code. Used to perform CPU-GPU synchronization. One for each possible frame in flight.
+	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
+
+	size_t						currentFrame;				//!< Frame to process next (0 or 1).
+	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
+
+	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
+	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
 
 	// Main methods:
 
@@ -86,12 +99,12 @@ class Renderer
 	*	Acquire image from swap chain, execute command buffer with that image as attachment in the framebuffer, and return the image to the swap chain for presentation.
 	*	This method performs 3 operations asynchronously (the function call returns before the operations are finished, with undefined order of execution):
 	*	<ul>
-	*		<li>Acquire an image from the swap chain</li>
-	*		<li>Execute the command buffer with that image as attachment in the framebuffer</li>
-	*		<li>Return the image to the swap chain for presentation</li>
+	*		<li>vkAcquireNextImageKHR: Acquire an image from the swap chain (imageAvailableSemaphores)</li>
+	*		<li>vkQueueSubmit: Execute the command buffer with that image as attachment in the framebuffer (renderFinishedSemaphores, inFlightFences)</li>
+	*		<li>vkQueuePresentKHR: Return the image to the swap chain for presentation</li>
 	*	</ul>
-	*	Each of the operations depends on the previous one finishing, so we need to synchronize the swap chain events.
-	*	Two ways: semaphores (mainly designed to synchronize within or accross command queues. Best fit here) and fences (mainly designed to synchronize your application itself with rendering operation).
+	*	Each of the operations depend on the previous one finishing, so we need to synchronize the swap chain events.
+	*	Two ways: semaphores (mainly designed to synchronize within or across command queues. Best fit here) and fences (mainly designed to synchronize your application itself with rendering operation).
 	*	Synchronization examples: https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples#swapchain-image-acquire-and-present
 	*/
 	void drawFrame();
@@ -99,11 +112,9 @@ class Renderer
 	/// Cleanup after render loop terminates
 	void cleanup();
 
-	/// Update states (UBOs and objects rendered). Transformation matrices (MVP) will be generated each frame.
+	// Update uniforms, transformation matrices, add/delete new models/textures, and submit command buffer. Transformation matrices (MVP) will be generated each frame.
 	void updateStates(uint32_t currentImage);
 	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
-
-	void updateCB();
 
 	/*
 	@brief Check for pending items to load/delete (textures & models).
@@ -128,21 +139,6 @@ class Renderer
 	/// Used in recreateSwapChain()
 	void cleanupSwapChain();
 	void stopThread();
-
-	// Member variables:
-
-	std::vector<VkCommandBuffer> commandBuffers;			//!< <<< List. Opaque handle to command buffer object. One for each swap chain framebuffer.
-
-	std::vector<VkSemaphore>	imageAvailableSemaphores;	//!< Signals that an image has been acquired and is ready for rendering. Each frame has a semaphore for concurrent processing. Allows multiple frames to be in-flight while still bounding the amount of work that piles up. One for each possible frame in flight.
-	std::vector<VkSemaphore>	renderFinishedSemaphores;	//!< Signals that rendering has finished and presentation can happen. Each frame has a semaphore for concurrent processing. Allows multiple frames to be in-flight while still bounding the amount of work that piles up. One for each possible frame in flight.
-	std::vector<VkFence>		inFlightFences;				//!< Similar to semaphores, but fences actually wait in our own code. Used to perform CPU-GPU synchronization. One for each possible frame in flight.
-	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
-
-	size_t						currentFrame;				//!< Frame to process next (0 or 1).
-	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
-
-	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
-	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
 
 public:
 

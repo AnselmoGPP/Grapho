@@ -377,8 +377,7 @@ TerrainGrid::TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numS
     numSideVertex(numSideVertex), 
     numLevels(numLevels), 
     minLevel(minLevel), 
-    distMultiplier(distMultiplier),
-    persistence(0)
+    distMultiplier(distMultiplier)
 { 
     root[0] = root[1] = nullptr;
     Chunk temp(glm::vec3(0, 0, 0), 1, numSideVertex, numSideVertex);
@@ -423,9 +422,6 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
     if (fullConstChunks(root[nonActiveTree]))
     {
-        if (persistence < 1) { persistence++;  return; }
-        else persistence = 0;
-
         changeRenders(root[activeTree], false);
         if(root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;

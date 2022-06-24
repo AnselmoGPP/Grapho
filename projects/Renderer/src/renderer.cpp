@@ -50,7 +50,7 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
-	//std::cout << __func__ << std::endl;
+	std::cout << __func__ << std::endl;
 	commandsCount = 0;
 
 	// Commmand buffer allocation
@@ -154,7 +154,7 @@ void Renderer::createSyncObjects()
 
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	framesInFlight.resize(MAX_FRAMES_IN_FLIGHT);
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
@@ -167,7 +167,7 @@ void Renderer::createSyncObjects()
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(e.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(e.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-			vkCreateFence(e.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+			vkCreateFence(e.device, &fenceInfo, nullptr, &framesInFlight[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to create synchronization objects for a frame!");
 		}
@@ -204,10 +204,32 @@ void Renderer::stopThread()
 	if (thread_loadModels.joinable()) thread_loadModels.join();
 }
 
+/*
+	-Wait for the frame's CB execution (inFlightFences)
+	vkAcquireNextImageKHR (acquire swap chain image)
+	-Wait for the swap chain image's CB execution (imagesInFlight/inFlightFences)
+	Update CB (optional)
+	-Wait for acquiring a swap chain image (imageAvailableSemaphores)
+	vkQueueSubmit (execute CB)
+	-Wait for CB execution (renderFinishedSemaphores)
+	vkQueuePresentKHR (present image)
+	
+	waitFor(framesInFlight[currentFrame]);
+	vkAcquireNextImageKHR(imageAvailableSemaphores[currentFrame], imageIndex);
+	waitFor(imagesInFlight[imageIndex]);
+	imagesInFlight[imageIndex] = framesInFlight[currentFrame];
+	updateCB();
+	vkResetFences(framesInFlight[currentFrame])
+	vkQueueSubmit(renderFinishedSemaphores[currentFrame], framesInFlight[currentFrame]); // waitFor(imageAvailableSemaphores[currentFrame])
+	vkQueuePresentKHR(); // waitFor(renderFinishedSemaphores[currentFrame]);
+	currentFrame = nextFrame;
+*/
 void Renderer::drawFrame()
 {
-	// Wait for the frame to be finished. If VK_TRUE, we wait for all fences.
-	vkWaitForFences(e.device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
+	vkWaitForFences(e.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
+	//vkWaitForFences(e.device, 1, &framesInFlight[0], VK_TRUE, UINT64_MAX);
+	//vkWaitForFences(e.device, 1, &framesInFlight[1], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;		// Swap chain image index (0, 1, 2)
@@ -224,38 +246,30 @@ void Renderer::drawFrame()
 	// Check if this image is being used. If used, wait. Then, mark it as used by this frame.
 	if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)									// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		vkWaitForFences(e.device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	imagesInFlight[imageIndex] = inFlightFences[currentFrame];							// Mark the image as now being in use by this frame
+	imagesInFlight[imageIndex] = framesInFlight[currentFrame];							// Mark the image as now being in use by this frame
 
-	// Update uniforms and submit command buffer
+	updateStates(imageIndex);
+
+	// Submit the command buffer
+	VkSubmitInfo submitInfo{};
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };			// Which semaphores to wait on before execution begins.
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };		// Which semaphores to signal once the command buffers have finished execution.
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };	// In which stages of the pipeline to wait the semaphore. VK_PIPELINE_STAGE_ ... TOP_OF_PIPE_BIT (ensures that the render passes don't begin until the image is available), COLOR_ATTACHMENT_OUTPUT_BIT (makes the render pass wait for this stage).
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;	// Semaphores upon which to wait before the CB/s begin execution.
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;// Semaphores to be signaled once the CB/s have completed execution.
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];		// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
+
+	vkResetFences(e.device, 1, &framesInFlight[currentFrame]);		// Reset the fence to the unsignaled state.
 
 	{
-		{
-			const std::lock_guard<std::mutex> lock(mutSnapshot);
-			updateStates(imageIndex);
-			updateCB();
-		}
-
-		// Submit the command buffer
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };			// Which semaphores to wait on before execution begins.
-		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };	// In which stages of the pipeline to wait the semaphore. VK_PIPELINE_STAGE_ ... TOP_OF_PIPE_BIT (ensures that the render passes don't begin until the image is available), COLOR_ATTACHMENT_OUTPUT_BIT (makes the render pass wait for this stage).
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = waitSemaphores;
-		submitInfo.pWaitDstStageMask = waitStages;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = signalSemaphores;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];		// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
-
-		vkResetFences(e.device, 1, &inFlightFences[currentFrame]);		// Reset the fence to the unsignaled state.
-
-		{
-			const std::lock_guard<std::mutex> lock(e.queueMutex);
-			if (vkQueueSubmit(e.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
-				throw std::runtime_error("Failed to submit draw command buffer!");
-		}
+		const std::lock_guard<std::mutex> lock(e.queueMutex);
+		if (vkQueueSubmit(e.graphicsQueue, 1, &submitInfo, framesInFlight[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
+			throw std::runtime_error("Failed to submit draw command buffer!");
 	}
 
 	// Note:
@@ -292,7 +306,7 @@ void Renderer::drawFrame()
 	
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;	// By using the modulo operator (%), the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames.
 
-	// vkQueueWaitIdle(presentQueue);							// Make the whole graphics pipeline to be used only one frame at a time (instead of using this, we use multiple semaphores for processing frames concurrently).
+	//vkQueueWaitIdle(e.presentQueue);							// Make the whole graphics pipeline to be used only one frame at a time (instead of using this, we use multiple semaphores for processing frames concurrently).
 }
 
 void Renderer::recreateSwapChain()
@@ -322,45 +336,6 @@ void Renderer::recreateSwapChain()
 	//    - Renderer
 	createCommandBuffers();				// Command buffers directly depend on the swap chain images.
 	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
-}
-
-void Renderer::updateStates(uint32_t currentImage)
-{
-	// Compute time difference
-	timer.computeDeltaTime();
-
-	// Compute transformation matrix
-	input.cam.ProcessCameraInput(timer.getDeltaTime());
-	glm::mat4 view = input.cam.GetViewMatrix();
-	glm::mat4 proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
-
-	//UniformBufferObject ubo{};
-	//ubo.view = input.cam.GetViewMatrix();
-	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
-
-	// Update model matrices and other things (user defined)
-	userUpdate(*this, view, proj);
-
-	// Copy the data in the uniform buffer object to the current uniform buffer
-	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
-	for (modelIterator it = models.begin(); it != models.end(); it++)
-	{
-		if (it->vsDynUBO.totalBytes)
-		{
-			void* data;
-			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-			vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
-		}
-
-		if (it->fsUBO.totalBytes)
-		{
-			void* data;
-			vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
-			memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
-			vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
-		}
-	}
 }
 
 void Renderer::cleanupSwapChain()
@@ -398,7 +373,7 @@ void Renderer::cleanup()
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {							// Semaphores (render & image available) & fences (in flight)
 		vkDestroySemaphore(e.device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(e.device, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(e.device, inFlightFences[i], nullptr);
+		vkDestroyFence(e.device, framesInFlight[i], nullptr);
 	}
 
 	// Cleanup each model
@@ -569,8 +544,28 @@ void Renderer::loadingThread()
 	std::cout << "End " << __func__ << "()" << std::endl;
 }
 
-void Renderer::updateCB()
+void Renderer::updateStates(uint32_t currentImage)
 {
+	const std::lock_guard<std::mutex> lock(mutSnapshot);
+
+	// - USER UPDATES
+
+	timer.computeDeltaTime();
+
+	// Compute transformation matrix
+	input.cam.ProcessCameraInput(timer.getDeltaTime());
+	glm::mat4 view = input.cam.GetViewMatrix();
+	glm::mat4 proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+
+	//UniformBufferObject ubo{};
+	//ubo.view = input.cam.GetViewMatrix();
+	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+
+	// Update model matrices and other things (user defined)
+	userUpdate(*this, view, proj);
+
+	// - MOVE MODELS AND TEXTURES
+
 	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
 	{
 		texIterator begin, end;
@@ -588,6 +583,30 @@ void Renderer::updateCB()
 		updateCommandBuffer = true;
 	}
 	
+	// - COPY DATA FROM UBOS TO GPU MEMORY
+
+	// Copy the data in the uniform buffer object to the current uniform buffer
+	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
+	for (modelIterator it = models.begin(); it != models.end(); it++)
+	{
+		if (it->vsDynUBO.totalBytes)
+		{
+			void* data;
+			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+			vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+		}
+
+		if (it->fsUBO.totalBytes)
+		{
+			void* data;
+			vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
+			memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
+			vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
+		}
+	}
+
+	// - UPDATE COMMAND BUFFER
 	if (updateCommandBuffer)
 	{
 		{

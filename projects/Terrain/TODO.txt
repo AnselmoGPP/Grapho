@@ -1,4 +1,5 @@
 TODO:
+	Remove/Recicle out-of-range chunks
 	TerrainGrid: Use int instead of floats for map key?
 	TerrainGrid: Update CB only if new chuncks are required (not only when camera doesn't move)
 	Am I asking GPU for too large heap space?
@@ -6,6 +7,7 @@ TODO:
 	Camera
 	Inputs (MVC)
 	GUI
+	FPS > 30
 	Profiling
 	Pass material to Fragment Shader
 	learnopengl.com
@@ -13,6 +15,12 @@ TODO:
 	Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
 	Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
 	Later: Compute MVP matrix and pass it to the shader
+
+	Scheme pictures
+	Computer graphics article
+	Read specs & tutorial
+	Test smaller program (gaps-bug)
+	Understand fullConstruction process
 
 	- Axis
 	- Sun billboard (transparencies)
@@ -54,6 +62,9 @@ Rendering:
 	Profiling
 	Skybox borders (could be fixed with VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)
 
+Non relevant:
+	Skybox shouldn't require transformation matrices? Just rotating
+
 Abstract:
 	> Textures set (share textures)
 	> Descriptor set
@@ -67,21 +78,6 @@ Model & Data system:
 BUGS:
 	Sometimes camera continue moving backwards/left indefinetely.
 	Camera jump when starting to move camera.
-	New loaded chuncks aren't rendered in the 1st next frame, but in the 2nd one (bad fixed).
-		Tree process:
-			-renderLoop() > drawFrame()
-				-updateStates(imageIndex)
-					·updateTree(pos): Order to build tree. If fully built, activate renders.
-					·updateUBOs(pos, view, proj): Update UBOs of active tree.
-				-updateCB()
-				-vkQueueSubmit(...)
-		Clues:
-			- New leaf not rendered in 1st frame, but is in 2nd.
-			- Or maybe old chunk dissappears too soon?
-			- Command buffer is filled correctly the 1st time.
-			- 1st frame: Tree has been built, but is not rendered. 2nd frame: It is rendered. Strangely, the new models weren't touched.
-		Possible reasons:
-			- Bad UBO update (don't think so)
 
 --------------------------------------------------------------------------
 

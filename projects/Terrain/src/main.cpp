@@ -36,6 +36,7 @@ Noiser noiser(
 	4952);								// Seed
 
 Chunk singleChunk(glm::vec3(50, 50, 0), 200, 41, 11);
+Chunk testChunk(glm::vec3(50, 50, 0), 200, 41, 11);
 
 TerrainGrid terrChunks(noiser, 6400, 21, 7, 2, 1);
 
@@ -60,6 +61,7 @@ void setChunk(Renderer& app);
 void setChunkSet(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
+void setReticule2(Renderer& app);
 
 
 int main(int argc, char* argv[])
@@ -73,16 +75,16 @@ int main(int argc, char* argv[])
 
 	loadTextures(app);
 
-	//setPoints(app);
-	//setAxis(app);
+	setPoints(app);
+	setAxis(app);
 	//setGrid(app);
 	setSkybox(app);
-	//setCottage(app);
-	//setRoom(app);
-	//setChunk(app);
+	setCottage(app);
+	setRoom(app);
+	setChunk(app);
 	setChunkSet(app);
-	//setSun(app);
-	//setReticule(app);
+	setSun(app);
+	setReticule(app);
 
 	app.run();		// Start rendering
 	
@@ -98,12 +100,12 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	pos			= rend.getCamera().Position;
 	size_t i;
 
-	//std::cout << rend.getFrameCount() << ") " << rend.getCommandsCount()/3 << std::endl;
+	std::cout << rend.getFrameCount() << ") " << rend.getCommandsCount()/3 << std::endl;
 
-	//singleChunk.updateUBOs(pos, view, proj);
-
+	// Chunks
 	terrChunks.updateTree(pos);
 	terrChunks.updateUBOs(pos, view, proj);
+	singleChunk.updateUBOs(pos, view, proj);
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -416,6 +418,30 @@ void setReticule(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
 	assets["reticule"] = app.newModel(
+		2, 1, primitiveTopology::triangle,
+		vertexLoader,
+		UBOconfig(1),
+		noUBO,
+		usedTextures,
+		(SHADERS_DIR + "v_hudPT.spv").c_str(),
+		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		true);
+}
+
+void setReticule2(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	std::vector<VertexPT> v_ret;
+	std::vector<uint32_t> i_ret;
+	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	std::vector<texIterator> usedTextures = { textures["reticule"] };
+	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
+
+	assets["reticule2"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1),
