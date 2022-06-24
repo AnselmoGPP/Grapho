@@ -3,7 +3,6 @@ TODO:
 	TerrainGrid: Use int instead of floats for map key?
 	TerrainGrid: Update CB only if new chuncks are required (not only when camera doesn't move)
 	Am I asking GPU for too large heap space?
-	Indices to 16 bytes
 	Camera
 	Inputs (MVC)
 	GUI

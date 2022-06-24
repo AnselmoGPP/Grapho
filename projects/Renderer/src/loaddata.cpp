@@ -15,7 +15,7 @@
 
 // VertexFromUser -------------------------------------------------------
 
-VertexFromUser::VertexFromUser(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint32_t>& indices, bool loadNow)
+VertexFromUser::VertexFromUser(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow)
 	: VertexLoader(), sourceVertexCount(vertexCount), sourceVertices(vertexData), sourceIndices(indices), immediateMode(loadNow) 
 {
 	this->vertexType = vertexType; 
@@ -23,7 +23,7 @@ VertexFromUser::VertexFromUser(const VertexType& vertexType, size_t vertexCount,
 
 VertexFromUser::~VertexFromUser() { }
 
-void VertexFromUser::setDestination(VertexSet& vertices, std::vector<uint32_t>& indices)
+void VertexFromUser::setDestination(VertexSet& vertices, std::vector<uint16_t>& indices)
 {
 	this->destVertices = &vertices;
 	this->destIndices = &indices;

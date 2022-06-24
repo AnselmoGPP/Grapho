@@ -4,7 +4,7 @@
 
 
 std::vector<texIterator> noTextures;
-std::vector<uint32_t> noIndices;
+std::vector<uint16_t> noIndices;
 UBOconfig noUBO;
 
 ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)

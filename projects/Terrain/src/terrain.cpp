@@ -83,7 +83,7 @@ void Chunk::computeTerrain(Noiser& noise, bool computeIndices, float textureFact
     }
 }
 
-void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::vector<uint32_t>* indices)
+void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
         VertexType(1, 0, 1, 1), 
@@ -128,7 +128,7 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
     model->fsUBO.setUniform(0, 1, camPos);
 }
 
-void Chunk::computeIndices(std::vector<uint32_t>& indices)
+void Chunk::computeIndices(std::vector<uint16_t>& indices)
 {
     indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
 

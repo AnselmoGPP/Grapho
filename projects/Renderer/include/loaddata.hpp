@@ -15,14 +15,14 @@ class VertexLoader
 protected:
 	VertexType vertexType;
 	VertexSet* destVertices;
-	std::vector<uint32_t>* destIndices;
+	std::vector<uint16_t>* destIndices;
 
 public:
 	VertexLoader() : vertexType(0,0,0,0), destVertices(nullptr), destIndices(nullptr) { };
 	virtual ~VertexLoader() { };
 
 	VertexType& getVertexType() { return vertexType; };
-	virtual void setDestination(VertexSet& vertices, std::vector<uint32_t>& indices) { this->destVertices = &vertices; this->destIndices = &indices; };
+	virtual void setDestination(VertexSet& vertices, std::vector<uint16_t>& indices) { this->destVertices = &vertices; this->destIndices = &indices; };
 	virtual void loadVertex() = 0;
 };
 
@@ -31,17 +31,17 @@ class VertexFromUser : public VertexLoader
 {
 	size_t sourceVertexCount;
 	const void* sourceVertices;
-	std::vector<uint32_t>& sourceIndices;
+	std::vector<uint16_t>& sourceIndices;
 	bool immediateMode;			/// If false, vertex data is loaded at loadVertex(). If true, it's loaded at setPointers().
 
 	void loadData();
 
 public:
 	//VertexFromUser(size_t vertexCount, const void* vertexData, size_t indicesCount, const uint32_t* indices);
-	VertexFromUser(const VertexType &vertexType, size_t vertexCount, const void* vertexData, std::vector<uint32_t>& indices, bool loadNow);
+	VertexFromUser(const VertexType &vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow);
 	~VertexFromUser() override;
 
-	void setDestination(VertexSet& vertices, std::vector<uint32_t>& indices) override;
+	void setDestination(VertexSet& vertices, std::vector<uint16_t>& indices) override;
 	void loadVertex() override;
 };
 

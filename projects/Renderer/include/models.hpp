@@ -21,7 +21,7 @@
 #define LINE_WIDTH 1.0f
 
 extern std::vector<texIterator> noTextures;	// Vector with 0 Texture objects
-extern std::vector<uint32_t> noIndices;		// Vector with 0 indices
+extern std::vector<uint16_t> noIndices;		// Vector with 0 indices
 extern UBOconfig noUBO;						// UBOtype with 0 elements
 
 
@@ -115,7 +115,7 @@ public:
 	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).
 	VkDeviceMemory				 vertexBufferMemory;	//!< Opaque handle to a device memory object (here, memory for the vertex buffer).
 
-	std::vector<uint32_t>		 indices;				//!< Indices of our model
+	std::vector<uint16_t>		 indices;				//!< Indices of our model
 	VkBuffer					 indexBuffer;			//!< Opaque handle to a buffer object (here, index buffer).
 	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 

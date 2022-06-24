@@ -295,7 +295,7 @@ void setAxis(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPC> v_axis;
-	std::vector<uint32_t> i_axis;
+	std::vector<uint16_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
@@ -318,7 +318,7 @@ void setGrid(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPC> v_grid;
-	std::vector<uint32_t> i_grid;
+	std::vector<uint16_t> i_grid;
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
@@ -423,7 +423,7 @@ void setSun(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPT> v_sun;
-	std::vector<uint32_t> i_sun;
+	std::vector<uint16_t> i_sun;
 	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<texIterator> usedTextures = { textures["sun"] };
@@ -449,7 +449,7 @@ void setReticule(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<VertexPT> v_ret;
-	std::vector<uint32_t> i_ret;
+	std::vector<uint16_t> i_ret;
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<texIterator> usedTextures = { textures["reticule"] };

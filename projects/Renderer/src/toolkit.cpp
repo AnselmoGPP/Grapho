@@ -35,7 +35,7 @@ glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix)
 
 // Vertex sets -----------------------------------------------------------------
 
-size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int lengthFromCenter, float colorIntensity)
+size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int lengthFromCenter, float colorIntensity)
 {
 	// Vertex buffer
 	vertexDestination = std::vector<VertexPC> { 
@@ -47,13 +47,13 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 		VertexPC(glm::vec3( 0, 0, lengthFromCenter), glm::vec3(0, 0, colorIntensity)) };
 
 	// Indices buffer
-	indicesDestination = std::vector<uint32_t>{ 0, 1,  2, 3,  4, 5 };
+	indicesDestination = std::vector<uint16_t>{ 0, 1,  2, 3,  4, 5 };
 
 	// Total number of vertex
 	return 6;
 }
 
-size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
+size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
 {
 	// Vertex buffer
 	int start = (stepSize * stepsPerSide) / 2;
@@ -73,14 +73,14 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint32_t>& 
 	// Indices buffer
 	size_t numVertex = (stepsPerSide + 1) * 4;
 
-	for (uint32_t i = 0; i < numVertex; i++)
+	for (uint16_t i = 0; i < numVertex; i++)
 		indicesDestination.push_back(i);
 
 	// Total number of vertex
 	return numVertex;
 }
 
-size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize)
+size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
 {
 	vertexDestination = std::vector<VertexPT>{
 	VertexPT(glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 0)),
@@ -88,12 +88,12 @@ size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>&
 	VertexPT(glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 1)),
 	VertexPT(glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 0)) };
 
-	indicesDestination = std::vector<uint32_t>{ 0, 1, 3,  1, 2, 3 };
+	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
 	return 4;
 }
 
-size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_t>& indicesDestination, float vertSize, float horSize)
+size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
 {
 	vertexDestination = std::vector<VertexPT>{ 
 		VertexPT( glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 0) ),
@@ -101,7 +101,7 @@ size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint32_
 		VertexPT( glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 1) ),
 		VertexPT( glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 0) ) };
 
-	indicesDestination = std::vector<uint32_t>{ 0, 1, 3,  1, 2, 3 };
+	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
 	return 4;
 }
@@ -125,7 +125,7 @@ std::vector<VertexPT> v_cube =
 	VertexPT(glm::vec3( 1, -1, -1), glm::vec2( .5, 1.  ))    
 };
 
-std::vector<uint32_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };
+std::vector<uint16_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };
 
 bool ifOnce::ifBigger(float a, float b)
 {

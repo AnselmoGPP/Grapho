@@ -74,7 +74,7 @@ public:
 
 	//float(*vertex)[8];			//!< VBO (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
-	std::vector<uint32_t> indices;	//!< EBO[m][3] (indices[3])
+	std::vector<uint16_t> indices;	//!< EBO[m][3] (indices[3])
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 
@@ -93,12 +93,12 @@ public:
 	*/
 	void computeTerrain(Noiser& noise, bool computeIndices, float textureFactor);
 
-	void render(Renderer *app, std::vector<texIterator> &usedTextures, std::vector<uint32_t>* indices);
+	void render(Renderer *app, std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices);
 
 	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
 
 	/// Used for computing indices and saving them in an outside buffer, which is passed by reference. 
-	void computeIndices(std::vector<uint32_t>& indices);
+	void computeIndices(std::vector<uint16_t>& indices);
 
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
@@ -130,7 +130,7 @@ class TerrainGrid
 	QuadNode<Chunk*>* root[2];
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
 	std::list<QuadNode<Chunk>> recicledNodes;	// <<<
-	std::vector<uint32_t> indices;
+	std::vector<uint16_t> indices;
 	std::vector<texIterator> textures;
 
 	unsigned activeTree;
