@@ -108,7 +108,7 @@ void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::v
     model->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
 
     //sun.turnOff();
-    sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+    sun.setDirectional(glm::vec3(-2, 2, 1), glm::vec3(0.2, 0.2, 0.2), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
     //sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
     //sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
     model->fsUBO.setUniform(0, 0, sun);

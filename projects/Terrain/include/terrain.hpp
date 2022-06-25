@@ -163,6 +163,15 @@ class TerrainGrid
 	//BSTNode<T>* getMin(BSTNode<T>* node);
 
 public:
+	/**
+	*	@brief Constructors
+	*	@param noiseGenerator Used for generating noise
+	*	@param rootCellSize Size of the entire scenario
+	*	@param numSideVertex Number of vertex per side in each chunk
+	*	@param numLevels Number of levels of resolution
+	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
+	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
+	*/
 	TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	~TerrainGrid();
 

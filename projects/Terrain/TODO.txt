@@ -1,25 +1,19 @@
 TODO:
 	Remove/Recicle out-of-range chunks
-	TerrainGrid: Use int instead of floats for map key?
-	TerrainGrid: Update CB only if new chuncks are required (not only when camera doesn't move)
 	Am I asking GPU for too large heap space?
 	Camera
 	Inputs (MVC)
 	GUI
 	FPS > 30
 	Profiling
-	Pass material to Fragment Shader
-	learnopengl.com
+	learnopengl.com / Simon
 	Later: Readme.md
 	Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
-	Later: Eliminate mutex (mutex_modelsToLoad, mutex_modelsToDelete) (maybe mutex_rendersToSet too) like I did with texture loading/deletion. Check loadingThread()
 	Later: Compute MVP matrix and pass it to the shader
 
 	Scheme pictures
 	Computer graphics article
 	Read specs & tutorial
-	Test smaller program (gaps-bug)
-	Understand fullConstruction process
 
 	- Axis
 	- Sun billboard (transparencies)
@@ -61,8 +55,11 @@ Rendering:
 	Profiling
 	Skybox borders (could be fixed with VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)
 
-Non relevant:
+Useless/Complicated:
+	Pass material to Fragment Shader
 	Skybox shouldn't require transformation matrices? Just rotating
+	TerrainGrid: Use int instead of floats for map key?
+	TerrainGrid: Update CB only if new chuncks are required (not only when camera doesn't move)
 
 Abstract:
 	> Textures set (share textures)

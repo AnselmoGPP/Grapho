@@ -390,8 +390,6 @@ void Renderer::cleanup()
 
 modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
-	//const std::lock_guard<std::mutex> lock(mutex_modelsToLoad);		// Control access to modelsToLoad list from newModel() and loadModels_Thread().
-
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
 		e, 

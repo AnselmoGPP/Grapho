@@ -38,7 +38,7 @@ Noiser noiser(
 Chunk singleChunk(glm::vec3(50, 50, 0), 200, 41, 11);
 Chunk testChunk(glm::vec3(50, 50, 0), 200, 41, 11);
 
-TerrainGrid terrChunks(noiser, 6400, 21, 7, 2, 1);
+TerrainGrid terrChunks(noiser, 6400, 21, 8, 2, 1.2);
 
 // Data to update
 long double frameTime;
@@ -61,7 +61,6 @@ void setChunk(Renderer& app);
 void setChunkSet(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
-void setReticule2(Renderer& app);
 
 
 int main(int argc, char* argv[])
@@ -361,7 +360,7 @@ void setChunk(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
+	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	singleChunk.computeTerrain(noiser, true, 1.f);
 	singleChunk.render(&app, usedTextures, nullptr);
@@ -371,7 +370,8 @@ void setChunkSet(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"] };
+	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
+
 	terrChunks.addTextures(usedTextures);
 	terrChunks.addApp(app);
 
@@ -418,30 +418,6 @@ void setReticule(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
 	assets["reticule"] = app.newModel(
-		2, 1, primitiveTopology::triangle,
-		vertexLoader,
-		UBOconfig(1),
-		noUBO,
-		usedTextures,
-		(SHADERS_DIR + "v_hudPT.spv").c_str(),
-		(SHADERS_DIR + "f_hudPT.spv").c_str(),
-		true);
-}
-
-void setReticule2(Renderer& app)
-{
-	std::cout << "> " << __func__ << "()" << std::endl;
-
-	std::vector<VertexPT> v_ret;
-	std::vector<uint16_t> i_ret;
-	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
-
-	std::vector<texIterator> usedTextures = { textures["reticule"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
-
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
-
-	assets["reticule2"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		UBOconfig(1),
