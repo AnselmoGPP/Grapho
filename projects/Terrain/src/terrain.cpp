@@ -2,16 +2,22 @@
 #include "terrain.hpp"
 
 
-Chunk::Chunk(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
-    : center(center), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), modelOrdered(false) { }
+Chunk::Chunk(Renderer& renderer, glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer)
+    : renderer(renderer), center(center), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), layer(layer), modelOrdered(false) { }
 
-Chunk::Chunk(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
-    : sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer)
+    : renderer(renderer), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), layer(layer), modelOrdered(false)
 { 
     this->center.x = std::get<0>(center);
     this->center.y = std::get<1>(center);
     this->center.z = std::get<2>(center);
 }
+
+Chunk::~Chunk() 
+{ 
+    if(renderer.getModelsCount() && modelOrdered) 
+        renderer.deleteModel(model); 
+};
 
 void Chunk::reset(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
 {
@@ -83,7 +89,7 @@ void Chunk::computeTerrain(Noiser& noise, bool computeIndices, float textureFact
     }
 }
 
-void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices)
+void Chunk::render(std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
         VertexType(1, 0, 1, 1), 
@@ -92,7 +98,7 @@ void Chunk::render(Renderer* app, std::vector<texIterator> &usedTextures, std::v
         indices? *indices : this->indices, 
         true);
     
-    model = app->newModel(
+    model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
         UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
@@ -366,9 +372,9 @@ glm::vec3 Chunk::getVertex(size_t position) const
 }
 
 
-TerrainGrid::TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
     : activeTree(0), 
-    app(nullptr), 
+    renderer(renderer), 
     noiseGenerator(noiseGenerator), 
     camPos(glm::vec3(0.1f,0.1f,0.1f)), 
     nodeCount(0), 
@@ -380,7 +386,7 @@ TerrainGrid::TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numS
     distMultiplier(distMultiplier)
 { 
     root[0] = root[1] = nullptr;
-    Chunk temp(glm::vec3(0, 0, 0), 1, numSideVertex, numSideVertex);
+    Chunk temp(renderer, glm::vec3(0, 0, 0), 1, numSideVertex, numSideVertex);
     temp.computeIndices(indices);
 }
 
@@ -395,16 +401,16 @@ TerrainGrid::~TerrainGrid()
     chunks.clear();
 }
 
-void TerrainGrid::addApp(Renderer& app) { this->app = &app; }
+//void TerrainGrid::addApp(Renderer& app) { this->app = &app; }
 
 void TerrainGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
 
 void TerrainGrid::updateTree(glm::vec3 newCamPos)
 {
-    if (!app || !textures.size() || !numLevels) return;
-    if (root[activeTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z) return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
+    if (!numLevels) return;
 
     unsigned nonActiveTree = (activeTree + 1) % 2;
+    if (root[activeTree] && !root[nonActiveTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z) return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
 
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
@@ -414,9 +420,9 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
         leafCount = 0;
 
         std::tuple<float, float, float> center = closestCenter();
-        root[nonActiveTree] = getNode(center, rootCellSize);    // Create root node and chunk
+        root[nonActiveTree] = getNode(center, rootCellSize, 0);     // Create root node and chunk
 
-        createTree(root[nonActiveTree], 0);                     // Build tree and load leaf-chunks
+        createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
@@ -429,38 +435,8 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
         changeRenders(root[nonActiveTree], true);
         activeTree = nonActiveTree;
 
-        // >>> Remove/Recicle out-of-range chunks
+        removeFarChunks(4, newCamPos);
     }
-
-/*
-    // Mark all chunks as non-visible, and remove out-of-range chunks
-    float maxX = std::get<0>(center) + rootCellSize / 2;
-    float maxY = std::get<1>(center) + rootCellSize / 2;
-    float minX = std::get<0>(center) - rootCellSize / 2;
-    float minY = std::get<1>(center) - rootCellSize / 2;
-    std::vector<std::tuple<float, float, float>> deletionKeys;
-
-    for (auto it = chunks.begin(); it != chunks.end(); it++)
-    {
-        it->second->visible = false;
-
-        if (it->second->getCenter().x < minX || it->second->getCenter().x > maxX ||
-            it->second->getCenter().y < minY || it->second->getCenter().y > maxY)
-        {
-            app->deleteModel(it->second->model);
-            deletionKeys.push_back(it->first);
-        }
-    }
-    for (auto key : deletionKeys) chunks.erase(key);
-
-    // Build tree and load leaf-chunks
-    //updateTree_help(root, nullptr, 0);
-
-    // Un-render non-visible chunks
-    for (auto it = chunks.begin(); it != chunks.end(); it++)
-        if (it->second->modelOrdered && it->second->visible == false)
-            app->setRenders(it->second->model, 0);
-    */
 }
 
 void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
@@ -487,9 +463,9 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
         if (chunk->modelOrdered == false)
         {
             chunk->computeTerrain(noiseGenerator, false, std::pow(2, numLevels - 1 - depth));
-            chunk->render(app, textures, &indices);
+            chunk->render(textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
-            app->setRenders(chunk->model, 0);
+            renderer.setRenders(chunk->model, 0);
         }
 
         //app->setRenders(chunk->model, 1);
@@ -502,89 +478,19 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
         float halfSide = chunk->getSide() / 2;
         float quarterSide = chunk->getSide() / 4;
 
-        node->setA(getNode(std::tuple(center.x - quarterSide, center.y + quarterSide, 0), halfSide));
+        node->setA(getNode(std::tuple(center.x - quarterSide, center.y + quarterSide, 0), halfSide, depth));
         createTree(node->getA(), depth);
 
-        node->setB(getNode(std::tuple(center.x + quarterSide, center.y + quarterSide, 0), halfSide));
+        node->setB(getNode(std::tuple(center.x + quarterSide, center.y + quarterSide, 0), halfSide, depth));
         createTree(node->getB(), depth);
 
-        node->setC(getNode(std::tuple(center.x - quarterSide, center.y - quarterSide, 0), halfSide));
+        node->setC(getNode(std::tuple(center.x - quarterSide, center.y - quarterSide, 0), halfSide, depth));
         createTree(node->getC(), depth);
 
-        node->setD(getNode(std::tuple(center.x + quarterSide, center.y - quarterSide, 0), halfSide));
+        node->setD(getNode(std::tuple(center.x + quarterSide, center.y - quarterSide, 0), halfSide, depth));
         createTree(node->getD(), depth);
     }
 }
-
-/*
-           if (chunk->model->fullyConstructed)
-        {
-            app->setRenders(chunk->model, 1);
-            chunk->visible = true;
-        }
-        else if (parent && depth > minLevel)
-        {
-            std::cout << "A " << depth << std::endl;
-            std::cout << "AA " << parent << std::endl;
-            parent->getElement()->model->fullyConstructed;
-            std::cout << "AAAA ---" << std::endl;
-
-            if (parent->getElement()->model->fullyConstructed)
-            {
-                std::cout << "B" << std::endl;
-                app->setRenders(parent->getElement()->model, 1);
-                parent->getElement()->visible = true;
-                parent->setA(nullptr);
-                parent->setB(nullptr);
-                parent->setC(nullptr);
-                parent->setD(nullptr);
-            }
-            else
-            {
-                std::cout << "C" << std::endl;
-                app->setRenders(chunk->model, 1);
-                chunk->visible = true;
-            }
-        }
-        else if (depth < numLevels - 1 &&
-            chunks.find(std::tuple(center.x - quarterSide, center.y + quarterSide, 0.f)) != chunks.end() &&
-            chunks.find(std::tuple(center.x + quarterSide, center.y + quarterSide, 0.f)) != chunks.end() &&
-            chunks.find(std::tuple(center.x - quarterSide, center.y - quarterSide, 0.f)) != chunks.end() &&
-            chunks.find(std::tuple(center.x + quarterSide, center.y - quarterSide, 0.f)) != chunks.end() )
-        {
-            if (chunks[std::tuple(center.x - quarterSide, center.y + quarterSide, 0.f)]->model->fullyConstructed &&
-                chunks[std::tuple(center.x + quarterSide, center.y + quarterSide, 0.f)]->model->fullyConstructed &&
-                chunks[std::tuple(center.x - quarterSide, center.y - quarterSide, 0.f)]->model->fullyConstructed &&
-                chunks[std::tuple(center.x + quarterSide, center.y - quarterSide, 0.f)]->model->fullyConstructed )
-            {
-                node->setA(getNode(std::tuple(center.x - quarterSide, center.y + quarterSide, 0.f), halfSide));
-                app->setRenders(node->getA()->getElement()->model, 1);
-                node->getA()->getElement()->visible = true;
-
-                node->setB(getNode(std::tuple(center.x + quarterSide, center.y + quarterSide, 0.f), halfSide));
-                app->setRenders(node->getB()->getElement()->model, 1);
-                node->getB()->getElement()->visible = true;
-
-                node->setC(getNode(std::tuple(center.x - quarterSide, center.y - quarterSide, 0.f), halfSide));
-                app->setRenders(node->getC()->getElement()->model, 1);
-                node->getC()->getElement()->visible = true;
-
-                node->setD(getNode(std::tuple(center.x + quarterSide, center.y - quarterSide, 0.f), halfSide));
-                app->setRenders(node->getD()->getElement()->model, 1);
-                node->getD()->getElement()->visible = true;
-            }
-            else
-            {
-                app->setRenders(chunk->model, 1);
-                chunk->visible = true;
-            }
-        }
-        else
-        {
-            app->setRenders(chunk->model, 1);
-            chunk->visible = true;
-        }
-*/
 
 void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
 {
@@ -653,7 +559,7 @@ void TerrainGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
     if (!node) return;
 
     if(node->isLeaf())
-        app->setRenders(node->getElement()->model, (renderMode ? 1 : 0));
+        renderer.setRenders(node->getElement()->model, (renderMode ? 1 : 0));
     else
     {
         changeRenders(node->getA(), renderMode);
@@ -674,10 +580,42 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
         0 );
 }
 
-QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength)
+QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new Chunk(center, sideLength, numSideVertex, numSideVertex);
+        chunks[center] = new Chunk(renderer, center, sideLength, numSideVertex, numSideVertex, layer);
     
     return new QuadNode<Chunk*>(chunks[center]);
+}
+
+void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
+{
+    glm::vec3 center;
+    glm::vec3 distVec;
+    float targetSqrDist;
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator it = chunks.begin();
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator nextIt;
+
+    while (it != chunks.end())
+    {
+        nextIt = it;
+        nextIt++;
+        
+        if (it->second->modelOrdered && it->second->model->fullyConstructed && !it->second->model->activeRenders)
+        {
+            center = it->second->getCenter();
+            distVec.x = center.x - camPosNow.x;
+            distVec.y = center.y - camPosNow.y;
+            distVec.z = center.z - camPosNow.z;
+            targetSqrDist = it->second->getSide() * it->second->getLayer() * it->second->getSide() * it->second->getLayer();
+            
+            if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
+            {
+                delete chunks[it->first];
+                chunks.erase(it->first);
+            }
+        }
+
+        it = nextIt;
+    }
 }

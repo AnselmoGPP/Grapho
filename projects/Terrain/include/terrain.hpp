@@ -59,18 +59,20 @@ void inorder(QuadNode<T>* root, V* visitor);
 /// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class Chunk
 {
+	Renderer& renderer;
 	glm::vec3 center;
 	float sideXSize;
 	unsigned numVertexX, numVertexY;
+	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
 	void computeGridNormals(float stride, Noiser& noise);
 	size_t getPos(size_t x, size_t y) const;
 	glm::vec3 getVertex(size_t position) const;
 
 public:
-	Chunk(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
-	Chunk(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
-	~Chunk() { };	// <<< Should Chunk delete models? But it would require the Renderer object for each Chunk
+	Chunk(Renderer& renderer, glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer = 0);
+	Chunk(Renderer& renderer, std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer = 0);
+	~Chunk();
 
 	//float(*vertex)[8];			//!< VBO (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
@@ -93,7 +95,7 @@ public:
 	*/
 	void computeTerrain(Noiser& noise, bool computeIndices, float textureFactor);
 
-	void render(Renderer *app, std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices);
+	void render(std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices);
 
 	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
 
@@ -103,6 +105,7 @@ public:
 	unsigned getNumVertex() { return numVertexX * numVertexY; }
 	glm::vec3 getCenter() { return center; }
 	float getSide() { return sideXSize; }
+	unsigned getLayer() { return layer; }
 };
 
 
@@ -134,7 +137,7 @@ class TerrainGrid
 	std::vector<texIterator> textures;
 
 	unsigned activeTree;
-	Renderer *app;
+	Renderer &renderer;
 	Noiser noiseGenerator;
 
 	// Configuration data
@@ -150,7 +153,8 @@ class TerrainGrid
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
-	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength);
+	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer);
+	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);
 
 	//void insert(const Chunk& element);
 
@@ -172,10 +176,10 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Renderer &renderer, Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	~TerrainGrid();
 
-	void addApp(Renderer& app);
+//	void addApp(Renderer& app);
 	void addTextures(const std::vector<texIterator>& textures);
 
 	void updateTree(glm::vec3 newCamPos);
@@ -187,6 +191,7 @@ public:
 
 	size_t nodeCount;
 	size_t leafCount;
+	unsigned getTotalNodes() { return chunks.size(); }
 
 	//void remove(const K& key);
 	//T& find(const K& key) { return (findHelp(root, key))->getElement(); }

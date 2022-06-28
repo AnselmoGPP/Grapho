@@ -45,10 +45,9 @@ class Renderer
 	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 	std::mutex mutSnapshot;							//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
 
-	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
 	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
-	std::map<modelIterator*, size_t> rendersToSet;	//!< Number of renderings per model.
 	std::list<ModelData> modelsToDelete;			//!< Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
 	std::list<Texture> texturesToDelete;			//!< Textures waiting for being deleted.
 
 	// Member variables:

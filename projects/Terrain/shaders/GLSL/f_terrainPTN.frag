@@ -168,17 +168,17 @@ void getTexture_Sand(inout vec3 result)
 
     // >>> DESERT
     if (slope < slopeThreshold - mixRange)
-        result = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 0.9);
+        result = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
 
     // >>> PLAIN
     else if(slope > slopeThreshold + mixRange)
-        result = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 0.9);
+        result = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
 
     // >>> MIXTURE
     else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
     {
-	    vec3 sandFrag  = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 0.9);
-        vec3 plainFrag = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 0.9);
+	    vec3 sandFrag  = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
+        vec3 plainFrag = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
 
         float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
         result = plainFrag.xyz * ratio + sandFrag.xyz * (1-ratio);

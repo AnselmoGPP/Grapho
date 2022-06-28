@@ -45,6 +45,8 @@ int Renderer::run()
 		std::cerr << __func__ << "(): " << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
+
+	std::cout << "run finished" << std::endl;
 }
 
 // (24)
@@ -386,6 +388,8 @@ void Renderer::cleanup()
 	// Cleanup environment
 	e.cleanupSwapChain();
 	e.cleanup(); 
+
+	std::cout << "Cleanup finished" << std::endl;
 }
 
 modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
@@ -410,7 +414,7 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 		if (it == model) { notLoadedYet = true; break; }
 
 	if(notLoadedYet)
-		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);
+		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);	// <<< MAY PRODUCE BUGS
 	else
 	{
 		modelsToDelete.splice(modelsToDelete.cend(), models, model);

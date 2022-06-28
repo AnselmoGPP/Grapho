@@ -18,34 +18,6 @@
 #include "common.hpp"
 
 
-// Models & textures
-std::map<std::string, modelIterator> assets;	// Model iterators
-std::map<std::string, texIterator> textures;	// Texture iterators
-
-// Others
-int gridStep = 50;
-ifOnce check;			// LOOK implement as functor (function with state)
-
-// Terrain
-Noiser noiser(
-	FastNoiseLite::NoiseType_Cellular,	// Noise type
-	4, 1.5, 0.28f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-	1, 70,								// Scale, Multiplier
-	0,									// Curve degree
-	500, 500, 0,						// XYZ offsets
-	4952);								// Seed
-
-Chunk singleChunk(glm::vec3(50, 50, 0), 200, 41, 11);
-Chunk testChunk(glm::vec3(50, 50, 0), 200, 41, 11);
-
-TerrainGrid terrChunks(noiser, 6400, 21, 8, 2, 1.2);
-
-// Data to update
-long double frameTime;
-size_t fps;
-size_t maxfps;
-glm::vec3 pos;
-
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
@@ -62,31 +34,59 @@ void setChunkSet(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
+// Models & textures
+Renderer app(update, 3);
+std::map<std::string, modelIterator> assets;	// Model iterators
+std::map<std::string, texIterator> textures;	// Texture iterators
+
+// Others
+int gridStep = 50;
+ifOnce check;			// LOOK implement as functor (function with state)
+
+// Terrain
+Noiser noiser(
+	FastNoiseLite::NoiseType_Cellular,	// Noise type
+	4, 1.5, 0.28f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	1, 70,								// Scale, Multiplier
+	0,									// Curve degree
+	500, 500, 0,						// XYZ offsets
+	4952);								// Seed
+
+Chunk singleChunk(app, glm::vec3(50, 50, 0), 200, 41, 11);
+TerrainGrid terrChunks(app, noiser, 6400, 21, 8, 2, 1.2);
+
+// Data to update
+long double frameTime;
+size_t fps;
+size_t maxfps;
+glm::vec3 pos;
+
 
 int main(int argc, char* argv[])
 {
 	TimerSet time;
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update, 3);
+	//Renderer app(update, 3);
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
 	loadTextures(app);
 
-	setPoints(app);
-	setAxis(app);
+	//setPoints(app);
+	//setAxis(app);
 	//setGrid(app);
-	setSkybox(app);
-	setCottage(app);
-	setRoom(app);
-	setChunk(app);
+	//setSkybox(app);
+	//setCottage(app);
+	//setRoom(app);
+	//setChunk(app);
 	setChunkSet(app);
-	setSun(app);
-	setReticule(app);
+	//setSun(app);
+	//setReticule(app);
 
 	app.run();		// Start rendering
-	
+
+	std::cout << "main finished" << std::endl;
 	return EXIT_SUCCESS;
 }
 
@@ -102,6 +102,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	std::cout << rend.getFrameCount() << ") " << rend.getCommandsCount()/3 << std::endl;
 
 	// Chunks
+	std::cout << terrChunks.getTotalNodes() << std::endl;
 	terrChunks.updateTree(pos);
 	terrChunks.updateUBOs(pos, view, proj);
 	singleChunk.updateUBOs(pos, view, proj);
@@ -363,7 +364,7 @@ void setChunk(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	singleChunk.computeTerrain(noiser, true, 1.f);
-	singleChunk.render(&app, usedTextures, nullptr);
+	singleChunk.render(usedTextures, nullptr);
 }
 
 void setChunkSet(Renderer& app)
@@ -373,8 +374,6 @@ void setChunkSet(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	terrChunks.addTextures(usedTextures);
-	terrChunks.addApp(app);
-
 	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
 
