@@ -43,7 +43,7 @@ public:
         float OffsetX, float OffsetY, float OffsetZ,
         int Seed);
 
-    // Get noise. Computations performed by this method (Octaves, Lacunarity, Persistence, Offsets, Scale, Multiplier, Degree).
+    // Get noise. Computations are performed by this method (Octaves, Lacunarity, Persistence, Offsets, Scale, Multiplier, Degree).
     float getProcessedNoise(float x, float y, float z);
 
     // Get noise after the full process. Computations performed by FastNoise (Octaves, Lacunarity, Persistence) and this method (Offsets, Scale, Multiplier, Degree).

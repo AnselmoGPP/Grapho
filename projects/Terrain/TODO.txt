@@ -1,7 +1,5 @@
 TODO:
 	deleteModel(): problem with models that are still in modelsToLoad
-	3D distance terrain
-	Understand why single chunk's border normals differ from chunkSet's chunks
 	Am I asking GPU for too large heap space?
 	Camera
 	Inputs (MVC)

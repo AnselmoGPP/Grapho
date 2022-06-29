@@ -79,10 +79,10 @@ int main(int argc, char* argv[])
 	//setSkybox(app);
 	//setCottage(app);
 	//setRoom(app);
-	//setChunk(app);
+	setChunk(app);
 	setChunkSet(app);
-	//setSun(app);
-	//setReticule(app);
+	setSun(app);
+	setReticule(app);
 
 	app.run();		// Start rendering
 

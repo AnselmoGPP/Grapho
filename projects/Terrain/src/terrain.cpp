@@ -453,7 +453,7 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
     Chunk* chunk = node->getElement();
     glm::vec3 center = chunk->getCenter();
     float squareSide = chunk->getSide() * chunk->getSide();
-    float squareDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y);
+    float squareDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y) + (camPos.z - center.z) * (camPos.z - center.z);
     
     // Is leaf node > Compute terrain > Children are nullptr by default
     if (depth >= minLevel && (squareDist > squareSide * distMultiplier || depth == numLevels - 1))
@@ -607,7 +607,7 @@ void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
             distVec.x = center.x - camPosNow.x;
             distVec.y = center.y - camPosNow.y;
             distVec.z = center.z - camPosNow.z;
-            targetSqrDist = it->second->getSide() * it->second->getLayer() * it->second->getSide() * it->second->getLayer();
+            targetSqrDist = it->second->getSide() * relDist * it->second->getSide() * relDist;
             
             if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
             {
