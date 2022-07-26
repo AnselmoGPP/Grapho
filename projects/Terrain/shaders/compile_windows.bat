@@ -2,6 +2,8 @@ set GLSLC=C:\VulkanSDK\1.3.211.0\Bin\glslc.exe
 
 %GLSLC% GLSL\v_terrainPTN.vert -o SPIRV\v_terrainPTN.spv
 %GLSLC% GLSL\f_terrainPTN.frag -o SPIRV\f_terrainPTN.spv
+%GLSLC% GLSL\v_planetPTN.vert -o SPIRV\v_planetPTN.spv
+%GLSLC% GLSL\f_planetPTN.frag -o SPIRV\f_planetPTN.spv
 %GLSLC% GLSL\v_trianglePCT.vert -o SPIRV\v_trianglePCT.spv
 %GLSLC% GLSL\f_trianglePCT.frag -o SPIRV\f_trianglePCT.spv
 %GLSLC% GLSL\v_trianglePT.vert -o SPIRV\v_trianglePT.spv

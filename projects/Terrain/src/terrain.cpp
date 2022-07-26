@@ -2,110 +2,43 @@
 #include "terrain.hpp"
 
 
-Chunk::Chunk(Renderer& renderer, glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer)
-    : renderer(renderer), center(center), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), layer(layer), modelOrdered(false) { }
+// Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer)
-    : renderer(renderer), sideXSize(sideXSize), numVertexX(numVertexX), numVertexY(numVertexY), layer(layer), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+    : renderer(renderer), noiseGen(noiseGen), horSize(horSize), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
 { 
-    this->center.x = std::get<0>(center);
-    this->center.y = std::get<1>(center);
-    this->center.z = std::get<2>(center);
+    baseCenter.x = std::get<0>(center);
+    baseCenter.y = std::get<1>(center);
+    baseCenter.z = std::get<2>(center);
+
+    groundCenter.x = baseCenter.x;
+    groundCenter.y = baseCenter.y;
+    groundCenter.z = baseCenter.z;
 }
 
-Chunk::~Chunk() 
-{ 
-    if(renderer.getModelsCount() && modelOrdered) 
-        renderer.deleteModel(model); 
-};
-
-void Chunk::reset(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
+Chunk::~Chunk()
 {
-    this->center = center;
-    this->sideXSize = sideXSize;
-    this->numVertexX = numVertexX;
-    this->numVertexY = numVertexY;
-    vertex.clear();
-    indices.clear();
+    if (renderer.getModelsCount() && modelOrdered)
+        renderer.deleteModel(model);
 }
 
-void Chunk::reset(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY)
-{
-    this->center.x = std::get<0>(center);
-    this->center.y = std::get<1>(center);
-    this->center.z = std::get<2>(center);
-    this->sideXSize = sideXSize;
-    this->numVertexX = numVertexX;
-    this->numVertexY = numVertexY;
-    vertex.clear();
-    indices.clear();
-}
-
-void Chunk::computeTerrain(Noiser& noise, bool computeIndices, float textureFactor)
-{
-    float stride = sideXSize / (numVertexX - 1);
-    float x0 = center.x - sideXSize / 2;
-    float y0 = center.y - (stride * (numVertexY - 1)) / 2;
-
-    // Vertex data
-    vertex.reserve(numVertexX * numVertexY * 8);
-
-    for (size_t y = 0; y < numVertexY; y++)
-        for (size_t x = 0; x < numVertexX; x++)
-        {
-            size_t pos = y * numVertexX + x;
-
-            // positions (0, 1, 2)
-            vertex[pos * 8 + 0] = x0 + x * stride;
-            vertex[pos * 8 + 1] = y0 + y * stride;
-            vertex[pos * 8 + 2] = noise.GetNoise((float)vertex[pos * 8 + 0], (float)vertex[pos * 8 + 1]);
-
-            // textures (3, 4)
-            vertex[pos * 8 + 3] = x * textureFactor;
-            vertex[pos * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
-        }
-
-    // Normals (5, 6, 7)
-    computeGridNormals(stride, noise);
-
-    // Indices
-    if (computeIndices)
-    {
-        indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
-
-        for (size_t y = 0; y < numVertexY - 1; y++)
-            for (size_t x = 0; x < numVertexX - 1; x++)
-            {
-                unsigned int pos = getPos(x, y);
-
-                indices.push_back(pos);
-                indices.push_back(pos + numVertexX + 1);
-                indices.push_back(pos + numVertexX);
-
-                indices.push_back(pos);
-                indices.push_back(pos + 1);
-                indices.push_back(pos + numVertexX + 1);
-            }
-    }
-}
-
-void Chunk::render(std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices)
+void Chunk::render(const char* vertexShader, const char* fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
-        VertexType(1, 0, 1, 1), 
-        numVertexX * numVertexY, 
-        vertex.data(), 
-        indices? *indices : this->indices, 
+        VertexType(1, 0, 1, 1),
+        numHorVertex * numVertVertex,
+        vertex.data(),
+        indices ? *indices : this->indices,
         true);
-    
+
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
         UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
         UBOconfig(1, lightSize, vec4size),
         usedTextures,
-        (SHADERS_DIR + "v_terrainPTN.spv").c_str(),
-        (SHADERS_DIR + "f_terrainPTN.spv").c_str(),
+        vertexShader,
+        fragmentShader,
         false);
 
     model->vsDynUBO.setUniform(0, 0, modelMatrix());
@@ -134,35 +67,75 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
     model->fsUBO.setUniform(0, 1, camPos);
 }
 
-void Chunk::computeIndices(std::vector<uint16_t>& indices)
+void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)
 {
-    indices.reserve((numVertexX - 1) * (numVertexY - 1) * 2 * 3);
+    indices.reserve((numHorVertex - 1) * (numVertVertex - 1) * 2 * 3);
 
-    for (size_t y = 0; y < numVertexY - 1; y++)
-        for (size_t x = 0; x < numVertexX - 1; x++)
+    for (size_t v = 0; v < numVertVertex - 1; v++)
+        for (size_t h = 0; h < numHorVertex - 1; h++)
         {
-            unsigned int pos = getPos(x, y);
+            unsigned int pos = v * numHorVertex + h;
 
             indices.push_back(pos);
-            indices.push_back(pos + numVertexX + 1);
-            indices.push_back(pos + numVertexX);
+            indices.push_back(pos + numHorVertex + 1);
+            indices.push_back(pos + numHorVertex);
 
             indices.push_back(pos);
             indices.push_back(pos + 1);
-            indices.push_back(pos + numVertexX + 1);
+            indices.push_back(pos + numHorVertex + 1);
         }
 }
 
-void Chunk::computeGridNormals(float stride, Noiser& noise)
+// PlainChunk ----------------------------------------------------------------------
+
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+    : Chunk(renderer, noiseGen, center, horSize, numHorVertex, numVertVertex, layer) 
+{ 
+    groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
+}
+
+void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
+{
+    float stride = horSize / (numHorVertex - 1);
+    float x0 = baseCenter.x - horSize / 2;
+    float y0 = baseCenter.y - stride * (numVertVertex - 1) / 2;
+
+    // Vertex data
+    vertex.reserve(numHorVertex * numVertVertex * 8);
+
+    for (size_t y = 0; y < numVertVertex; y++)
+        for (size_t x = 0; x < numHorVertex; x++)
+        {
+            size_t pos = y * numHorVertex + x;
+
+            // positions (0, 1, 2)
+            vertex[pos * 8 + 0] = x0 + x * stride;
+            vertex[pos * 8 + 1] = y0 + y * stride;
+            vertex[pos * 8 + 2] = noiseGen.GetNoise((float)vertex[pos * 8 + 0], (float)vertex[pos * 8 + 1]);
+
+            // textures (3, 4)
+            vertex[pos * 8 + 3] = x * textureFactor;
+            vertex[pos * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
+        }
+
+    // Normals (5, 6, 7)
+    computeGridNormals(stride);
+
+    // Indices
+    if (computeIndices)
+        this->computeIndices(indices, numHorVertex, numVertVertex);
+}
+
+void PlainChunk::computeGridNormals(float stride)
 {
     // Initialize normals to 0
-    unsigned numVertex = numVertexX * numVertexY;
-    glm::vec3* tempNormals = new glm::vec3[numVertex];
+    unsigned numVertex = numHorVertex * numVertVertex;
+    std::vector<glm::vec3> tempNormals(numVertex, glm::vec3(0.f, 0.f, 0.f));
     for (size_t i = 0; i < numVertex; i++) tempNormals[i] = glm::vec3(0.f, 0.f, 0.f);
 
     // Compute normals
-    for (size_t y = 0; y < numVertexY - 1; y++)
-        for (size_t x = 0; x < numVertexX - 1; x++)
+    for (size_t y = 0; y < numVertVertex - 1; y++)
+        for (size_t x = 0; x < numHorVertex - 1; x++)
         {
             /*
                 In each iteration, we operate in each square of the grid (4 vertex):
@@ -208,148 +181,755 @@ void Chunk::computeGridNormals(float stride, Noiser& noise)
         }
 
     // Special cases: Vertex at the border
-
-    // Left & Right
-    for (size_t y = 1; y < numVertexY - 1; y++)
     {
         size_t pos;
         glm::vec3 up, down, left, right, center;
 
-        // Left side:
-        //     -Vertex vectors
-        pos = getPos(0, y);
-        center = getVertex(pos);
-        up = getVertex(getPos(0, y + 1));
-        down = getVertex(getPos(0, y - 1));
-        left = glm::vec3(center.x - stride, center.y, noise.GetNoise(center.x - stride, center.y));
+        // Left & Right (no corners)
+        for (size_t y = 1; y < numVertVertex - 1; y++)
+        {
+            // Left side:
+            //     -Vertex vectors
+            pos = getPos(0, y);
+            center = getVertex(pos);
+            up = getVertex(getPos(0, y + 1));
+            down = getVertex(getPos(0, y - 1));
+            left = glm::vec3(center.x - stride, center.y, noiseGen.GetNoise(center.x - stride, center.y));
 
-        //     -Vector representing each side
-        up = up - center;
-        left = left - center;
-        down = down - center;
+            //     -Vector representing each side
+            up = up - center;
+            left = left - center;
+            down = down - center;
 
-        //     -Add normals to the existing normal of the vertex
-        tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
+            //     -Add normals to the existing normal of the vertex
+            tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
 
-        // Right side:
-        //     -Vertex vectors
-        pos = getPos(numVertexX - 1, y);
-        center = getVertex(pos);
-        up = getVertex(getPos(numVertexX - 1, y + 1));
-        down = getVertex(getPos(numVertexX - 1, y - 1));
-        right = glm::vec3(center.x + stride, center.y, noise.GetNoise(center.x + stride, center.y));
+            // Right side:
+            //     -Vertex vectors
+            pos = getPos(numHorVertex - 1, y);
+            center = getVertex(pos);
+            up = getVertex(getPos(numHorVertex - 1, y + 1));
+            down = getVertex(getPos(numHorVertex - 1, y - 1));
+            right = glm::vec3(center.x + stride, center.y, noiseGen.GetNoise(center.x + stride, center.y));
 
-        //     -Vector representing each side
-        up = up - center;
-        right = right - center;
-        down = down - center;
+            //     -Vector representing each side
+            up = up - center;
+            right = right - center;
+            down = down - center;
 
-        //     -Add normals to the existing normal of the vertex
-        tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+            //     -Add normals to the existing normal of the vertex
+            tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+        }
+
+        // Upper & Bottom (no corners)
+        for (size_t x = 1; x < numHorVertex - 1; x++)
+        {
+            // Bottom side:
+            //     -Vertex vectors
+            pos = getPos(x, 0);
+            center = getVertex(pos);
+            right = getVertex(getPos(x + 1, 0));
+            left = getVertex(getPos(x - 1, 0));
+            down = glm::vec3(center.x, center.y - stride, noiseGen.GetNoise(center.x, center.y - stride));
+
+            //     -Vector representing each side
+            right = right - center;
+            left = left - center;
+            down = down - center;
+
+            //     -Add normals to the existing normal of the vertex
+            tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right);
+
+            // Upper side:
+            //     -Vertex vectors
+            pos = getPos(x, numVertVertex - 1);
+            center = getVertex(pos);
+            right = getVertex(getPos(x + 1, numVertVertex - 1));
+            left = getVertex(getPos(x - 1, numVertVertex - 1));
+            up = glm::vec3(center.x, center.y + stride, noiseGen.GetNoise(center.x, center.y + stride));
+
+            //     -Vector representing each side
+            right = right - center;
+            left = left - center;
+            up = up - center;
+
+            //     -Add normals to the existing normal of the vertex
+            tempNormals[pos] += glm::cross(up, left) + glm::cross(right, up);
+        }
+
+        // Corners
+        {
+            //  - Top left
+            pos = getPos(0, numVertVertex - 1);
+            center = getVertex(pos);
+            right = getVertex(getPos(1, numVertVertex - 1));
+            down = getVertex(getPos(0, numVertVertex - 2));
+            up = glm::vec3(center.x, center.y + stride, noiseGen.GetNoise(center.x, center.y + stride));
+            left = glm::vec3(center.x - stride, center.y, noiseGen.GetNoise(center.x - stride, center.y));
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(right, up) + glm::cross(up, left) + glm::cross(left, down);
+
+            //  - Top right
+            pos = getPos(numHorVertex - 1, numVertVertex - 1);
+            center = getVertex(pos);
+            down = getVertex(getPos(numHorVertex - 1, numVertVertex - 2));
+            left = getVertex(getPos(numHorVertex - 2, numVertVertex - 1));
+            right = glm::vec3(center.x + stride, center.y, noiseGen.GetNoise(center.x + stride, center.y));
+            up = glm::vec3(center.x, center.y + stride, noiseGen.GetNoise(center.x, center.y + stride));
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(down, right) + glm::cross(right, up) + glm::cross(up, left);
+
+            //  - Low left
+            pos = getPos(0, 0);
+            center = getVertex(pos);
+            right = getVertex(getPos(1, 0));
+            up = getVertex(getPos(0, 1));
+            down = glm::vec3(center.x, center.y - stride, noiseGen.GetNoise(center.x, center.y - stride));
+            left = glm::vec3(center.x - stride, center.y, noiseGen.GetNoise(center.x - stride, center.y));
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down) + glm::cross(down, right);
+
+            //  - Low right
+            pos = getPos(numHorVertex - 1, 0);
+            center = getVertex(pos);
+            up = getVertex(getPos(numHorVertex - 1, 1));
+            left = getVertex(getPos(numHorVertex - 2, 0));
+            right = glm::vec3(center.x + stride, center.y, noiseGen.GetNoise(center.x + stride, center.y));
+            down = glm::vec3(center.x, center.y - stride, noiseGen.GetNoise(center.x, center.y - stride));
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right) + glm::cross(right, up);
+        }
     }
 
-    // Upper & Bottom
-    for (size_t x = 1; x < numVertexX - 1; x++)
+    // Normalize the normals (normalized in shader)
+    for (int i = 0; i < numVertex; i++)
+    {
+        tempNormals[i] = glm::normalize(tempNormals[i]);
+
+        vertex[i * 8 + 5] = tempNormals[i].x;
+        vertex[i * 8 + 6] = tempNormals[i].y;
+        vertex[i * 8 + 7] = tempNormals[i].z;
+    }
+}
+
+// SphericalChunk ----------------------------------------------------------------------
+
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> sqrSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, CubeSide cubePlane, unsigned layer)
+    : Chunk(renderer, noiseGen, sqrSideCenter, horSize, numHorVertex, numVertVertex, layer), cubePlane(cubePlane), nucleus(nucleus), radius(radius)
+{ 
+    glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
+    glm::vec3 sphere = unitVec * radius;
+    groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+}
+
+void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
+{
+    float stride = horSize / (numHorVertex - 1);
+    float x0, y0, z0;
+    glm::vec3 unitVec, sphere, ground;
+
+    // Vertex data
+    vertex.reserve(numHorVertex * numVertVertex * 8);
+
+    if (cubePlane == negY)
+    {
+        x0 = baseCenter.x - horSize / 2;
+        y0 = baseCenter.y;
+        z0 = baseCenter.z - stride * (numVertVertex - 1) / 2;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0 + h * stride, y0, z0 + v * stride) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+    else if (cubePlane == posX)
+    {
+        x0 = baseCenter.x;
+        y0 = baseCenter.y - horSize / 2;
+        z0 = baseCenter.z - stride * (numVertVertex - 1) / 2;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0, y0 + h * stride, z0 + v * stride) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+    else if (cubePlane == posZ)
+    {
+        x0 = baseCenter.x - horSize / 2;
+        y0 = baseCenter.y - stride * (numVertVertex - 1) / 2;
+        z0 = baseCenter.z;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0 + h * stride, y0 + v * stride, z0) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+    else if (cubePlane == negX)
+    {
+        x0 = baseCenter.x;
+        y0 = baseCenter.y + horSize / 2;
+        z0 = baseCenter.z - stride * (numVertVertex - 1) / 2;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0, y0 - h * stride, z0 + v * stride) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+    else if (cubePlane == negZ)
+    {
+        x0 = baseCenter.x + horSize / 2;
+        y0 = baseCenter.y - stride * (numVertVertex - 1) / 2;
+        z0 = baseCenter.z;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0 - h * stride, y0 + v * stride, z0) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+    else if (cubePlane == posY)
+    {
+        x0 = baseCenter.x + horSize / 2;
+        y0 = baseCenter.y;
+        z0 = baseCenter.z - stride * (numVertVertex - 1) / 2;
+
+        for (size_t v = 0; v < numVertVertex; v++)
+            for (size_t h = 0; h < numHorVertex; h++)
+            {
+                size_t pos = v * numHorVertex + h;
+
+                // positions (0, 1, 2)
+                unitVec = glm::normalize(glm::vec3(x0 - h * stride, y0, z0 + v * stride) - nucleus);
+                sphere = unitVec * radius;
+                ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+                vertex[pos * 8 + 0] = ground.x;
+                vertex[pos * 8 + 1] = ground.y;
+                vertex[pos * 8 + 2] = ground.z;
+
+                // textures (3, 4)
+                vertex[pos * 8 + 3] = h * textureFactor;
+                vertex[pos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            }
+    }
+
+    // Normals (5, 6, 7)
+    computeGridNormals(stride);
+
+    // Indices
+    if (computeIndices)
+        this->computeIndices(indices, numHorVertex, numVertVertex);
+
+}
+
+void SphericalChunk::computeGridNormals(float stride)
+{
+    // Initialize normals to 0
+    unsigned numVertex = numHorVertex * numVertVertex;
+    std::vector<glm::vec3> tempNormals(numVertex, glm::vec3(0.f, 0.f, 0.f));
+    for (size_t i = 0; i < numVertex; i++) tempNormals[i] = glm::vec3(0.f, 0.f, 0.f);
+
+    // Compute normals
+    for (size_t y = 0; y < numVertVertex - 1; y++)
+        for (size_t x = 0; x < numHorVertex - 1; x++)
+        {
+            /*
+                In each iteration, we operate in each square of the grid (4 vertex):
+
+                           Cside
+                       (D)------>(C)
+                        |         |
+                  Dside |         | Bside
+                        v         v
+                       (A)------>(B)
+                           Aside
+             */
+
+             // Vertex positions in the array
+            size_t posA = getPos(x, y);
+            size_t posB = getPos(x + 1, y);
+            size_t posC = getPos(x + 1, y + 1);
+            size_t posD = getPos(x, y + 1);
+
+            // Vertex vectors
+            glm::vec3 A = getVertex(posA);
+            glm::vec3 B = getVertex(posB);
+            glm::vec3 C = getVertex(posC);
+            glm::vec3 D = getVertex(posD);
+
+            // Vector representing each side
+            glm::vec3 Aside = B - A;
+            glm::vec3 Bside = B - C;
+            glm::vec3 Cside = C - D;
+            glm::vec3 Dside = A - D;
+
+            // Normal computed for each vertex from the two side vectors it has attached
+            glm::vec3 Anormal = glm::cross(Aside, -Dside);
+            glm::vec3 Bnormal = glm::cross(-Bside, -Aside);
+            glm::vec3 Cnormal = glm::cross(-Cside, Bside);
+            glm::vec3 Dnormal = glm::cross(Dside, Cside);
+
+            // Add to the existing normal of the vertex
+            tempNormals[posA] += Anormal;
+            tempNormals[posB] += Bnormal;
+            tempNormals[posC] += Cnormal;
+            tempNormals[posD] += Dnormal;
+        }
+
+    // Special cases: Vertex at the border
     {
         size_t pos;
         glm::vec3 up, down, left, right, center;
+        glm::vec3 unitVec, sphere;
 
-        // Bottom side:
-        //     -Vertex vectors
-        pos = getPos(x, 0);
-        center = getVertex(pos);
-        right = getVertex(getPos(x + 1, 0));
-        left = getVertex(getPos(x - 1, 0));
-        down = glm::vec3(center.x, center.y - stride, noise.GetNoise(center.x, center.y - stride));
+        // Left & Right (no corners)
+        if(cubePlane == negY || cubePlane == posZ)
+            for (size_t v = 1; v < numVertVertex - 1; v++)
+            {
+                // Left side:
+                //     -Vertex vectors
+                pos = getPos(0, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(0, v + 1));
+                down = getVertex(getPos(0, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+                sphere = unitVec * radius;
+                left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-        //     -Vector representing each side
-        right = right - center;
-        left = left - center;
-        down = down - center;
+                //     -Vector representing each side
+                up = up - center;
+                left = left - center;
+                down = down - center;
 
-        //     -Add normals to the existing normal of the vertex
-        tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right);
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
 
-        // Upper side:
-        //     -Vertex vectors
-        pos = getPos(x, numVertexY - 1);
-        center = getVertex(pos);
-        right = getVertex(getPos(x + 1, numVertexY - 1));
-        left = getVertex(getPos(x - 1, numVertexY - 1));
-        up = glm::vec3(center.x, center.y + stride, noise.GetNoise(center.x, center.y + stride));
+                // Right side:
+                //     -Vertex vectors
+                pos = getPos(numHorVertex - 1, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(numHorVertex - 1, v + 1));
+                down = getVertex(getPos(numHorVertex - 1, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+                sphere = unitVec * radius;
+                right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-        //     -Vector representing each side
-        right = right - center;
-        left = left - center;
-        up = up - center;
+                //     -Vector representing each side
+                up = up - center;
+                right = right - center;
+                down = down - center;
 
-        //     -Add normals to the existing normal of the vertex
-        tempNormals[pos] += glm::cross(up, left) + glm::cross(right, up);
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+            }
+        else if(cubePlane == posY || cubePlane == negZ)
+            for (size_t v = 1; v < numVertVertex - 1; v++)
+            {
+                // Left side:
+                //     -Vertex vectors
+                pos = getPos(0, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(0, v + 1));
+                down = getVertex(getPos(0, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+                sphere = unitVec * radius;
+                left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                left = left - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
+
+                // Right side:
+                //     -Vertex vectors
+                pos = getPos(numHorVertex - 1, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(numHorVertex - 1, v + 1));
+                down = getVertex(getPos(numHorVertex - 1, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+                sphere = unitVec * radius;
+                right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                right = right - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+            }
+        else if(cubePlane == negX)
+            for (size_t v = 1; v < numVertVertex - 1; v++)
+            {
+                // Left side:
+                //     -Vertex vectors
+                pos = getPos(0, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(0, v + 1));
+                down = getVertex(getPos(0, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                left = left - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
+
+                // Right side:
+                //     -Vertex vectors
+                pos = getPos(numHorVertex - 1, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(numHorVertex - 1, v + 1));
+                down = getVertex(getPos(numHorVertex - 1, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                right = right - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+            }
+        else if(cubePlane == posX)
+            for (size_t v = 1; v < numVertVertex - 1; v++)
+            {
+                // Left side:
+                //     -Vertex vectors
+                pos = getPos(0, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(0, v + 1));
+                down = getVertex(getPos(0, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                left = left - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down);
+
+                // Right side:
+                //     -Vertex vectors
+                pos = getPos(numHorVertex - 1, v);
+                center = getVertex(pos);
+                up = getVertex(getPos(numHorVertex - 1, v + 1));
+                down = getVertex(getPos(numHorVertex - 1, v - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                up = up - center;
+                right = right - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(right, up) + glm::cross(down, right);
+            }
+
+        // Upper & Bottom (no corners)
+        if (cubePlane == negY || cubePlane == posY || cubePlane == negX || cubePlane == posX)
+            for (size_t h = 1; h < numHorVertex - 1; h++)
+            {
+                // Bottom side:
+                //     -Vertex vectors
+                pos = getPos(h, 0);
+                center = getVertex(pos);
+                right = getVertex(getPos(h + 1, 0));
+                left = getVertex(getPos(h - 1, 0));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z - stride) - nucleus);
+                sphere = unitVec * radius;
+                down = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                right = right - center;
+                left = left - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right);
+
+                // Upper side:
+                //     -Vertex vectors
+                pos = getPos(h, numVertVertex - 1);
+                center = getVertex(pos);
+                right = getVertex(getPos(h + 1, numVertVertex - 1));
+                left = getVertex(getPos(h - 1, numVertVertex - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z + stride) - nucleus);
+                sphere = unitVec * radius;
+                up = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                right = right - center;
+                left = left - center;
+                up = up - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(right, up);
+            }
+        else if (cubePlane == posZ || cubePlane == negZ)
+            for (size_t h = 1; h < numHorVertex - 1; h++)
+            {
+                // Bottom side:
+                //     -Vertex vectors
+                pos = getPos(h, 0);
+                center = getVertex(pos);
+                right = getVertex(getPos(h + 1, 0));
+                left = getVertex(getPos(h - 1, 0));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                down = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                right = right - center;
+                left = left - center;
+                down = down - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right);
+
+                // Upper side:
+                //     -Vertex vectors
+                pos = getPos(h, numVertVertex - 1);
+                center = getVertex(pos);
+                right = getVertex(getPos(h + 1, numVertVertex - 1));
+                left = getVertex(getPos(h - 1, numVertVertex - 1));
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+                sphere = unitVec * radius;
+                up = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+                //     -Vector representing each side
+                right = right - center;
+                left = left - center;
+                up = up - center;
+
+                //     -Add normals to the existing normal of the vertex
+                tempNormals[pos] += glm::cross(up, left) + glm::cross(right, up);
+            }
+
+        // Corners
+        {
+            //  - Top left
+            pos = getPos(0, numVertVertex - 1);
+            center = getVertex(pos);
+            right = getVertex(getPos(1, numVertVertex - 1));
+            down = getVertex(getPos(0, numVertVertex - 2));
+
+            if(cubePlane == negY || cubePlane == posY || cubePlane == negX || cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z + stride) - nucleus);
+            else if(cubePlane == negZ || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            up = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            if (cubePlane == negY || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+            else if (cubePlane == posY || cubePlane == negZ)
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+            else if (cubePlane == negX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            else if (cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(right, up) + glm::cross(up, left) + glm::cross(left, down);
+
+            //  - Top right
+            pos = getPos(numHorVertex - 1, numVertVertex - 1);
+            center = getVertex(pos);
+            down = getVertex(getPos(numHorVertex - 1, numVertVertex - 2));
+            left = getVertex(getPos(numHorVertex - 2, numVertVertex - 1));
+
+            if (cubePlane == negY || cubePlane == posY || cubePlane == negX || cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z + stride) - nucleus);
+            else if (cubePlane == negZ || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            up = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            if (cubePlane == negY || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+            else if (cubePlane == posY || cubePlane == negZ)
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+            else if (cubePlane == negX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            if (cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(down, right) + glm::cross(right, up) + glm::cross(up, left);
+
+            //  - Low left
+            pos = getPos(0, 0);
+            center = getVertex(pos);
+            right = getVertex(getPos(1, 0));
+            up = getVertex(getPos(0, 1));
+
+            if (cubePlane == negY || cubePlane == posY || cubePlane == negX || cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z - stride) - nucleus);
+            else if (cubePlane == negZ || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            down = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            if (cubePlane == negY || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+            else if (cubePlane == posY || cubePlane == negZ)
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+            else if (cubePlane == negX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            else if (cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            left = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down) + glm::cross(down, right);
+
+            //  - Low right
+            pos = getPos(numHorVertex - 1, 0);
+            center = getVertex(pos);
+            up = getVertex(getPos(numHorVertex - 1, 1));
+            left = getVertex(getPos(numHorVertex - 2, 0));
+
+            if (cubePlane == negY || cubePlane == posY || cubePlane == negX || cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y, center.z - stride) - nucleus);
+            else if (cubePlane == negZ || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            down = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y - stride, sphere.z);
+
+            if (cubePlane == negY || cubePlane == posZ)
+                unitVec = glm::normalize(glm::vec3(center.x + stride, center.y, center.z) - nucleus);
+            else if (cubePlane == posY || cubePlane == negZ)
+                unitVec = glm::normalize(glm::vec3(center.x - stride, center.y, center.z) - nucleus);
+            else if (cubePlane == negX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y - stride, center.z) - nucleus);
+            else if (cubePlane == posX)
+                unitVec = glm::normalize(glm::vec3(center.x, center.y + stride, center.z) - nucleus);
+            sphere = unitVec * radius;
+            right = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+
+            right = right - center;
+            left = left - center;
+            up = up - center;
+            down = down - center;
+
+            tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right) + glm::cross(right, up);
+        }
     }
-
-    // Corners
-    glm::vec3 center, right, left, up, down;
-    size_t pos;
-
-    //  - Top left
-    pos = getPos(0, numVertexY - 1);
-    center = getVertex(pos);
-    right = getVertex(getPos(1, numVertexY - 1));
-    down = getVertex(getPos(0, numVertexY - 2));
-    up = glm::vec3(center.x, center.y + stride, noise.GetNoise(center.x, center.y + stride));
-    left = glm::vec3(center.x - stride, center.y, noise.GetNoise(center.x - stride, center.y));
-
-    right = right - center;
-    left = left - center;
-    up = up - center;
-    down = down - center;
-
-    tempNormals[pos] += glm::cross(right, up) + glm::cross(up, left) + glm::cross(left, down);
-
-    //  - Top right
-    pos = getPos(numVertexX - 1, numVertexY - 1);
-    center = getVertex(pos);
-    down = getVertex(getPos(numVertexX - 1, numVertexY - 2));
-    left = getVertex(getPos(numVertexX - 2, numVertexY - 1));
-    right = glm::vec3(center.x + stride, center.y, noise.GetNoise(center.x + stride, center.y));
-    up = glm::vec3(center.x, center.y + stride, noise.GetNoise(center.x, center.y + stride));
-
-    right = right - center;
-    left = left - center;
-    up = up - center;
-    down = down - center;
-
-    tempNormals[pos] += glm::cross(down, right) + glm::cross(right, up) + glm::cross(up, left);
-
-    //  - Low left
-    pos = getPos(0, 0);
-    center = getVertex(pos);
-    right = getVertex(getPos(1, 0));
-    up = getVertex(getPos(0, 1));
-    down = glm::vec3(center.x, center.y - stride, noise.GetNoise(center.x, center.y - stride));
-    left = glm::vec3(center.x - stride, center.y, noise.GetNoise(center.x - stride, center.y));
-
-    right = right - center;
-    left = left - center;
-    up = up - center;
-    down = down - center;
-
-    tempNormals[pos] += glm::cross(up, left) + glm::cross(left, down) + glm::cross(down, right);
-
-    //  - Low right
-    pos = getPos(numVertexX - 1, 0);
-    center = getVertex(pos);
-    up = getVertex(getPos(numVertexX - 1, 1));
-    left = getVertex(getPos(numVertexX - 2, 0));
-    right = glm::vec3(center.x + stride, center.y, noise.GetNoise(center.x + stride, center.y));
-    down = glm::vec3(center.x, center.y - stride, noise.GetNoise(center.x, center.y - stride));
-
-    right = right - center;
-    left = left - center;
-    up = up - center;
-    down = down - center;
-
-    tempNormals[pos] += glm::cross(left, down) + glm::cross(down, right) + glm::cross(right, up);
 
     // Normalize the normals
     for (int i = 0; i < numVertex; i++)
@@ -360,17 +940,9 @@ void Chunk::computeGridNormals(float stride, Noiser& noise)
         vertex[i * 8 + 6] = tempNormals[i].y;
         vertex[i * 8 + 7] = tempNormals[i].z;
     }
-
-    delete[] tempNormals;
 }
 
-size_t Chunk::getPos(size_t x, size_t y) const { return y * numVertexX + x; }
-
-glm::vec3 Chunk::getVertex(size_t position) const
-{
-    return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]);
-}
-
+// TerrainGrid ----------------------------------------------------------------------
 
 TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
     : activeTree(0), 
@@ -386,8 +958,7 @@ TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, size_t rootC
     distMultiplier(distMultiplier)
 { 
     root[0] = root[1] = nullptr;
-    Chunk temp(renderer, glm::vec3(0, 0, 0), 1, numSideVertex, numSideVertex);
-    temp.computeIndices(indices);
+    Chunk::computeIndices(indices, numSideVertex, numSideVertex);
 }
 
 TerrainGrid::~TerrainGrid() 
@@ -439,7 +1010,7 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
     }
 }
 
-void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
+void TerrainGrid::createTree(QuadNode<PlainChunk*> *node, size_t depth)
 {
     /*
     Avoid chunks-swap gap. Cases:
@@ -450,7 +1021,7 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
     */
 
     nodeCount++;
-    Chunk* chunk = node->getElement();
+    PlainChunk* chunk = node->getElement();
     glm::vec3 center = chunk->getCenter();
     float squareSide = chunk->getSide() * chunk->getSide();
     float squareDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y) + (camPos.z - center.z) * (camPos.z - center.z);
@@ -462,8 +1033,8 @@ void TerrainGrid::createTree(QuadNode<Chunk*> *node, size_t depth)
 
         if (chunk->modelOrdered == false)
         {
-            chunk->computeTerrain(noiseGenerator, false, std::pow(2, numLevels - 1 - depth));
-            chunk->render(textures, &indices);
+            chunk->computeTerrain(false, std::pow(2, numLevels - 1 - depth));
+            chunk->render((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str(), textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
             renderer.setRenders(chunk->model, 0);
         }
@@ -502,7 +1073,7 @@ void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, con
     updateUBOs_help(root[activeTree]);  // Preorder traversal
 }
 
-void TerrainGrid::updateUBOs_help(QuadNode<Chunk*>* node)
+void TerrainGrid::updateUBOs_help(QuadNode<PlainChunk*>* node)
 {
     if (!node) return;
 
@@ -521,7 +1092,7 @@ void TerrainGrid::updateUBOs_help(QuadNode<Chunk*>* node)
     }
 }
 
-void updateUBOs_visitor(QuadNode<Chunk*>* node, const TerrainGrid& terrGrid)
+void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
 {
     if (node->isLeaf())
         node->getElement()->updateUBOs(terrGrid.camPos, terrGrid.view, terrGrid.proj);
@@ -531,7 +1102,7 @@ void updateUBOs_visitor(QuadNode<Chunk*>* node, const TerrainGrid& terrGrid)
     Check fullyConstructed
     Show tree once per second
 */
-bool TerrainGrid::fullConstChunks(QuadNode<Chunk*>* node)
+bool TerrainGrid::fullConstChunks(QuadNode<PlainChunk*>* node)
 {
     if (!node) return false;
     
@@ -554,7 +1125,7 @@ bool TerrainGrid::fullConstChunks(QuadNode<Chunk*>* node)
     }
 }
 
-void TerrainGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
+void TerrainGrid::changeRenders(QuadNode<PlainChunk*>* node, bool renderMode)
 {
     if (!node) return;
 
@@ -580,12 +1151,18 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
         0 );
 }
 
-QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
+QuadNode<PlainChunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new Chunk(renderer, center, sideLength, numSideVertex, numSideVertex, layer);
-    
-    return new QuadNode<Chunk*>(chunks[center]);
+    {
+        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength, numSideVertex, numSideVertex, layer);
+
+        //glm::vec3 exactCenter = chunks[center]->getCenter();
+        //exactCenter.z = noiseGenerator.GetNoise(exactCenter.x, exactCenter.y);
+        //chunks[center]->setCenter(exactCenter);
+    }
+
+    return new QuadNode<PlainChunk*>(chunks[center]);
 }
 
 void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
@@ -593,8 +1170,8 @@ void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
     glm::vec3 center;
     glm::vec3 distVec;
     float targetSqrDist;
-    std::map<std::tuple<float, float, float>, Chunk*>::iterator it = chunks.begin();
-    std::map<std::tuple<float, float, float>, Chunk*>::iterator nextIt;
+    std::map<std::tuple<float, float, float>, PlainChunk*>::iterator it = chunks.begin();
+    std::map<std::tuple<float, float, float>, PlainChunk*>::iterator nextIt;
 
     while (it != chunks.end())
     {

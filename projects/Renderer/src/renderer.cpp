@@ -27,7 +27,7 @@ Renderer::~Renderer() { }
 
 int Renderer::run()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	try 
 	{
@@ -46,13 +46,13 @@ int Renderer::run()
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "run finished" << std::endl;
+	std::cout << "run() end" << std::endl;
 }
 
 // (24)
 void Renderer::createCommandBuffers()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 	commandsCount = 0;
 
 	// Commmand buffer allocation
@@ -152,7 +152,7 @@ void Renderer::createCommandBuffers()
 // (25)
 void Renderer::createSyncObjects()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -178,7 +178,7 @@ void Renderer::createSyncObjects()
 
 void Renderer::renderLoop()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	frameCount = 0;
 	timer.setMaxFPS(maxFPS);
@@ -313,7 +313,7 @@ void Renderer::drawFrame()
 
 void Renderer::recreateSwapChain()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(e.window, &width, &height);
@@ -342,7 +342,7 @@ void Renderer::recreateSwapChain()
 
 void Renderer::cleanupSwapChain()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
@@ -360,7 +360,7 @@ void Renderer::cleanupSwapChain()
 
 void Renderer::cleanup()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Cleanup renderer
 	//cleanupSwapChain();
@@ -389,7 +389,7 @@ void Renderer::cleanup()
 	e.cleanupSwapChain();
 	e.cleanup(); 
 
-	std::cout << "Cleanup finished" << std::endl;
+	std::cout << "Cleanup() end" << std::endl;
 }
 
 modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
@@ -451,7 +451,7 @@ void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 
 void Renderer::loadingThread()
 {
-	std::cout << "Start " << __func__ << "()" << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	texIterator beginTexLoad;
 	modelIterator beginModLoad;
@@ -543,7 +543,7 @@ void Renderer::loadingThread()
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 	}
 	
-	std::cout << "End " << __func__ << "()" << std::endl;
+	std::cout << __func__ << "() end" << std::endl;
 }
 
 void Renderer::updateStates(uint32_t currentImage)

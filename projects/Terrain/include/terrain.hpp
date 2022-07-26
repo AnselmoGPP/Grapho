@@ -55,35 +55,58 @@ void postorder(QuadNode<T>* root, V* visitor);
 template<typename T, typename V>
 void inorder(QuadNode<T>* root, V* visitor);
 
-
-/// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class Chunk
 {
+protected:
 	Renderer& renderer;
-	glm::vec3 center;
-	float sideXSize;
-	unsigned numVertexX, numVertexY;
-	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
+	Noiser &noiseGen;
+	glm::vec3 baseCenter;
+	glm::vec3 groundCenter;
 
-	void computeGridNormals(float stride, Noiser& noise);
-	size_t getPos(size_t x, size_t y) const;
-	glm::vec3 getVertex(size_t position) const;
+	float horSize;
+	unsigned numHorVertex, numVertVertex;
 
-public:
-	Chunk(Renderer& renderer, glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer = 0);
-	Chunk(Renderer& renderer, std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY, unsigned layer = 0);
-	~Chunk();
-
-	//float(*vertex)[8];			//!< VBO (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<uint16_t> indices;	//!< EBO[m][3] (indices[3])
+
+	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
+
+	virtual void computeGridNormals(float stride) = 0;
+
+	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
+	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]); };
+
+public:
+	Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
+	virtual ~Chunk();
+
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
+
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 
-	void reset(glm::vec3 center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
-	void reset(std::tuple<float, float, float> center, float sideXSize, unsigned numVertexX, unsigned numVertexY);
+	virtual void computeTerrain(bool computeIndices, float textureFactor) = 0;
+	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
+
+	void render(const char* vertexShader, const char* fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
+	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+
+	unsigned getLayer() { return layer; }
+	glm::vec3 getCenter() { return groundCenter; }
+	unsigned getNumVertex() { return numHorVertex * numVertVertex; }
+	float getSide() { return horSize; }
+};
+
+/// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
+class PlainChunk : public Chunk
+{
+	void computeGridNormals(float stride) override;
+
+public:
+	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
+	~PlainChunk() { };
 
 	/**
+	*	TODO: edit comment
 	*   @brief Compute VBO and EBO (creates some terrain specified by the user)
 	*   @param noise Noise generator
 	*   @param x0 Coordinate X of the first square's corner
@@ -93,19 +116,31 @@ public:
 	*   @param numVertex_Y Number of vertex along the Y axis
 	*   @param textureFactor How much of the texture surface will fit in a square of 4 contiguous vertex
 	*/
-	void computeTerrain(Noiser& noise, bool computeIndices, float textureFactor);
+	void computeTerrain(bool computeIndices, float textureFactor) override;
+};
 
-	void render(std::vector<texIterator> &usedTextures, std::vector<uint16_t>* indices);
 
-	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+enum CubeSide { posX, posY, posZ, negX, negY, negZ };
 
-	/// Used for computing indices and saving them in an outside buffer, which is passed by reference. 
-	void computeIndices(std::vector<uint16_t>& indices);
+/*
+	TODO:
+		BUG: Elements not already destroyed when calling cleanup()
+		Fix textures (normals)
+		Sphere camera
+*/
+class SphericalChunk : public Chunk
+{
+	CubeSide cubePlane;
+	glm::vec3 nucleus;
+	float radius;
 
-	unsigned getNumVertex() { return numVertexX * numVertexY; }
-	glm::vec3 getCenter() { return center; }
-	float getSide() { return sideXSize; }
-	unsigned getLayer() { return layer; }
+	void computeGridNormals(float stride) override;
+
+public:
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> sqrSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, CubeSide cubePlane, unsigned layer = 0);
+	~SphericalChunk() { };
+
+	void computeTerrain(bool computeIndices, float textureFactor) override;
 };
 
 
@@ -130,9 +165,9 @@ public:
 */
 class TerrainGrid
 {
-	QuadNode<Chunk*>* root[2];
-	std::map<std::tuple<float, float, float>, Chunk*> chunks;
-	std::list<QuadNode<Chunk>> recicledNodes;	// <<<
+	QuadNode<PlainChunk*>* root[2];
+	std::map<std::tuple<float, float, float>, PlainChunk*> chunks;
+	std::list<QuadNode<PlainChunk>> recicledNodes;	// <<<
 	std::vector<uint16_t> indices;
 	std::vector<texIterator> textures;
 
@@ -149,11 +184,11 @@ class TerrainGrid
 
 	std::tuple<float, float, float> closestCenter();
 
-	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
-	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
-	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
-	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
-	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer);
+	void createTree(QuadNode<PlainChunk*>* node, size_t depth);			//!< Recursive
+	void updateUBOs_help(QuadNode<PlainChunk*>* node);					//!< Recursive (Preorder traversal)
+	bool fullConstChunks(QuadNode<PlainChunk*>* node);					//!< Recursive (Preorder traversal)
+	void changeRenders(QuadNode<PlainChunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
+	QuadNode<PlainChunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer);
 	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);
 
 	//void insert(const Chunk& element);

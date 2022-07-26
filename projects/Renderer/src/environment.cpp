@@ -40,7 +40,7 @@ VulkanEnvironment::VulkanEnvironment(size_t layers)
 
 void VulkanEnvironment::initWindow()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	glfwInit();
 
@@ -58,7 +58,7 @@ void VulkanEnvironment::initWindow()
 /// Describe application, select extensions and validation layers, create Vulkan instance (stores application state).
 void VulkanEnvironment::createInstance()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Check validation layer support
 	if (enableValidationLayers && !checkValidationLayerSupport(requiredValidationLayers))
@@ -279,7 +279,7 @@ bool VulkanEnvironment::checkExtensionSupport(const char* const* requiredExtensi
  */
 void VulkanEnvironment::setupDebugMessenger()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	if (!enableValidationLayers) return;
 
@@ -321,7 +321,7 @@ VkResult VulkanEnvironment::CreateDebugUtilsMessengerEXT(VkInstance instance, co
  */
 void VulkanEnvironment::createSurface()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
@@ -335,7 +335,7 @@ void VulkanEnvironment::createSurface()
  */
 void VulkanEnvironment::pickPhysicalDevice()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Get all devices with Vulkan support.
 
@@ -534,7 +534,7 @@ VkSampleCountFlagBits VulkanEnvironment::getMaxUsableSampleCount(bool getMinimum
 /// Set up a logical device (describes the features we want to use) to interface with the physical device.
 void VulkanEnvironment::createLogicalDevice()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Get the queue families supported by the physical device.
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
@@ -589,7 +589,7 @@ void VulkanEnvironment::createLogicalDevice()
 /// Set up and create the swap chain.
 void VulkanEnvironment::createSwapChain()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Get some properties
 	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
@@ -717,7 +717,7 @@ VkPresentModeKHR VulkanEnvironment::chooseSwapPresentMode(const std::vector<VkPr
 /// Creates a basic image view for every image in the swap chain so that we can use them as color targets later on.
 void VulkanEnvironment::createImageViews()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	swapChainImageViews.resize(swapChainImages.size());
 
@@ -735,7 +735,7 @@ void VulkanEnvironment::createImageViews()
 */
 void VulkanEnvironment::createRenderPass()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	// Final color attachment. If we use MSAA, it will be used for resolving multisampled images to a regular image (multisampled images cannot be presented directly). This doesn't apply to the depth buffer, since it is never presented.
 	VkAttachmentDescription colorAttachmentResolve{};
@@ -949,7 +949,7 @@ VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& can
 /// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
 void VulkanEnvironment::createCommandPool()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);	// <<< wrapped method
 
@@ -967,7 +967,7 @@ void VulkanEnvironment::createCommandPool()
 /// Create resources needed for MSAA (MultiSampling AntiAliasing). Create a multisampled color buffer.
 void VulkanEnvironment::createColorResources()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	//colorImage.resize(framebuffersCount);
 	//colorImageMemory.resize(framebuffersCount);
@@ -999,7 +999,7 @@ void VulkanEnvironment::createColorResources()
 */
 void VulkanEnvironment::createDepthResources()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	//depthImage.resize(framebuffersCount);
 	//depthImageMemory.resize(framebuffersCount);
@@ -1195,7 +1195,7 @@ void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 /// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void VulkanEnvironment::createFramebuffers()
 {
-	std::cout << __func__ << std::endl;
+	std::cout << __func__ << "()" << std::endl;
 
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 

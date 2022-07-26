@@ -21,8 +21,6 @@
 */
 class Camera
 {
-    glm::vec3 Right;                    ///< camera right vector
- 
 public:
     GLFWwindow* window;
 
@@ -35,15 +33,12 @@ public:
     float farViewPlane      = 5000.0f;  ///< Near view plane
 
     // Camera attributes (configurable)
-    glm::vec3 Position      = glm::vec3(30.0f, -30.0f, 30.0f);  ///< camera position
-    glm::vec3 Front;                                            ///< camera front vector
-    glm::vec3 CamUp;                                            ///< camera up vector (used in lookAt()) (computed from cross(right, front))
-    glm::vec3 WorldUp       = glm::vec3(0.0f, 0.0f, 1.0f);      ///< World up vector (used for computing camera's right vector) (got from up param. in constructor)
+    glm::vec3 Position      = glm::vec3(-1000.0f, -1000.0f, 1000.0f);  ///< camera position
 
     // Euler angles
-    float Yaw               =  90.0f;   ///< camera yaw (Euler angle)
-    float Pitch             =  10.0f;   ///< camera pitch (Euler angle)
-    float Roll              =  0.f;     ///< camera roll (Euler angle)
+    float Yaw               =  90.0f;  ///< camera yaw (Euler angle)       Y|  R
+    float Pitch             =  0.0f;   ///< camera pitch (Euler angle)      | /
+    float Roll              =  0.f;    ///< camera roll (Euler angle)       |/____P
 
     /// Construction using default values.
     Camera(GLFWwindow* window);
@@ -75,6 +70,11 @@ public:
     double yScrollOffset;       ///< Used for storing the mouse scroll offset
 
 private:
+    glm::vec3 Right;                                    //!< camera right vector
+    glm::vec3 Front;                                    //!< camera front vector
+    glm::vec3 CamUp;                                    //!< camera up vector (used in lookAt()) (computed from cross(right, front))
+    glm::vec3 WorldUp = glm::vec3(0.0f, 0.0f, 1.0f);    //!< World up vector (used for computing camera's right vector) (got from up param. in constructor)
+
     /**
     * @brief Processes input received from any keyboard-like input system
     * @param deltaTime Time between one frame and the next
