@@ -143,7 +143,7 @@ public:
 
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers);
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers);
 	~Renderer();
 
 	/// Create command buffer and start render loop.

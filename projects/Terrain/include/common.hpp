@@ -4,7 +4,7 @@
 #include <string>
 
 #include "ubo.hpp"
-
+#include "camera.hpp"
 
 // File's paths
 #if defined(__unix__)
@@ -16,10 +16,15 @@ const std::string MODELS_DIR("../../../models/");
 const std::string TEXTURES_DIR("../../../textures/");
 #endif
 
+// Camera
+extern FreePolarCam camera_1;
+extern SphereCam camera_2;
+//extern PlaneBasicCam camera_3;
+
 // Sun & light
 extern float dayTime;
 extern float sunAngDist;
-extern Light sun;
+extern Light sunLight;
 
 #endif
 

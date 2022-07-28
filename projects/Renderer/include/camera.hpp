@@ -10,95 +10,128 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "GLFW/glfw3.h"
 
-//#include "loop.hpp"                         // Required in the mouseScroll_callback because loopManager is a windowUserPointer
-
-//class camera { glm::vec3 eye;   glm::vec3 center;   glm::vec3 up; };
 
 /**
-* @brief Processes input and calculates the view matrix.
+* @brief ADT. Processes input and calculates the view and projection matrices.
 *
-* Given some input (keyboard, mouse movement, mouse scroll), processes it (gets Euler angles, vectors and matrices) and gets the view matrix.
+* Given some input (keyboard, mouse movement, mouse scroll), processes it (gets Euler angles, vectors and matrices) and gets the view and projection matrices.
 */
 class Camera
 {
 public:
-    GLFWwindow* window;
+    Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane, glm::vec3 WorldUp);
+    virtual ~Camera() { };
 
-    // Camera options
-    float MovementSpeed     = 50.0f;    ///< camera speed
-    float MouseSensitivity  = 0.1f;     ///< Mouse sensitivity
-    float scrollSpeed       = 5.0f;     ///< Scroll speed
-    float fov               = 60.0f;    ///< FOV (degrees)
-    float nearViewPlane     = 0.1f;     ///< Near view plane
-    float farViewPlane      = 5000.0f;  ///< Near view plane
+    // Camera (position & Euler angles)
+    glm::vec3 camPos;   ///< camera position
+    float yaw;          ///< camera yaw (deg)       Y|  R
+    float pitch;        ///< camera pitch (deg)      | /
+    float roll;         ///< camera roll (deg)       |/____P
 
-    // Camera attributes (configurable)
-    glm::vec3 Position      = glm::vec3(-1000.0f, -1000.0f, 1000.0f);  ///< camera position
-
-    // Euler angles
-    float Yaw               =  90.0f;  ///< camera yaw (Euler angle)       Y|  R
-    float Pitch             =  0.0f;   ///< camera pitch (Euler angle)      | /
-    float Roll              =  0.f;    ///< camera roll (Euler angle)       |/____P
-
-    /// Construction using default values.
-    Camera(GLFWwindow* window);
-
-    /**
-     * @brief Construction using vectors
-     * 
-     * @param position camera position
-     * @param worldUp camera up vector
-     * @param yaw camera yaw
-     * @param pitch camera pitch
-     * @param roll camera roll
-     */
-    Camera(GLFWwindow* window, glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch, float roll = 0);
+    // View
+    float fov, minFov, maxFov;  ///< FOV (deg)
+    float nearViewPlane;        ///< Near view plane
+    float farViewPlane;         ///< Near view plane
 
     /**
     * @brief Process all inputs that affect the camera (keyboard, mouse movement, mouse scroll).
     * @param deltaTime Time difference between the current frame and the previous frame.
     */
-    void ProcessCameraInput(float deltaTime);
+    void ProcessCameraInput(GLFWwindow* window, float deltaTime);
 
     /// Returns view matrix
-    glm::mat4 GetViewMatrix();
+    virtual glm::mat4 GetViewMatrix() = 0;
 
     /// Returns projection matrix (if it doesn't change each frame, it can be called outside the render loop)
     glm::mat4 GetProjectionMatrix(const float& aspectRatio);
 
+    void setYScrollOffset(double yScrollOffset) { this->yScrollOffset = yScrollOffset; }
+ 
+protected:
+    // Camera vectors
+    glm::vec3 worldUp;      //!< World up vector (used for computing camera's right vector) (got from up param. in constructor)
+    glm::vec3 right;        //!< camera right vector
+    glm::vec3 front;        //!< camera front vector
+    glm::vec3 camUp;        //!< camera up vector (used in lookAt()) (computed from cross(right, front))
 
-    double yScrollOffset;       ///< Used for storing the mouse scroll offset
-
-private:
-    glm::vec3 Right;                                    //!< camera right vector
-    glm::vec3 Front;                                    //!< camera front vector
-    glm::vec3 CamUp;                                    //!< camera up vector (used in lookAt()) (computed from cross(right, front))
-    glm::vec3 WorldUp = glm::vec3(0.0f, 0.0f, 1.0f);    //!< World up vector (used for computing camera's right vector) (got from up param. in constructor)
+    // Controls
+    float keysSpeed;        ///< camera speed
+    float mouseSpeed;       ///< Mouse sensitivity
+    float scrollSpeed;      ///< Scroll speed
+    double yScrollOffset;   ///< Used for storing the mouse scroll offset
+ 
+    // Helper variables:
+    bool leftMousePressed;  ///< Used for checking which is the first frame with left mouse button pressed.
+    double lastX, lastY;    ///< Mouse positions in the previous frame.
+    double pi;
 
     /**
     * @brief Processes input received from any keyboard-like input system
     * @param deltaTime Time between one frame and the next
     */
-    void ProcessKeyboard(float deltaTime);
+    virtual void ProcessKeyboard(GLFWwindow* window, float deltaTime) = 0;
 
     /**
      * @brief Processes input received from a mouse input system
      * @param constrainPitch Limit camera's pitch movement (minimum and maximum value)
      */
-    void ProcessMouseMovement(bool constrainPitch);
+    virtual void ProcessMouseMovement(GLFWwindow* window, float deltaTime) = 0;
 
     /**
      * @brief Processes input received from a mouse scroll-wheel event
      * @param yoffset Mouse scrolling value
      */
-    void ProcessMouseScroll(float minFOV, float maxFOV);
+    virtual void ProcessMouseScroll(float deltaTime) = 0;
 
-    /// Get Front, Right and camera Up vector (from Euler angles and WorldUp)
+    /// Compute Front, Right and camera Up vector (from Euler angles and WorldUp)
     void updateCameraVectors();
+};
 
-    // Helper variables:
-    bool leftMousePressed;  ///< Used for checking which is the first frame with left mouse button pressed.
-    double lastX, lastY;    ///< Mouse positions in the previous frame.
+
+class FreePolarCam : public Camera
+{
+public:
+    FreePolarCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp);
+    
+    glm::mat4 FreePolarCam::GetViewMatrix();
+
+private: 
+    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseScroll(float deltaTime) override;
+};
+
+
+class SphereCam : public Camera
+{
+public:
+    SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 worldUp, glm::vec3 nucleus, float radius, float longitude, float latitude);
+
+    glm::mat4 GetViewMatrix();
+
+private:
+    float radius;
+    glm::vec3 nucleus;
+    float latitude;
+    float longitude;
+
+    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseScroll(float deltaTime) override;
+};
+
+
+class PlaneBasicCam : public Camera
+{
+public:
+    //PlaneBasicCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp);
+
+    //glm::mat4 FreePolarCam::GetViewMatrix();
+
+private:
+    //void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    //void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    //void ProcessMouseScroll(float deltaTime) override;
 };
 
 #endif

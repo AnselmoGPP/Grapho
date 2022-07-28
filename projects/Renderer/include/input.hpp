@@ -11,12 +11,11 @@
 */
 class Input
 {
-	GLFWwindow*	window;
-
 public:
-	Camera cam;
+	Input(GLFWwindow* window, Camera* cam);
 
-	Input(GLFWwindow* window);
+	GLFWwindow* window;
+	Camera* cam;
 
 	bool framebufferResized = false;	///< Many drivers/platforms trigger VK_ERROR_OUT_OF_DATE_KHR after window resize, but it's not guaranteed. This variable handles resizes explicitly.
 

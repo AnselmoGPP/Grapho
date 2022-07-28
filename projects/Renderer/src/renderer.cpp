@@ -12,9 +12,9 @@
 #include "renderer.hpp"
 
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers)
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers)
 	: e(layers), 
-	input(e.window), 
+	input(e.window, camera), 
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
@@ -555,9 +555,9 @@ void Renderer::updateStates(uint32_t currentImage)
 	timer.computeDeltaTime();
 
 	// Compute transformation matrix
-	input.cam.ProcessCameraInput(timer.getDeltaTime());
-	glm::mat4 view = input.cam.GetViewMatrix();
-	glm::mat4 proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+	input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
+	glm::mat4 view = input.cam->GetViewMatrix();
+	glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
 
 	//UniformBufferObject ubo{};
 	//ubo.view = input.cam.GetViewMatrix();
@@ -623,7 +623,7 @@ void Renderer::updateStates(uint32_t currentImage)
 
 TimerSet& Renderer::getTimer() { return timer; }
 
-Camera& Renderer::getCamera() { return input.cam; }
+Camera& Renderer::getCamera() { return *input.cam; }
 
 Input& Renderer::getInput() { return input; }
 

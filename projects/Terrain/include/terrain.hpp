@@ -125,8 +125,10 @@ enum CubeSide { posX, posY, posZ, negX, negY, negZ };
 /*
 	TODO:
 		BUG: Elements not already destroyed when calling cleanup()
-		Fix textures (normals)
-		Sphere camera
+		Sphere camera (set nucleus) and encapsulate parameters correctly
+		Biplanar texture (shader) improve (and make normals/tangents correctly)
+		Fix textures (normals) in cube sides borders
+		Light object is initialized in each chunck
 */
 class SphericalChunk : public Chunk
 {

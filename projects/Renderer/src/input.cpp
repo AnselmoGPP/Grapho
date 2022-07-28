@@ -4,8 +4,8 @@
 
 #include "input.hpp"
 
-Input::Input(GLFWwindow* window)
-	: window(window), cam(Camera(window))
+Input::Input(GLFWwindow* window, Camera* cam)
+	: window(window), cam(cam)
 {
 	glfwSetWindowUserPointer(window, this);								// Set this class as windowUserPointer (for making it accessible from callbacks)
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// Set callback (signals famebuffer resizing)
@@ -21,5 +21,5 @@ void Input::framebufferResizeCallback(GLFWwindow* window, int width, int height)
 void Input::mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	auto windowUserPointer = reinterpret_cast<Input*>(glfwGetWindowUserPointer(window));
-	windowUserPointer->cam.yScrollOffset = yoffset;
+	windowUserPointer->cam->setYScrollOffset(yoffset);
 }

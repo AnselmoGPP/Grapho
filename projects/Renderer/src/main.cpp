@@ -55,13 +55,22 @@ void setRoom(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
+FreePolarCam camera_1(
+	glm::vec3(-1000.0f, -1000.0f, 1000.0f),	// camera position
+	50.f,									// move speed
+	0.001f,									// mouse sensitivity
+	5.f,									// scroll speed
+	60.f, 10.f, 100.f,						// FOV, minFOV, maxFOV
+	glm::vec3(90.f, 0.f, 0.f),				// Yaw (z), Pitch (x), Roll (y)
+	0.1f, 5000.f,							// near & far view planes
+	glm::vec3(0.0f, 0.0f, 1.0f) );			// world up
 
 int main(int argc, char* argv[])
 {
 	TimerSet time;
 
 	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	Renderer app(update, 3);
+	Renderer app(update, &camera_1, 3);
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
@@ -87,7 +96,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	frameTime	= rend.getTimer().getTime();
 	fps			= rend.getTimer().getFPS();
 	maxfps		= rend.getTimer().getMaxPossibleFPS();
-	pos			= rend.getCamera().Position;
+	pos			= rend.getCamera().camPos;
 	size_t i;
 
 	if (check.ifBigger(frameTime, 5))

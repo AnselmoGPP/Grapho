@@ -193,11 +193,11 @@ void getTexture_Sand(inout vec3 result)
     float tf             = 50;            // texture factor
 
 	//precision highp float;
-	//vec3 normal = normalize(normalize(normalize(normalize(inNormal))));
+	//vec3 normal = normalize(normalize(inNormal));
+	//float slope = dot( inNormal, normalize(vec3(inNormal.x, inNormal.y, 0)) );
 	vec3 normalXradius = cross(inNormal, inPosition);
 	vec3 radiusXprevious = cross(inPosition, normalXradius);
 	float slope = dot( inNormal, normalize(radiusXprevious) );
-    //float slope = dot( inNormal, normalize(vec3(inNormal.x, inNormal.y, 0)) );
 
     // >>> DESERT
     if (slope < slopeThreshold - mixRange)

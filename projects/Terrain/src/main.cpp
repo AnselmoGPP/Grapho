@@ -20,7 +20,6 @@
 
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
-
 void loadTextures(Renderer& app);
 
 void setPoints(Renderer& app);
@@ -36,7 +35,7 @@ void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
 // Models & textures
-Renderer app(update, 3);
+Renderer app(update, &camera_2, 3);
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 
@@ -56,12 +55,12 @@ Noiser noiser(
 PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(50, 50, 0), 200, 41, 11);
 TerrainGrid terrChunks(app, noiser, 6400, 21, 8, 2, 1.2);
 
-SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 100, 200, 200, 1000, glm::vec3(0, 0, 0), posX, 0);
-SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 100, 200, 200, 1000, glm::vec3(0, 0, 0), negX, 0);
-SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 100, 200, 200, 1000, glm::vec3(0, 0, 0), posY, 0);
-SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 100, 200, 200, 1000, glm::vec3(0, 0, 0), negY, 0);
-SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 100, 200, 200, 1000, glm::vec3(0, 0, 0), posZ, 0);
-SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 100, 200, 200, 1000, glm::vec3(0, 0, 0), negZ, 0);
+SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posX, 0);
+SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negX, 0);
+SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posY, 0);
+SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negY, 0);
+SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posZ, 0);
+SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negZ, 0);
 
 // Data to update
 long double frameTime;
@@ -105,10 +104,21 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	frameTime	= rend.getTimer().getTime();
 	fps			= rend.getTimer().getFPS();
 	maxfps		= rend.getTimer().getMaxPossibleFPS();
-	pos			= rend.getCamera().Position;
+	pos			= rend.getCamera().camPos;
 	size_t i;
+	
+	std::cout << rend.getFrameCount() << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
-	std::cout << rend.getFrameCount() << ") \n  Commands: " << rend.getCommandsCount()/3 << std::endl;
+	//std::cout
+	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
+	//	<< "moveSpeed: " << rend.getCamera().moveSpeed << " | "
+	//	<< "mouseSensitivity: " << rend.getCamera().mouseSensitivity << " | "
+	//	<< "scrollSpeed: " << rend.getCamera().scrollSpeed << " | "
+	//	<< "fov: " << rend.getCamera().fov << " | "
+	//	<< "YPR: " << rend.getCamera().yaw << ", " << rend.getCamera().pitch << ", " << rend.getCamera().roll << " | "
+	//	<< "N/F planes: " << rend.getCamera().nearViewPlane << ", " << rend.getCamera().farViewPlane << " | "
+	//	<< "yScrollOffset: " << rend.getCamera().yScrollOffset << " | "
+	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.getCamera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
 
 	// Chunks
 	if(0)
@@ -258,7 +268,7 @@ void setAxis(Renderer& app)
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 100, 0.8);
+	size_t numVertex = getAxis(v_axis, i_axis, 1000, 0.8);
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 
