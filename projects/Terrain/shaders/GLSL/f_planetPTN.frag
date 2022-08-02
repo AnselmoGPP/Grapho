@@ -159,9 +159,9 @@ vec4 triplanarTexture(sampler2D tex)
 {
 	float tf = 50;            // texture factor
 
-	vec4 dx = texture(tex, inPosition.zy / tf);
-	vec4 dy = texture(tex, inPosition.xz / tf);
-	vec4 dz = texture(tex, inPosition.xy / tf);
+	vec4 dx = texture(tex, (inPosition.zy + vec2(1., 7.)) / tf);
+	vec4 dy = texture(tex, (inPosition.xz + vec2(.2, .6)) / tf);
+	vec4 dz = texture(tex, (inPosition.xy + vec2(.8, .3)) / tf);
 	
 	vec3 weights = abs(inNormal);
 	weights /= (weights.x + weights.y + weights.z);

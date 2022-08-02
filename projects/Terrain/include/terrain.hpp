@@ -122,24 +122,28 @@ public:
 
 enum CubeSide { posX, posY, posZ, negX, negY, negZ };
 
+extern bool fullSideType[4];
+
 /*
 	TODO:
-		BUG: Elements not already destroyed when calling cleanup()
-		Sphere camera (set nucleus) and encapsulate parameters correctly
+		BUG: Elements not already destroyed when calling cleanup() ¿?
+		Plane camera
 		Biplanar texture (shader) improve (and make normals/tangents correctly)
 		Fix textures (normals) in cube sides borders
-		Light object is initialized in each chunck
+		Light object is initialized in each chunck :(
+		Trilinear normal mapping (tangents)
 */
 class SphericalChunk : public Chunk
 {
 	CubeSide cubePlane;
 	glm::vec3 nucleus;
 	float radius;
+	bool sideType[4];	//!< Top, bottom, left, right (true: corner, false: plain)
 
 	void computeGridNormals(float stride) override;
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> sqrSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, CubeSide cubePlane, unsigned layer = 0);
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> sqrSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, CubeSide cubePlane, bool sideType[4], unsigned layer = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor) override;
