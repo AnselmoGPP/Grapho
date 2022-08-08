@@ -16,6 +16,7 @@
 #include "noise.hpp"
 #include "common.hpp"
 
+// -------------------------------
 
 /// Generic Binary Search Tree Node.
 template<typename T>
@@ -55,6 +56,8 @@ void postorder(QuadNode<T>* root, V* visitor);
 template<typename T, typename V>
 void inorder(QuadNode<T>* root, V* visitor);
 
+// -------------------------------
+
 class Chunk
 {
 protected:
@@ -71,10 +74,11 @@ protected:
 
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
-	virtual void computeGridNormals(float stride) = 0;
+	//virtual void computeGridNormals(float stride) = 0;
 
 	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
 	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]); };
+	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 8 + 5], vertex[position * 8 + 6], vertex[position * 8 + 7]); };
 
 public:
 	Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
@@ -99,7 +103,7 @@ public:
 /// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class PlainChunk : public Chunk
 {
-	void computeGridNormals(float stride) override;
+	void computeGridNormals(float stride);
 
 public:
 	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
@@ -119,36 +123,39 @@ public:
 	void computeTerrain(bool computeIndices, float textureFactor) override;
 };
 
-
-enum CubeSide { posX, posY, posZ, negX, negY, negZ };
-
-extern bool fullSideType[4];
+// -------------------------------
 
 /*
 	TODO:
 		BUG: Elements not already destroyed when calling cleanup() ¿?
+		Simplify computeTerrain()? computeGridNormals()?
 		Plane camera
 		Biplanar texture (shader) improve (and make normals/tangents correctly)
 		Fix textures (normals) in cube sides borders
 		Light object is initialized in each chunck :(
 		Trilinear normal mapping (tangents)
+		UV coords from the vertex data should be used
+		Pass parameters: stride & number of vertex per side
 */
 class SphericalChunk : public Chunk
 {
-	CubeSide cubePlane;
+	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coord. system of the cube side plane
 	glm::vec3 nucleus;
 	float radius;
-	bool sideType[4];	//!< Top, bottom, left, right (true: corner, false: plain)
+	glm::vec3 pos0;
 
-	void computeGridNormals(float stride) override;
+	void computeGridNormals(float stride);
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> sqrSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, CubeSide cubePlane, bool sideType[4], unsigned layer = 0);
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor) override;
+
+	void debug();
 };
 
+// -------------------------------
 
 /*
 	x Aligerar Chunk

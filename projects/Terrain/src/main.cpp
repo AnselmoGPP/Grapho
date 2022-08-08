@@ -55,12 +55,12 @@ Noiser noiser(
 PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(50, 50, 0), 200, 41, 11);
 TerrainGrid terrChunks(app, noiser, 6400, 21, 8, 2, 1.2);
 
-SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posX, fullSideType, 0);
-SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negX, fullSideType, 0);
-SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posY, fullSideType, 0);
-SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negY, fullSideType, 0);
-SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), posZ, fullSideType, 0);
-SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), negZ, fullSideType, 0);
+SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), 0);
+SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), 0);
+SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0), 0);
+SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0), 0);
+SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1), 0);
+SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1), 0);
 
 // Data to update
 long double frameTime;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
 	//Renderer app(update, 3);
 	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
-
+	std::cout << "Area: " << sphereArea(1) << std::endl;
 	loadTextures(app);
 
 	//setPoints(app);

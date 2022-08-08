@@ -8,6 +8,8 @@
 
 double pi = 3.14159265359;
 
+float sphereArea(float radius) { return 4 * pi * radius * radius; }
+
 // Model Matrix -----------------------------------------------------------------
 
 glm::mat4 modelMatrix() { return glm::mat4(1.0f); }
