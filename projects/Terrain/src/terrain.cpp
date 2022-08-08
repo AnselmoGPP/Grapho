@@ -4,9 +4,12 @@
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : renderer(renderer), noiseGen(noiseGen), horSize(horSize), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
 { 
+    horSize  = stride * (numHorVertex - 1);
+    vertSize = stride * (numVertVertex - 1);
+
     baseCenter.x = std::get<0>(center);
     baseCenter.y = std::get<1>(center);
     baseCenter.z = std::get<2>(center);
@@ -88,17 +91,16 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : Chunk(renderer, noiseGen, center, horSize, numHorVertex, numVertVertex, layer) 
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, layer) 
 { 
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
 }
 
 void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
-    float stride = horSize / (numHorVertex - 1);
     float x0 = baseCenter.x - horSize / 2;
-    float y0 = baseCenter.y - stride * (numVertVertex - 1) / 2;
+    float y0 = baseCenter.y - vertSize / 2;
 
     // Vertex data
     vertex.reserve(numHorVertex * numVertVertex * 8);
@@ -112,21 +114,23 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
             vertex[pos * 8 + 0] = x0 + x * stride;
             vertex[pos * 8 + 1] = y0 + y * stride;
             vertex[pos * 8 + 2] = noiseGen.GetNoise((float)vertex[pos * 8 + 0], (float)vertex[pos * 8 + 1]);
+            //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
 
             // textures (3, 4)
             vertex[pos * 8 + 3] = x * textureFactor;
             vertex[pos * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
+            //std::cout << vertex[pos * 8 + 3] << ", " << vertex[pos * 8 + 4] << std::endl;
         }
 
     // Normals (5, 6, 7)
-    computeGridNormals(stride);
+    computeGridNormals();
 
     // Indices
     if (computeIndices)
         this->computeIndices(indices, numHorVertex, numVertVertex);
 }
 
-void PlainChunk::computeGridNormals(float stride)
+void PlainChunk::computeGridNormals()
 {
     // Initialize normals to 0
     unsigned numVertex = numHorVertex * numVertVertex;
@@ -334,49 +338,48 @@ void PlainChunk::computeGridNormals(float stride)
 
 // SphericalChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, horSize, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
 {   
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-    float stride = horSize / (numHorVertex - 1);
     if ((!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z))
     {
         if (cubePlane.x == 1.f)
         {
-            pos0 = { baseCenter.x, baseCenter.y - horSize / 2, baseCenter.z - stride * (numVertVertex - 1) / 2 };
+            pos0 = { baseCenter.x, baseCenter.y - horSize / 2, baseCenter.z - vertSize / 2 };
             xAxis = glm::vec3(0, 1, 0);
             yAxis = glm::vec3(0, 0, 1);
         }
         else if (cubePlane.x == -1.f)
         {
-            pos0 = { baseCenter.x, baseCenter.y + horSize / 2, baseCenter.z - stride * (numVertVertex - 1) / 2 };
+            pos0 = { baseCenter.x, baseCenter.y + horSize / 2, baseCenter.z - vertSize / 2 };
             xAxis = glm::vec3(0, -1, 0);
             yAxis = glm::vec3(0, 0, 1);
         }
         else if (cubePlane.y == 1.f)
         {
-            pos0 = { baseCenter.x + horSize / 2, baseCenter.y, baseCenter.z - stride * (numVertVertex - 1) / 2 };
+            pos0 = { baseCenter.x + horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
             xAxis = glm::vec3(-1, 0, 0);
             yAxis = glm::vec3(0, 0, 1);
         }
         else if (cubePlane.y == -1.f)
         {
-            pos0 = { baseCenter.x - horSize / 2, baseCenter.y, baseCenter.z - stride * (numVertVertex - 1) / 2 };
+            pos0 = { baseCenter.x - horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
             xAxis = glm::vec3(1, 0, 0);
             yAxis = glm::vec3(0, 0, 1);
         }
         else if (cubePlane.z == 1.f)
         {
-            pos0 = { baseCenter.x - horSize / 2, baseCenter.y - stride * (numVertVertex - 1) / 2, baseCenter.z };
+            pos0 = { baseCenter.x - horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
             xAxis = glm::vec3(1, 0, 0);
             yAxis = glm::vec3(0, 1, 0);
         }
         else if (cubePlane.z == -1.f)
         {
-            pos0 = { baseCenter.x + horSize / 2, baseCenter.y - stride * (numVertVertex - 1) / 2, baseCenter.z };
+            pos0 = { baseCenter.x + horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
             xAxis = glm::vec3(-1, 0, 0);
             yAxis = glm::vec3(0, 1, 0);
         }
@@ -387,8 +390,6 @@ SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<
 
 void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
-    float stride = horSize / (numHorVertex - 1);
-
     // Vertex data
     glm::vec3 unitVec, cube, sphere, ground;
     float v, h, indexPos;
@@ -415,14 +416,14 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
         }
 
     // Normals (5, 6, 7)
-    computeGridNormals(stride);
+    computeGridNormals();
 
     // Indices
     if (computeIndices)
         this->computeIndices(indices, numHorVertex, numVertVertex);
 }
 
-void SphericalChunk::computeGridNormals(float stride)
+void SphericalChunk::computeGridNormals()
 {
     // Initialize normals to 0
     unsigned numVertex = numHorVertex * numVertVertex;
@@ -777,11 +778,11 @@ void TerrainGrid::createTree(QuadNode<PlainChunk*> *node, size_t depth)
     nodeCount++;
     PlainChunk* chunk = node->getElement();
     glm::vec3 center = chunk->getCenter();
-    float squareSide = chunk->getSide() * chunk->getSide();
-    float squareDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y) + (camPos.z - center.z) * (camPos.z - center.z);
+    float sqrSide = chunk->getHorSide() * chunk->getHorSide();
+    float sqrDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y) + (camPos.z - center.z) * (camPos.z - center.z);
     
     // Is leaf node > Compute terrain > Children are nullptr by default
-    if (depth >= minLevel && (squareDist > squareSide * distMultiplier || depth == numLevels - 1))
+    if (depth >= minLevel && (sqrDist > sqrSide * distMultiplier || depth == numLevels - 1))
     {
         leafCount++;
 
@@ -800,8 +801,8 @@ void TerrainGrid::createTree(QuadNode<PlainChunk*> *node, size_t depth)
     else
     {
         depth++;
-        float halfSide = chunk->getSide() / 2;
-        float quarterSide = chunk->getSide() / 4;
+        float halfSide = chunk->getHorSide() / 2;
+        float quarterSide = chunk->getHorSide() / 4;
 
         node->setA(getNode(std::tuple(center.x - quarterSide, center.y + quarterSide, 0), halfSide, depth));
         createTree(node->getA(), depth);
@@ -908,7 +909,7 @@ QuadNode<PlainChunk*>* TerrainGrid::getNode(std::tuple<float, float, float> cent
 {
     if (chunks.find(center) == chunks.end())
     {
-        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength, numSideVertex, numSideVertex, layer);
+        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength/(numSideVertex-1), numSideVertex, numSideVertex, layer);
 
         //glm::vec3 exactCenter = chunks[center]->getCenter();
         //exactCenter.z = noiseGenerator.GetNoise(exactCenter.x, exactCenter.y);
@@ -937,7 +938,7 @@ void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
             distVec.x = center.x - camPosNow.x;
             distVec.y = center.y - camPosNow.y;
             distVec.z = center.z - camPosNow.z;
-            targetSqrDist = it->second->getSide() * relDist * it->second->getSide() * relDist;
+            targetSqrDist = it->second->getHorSide() * relDist * it->second->getHorSide() * relDist;
             
             if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
             {

@@ -52,15 +52,17 @@ Noiser noiser(
 	500, 500, 0,						// XYZ offsets
 	4952);								// Seed
 
-PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(50, 50, 0), 200, 41, 11);
+PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(100, 25, 0), 5, 41, 11);
 TerrainGrid terrChunks(app, noiser, 6400, 21, 8, 2, 1.2);
 
-SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), 0);
-SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), 0);
-SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0), 0);
-SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0), 0);
-SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1), 0);
-SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 100, 100, 100, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1), 0);
+SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), 0);
+SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), 0);
+SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0), 0);
+SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0), 0);
+SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1), 0);
+SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1), 0);
+
+bool updateChunk = false, updateChunkSet = false, updatePlanet = false;
 
 // Data to update
 long double frameTime;
@@ -121,16 +123,16 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.getCamera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
 
 	// Chunks
-	if(0)
+	if (updateChunk) singleChunk.updateUBOs(pos, view, proj);
+
+	if(updateChunkSet)
 	{
 		std::cout << "  Nodes: " << terrChunks.getTotalNodes() << std::endl;
 		terrChunks.updateTree(pos);
 		terrChunks.updateUBOs(pos, view, proj);
 	}
 
-	if(0) singleChunk.updateUBOs(pos, view, proj);
-
-	if (1)
+	if (updatePlanet)
 	{
 		sphereChunk_pX.updateUBOs(pos, view, proj);
 		sphereChunk_nX.updateUBOs(pos, view, proj);
@@ -393,6 +395,7 @@ void setRoom(Renderer& app)
 void setChunk(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
+	updateChunk = true;
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
@@ -403,6 +406,7 @@ void setChunk(Renderer& app)
 void setChunkSet(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
+	updateChunkSet = true;
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
@@ -413,6 +417,7 @@ void setChunkSet(Renderer& app)
 void setSphereChunks(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
+	updatePlanet = true;
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 

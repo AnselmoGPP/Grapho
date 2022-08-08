@@ -66,22 +66,24 @@ protected:
 	glm::vec3 baseCenter;
 	glm::vec3 groundCenter;
 
-	float horSize;
+	//float horSize;
+	float stride;
 	unsigned numHorVertex, numVertVertex;
+	float horSize, vertSize;
 
 	std::vector<float> vertex;		//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<uint16_t> indices;	//!< EBO[m][3] (indices[3])
 
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
-	//virtual void computeGridNormals(float stride) = 0;
+	virtual void computeGridNormals() = 0;
 
 	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
 	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]); };
 	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 8 + 5], vertex[position * 8 + 6], vertex[position * 8 + 7]); };
 
 public:
-	Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
+	Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
 	virtual ~Chunk();
 
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
@@ -97,16 +99,16 @@ public:
 	unsigned getLayer() { return layer; }
 	glm::vec3 getCenter() { return groundCenter; }
 	unsigned getNumVertex() { return numHorVertex * numVertVertex; }
-	float getSide() { return horSize; }
+	float getHorSide() { return horSize; }
 };
 
 /// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class PlainChunk : public Chunk
 {
-	void computeGridNormals(float stride);
+	void computeGridNormals() override;
 
 public:
-	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float horSize, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
+	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
 	~PlainChunk() { };
 
 	/**
@@ -127,7 +129,7 @@ public:
 
 /*
 	TODO:
-		BUG: Elements not already destroyed when calling cleanup() ¿?
+		BUG: Elements not already destroyed when calling cleanup() ¿?  BUG: Exception when escaping too soon
 		Simplify computeTerrain()? computeGridNormals()?
 		Plane camera
 		Biplanar texture (shader) improve (and make normals/tangents correctly)
@@ -135,7 +137,6 @@ public:
 		Light object is initialized in each chunck :(
 		Trilinear normal mapping (tangents)
 		UV coords from the vertex data should be used
-		Pass parameters: stride & number of vertex per side
 */
 class SphericalChunk : public Chunk
 {
@@ -144,10 +145,10 @@ class SphericalChunk : public Chunk
 	float radius;
 	glm::vec3 pos0;
 
-	void computeGridNormals(float stride);
+	void computeGridNormals() override;
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float horSize, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor) override;
