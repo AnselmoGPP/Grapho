@@ -66,7 +66,6 @@ protected:
 	glm::vec3 baseCenter;
 	glm::vec3 groundCenter;
 
-	//float horSize;
 	float stride;
 	unsigned numHorVertex, numVertVertex;
 	float horSize, vertSize;
@@ -76,7 +75,7 @@ protected:
 
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
-	virtual void computeGridNormals() = 0;
+	//virtual void computeGridNormals() = 0;
 
 	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
 	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]); };
@@ -105,7 +104,7 @@ public:
 /// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class PlainChunk : public Chunk
 {
-	void computeGridNormals() override;
+	void computeGridNormals();
 
 public:
 	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
@@ -130,30 +129,24 @@ public:
 /*
 	TODO:
 		BUG: Elements not already destroyed when calling cleanup() ¿?  BUG: Exception when escaping too soon
-		Simplify computeTerrain()? computeGridNormals()?
 		Plane camera
-		Biplanar texture (shader) improve (and make normals/tangents correctly)
-		Fix textures (normals) in cube sides borders
-		Light object is initialized in each chunck :(
-		Trilinear normal mapping (tangents)
-		UV coords from the vertex data should be used
+		Improve biplanar texture (shader) (and make normals/tangents correctly: Trilinear normal mapping (tangents))
+		> Light object is initialized in each chunk :(
+		> UV coords from the vertex data should be used
 */
 class SphericalChunk : public Chunk
 {
-	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coord. system of the cube side plane
+	glm::vec3 cubePlane;
 	glm::vec3 nucleus;
 	float radius;
-	glm::vec3 pos0;
 
-	void computeGridNormals() override;
+	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis);
 
 public:
 	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor) override;
-
-	void debug();
 };
 
 // -------------------------------

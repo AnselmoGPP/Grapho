@@ -35,7 +35,7 @@ void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
 // Models & textures
-Renderer app(update, &camera_2, 3);
+Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 
@@ -74,12 +74,8 @@ glm::vec3 pos;
 int main(int argc, char* argv[])
 {
 	TimerSet time;
-
-	// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-	//Renderer app(update, 3);
-	
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
-	std::cout << "Area: " << sphereArea(1) << std::endl;
+
 	loadTextures(app);
 
 	//setPoints(app);

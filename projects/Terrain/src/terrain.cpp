@@ -99,6 +99,7 @@ PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, f
 
 void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
+    size_t index;
     float x0 = baseCenter.x - horSize / 2;
     float y0 = baseCenter.y - vertSize / 2;
 
@@ -108,17 +109,17 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
     for (size_t y = 0; y < numVertVertex; y++)
         for (size_t x = 0; x < numHorVertex; x++)
         {
-            size_t pos = y * numHorVertex + x;
+            index = y * numHorVertex + x;
 
             // positions (0, 1, 2)
-            vertex[pos * 8 + 0] = x0 + x * stride;
-            vertex[pos * 8 + 1] = y0 + y * stride;
-            vertex[pos * 8 + 2] = noiseGen.GetNoise((float)vertex[pos * 8 + 0], (float)vertex[pos * 8 + 1]);
+            vertex[index * 8 + 0] = x0 + x * stride;
+            vertex[index * 8 + 1] = y0 + y * stride;
+            vertex[index * 8 + 2] = noiseGen.GetNoise((float)vertex[index * 8 + 0], (float)vertex[index * 8 + 1]);
             //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
 
             // textures (3, 4)
-            vertex[pos * 8 + 3] = x * textureFactor;
-            vertex[pos * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
+            vertex[index * 8 + 3] = x * textureFactor;
+            vertex[index * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
             //std::cout << vertex[pos * 8 + 3] << ", " << vertex[pos * 8 + 4] << std::endl;
         }
 
@@ -339,91 +340,91 @@ void PlainChunk::computeGridNormals()
 // SphericalChunk ----------------------------------------------------------------------
 
 SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), cubePlane(cubePlane), nucleus(nucleus), radius(radius)
 {   
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-    if ((!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z))
-    {
-        if (cubePlane.x == 1.f)
-        {
-            pos0 = { baseCenter.x, baseCenter.y - horSize / 2, baseCenter.z - vertSize / 2 };
-            xAxis = glm::vec3(0, 1, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.x == -1.f)
-        {
-            pos0 = { baseCenter.x, baseCenter.y + horSize / 2, baseCenter.z - vertSize / 2 };
-            xAxis = glm::vec3(0, -1, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.y == 1.f)
-        {
-            pos0 = { baseCenter.x + horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
-            xAxis = glm::vec3(-1, 0, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.y == -1.f)
-        {
-            pos0 = { baseCenter.x - horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
-            xAxis = glm::vec3(1, 0, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.z == 1.f)
-        {
-            pos0 = { baseCenter.x - horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
-            xAxis = glm::vec3(1, 0, 0);
-            yAxis = glm::vec3(0, 1, 0);
-        }
-        else if (cubePlane.z == -1.f)
-        {
-            pos0 = { baseCenter.x + horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
-            xAxis = glm::vec3(-1, 0, 0);
-            yAxis = glm::vec3(0, 1, 0);
-        }
-    }
-    else
-        std::cout << "cubePlane parameter has wrong format" << std::endl;   // cubePlane must contain 2 zeros
+    if ((cubePlane.x || cubePlane.y || cubePlane.z) && (!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z));
+    else std::cout << "cubePlane parameter has wrong format" << std::endl;   // cubePlane must contain 2 zeros
 }
 
 void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
+    glm::vec3 pos0;             // Position of the initial coordinate in the cube side plane (lower left).
+    glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coord. system of the cube side plane.
+
+    if (cubePlane.x == 1.f)
+    {
+        pos0 = { baseCenter.x, baseCenter.y - horSize / 2, baseCenter.z - vertSize / 2 };
+        xAxis = glm::vec3(0, 1, 0);
+        yAxis = glm::vec3(0, 0, 1);
+    }
+    else if (cubePlane.x == -1.f)
+    {
+        pos0 = { baseCenter.x, baseCenter.y + horSize / 2, baseCenter.z - vertSize / 2 };
+        xAxis = glm::vec3(0, -1, 0);
+        yAxis = glm::vec3(0, 0, 1);
+    }
+    else if (cubePlane.y == 1.f)
+    {
+        pos0 = { baseCenter.x + horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
+        xAxis = glm::vec3(-1, 0, 0);
+        yAxis = glm::vec3(0, 0, 1);
+    }
+    else if (cubePlane.y == -1.f)
+    {
+        pos0 = { baseCenter.x - horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
+        xAxis = glm::vec3(1, 0, 0);
+        yAxis = glm::vec3(0, 0, 1);
+    }
+    else if (cubePlane.z == 1.f)
+    {
+        pos0 = { baseCenter.x - horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
+        xAxis = glm::vec3(1, 0, 0);
+        yAxis = glm::vec3(0, 1, 0);
+    }
+    else if (cubePlane.z == -1.f)
+    {
+        pos0 = { baseCenter.x + horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
+        xAxis = glm::vec3(-1, 0, 0);
+        yAxis = glm::vec3(0, 1, 0);
+    }
+
     // Vertex data
     glm::vec3 unitVec, cube, sphere, ground;
-    float v, h, indexPos;
-
+    float index;
     vertex.reserve(numHorVertex * numVertVertex * 8);
 
-    for (v = 0; v < numVertVertex; v++)
-        for (h = 0; h < numHorVertex; h++)
+    for (float v = 0; v < numVertVertex; v++)
+        for (float h = 0; h < numHorVertex; h++)
         {
-            indexPos = v * numHorVertex + h;
+            index = v * numHorVertex + h;
 
             // positions (0, 1, 2)
-            cube = pos0 + xAxis * h * stride + yAxis * v * stride;
+            cube = pos0 + (xAxis * h * stride) + (yAxis * v * stride);
             unitVec = glm::normalize(cube - nucleus);
             sphere = unitVec * radius;
             ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
-            vertex[indexPos * 8 + 0] = ground.x;
-            vertex[indexPos * 8 + 1] = ground.y;
-            vertex[indexPos * 8 + 2] = ground.z;
+            vertex[index * 8 + 0] = ground.x;
+            vertex[index * 8 + 1] = ground.y;
+            vertex[index * 8 + 2] = ground.z;
 
             // textures (3, 4)
-            vertex[indexPos * 8 + 3] = h * textureFactor;
-            vertex[indexPos * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            vertex[index * 8 + 3] = h * textureFactor;
+            vertex[index * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
         }
 
     // Normals (5, 6, 7)
-    computeGridNormals();
+    computeGridNormals(pos0, xAxis, yAxis);
 
     // Indices
     if (computeIndices)
         this->computeIndices(indices, numHorVertex, numVertVertex);
 }
 
-void SphericalChunk::computeGridNormals()
+void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis)
 {
     // Initialize normals to 0
     unsigned numVertex = numHorVertex * numVertVertex;
@@ -676,24 +677,6 @@ void SphericalChunk::computeGridNormals()
         vertex[i * 8 + 5] = tempNormals[i].x;
         vertex[i * 8 + 6] = tempNormals[i].y;
         vertex[i * 8 + 7] = tempNormals[i].z;
-    }
-}
-
-void SphericalChunk::debug()
-{
-    glm::vec3 v, n;
-
-    //if (cubePlane == posY)
-    {
-        glm::vec3 v = getVertex(getPos(numHorVertex - 1, numVertVertex / 2));
-        glm::vec3 n = getNormal(getPos(numHorVertex - 1, numVertVertex / 2));
-        std::cout << "posY - (" << v.x << ", " << v.y << ", " << v.z << ") - (" << n.x << ", " << n.y << ", " << n.z << ")" << std::endl;
-    }
-    //else if (cubePlane == negX)
-    {
-        glm::vec3 v = getVertex(getPos(0, numVertVertex / 2));
-        glm::vec3 n = getNormal(getPos(0, numVertVertex / 2));
-        std::cout << "negX - (" << v.x << ", " << v.y << ", " << v.z << ") - (" << n.x << ", " << n.y << ", " << n.z << ")" << std::endl;
     }
 }
 
