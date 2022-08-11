@@ -35,7 +35,7 @@ layout(set = 0, binding = 1) uniform dataBlock
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[9];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoord;
+layout(location = 1) in vec2 inUVCoord;
 layout(location = 2) in vec3 inNormal;
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
@@ -48,8 +48,8 @@ void getTexture_GrassRock (inout vec3 result);
 void main()
 {
 	//outColor = vec4(inColor, 1.0);
-	//outColor = texture(texSampler[0], inTexCoord);
-	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
+	//outColor = texture(texSampler[0], inUVCoord);
+	//outColor = vec4(inColor * texture(texSampler, inUVCoord).rgb, 1.0);
 
 	vec3 color;
 	
@@ -155,7 +155,7 @@ vec3 getFragColor(vec3 diffuseMap, vec3 specularMap, float shininess)
 
 void getTexture_Grid(inout vec3 result)
 {
-	result = getFragColor(texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4);
+	result = getFragColor(texture(texSampler[0], inUVCoord/10).rgb, vec3(0.1, 0.1, 0.1), 0.4);
 }
 
 void getTexture_Sand(inout vec3 result)
@@ -168,17 +168,17 @@ void getTexture_Sand(inout vec3 result)
 
     // >>> DESERT
     if (slope < slopeThreshold - mixRange)
-        result = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
+        result = getFragColor(texture(texSampler[5], inUVCoord/tf).rgb, texture(texSampler[6], inUVCoord/tf).rgb, 1.0);
 
     // >>> PLAIN
     else if(slope > slopeThreshold + mixRange)
-        result = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
+        result = getFragColor(texture(texSampler[7], inUVCoord/tf).rgb, texture(texSampler[8], inUVCoord/tf).rgb, 1.0);
 
     // >>> MIXTURE
     else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
     {
-	    vec3 sandFrag  = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
-        vec3 plainFrag = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
+	    vec3 sandFrag  = getFragColor(texture(texSampler[5], inUVCoord/tf).rgb, texture(texSampler[6], inUVCoord/tf).rgb, 1.0);
+        vec3 plainFrag = getFragColor(texture(texSampler[7], inUVCoord/tf).rgb, texture(texSampler[8], inUVCoord/tf).rgb, 1.0);
 
         float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
         result = plainFrag.xyz * ratio + sandFrag.xyz * (1-ratio);

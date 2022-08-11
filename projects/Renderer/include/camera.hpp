@@ -19,7 +19,7 @@
 class Camera
 {
 public:
-    Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane, glm::vec3 WorldUp);
+    Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane);
     virtual ~Camera() { };
 
     // Camera (position & Euler angles)
@@ -40,7 +40,7 @@ public:
     void ProcessCameraInput(GLFWwindow* window, float deltaTime);
 
     /// Returns view matrix
-    virtual glm::mat4 GetViewMatrix() = 0;
+    virtual glm::mat4 GetViewMatrix();
 
     /// Returns projection matrix (if it doesn't change each frame, it can be called outside the render loop)
     glm::mat4 GetProjectionMatrix(const float& aspectRatio);
@@ -49,7 +49,6 @@ public:
  
 protected:
     // Camera vectors
-    glm::vec3 worldUp;      //!< World up vector (used for computing camera's right vector) (got from up param. in constructor)
     glm::vec3 right;        //!< camera right vector
     glm::vec3 front;        //!< camera front vector
     glm::vec3 camUp;        //!< camera up vector (used in lookAt()) (computed from cross(right, front))
@@ -83,8 +82,8 @@ protected:
      */
     virtual void ProcessMouseScroll(float deltaTime) = 0;
 
-    /// Compute Front, Right and camera Up vector (from Euler angles and WorldUp)
-    void updateCameraVectors();
+    /// Compute Front, Right and camUp from Euler angles
+    virtual void updateCameraVectors() = 0;
 };
 
 
@@ -93,12 +92,26 @@ class FreePolarCam : public Camera
 public:
     FreePolarCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp);
     
-    glm::mat4 FreePolarCam::GetViewMatrix();
-
 private: 
+    glm::vec3 worldUp;      //!< World up vector (used for elevating/descending to/from the sky)
+
     void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseScroll(float deltaTime) override;
+    void updateCameraVectors() override;
+};
+
+
+class PlaneCam : public Camera
+{
+public:
+    PlaneCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane);
+
+private:
+    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseScroll(float deltaTime) override;
+    void updateCameraVectors() override;
 };
 
 
@@ -107,31 +120,19 @@ class SphereCam : public Camera
 public:
     SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 worldUp, glm::vec3 nucleus, float radius, float longitude, float latitude);
 
-    glm::mat4 GetViewMatrix();
+    glm::mat4 GetViewMatrix() override;
 
 private:
     float radius;
     glm::vec3 nucleus;
     float latitude;
     float longitude;
+    glm::vec3 worldUp;      //!< World up vector (used for elevating/descending to/from the sky)
 
     void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseScroll(float deltaTime) override;
-};
-
-
-class PlaneBasicCam : public Camera
-{
-public:
-    //PlaneBasicCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp);
-
-    //glm::mat4 FreePolarCam::GetViewMatrix();
-
-private:
-    //void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
-    //void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
-    //void ProcessMouseScroll(float deltaTime) override;
+    void updateCameraVectors() override;
 };
 
 #endif

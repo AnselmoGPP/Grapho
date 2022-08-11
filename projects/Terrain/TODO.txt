@@ -28,6 +28,17 @@ TODO:
 	UBO of each renders should be stored in a vector-like structure, so there are UBO available for new renders (generated with setRender())
 	Destroy Vulkan buffers (UBO) outside semaphores
 
+	TerrainGrid:
+	>Planet version
+	exception when going too far -> try your own octaves implementation
+	Destructor TerrainGrid/Chunks that correctly deletes chunks
+	Recicle chunks
+	>Remove some non-visible chunks when there are too much of them (saves memory)
+	>computeTerrain may cause bottleneck (no second thread loading)
+
+	SphericalChunk:
+	>Improve biplanar texture (shader) (and make normals/tangents correctly: Trilinear normal mapping (tangents))
+
 Rendering:
 	- Vertex struct has pos, color, text coord. Different vertex structs are required.
 	- Points, lines, triangles
@@ -74,7 +85,7 @@ Model & Data system:
 BUGS:
 	Sometimes camera continue moving backwards/left indefinetely.
 	Camera jump when starting to move camera.
-	Apparently, single chunk have different border normals than chunk set
+	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
 
 --------------------------------------------------------------------------
 

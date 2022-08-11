@@ -21,6 +21,7 @@
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void loadTextures(Renderer& app);
+void setLights();
 
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
@@ -35,13 +36,14 @@ void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
 // Models & textures
-Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
+std::vector<Light*> lights = { &sunLight };
 
 // Terrain
 Noiser noiser(
@@ -52,15 +54,15 @@ Noiser noiser(
 	500, 500, 0,						// XYZ offsets
 	4952);								// Seed
 
-PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(100, 25, 0), 5, 41, 11);
-TerrainGrid terrChunks(app, noiser, 6400, 21, 8, 2, 1.2);
+PlainChunk singleChunk(app, noiser, std::tuple<float, float, float>(100, 25, 0), 5, 41, 11, lights);
+TerrainGrid terrChunks(app, noiser, lights, 6400, 21, 8, 2, 1.2);
 
-SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50, 0, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), 0);
-SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50, 0, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), 0);
-SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(0,  50, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0), 0);
-SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(0, -50, 0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0), 0);
-SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(0, 0,  50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1), 0);
-SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(0, 0, -50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1), 0);
+SphericalChunk sphereChunk_pX(app, noiser, std::tuple<float, float, float>( 50,  0,  0), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0));
+SphericalChunk sphereChunk_nX(app, noiser, std::tuple<float, float, float>(-50,  0,  0), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0));
+SphericalChunk sphereChunk_pY(app, noiser, std::tuple<float, float, float>(  0, 50,  0), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0));
+SphericalChunk sphereChunk_nY(app, noiser, std::tuple<float, float, float>(  0,-50,  0), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0));
+SphericalChunk sphereChunk_pZ(app, noiser, std::tuple<float, float, float>(  0,  0, 50), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1));
+SphericalChunk sphereChunk_nZ(app, noiser, std::tuple<float, float, float>(  0,  0,-50), 1, 101, 101, lights, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1));
 
 bool updateChunk = false, updateChunkSet = false, updatePlanet = false;
 
@@ -76,6 +78,7 @@ int main(int argc, char* argv[])
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
+	setLights();
 	loadTextures(app);
 
 	//setPoints(app);
@@ -213,6 +216,14 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			assets["sun"]->vsDynUBO.setUniform(i, 1, view);
 			assets["sun"]->vsDynUBO.setUniform(i, 2, proj);
 		}
+}
+
+void setLights()
+{
+	//sunLight.turnOff();
+	sunLight.setDirectional(-sunLightDirection(dayTime), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	//sunLight.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
+	//sunLight.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
 }
 
 void loadTextures(Renderer& app)
@@ -395,7 +406,7 @@ void setChunk(Renderer& app)
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
-	singleChunk.computeTerrain(true, 1.f);
+	singleChunk.computeTerrain(true);
 	singleChunk.render((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str(), usedTextures, nullptr);
 }
 
@@ -417,22 +428,22 @@ void setSphereChunks(Renderer& app)
 
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
-	sphereChunk_nY.computeTerrain(true, 1.f);
+	sphereChunk_nY.computeTerrain(true);
 	sphereChunk_nY.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 	
-	sphereChunk_pX.computeTerrain(true, 1.f);
+	sphereChunk_pX.computeTerrain(true);
 	sphereChunk_pX.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 	
-	sphereChunk_pZ.computeTerrain(true, 1.f);
+	sphereChunk_pZ.computeTerrain(true);
 	sphereChunk_pZ.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 	
-	sphereChunk_pY.computeTerrain(true, 1.f);
+	sphereChunk_pY.computeTerrain(true);
 	sphereChunk_pY.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 	
-	sphereChunk_nX.computeTerrain(true, 1.f);
+	sphereChunk_nX.computeTerrain(true);
 	sphereChunk_nX.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 	
-	sphereChunk_nZ.computeTerrain(true, 1.f);
+	sphereChunk_nZ.computeTerrain(true);
 	sphereChunk_nZ.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
 }
 

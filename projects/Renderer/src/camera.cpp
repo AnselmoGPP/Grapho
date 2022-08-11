@@ -26,16 +26,20 @@
 
 // Camera ---------------------------------------------
 
-Camera::Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane, glm::vec3 worldUp)
+Camera::Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane)
     : camPos(camPos),
     yaw(glm::radians(yawPitchRoll.x)), pitch(glm::radians(yawPitchRoll.y)), roll(glm::radians(yawPitchRoll.z)),
     fov(fov), minFov(minFov), maxFov(maxFov),
     nearViewPlane(nearViewPlane), farViewPlane(farViewPlane),
-    worldUp(worldUp),
     keysSpeed(keysSpeed), mouseSpeed(mouseSpeed), scrollSpeed(scrollSpeed),
     yScrollOffset(0),
     leftMousePressed(false),
     pi(3.14159265359) { }
+
+glm::mat4 Camera::GetViewMatrix()
+{
+    return glm::lookAt(camPos, camPos + front, camUp);      // Params: Eye position, center position, up axis.
+}
 
 glm::mat4 Camera::GetProjectionMatrix(const float& aspectRatio)
 {
@@ -50,35 +54,35 @@ void Camera::ProcessCameraInput(GLFWwindow* window, float deltaTime)
     ProcessKeyboard(window, deltaTime);
     ProcessMouseMovement(window, deltaTime);
     ProcessMouseScroll(deltaTime);
+
+    updateCameraVectors();
 }
 
-void Camera::updateCameraVectors()
+
+// FreePolarCam ---------------------------------------------
+
+FreePolarCam::FreePolarCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp)
+    : Camera(camPos, keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, glm::vec3(yawPitch.x, yawPitch.y, 0.f), nearViewPlane, farViewPlane), worldUp(worldUp)
+{ 
+    updateCameraVectors();
+}
+
+void FreePolarCam::updateCameraVectors()
 {
-    // Get Front vector (from yaw and pitch)
+    // Front vector
     front.x = cos(yaw) * cos(pitch);
     front.y = sin(yaw) * cos(pitch);
     front.z = sin(pitch);
     front = glm::normalize(front);
 
-    // Get Right and camera Up vector
-    right.x = cos(yaw - pi / 2) * cos(roll);
+    // Right vector
+    right.x = cos(yaw - pi / 2) * cos(roll);    //Another option: right = glm::normalize(glm::cross(front, worldUp));
     right.y = sin(yaw - pi / 2) * cos(roll);
     right.z = sin(roll);
-    //right = glm::normalize(glm::cross(front, worldUp));
+    right = glm::normalize(right);
+
+    // Camera Up vector
     camUp = glm::normalize(glm::cross(right, front));
-}
-
-// FreePolarCam ---------------------------------------------
-
-FreePolarCam::FreePolarCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec2 yawPitch, float nearViewPlane, float farViewPlane, glm::vec3 worldUp)
-    : Camera(camPos, keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, glm::vec3(yawPitch.x, yawPitch.y, 0.f), nearViewPlane, farViewPlane, worldUp)
-{ 
-    updateCameraVectors();
-}
-
-glm::mat4 FreePolarCam::GetViewMatrix()
-{
-    return glm::lookAt(camPos, camPos + front, camUp);      // Params: Eye position, center position, up axis.
 }
 
 void FreePolarCam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
@@ -120,7 +124,7 @@ void FreePolarCam::ProcessMouseMovement(/*float xoffset, float yoffset, */GLFWwi
             if (pitch < -(pi-0.01)/2) pitch = -(pi - 0.01) /2;
         }
 
-        updateCameraVectors();
+        //updateCameraVectors();
     }
     else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
     {
@@ -142,10 +146,95 @@ void FreePolarCam::ProcessMouseScroll(float deltaTime)
 }
 
 
-// FreePolarCam ---------------------------------------------
+// PlaneBasicCam ---------------------------------------------
+
+PlaneCam::PlaneCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane)
+    : Camera(camPos, keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, yawPitchRoll, nearViewPlane, farViewPlane)
+{
+    front = { 1, 0, 0 };
+    right = { 0,-1, 0 };
+    camUp = { 0, 0, 1 };
+    updateCameraVectors();
+}
+
+void PlaneCam::updateCameraVectors()
+{
+    // Yaw changes
+    right = cos(yaw) * right + sin(yaw) * front;
+    front = glm::cross(camUp, right);
+
+    // Pitch changes
+    front = cos(pitch) * front + sin(pitch) * camUp;
+    camUp = glm::cross(right, front);
+
+    // Roll changes
+    right = cos(roll) * right + sin(roll) * camUp;
+    camUp = glm::cross(right, front);
+
+    // Normalization
+    right = glm::normalize(right);
+    front = glm::normalize(front);
+    camUp = glm::normalize(camUp);
+}
+
+void PlaneCam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
+{
+    float velocity = keysSpeed * deltaTime;
+    roll = yaw = pitch = 0;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP)    == GLFW_PRESS) camPos += front * velocity;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN)  == GLFW_PRESS) camPos -= front * velocity;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT)  == GLFW_PRESS) roll    =  0.05 * velocity;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) roll    = -0.05 * velocity;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)                                                     yaw     =  0.05 * velocity;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)                                                     yaw     = -0.05 * velocity;
+}
+
+void PlaneCam::ProcessMouseMovement(GLFWwindow* window, float deltaTime)
+{
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    {
+        if (leftMousePressed == false)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwGetCursorPos(window, &lastX, &lastY);
+            leftMousePressed = true;
+        }
+
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        double xoffset = xpos - lastX;
+        double yoffset = ypos - lastY;
+        lastX = xpos;
+        lastY = ypos;
+
+        yaw   -= xoffset * mouseSpeed;
+        pitch -= yoffset * mouseSpeed;
+    }
+    else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        leftMousePressed = false;
+    }
+}
+
+void PlaneCam::ProcessMouseScroll(float deltaTime)
+{
+    if (yScrollOffset != 0)
+    {
+        fov -= (float)yScrollOffset * scrollSpeed;
+        if (fov < minFov) fov = minFov;
+        if (fov > maxFov) fov = maxFov;
+
+        yScrollOffset = 0;
+    }
+}
+
+
+// SphereCam ---------------------------------------------
 
 SphereCam::SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 worldUp, glm::vec3 nucleus, float radius, float longitude, float latitude)
-    : Camera(glm::vec3(0,0,0), keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, glm::vec3(0, 0, 0), nearViewPlane, farViewPlane, worldUp), nucleus(nucleus), radius(radius), longitude(glm::radians(longitude)), latitude(glm::radians(latitude))
+    : Camera(glm::vec3(0,0,0), keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, glm::vec3(0, 0, 0), nearViewPlane, farViewPlane), nucleus(nucleus), radius(radius), longitude(glm::radians(longitude)), latitude(glm::radians(latitude)), worldUp(worldUp)
 {
     // Transform coordinates from polar to cartesian.
     camPos = { 
@@ -165,6 +254,24 @@ SphereCam::SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float
 glm::mat4 SphereCam::GetViewMatrix()
 {
     return glm::lookAt(camPos, nucleus, camUp);      // Params: Eye position, center position, up axis.
+}
+
+void SphereCam::updateCameraVectors()
+{
+    // Front vector
+    front.x = cos(yaw) * cos(pitch);
+    front.y = sin(yaw) * cos(pitch);
+    front.z = sin(pitch);
+    front = glm::normalize(front);
+
+    // Right vector
+    right.x = cos(yaw - pi / 2) * cos(roll);    //Another option: right = glm::normalize(glm::cross(front, worldUp));
+    right.y = sin(yaw - pi / 2) * cos(roll);
+    right.z = sin(roll);
+    right = glm::normalize(right);
+
+    // Camera Up vector
+    camUp = glm::normalize(glm::cross(right, front));
 }
 
 void SphereCam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
@@ -265,3 +372,4 @@ void SphereCam::ProcessMouseScroll(float deltaTime)
         yScrollOffset = 0;
     }
 }
+

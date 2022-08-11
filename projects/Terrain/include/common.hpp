@@ -19,7 +19,7 @@ const std::string TEXTURES_DIR("../../../textures/");
 // Camera
 extern FreePolarCam camera_1;
 extern SphereCam camera_2;
-//extern PlaneBasicCam camera_3;
+extern PlaneCam camera_3;
 
 // Sun & light
 extern float dayTime;

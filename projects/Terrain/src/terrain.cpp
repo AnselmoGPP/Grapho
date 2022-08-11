@@ -4,8 +4,8 @@
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
+    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), lights(lights), layer(layer), modelOrdered(false)
 { 
     horSize  = stride * (numHorVertex - 1);
     vertSize = stride * (numVertVertex - 1);
@@ -49,11 +49,7 @@ void Chunk::render(const char* vertexShader, const char* fragmentShader, std::ve
     //model->vsDynUBO.setUniform(i, 2, proj);
     model->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
 
-    //sun.turnOff();
-    sunLight.setDirectional(-sunLightDirection(dayTime), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-    //sun.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
-    //sun.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
-    model->fsUBO.setUniform(0, 0, sunLight);
+    model->fsUBO.setUniform(0, 0, *(lights[0]));
     //model->fsUBO.setUniform(0, 1, camPos);
 
     modelOrdered = true;
@@ -91,8 +87,8 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, layer) 
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
+    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, lights, layer) 
 { 
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
 }
@@ -118,8 +114,8 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
             //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
 
             // textures (3, 4)
-            vertex[index * 8 + 3] = x * textureFactor;
-            vertex[index * 8 + 4] = y * textureFactor;     // LOOK produces textures reflected in the x-axis
+            vertex[index * 8 + 3] = vertex[index * 8 + 0] * textureFactor;
+            vertex[index * 8 + 4] = vertex[index * 8 + 1] * textureFactor;     // LOOK produces textures reflected in the x-axis
             //std::cout << vertex[pos * 8 + 3] << ", " << vertex[pos * 8 + 4] << std::endl;
         }
 
@@ -339,9 +335,10 @@ void PlainChunk::computeGridNormals()
 
 // SphericalChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), cubePlane(cubePlane), nucleus(nucleus), radius(radius)
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, lights, layer), cubePlane(cubePlane), nucleus(nucleus), radius(radius)
 {   
+    std::cout << "-" << lights.size() << ", " << this->lights.size() << std::endl;
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
@@ -682,8 +679,9 @@ void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::ve
 
 // TerrainGrid ----------------------------------------------------------------------
 
-TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : activeTree(0), 
+TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : lights(lights),
+    activeTree(0), 
     renderer(renderer), 
     noiseGenerator(noiseGenerator), 
     camPos(glm::vec3(0.1f,0.1f,0.1f)), 
@@ -771,7 +769,7 @@ void TerrainGrid::createTree(QuadNode<PlainChunk*> *node, size_t depth)
 
         if (chunk->modelOrdered == false)
         {
-            chunk->computeTerrain(false, std::pow(2, numLevels - 1 - depth));
+            chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
             chunk->render((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str(), textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
             renderer.setRenders(chunk->model, 0);
@@ -892,7 +890,7 @@ QuadNode<PlainChunk*>* TerrainGrid::getNode(std::tuple<float, float, float> cent
 {
     if (chunks.find(center) == chunks.end())
     {
-        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength/(numSideVertex-1), numSideVertex, numSideVertex, layer);
+        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength/(numSideVertex-1), numSideVertex, numSideVertex, lights, layer);
 
         //glm::vec3 exactCenter = chunks[center]->getCenter();
         //exactCenter.z = noiseGenerator.GetNoise(exactCenter.x, exactCenter.y);
