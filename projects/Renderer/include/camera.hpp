@@ -23,15 +23,15 @@ public:
     virtual ~Camera() { };
 
     // Camera (position & Euler angles)
-    glm::vec3 camPos;   ///< camera position
-    float yaw;          ///< camera yaw (deg)       Y|  R
-    float pitch;        ///< camera pitch (deg)      | /
-    float roll;         ///< camera roll (deg)       |/____P
+    glm::vec3 camPos;   //!< camera position
+    float yaw;          //!< camera yaw (deg)       Y|  R
+    float pitch;        //!< camera pitch (deg)      | /
+    float roll;         //!< camera roll (deg)       |/____P
 
     // View
-    float fov, minFov, maxFov;  ///< FOV (deg)
-    float nearViewPlane;        ///< Near view plane
-    float farViewPlane;         ///< Near view plane
+    float fov, minFov, maxFov;  //!< FOV (deg)
+    float nearViewPlane;        //!< Near view plane
+    float farViewPlane;         //!< Near view plane
 
     /**
     * @brief Process all inputs that affect the camera (keyboard, mouse movement, mouse scroll).

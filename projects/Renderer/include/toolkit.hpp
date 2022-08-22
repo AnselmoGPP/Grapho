@@ -133,4 +133,5 @@ struct Icosahedron
     static std::vector<float> index;    // Indices
 };
 
+
 #endif

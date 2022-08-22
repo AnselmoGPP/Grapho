@@ -46,6 +46,12 @@ vec3 applyFog			  (vec3 fragment);
 void getTexture_Grid      (inout vec3 result);
 void getTexture_Sand      (inout vec3 result);
 void getTexture_GrassRock (inout vec3 result);
+vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 PointLightColor      (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 SpotLightColor       (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
+vec3 getFragColor         (vec3 diffuseMap, vec3 specularMap, float shininess);
+vec4 triplanarTexture     (sampler2D tex);
+vec4 triplanarNormal      (sampler2D diffuse, sampler2D specularMap, float shininess);
 
 void main()
 {
@@ -159,13 +165,13 @@ vec4 triplanarTexture(sampler2D tex)
 {
 	float tf = 50;            // texture factor
 
-	vec4 dx = texture(tex, (inPosition.zy + vec2(1., 7.)) / tf);
-	vec4 dy = texture(tex, (inPosition.xz + vec2(.2, .6)) / tf);
-	vec4 dz = texture(tex, (inPosition.xy + vec2(.8, .3)) / tf);
+	vec4 dx = texture(tex, inPosition.zy / tf);
+	vec4 dy = texture(tex, inPosition.xz / tf);
+	vec4 dz = texture(tex, inPosition.xy / tf);
 	
 	vec3 weights = abs(inNormal);
 	weights /= (weights.x + weights.y + weights.z);
-	
+
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 

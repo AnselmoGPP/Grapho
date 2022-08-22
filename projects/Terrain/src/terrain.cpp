@@ -7,9 +7,6 @@
 Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
     : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), lights(lights), layer(layer), modelOrdered(false)
 { 
-    horSize  = stride * (numHorVertex - 1);
-    vertSize = stride * (numVertVertex - 1);
-
     baseCenter.x = std::get<0>(center);
     baseCenter.y = std::get<1>(center);
     baseCenter.z = std::get<2>(center);
@@ -88,16 +85,18 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 // PlainChunk ----------------------------------------------------------------------
 
 PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
-    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, lights, layer) 
-{ 
+    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, lights, layer)
+{
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
+
+    computeSizes();
 }
 
 void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
     size_t index;
-    float x0 = baseCenter.x - horSize / 2;
-    float y0 = baseCenter.y - vertSize / 2;
+    float x0 = baseCenter.x - horChunkSize / 2;
+    float y0 = baseCenter.y - vertChunkSize / 2;
 
     // Vertex data
     vertex.reserve(numHorVertex * numVertVertex * 8);
@@ -333,63 +332,77 @@ void PlainChunk::computeGridNormals()
     }
 }
 
+void PlainChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
+{
+    float quarterSide = horChunkSize / 4;
+
+    centers[0] = std::tuple(baseCenter.x - quarterSide, baseCenter.y + quarterSide, baseCenter.z);
+    centers[1] = std::tuple(baseCenter.x + quarterSide, baseCenter.y + quarterSide, baseCenter.z);
+    centers[2] = std::tuple(baseCenter.x - quarterSide, baseCenter.y - quarterSide, baseCenter.z);
+    centers[3] = std::tuple(baseCenter.x + quarterSide, baseCenter.y - quarterSide, baseCenter.z);
+}
+
+void PlainChunk::computeSizes()
+{
+    horBaseSize  = stride * (numHorVertex - 1);
+    vertBaseSize = stride * (numVertVertex - 1);
+
+    horChunkSize  = horBaseSize;
+    vertChunkSize = vertBaseSize;
+}
+
 // SphericalChunk ----------------------------------------------------------------------
 
 SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, lights, layer), cubePlane(cubePlane), nucleus(nucleus), radius(radius)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, lights, layer), nucleus(nucleus), radius(radius)
 {   
-    std::cout << "-" << lights.size() << ", " << this->lights.size() << std::endl;
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-    if ((cubePlane.x || cubePlane.y || cubePlane.z) && (!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z));
+    //if ((cubePlane.x || cubePlane.y || cubePlane.z) && (!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z))
+    if (!(cubePlane.x * cubePlane.y) && !(cubePlane.y * cubePlane.z) && !(cubePlane.x * cubePlane.z) && (cubePlane.x || cubePlane.y || cubePlane.z))
+    {
+        if (cubePlane.x == 1.f)
+        {
+            xAxis = glm::vec3(0, 1, 0);
+            yAxis = glm::vec3(0, 0, 1);
+        }
+        else if (cubePlane.x == -1.f)
+        {
+            xAxis = glm::vec3(0, -1, 0);
+            yAxis = glm::vec3(0, 0, 1);
+        }
+        else if (cubePlane.y == 1.f)
+        {
+            xAxis = glm::vec3(-1, 0, 0);
+            yAxis = glm::vec3(0, 0, 1);
+        }
+        else if (cubePlane.y == -1.f)
+        {
+            xAxis = glm::vec3(1, 0, 0);
+            yAxis = glm::vec3(0, 0, 1);
+        }
+        else if (cubePlane.z == 1.f)
+        {
+            xAxis = glm::vec3(1, 0, 0);
+            yAxis = glm::vec3(0, 1, 0);
+        }
+        else if (cubePlane.z == -1.f)
+        {
+            xAxis = glm::vec3(-1, 0, 0);
+            yAxis = glm::vec3(0, 1, 0);
+        }
+    }
     else std::cout << "cubePlane parameter has wrong format" << std::endl;   // cubePlane must contain 2 zeros
+
+    computeSizes();
 }
 
 void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
-    glm::vec3 pos0;             // Position of the initial coordinate in the cube side plane (lower left).
-    glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coord. system of the cube side plane.
-
-    if (cubePlane.x == 1.f)
-    {
-        pos0 = { baseCenter.x, baseCenter.y - horSize / 2, baseCenter.z - vertSize / 2 };
-        xAxis = glm::vec3(0, 1, 0);
-        yAxis = glm::vec3(0, 0, 1);
-    }
-    else if (cubePlane.x == -1.f)
-    {
-        pos0 = { baseCenter.x, baseCenter.y + horSize / 2, baseCenter.z - vertSize / 2 };
-        xAxis = glm::vec3(0, -1, 0);
-        yAxis = glm::vec3(0, 0, 1);
-    }
-    else if (cubePlane.y == 1.f)
-    {
-        pos0 = { baseCenter.x + horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
-        xAxis = glm::vec3(-1, 0, 0);
-        yAxis = glm::vec3(0, 0, 1);
-    }
-    else if (cubePlane.y == -1.f)
-    {
-        pos0 = { baseCenter.x - horSize / 2, baseCenter.y, baseCenter.z - vertSize / 2 };
-        xAxis = glm::vec3(1, 0, 0);
-        yAxis = glm::vec3(0, 0, 1);
-    }
-    else if (cubePlane.z == 1.f)
-    {
-        pos0 = { baseCenter.x - horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
-        xAxis = glm::vec3(1, 0, 0);
-        yAxis = glm::vec3(0, 1, 0);
-    }
-    else if (cubePlane.z == -1.f)
-    {
-        pos0 = { baseCenter.x + horSize / 2, baseCenter.y - vertSize / 2, baseCenter.z };
-        xAxis = glm::vec3(-1, 0, 0);
-        yAxis = glm::vec3(0, 1, 0);
-    }
-
     // Vertex data
+    glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f) - (yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
     glm::vec3 unitVec, cube, sphere, ground;
     float index;
     vertex.reserve(numHorVertex * numVertVertex * 8);
@@ -677,27 +690,48 @@ void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::ve
     }
 }
 
-// TerrainGrid ----------------------------------------------------------------------
+void SphericalChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
+{
+    float quarterSide = horBaseSize / 4;
+    glm::vec3 vecs[4];
 
-TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : lights(lights),
-    activeTree(0), 
-    renderer(renderer), 
-    noiseGenerator(noiseGenerator), 
-    camPos(glm::vec3(0.1f,0.1f,0.1f)), 
-    nodeCount(0), 
-    leafCount(0), 
-    rootCellSize(rootCellSize), 
-    numSideVertex(numSideVertex), 
-    numLevels(numLevels), 
-    minLevel(minLevel), 
-    distMultiplier(distMultiplier)
+    vecs[0] = baseCenter - (quarterSide * xAxis) + (quarterSide * yAxis);
+    vecs[1] = baseCenter + (quarterSide * xAxis) + (quarterSide * yAxis);
+    vecs[2] = baseCenter - (quarterSide * xAxis) - (quarterSide * yAxis);
+    vecs[3] = baseCenter + (quarterSide * xAxis) - (quarterSide * yAxis);
+
+    centers[0] = std::tuple(vecs[0].x, vecs[0].y, vecs[0].z);
+    centers[1] = std::tuple(vecs[1].x, vecs[1].y, vecs[1].z);
+    centers[2] = std::tuple(vecs[2].x, vecs[2].y, vecs[2].z);
+    centers[3] = std::tuple(vecs[3].x, vecs[3].y, vecs[3].z);
+}
+
+void SphericalChunk::computeSizes()
+{
+    horBaseSize = stride * (numHorVertex - 1);
+    vertBaseSize = stride * (numVertVertex - 1);
+
+    glm::vec3 left = radius * glm::normalize(baseCenter - (xAxis * horBaseSize / 2.f) - nucleus);
+    glm::vec3 right = radius * glm::normalize(baseCenter + (xAxis * horBaseSize / 2.f) - nucleus);
+    glm::vec3 bottom = radius * glm::normalize(baseCenter - (yAxis * vertBaseSize / 2.f) - nucleus);
+    glm::vec3 top = radius * glm::normalize(baseCenter + (yAxis * vertBaseSize / 2.f) - nucleus);
+    horChunkSize = glm::length(left - right);
+    vertChunkSize = glm::length(bottom - top);
+
+    //std::cout << horChunkSize << ", " << vertChunkSize << std::endl;
+    //std::cout << baseCenter.x << ", " << baseCenter.y << ", " << baseCenter.z << ", " << std::endl;
+}
+
+// DynamicGrid ----------------------------------------------------------------------
+
+DynamicGrid::DynamicGrid(glm::vec3 camPos, std::vector<Light*> lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : camPos(camPos), lights(lights), renderer(renderer), noiseGenerator(noiseGenerator), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
 { 
     root[0] = root[1] = nullptr;
     Chunk::computeIndices(indices, numSideVertex, numSideVertex);
-}
+};
 
-TerrainGrid::~TerrainGrid() 
+DynamicGrid::~DynamicGrid()
 {
     if (root[0]) delete root[0];
     if (root[1]) delete root[1];
@@ -708,27 +742,31 @@ TerrainGrid::~TerrainGrid()
     chunks.clear();
 }
 
-//void TerrainGrid::addApp(Renderer& app) { this->app = &app; }
+void DynamicGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
 
-void TerrainGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
+void DynamicGrid::addShaders(const char* vertShader, const char* fragShader)
+{
+    this->vertShader = std::string(vertShader);
+    this->fragShader = std::string(fragShader);
+}
 
-void TerrainGrid::updateTree(glm::vec3 newCamPos)
+void DynamicGrid::updateTree(glm::vec3 newCamPos)
 {
     if (!numLevels) return;
 
     unsigned nonActiveTree = (activeTree + 1) % 2;
-    if (root[activeTree] && !root[nonActiveTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z) return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
+    if (root[activeTree] && !root[nonActiveTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z) 
+        return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
 
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
     {
         camPos = newCamPos;
-        nodeCount = 0;
-        leafCount = 0;
 
         std::tuple<float, float, float> center = closestCenter();
         root[nonActiveTree] = getNode(center, rootCellSize, 0);     // Create root node and chunk
-
+        
+        renderedChunks = 0;
         createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
@@ -736,7 +774,7 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
     if (fullConstChunks(root[nonActiveTree]))
     {
         changeRenders(root[activeTree], false);
-        if(root[activeTree]) delete root[activeTree];
+        if (root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;
 
         changeRenders(root[nonActiveTree], true);
@@ -746,60 +784,52 @@ void TerrainGrid::updateTree(glm::vec3 newCamPos)
     }
 }
 
-void TerrainGrid::createTree(QuadNode<PlainChunk*> *node, size_t depth)
+void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
 {
-    /*
-    Avoid chunks-swap gap. Cases:
-        - Childs required but not loaded yet: Check if childs are leaf > If childs not loaded, load parent.
-            Recursive call to childs must return "leafButNotLoaded" > Then, parent is rendered.
-        - Parent required but not loaded yet: Check if this node is leaf > If not loaded, load childs.
-            Check whether childs exist > If so, render them.
-    */
-
-    nodeCount++;
-    PlainChunk* chunk = node->getElement();
-    glm::vec3 center = chunk->getCenter();
-    float sqrSide = chunk->getHorSide() * chunk->getHorSide();
-    float sqrDist = (camPos.x - center.x) * (camPos.x - center.x) + (camPos.y - center.y) * (camPos.y - center.y) + (camPos.z - center.z) * (camPos.z - center.z);
+    Chunk* chunk = node->getElement();
+    glm::vec3 gCenter = chunk->getGroundCenter();
+    float chunkLength = chunk->getHorChunkSide();
+    float sqrSide = chunkLength * chunkLength;
+    float sqrDist = (camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z);
     
     // Is leaf node > Compute terrain > Children are nullptr by default
     if (depth >= minLevel && (sqrDist > sqrSide * distMultiplier || depth == numLevels - 1))
     {
-        leafCount++;
-
+        //std::cout << ' ' << chunk->getLayer();
+        //std::cout << ' ' << std::sqrt(sqrDist) / std::sqrt(sqrSide);
+        renderedChunks++;
         if (chunk->modelOrdered == false)
         {
             chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
-            chunk->render((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str(), textures, &indices);
+            chunk->render(vertShader.c_str(), fragShader.c_str(), textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
             renderer.setRenders(chunk->model, 0);
+            loadedChunks++;
         }
-
-        //app->setRenders(chunk->model, 1);
-        //chunk->visible = true;
-     }
+    }
     // Is not leaf node > Create children > Recursion
     else
     {
         depth++;
-        float halfSide = chunk->getHorSide() / 2;
-        float quarterSide = chunk->getHorSide() / 4;
+        std::tuple<float, float, float> subBaseCenters[4];
+        chunk->getSubBaseCenters(subBaseCenters);
+        float halfSide = chunk->getHorBaseSide() / 2;
 
-        node->setA(getNode(std::tuple(center.x - quarterSide, center.y + quarterSide, 0), halfSide, depth));
+        node->setA(getNode(subBaseCenters[0], halfSide, depth));
         createTree(node->getA(), depth);
 
-        node->setB(getNode(std::tuple(center.x + quarterSide, center.y + quarterSide, 0), halfSide, depth));
+        node->setB(getNode(subBaseCenters[1], halfSide, depth));
         createTree(node->getB(), depth);
 
-        node->setC(getNode(std::tuple(center.x - quarterSide, center.y - quarterSide, 0), halfSide, depth));
+        node->setC(getNode(subBaseCenters[2], halfSide, depth));
         createTree(node->getC(), depth);
 
-        node->setD(getNode(std::tuple(center.x + quarterSide, center.y - quarterSide, 0), halfSide, depth));
+        node->setD(getNode(subBaseCenters[3], halfSide, depth));
         createTree(node->getD(), depth);
     }
 }
 
-void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
+void DynamicGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
 {
     this->camPos = camPos;
     this->view = view;
@@ -809,7 +839,7 @@ void TerrainGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, con
     updateUBOs_help(root[activeTree]);  // Preorder traversal
 }
 
-void TerrainGrid::updateUBOs_help(QuadNode<PlainChunk*>* node)
+void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
 {
     if (!node) return;
 
@@ -827,25 +857,15 @@ void TerrainGrid::updateUBOs_help(QuadNode<PlainChunk*>* node)
     }
 }
 
-void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
-{
-    if (node->isLeaf())
-        node->getElement()->updateUBOs(terrGrid.camPos, terrGrid.view, terrGrid.proj);
-}
-
-/*
-    Check fullyConstructed
-    Show tree once per second
-*/
-bool TerrainGrid::fullConstChunks(QuadNode<PlainChunk*>* node)
+bool DynamicGrid::fullConstChunks(QuadNode<Chunk*>* node)
 {
     if (!node) return false;
-    
+
     if (node->isLeaf())
     {
         if (node->getElement()->model->fullyConstructed)
             return true;
-        else 
+        else
             return false;
     }
     else
@@ -860,11 +880,11 @@ bool TerrainGrid::fullConstChunks(QuadNode<PlainChunk*>* node)
     }
 }
 
-void TerrainGrid::changeRenders(QuadNode<PlainChunk*>* node, bool renderMode)
+void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
 {
     if (!node) return;
 
-    if(node->isLeaf())
+    if (node->isLeaf())
         renderer.setRenders(node->getElement()->model, (renderMode ? 1 : 0));
     else
     {
@@ -875,18 +895,55 @@ void TerrainGrid::changeRenders(QuadNode<PlainChunk*>* node, bool renderMode)
     }
 }
 
-std::tuple<float, float, float> TerrainGrid::closestCenter()
+void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 {
-    float maxUsedCellSize = rootCellSize;
-    for(size_t level = 0; level < minLevel; level++) maxUsedCellSize /= 2;
+    glm::vec3 center;
+    glm::vec3 distVec;
+    float targetDist;
+    float targetSqrDist;
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator it = chunks.begin();
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator nextIt;
 
-    return std::tuple<float, float, float>( 
-        maxUsedCellSize * std::round(camPos.x / maxUsedCellSize),
-        maxUsedCellSize* std::round(camPos.y / maxUsedCellSize), 
-        0 );
+    while (it != chunks.end())
+    {
+        nextIt = it;
+        nextIt++;
+        targetDist = it->second->getHorChunkSide() * relDist;
+
+        if (it->second->modelOrdered && it->second->model->fullyConstructed && !it->second->model->activeRenders)
+        {
+            center = it->second->getGroundCenter();
+            distVec.x = center.x - camPosNow.x;
+            distVec.y = center.y - camPosNow.y;
+            distVec.z = center.z - camPosNow.z;
+            targetSqrDist = targetDist * targetDist;
+
+            if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
+            {
+                delete chunks[it->first];
+                chunks.erase(it->first);
+                loadedChunks--;
+            }
+        }
+
+        it = nextIt;
+    }
 }
 
-QuadNode<PlainChunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
+//void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
+//{
+//    if (node->isLeaf())
+//        node->getElement()->updateUBOs(terrGrid.camPos, terrGrid.view, terrGrid.proj);
+//}
+
+
+// TerrainGrid ----------------------------------------------------------------------
+
+TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier)
+{ }
+
+QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
     {
@@ -897,37 +954,34 @@ QuadNode<PlainChunk*>* TerrainGrid::getNode(std::tuple<float, float, float> cent
         //chunks[center]->setCenter(exactCenter);
     }
 
-    return new QuadNode<PlainChunk*>(chunks[center]);
+    return new QuadNode<Chunk*>(chunks[center]);
 }
 
-void TerrainGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
+std::tuple<float, float, float> TerrainGrid::closestCenter()
 {
-    glm::vec3 center;
-    glm::vec3 distVec;
-    float targetSqrDist;
-    std::map<std::tuple<float, float, float>, PlainChunk*>::iterator it = chunks.begin();
-    std::map<std::tuple<float, float, float>, PlainChunk*>::iterator nextIt;
+    float maxUsedCellSize = rootCellSize;
+    for (size_t level = 0; level < minLevel; level++) maxUsedCellSize /= 2;
 
-    while (it != chunks.end())
-    {
-        nextIt = it;
-        nextIt++;
-        
-        if (it->second->modelOrdered && it->second->model->fullyConstructed && !it->second->model->activeRenders)
-        {
-            center = it->second->getCenter();
-            distVec.x = center.x - camPosNow.x;
-            distVec.y = center.y - camPosNow.y;
-            distVec.z = center.z - camPosNow.z;
-            targetSqrDist = it->second->getHorSide() * relDist * it->second->getHorSide() * relDist;
-            
-            if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
-            {
-                delete chunks[it->first];
-                chunks.erase(it->first);
-            }
-        }
+    return std::tuple<float, float, float>(
+        maxUsedCellSize * std::round(camPos.x / maxUsedCellSize),
+        maxUsedCellSize * std::round(camPos.y / maxUsedCellSize),
+        0);
+}
 
-        it = nextIt;
-    }
+// PlanetGrid ----------------------------------------------------------------------
+
+PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) { }
+
+QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
+{
+    if (chunks.find(center) == chunks.end())
+        chunks[center] = new SphericalChunk(renderer, noiseGenerator, center, sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, lights, radius, nucleus, cubePlane, layer);
+
+    return new QuadNode<Chunk*>(chunks[center]);
+}
+
+std::tuple<float, float, float> PlanetGrid::closestCenter() 
+{ 
+    return std::tuple<float, float, float>(cubeSideCenter.x, cubeSideCenter.y, cubeSideCenter.z);
 }

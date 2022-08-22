@@ -38,6 +38,11 @@ TODO:
 
 	SphericalChunk:
 	>Improve biplanar texture (shader) (and make normals/tangents correctly: Trilinear normal mapping (tangents))
+	Grid: Doesn't updates chunks / Texture resolution
+	>Bug when closing rendered
+	minLevel constructor variable is included? should be
+	terrGrid.getloadedChunks(), .getRenderedChunks(), .getTotalNodes() work correctly?
+	Hide rootCellSize/cubeSize?
 
 Rendering:
 	- Vertex struct has pos, color, text coord. Different vertex structs are required.

@@ -7,14 +7,9 @@
 #include "camera.hpp"
 
 // File's paths
-#if defined(__unix__)
-const std::string shaders_dir("../../../projects/Terrain/shaders/SPIRV/");
-const std::string textures_dir("../../../textures/");
-#elif _WIN64 || _WIN32
-const std::string SHADERS_DIR("../../../projects/Terrain/shaders/SPIRV/");
-const std::string MODELS_DIR("../../../models/");
-const std::string TEXTURES_DIR("../../../textures/");
-#endif
+extern const std::string SHADERS_DIR;
+extern const std::string MODELS_DIR;
+extern const std::string TEXTURES_DIR;
 
 // Camera
 extern FreePolarCam camera_1;
