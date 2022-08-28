@@ -1,19 +1,15 @@
 
 #include "terrain.hpp"
+#include "ubo.hpp"
 
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
     : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), lights(lights), layer(layer), modelOrdered(false)
-{ 
-    baseCenter.x = std::get<0>(center);
-    baseCenter.y = std::get<1>(center);
-    baseCenter.z = std::get<2>(center);
-
-    groundCenter.x = baseCenter.x;
-    groundCenter.y = baseCenter.y;
-    groundCenter.z = baseCenter.z;
+{
+    baseCenter   = center;
+    groundCenter = baseCenter;
 }
 
 Chunk::~Chunk()
@@ -34,21 +30,33 @@ void Chunk::render(const char* vertexShader, const char* fragmentShader, std::ve
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        UBOconfig(1, MMsize, VMsize, PMsize, MMNsize),
-        UBOconfig(1, lightSize, vec4size),
+        UBOconfig(1, MMsize, VMsize, PMsize, MMNsize, 3 * vec4size),     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3) + lightPos (vec3) + ligthDir (vec3)
+        UBOconfig(1, sizeof(Light)),                                     // Light
         usedTextures,
         vertexShader,
         fragmentShader,
         false);
-
-    model->vsDynUBO.setUniform(0, 0, modelMatrix());
-    //model->vsDynUBO.setUniform(i, 1, view);
-    //model->vsDynUBO.setUniform(i, 2, proj);
-    model->vsDynUBO.setUniform(0, 3, modelMatrixForNormals(modelMatrix()));
-
-    model->fsUBO.setUniform(0, 0, *(lights[0]));
-    //model->fsUBO.setUniform(0, 1, camPos);
-
+    
+    uint8_t* dest = model->vsDynUBO.getUBOptr(0);
+    int bytes = 0;
+    memcpy(dest + bytes, &modelMatrix(), mat4size);
+    bytes += mat4size;
+    //memcpy(dest + bytes, &view, mat4size);
+    bytes += mat4size;
+    //memcpy(dest + bytes, &proj, mat4size);
+    bytes += mat4size;
+    memcpy(dest + bytes, &modelMatrixForNormals(modelMatrix()), mat4size);
+    //bytes += mat4size
+    //memcpy(dest + bytes, &camPos, vec3size);
+    //bytes += vec4size;
+    //memcpy(dest + bytes, &sunLight.position, vec3size);
+    //bytes += vec4size;
+    //memcpy(dest + bytes, &sunLight.direction, vec3size);
+    //bytes += vec4size;
+ 
+    dest = model->fsUBO.getUBOptr(0);
+    memcpy(dest, lights[0], sizeof(Light));
+ 
     modelOrdered = true;
 }
 
@@ -56,11 +64,22 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
 {
     if (!modelOrdered) return;
 
-    for (size_t i = 0; i < model->vsDynUBO.dynBlocksCount; i++) {
-        model->vsDynUBO.setUniform(i, 1, view);
-        model->vsDynUBO.setUniform(i, 2, proj);
+    int bytes = 0;
+    for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
+    {
+        uint8_t* dest = model->vsDynUBO.getUBOptr(0);
+        bytes += mat4size;
+        memcpy(dest + bytes, &view, mat4size);
+        bytes += mat4size;
+        memcpy(dest + bytes, &proj, mat4size);
+        bytes += mat4size + mat4size;
+        memcpy(dest + bytes, &camPos, vec3size);
+        bytes += vec4size;
+        memcpy(dest + bytes, &sunLight.position, vec3size);
+        bytes += vec4size;
+        memcpy(dest + bytes, &sunLight.direction, vec3size);
+        bytes += vec4size;
     }
-    model->fsUBO.setUniform(0, 1, camPos);
 }
 
 void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)
@@ -84,7 +103,7 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::vector<Light*> lights, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
     : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, lights, layer)
 {
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
@@ -353,7 +372,7 @@ void PlainChunk::computeSizes()
 
 // SphericalChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
     : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, lights, layer), nucleus(nucleus), radius(radius)
 {   
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
@@ -946,13 +965,7 @@ TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<
 QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-    {
-        chunks[center] = new PlainChunk(renderer, noiseGenerator, center, sideLength/(numSideVertex-1), numSideVertex, numSideVertex, lights, layer);
-
-        //glm::vec3 exactCenter = chunks[center]->getCenter();
-        //exactCenter.z = noiseGenerator.GetNoise(exactCenter.x, exactCenter.y);
-        //chunks[center]->setCenter(exactCenter);
-    }
+        chunks[center] = new PlainChunk(renderer, noiseGenerator, lights, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength/(numSideVertex-1), numSideVertex, numSideVertex, layer);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }
@@ -976,7 +989,7 @@ PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Li
 QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new SphericalChunk(renderer, noiseGenerator, center, sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, lights, radius, nucleus, cubePlane, layer);
+        chunks[center] = new SphericalChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, lights, radius, nucleus, cubePlane, layer);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }

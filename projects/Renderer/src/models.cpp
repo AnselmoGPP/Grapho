@@ -640,7 +640,7 @@ void ModelData::setRenderCount(size_t numRenders)
 {
 	this->activeRenders = numRenders;
 
-	if (numRenders > vsDynUBO.dynBlocksCount)
+	if (numRenders > vsDynUBO.numDynUBOs)
 	{
 		vsDynUBO.resizeUBO(numRenders);
 

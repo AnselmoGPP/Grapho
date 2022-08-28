@@ -84,7 +84,7 @@ protected:
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
-	Chunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer);
+	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer);
 	virtual ~Chunk();
 
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
@@ -113,7 +113,7 @@ class PlainChunk : public Chunk
 	void computeSizes() override;
 
 public:
-	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer = 0);
+	PlainChunk(Renderer& renderer, Noiser& noiseGen, std::vector<Light*> lights, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
 	~PlainChunk() { };
 
 	/**
@@ -143,7 +143,7 @@ class SphericalChunk : public Chunk
 	void computeSizes() override;
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, std::tuple<float, float, float> cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
@@ -200,8 +200,8 @@ protected:
 	// Configuration data
 	float rootCellSize;
 	size_t numSideVertex;		// Number of vertex per square side
-	size_t numLevels;			// Levels of resolution
-	size_t minLevel;			// Minimum level used (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
+	size_t numLevels;			// Number of LOD
+	size_t minLevel;			// Minimum level used(from 0 to numLevels-1) (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
 	float distMultiplier;		// Relative distance (when distance camera-node's center is <relDist, the node is subdivided.
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive

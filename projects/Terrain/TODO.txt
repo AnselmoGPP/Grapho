@@ -38,11 +38,14 @@ TODO:
 
 	SphericalChunk:
 	>Improve biplanar texture (shader) (and make normals/tangents correctly: Trilinear normal mapping (tangents))
-	Grid: Doesn't updates chunks / Texture resolution
 	>Bug when closing rendered
-	minLevel constructor variable is included? should be
-	terrGrid.getloadedChunks(), .getRenderedChunks(), .getTotalNodes() work correctly?
-	Hide rootCellSize/cubeSize?
+	Add atmosphere
+	Get textures
+	Try different scenarios
+
+	>Refactor normal maps shaders & Uniforms setting
+	Finish graphics article
+	Continue LearnOpenGL
 
 Rendering:
 	- Vertex struct has pos, color, text coord. Different vertex structs are required.
@@ -91,6 +94,7 @@ BUGS:
 	Sometimes camera continue moving backwards/left indefinetely.
 	Camera jump when starting to move camera.
 	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
+	Bug? In updateStates: render() & set UBOs > move models > Copy UBOs to GPU. Problem: UBOs must be set immediatly after render() because, if it's rendered too fast, the model could be rendered before moving models.
 
 --------------------------------------------------------------------------
 

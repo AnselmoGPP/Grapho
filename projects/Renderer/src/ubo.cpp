@@ -8,12 +8,15 @@
 // Dynamic Uniform Buffer Objects -----------------------------------------------------------------
 
 size_t UniformAlignment	= 16;
+size_t vec3size			= sizeof(glm::vec3);
+size_t vec4size			= sizeof(glm::vec4);
+size_t mat4size			= sizeof(glm::mat4);
+
 size_t MMsize			= sizeof(glm::mat4);
 size_t VMsize			= sizeof(glm::mat4);
 size_t PMsize			= sizeof(glm::mat4);
-size_t MMNsize			= sizeof(glm::mat4);		// vec3
+size_t MMNsize			= sizeof(glm::mat4);		// mat3
 size_t lightSize		= sizeof(Light);
-size_t vec4size			= sizeof(glm::vec4);
 size_t materialSize		= sizeof(Material);
 
 UBOconfig::UBOconfig(size_t dynBlocksCount, size_t size1, size_t size2, size_t size3, size_t size4, size_t size5)
@@ -58,19 +61,21 @@ UBO::UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffset
 		uniformsOffsets[i] = uniformsOffsets[i - 1] + attribsSize[i - 1];
 }
 
-void UBO::resizeUBO(size_t newDynBlocksCount)// <<< what to do in modelData if uboType == 0
+uint8_t* UBO::getUBOptr(size_t dynUBO) { return ubo.data(); }
+
+void UBO::resizeUBO(size_t newNumDynUBOs)// <<< what to do in modelData if uboType == 0
 {	
 	// dynBlocksCount
-	dynBlocksCount = newDynBlocksCount;
+	numDynUBOs = newNumDynUBOs;
 
 	// totalBytes
-	totalBytes = range * dynBlocksCount;
+	totalBytes = range * numDynUBOs;
 
 	// UBO
 	ubo.resize(totalBytes);
 
 	// dynamicOffsets
-	dynamicOffsets.resize(dynBlocksCount);
+	dynamicOffsets.resize(numDynUBOs);
 	for (size_t i = 0; i < dynamicOffsets.size(); ++i)
 		dynamicOffsets[i] = i * range;
 }
@@ -87,7 +92,7 @@ void UBO::createUniformBuffers()
 		for (size_t i = 0; i < e.swapChainImages.size(); i++)
 			createBuffer(
 				e,
-				dynBlocksCount == 0 ? range : totalBytes,
+				numDynUBOs == 0 ? range : totalBytes,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				uniformBuffers[i],

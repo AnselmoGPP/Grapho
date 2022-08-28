@@ -85,10 +85,10 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
 {
 	vertexDestination = std::vector<VertexPT>{
-	VertexPT(glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 0)),
-	VertexPT(glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 1)),
-	VertexPT(glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 1)),
-	VertexPT(glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 0)) };
+	VertexPT(glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 0)),		// top left
+	VertexPT(glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 1)),		// low left
+	VertexPT(glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 1)),		// low right
+	VertexPT(glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 0)) };	// top right
 
 	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
@@ -142,29 +142,29 @@ bool ifOnce::ifBigger(float a, float b)
 		return false;
 }
 
-glm::mat4 sunMM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist)
+namespace Sun
 {
-	float sunSize = 2 * sunDist * tan(sunAngDist / 2);
-	float sunAng = (dayTime - 6) * (pi / 12);
-	float xRotation = 0.f;
-	float yRotation = 90. + (180. - glm::degrees(sunAng));
-	float zRotation = 90.f;
+	glm::mat4 MM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist)
+	{
+		float sunSize = 2 * sunDist * tan(sunAngDist / 2);
+		float sunAng = (dayTime - 6) * (pi / 12);
 
-	return modelMatrix(
-		glm::vec3(sunSize, sunSize, sunSize),
-		glm::vec3(xRotation, yRotation, zRotation),
-		glm::vec3(camPos.x + sunDist * cos(sunAng), camPos.y + 0.f, camPos.z + sunDist * sin(sunAng)) );
-}
+		return modelMatrix(
+			glm::vec3(sunSize, sunSize, sunSize),
+			glm::vec3(0.f, -90.f - glm::degrees(sunAng), 0.f),
+			glm::vec3(camPos.x + sunDist * cos(sunAng), camPos.y, camPos.z + sunDist * sin(sunAng)));
+	}
 
-glm::vec3 sunLightDirection(float dayTime)
-{
-	glm::vec3 direction;
-	//direction.x = (dayTime - 18) * (pi / 12)
-	direction.x = -pi/2;
-	direction.y = 0;
-	direction.z = 0;
+	glm::vec3 lightDirection(float dayTime)
+	{
+		float angle = (dayTime - 6) * (pi / 12);
+		glm::vec3 direction;
+		direction.x = cos(angle);
+		direction.y = 0.f;
+		direction.z = sin(angle);
 
-	return direction;
+		return glm::normalize(direction);
+	}
 }
 
 Icosahedron::Icosahedron(float multiplier)

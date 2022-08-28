@@ -14,7 +14,7 @@ const std::string MODELS_DIR("../../../models/");
 const std::string TEXTURES_DIR("../../../textures/");
 #endif
 
-float dayTime = 6.00;
+float dayTime = 9.00;
 float sunAngDist = 3.14 / 10;
 Light sunLight;
 
@@ -36,7 +36,7 @@ SphereCam camera_2(
 	45.f, 45.f );							// longitude & latitude
 
 PlaneCam camera_3(
-	glm::vec3(0.f, 0.f, 1000.f),			// camera position
+	glm::vec3(0.f, 0.f, 100.f),			// camera position
 	50.f, 0.001f, 5.f,						// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,						// FOV, minFOV, maxFOV
 	glm::vec3(0.f, -90.f, 0.f),				// Yaw (z), Pitch (x), Roll (y)

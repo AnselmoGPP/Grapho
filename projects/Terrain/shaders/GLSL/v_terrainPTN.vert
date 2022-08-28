@@ -1,27 +1,41 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(set = 0, binding = 0) uniform UniformBufferObject {
+layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
     mat4 view;
     mat4 proj;
     mat4 normalMatrix;		// mat3
+	vec4 camPos;			// vec3
+	vec4 lightPos;			// vec3
+	vec4 lightDir;			// vec3
 } ubo;
 
-layout(location = 0) in vec3 inPosition;
+layout(location = 0) in vec3 inVertPos;
 layout(location = 1) in vec2 inUVCoord;
 layout(location = 2) in vec3 inNormal;
 
-layout(location = 0) out vec3 outPosition;
+layout(location = 0) out vec3 outTangVertPos;
 layout(location = 1) out vec2 outUVCoord;
 layout(location = 2) out vec3 outNormal;
+layout(location = 3) out vec3 outTangCampPos;
+layout(location = 4) out vec3 outTangLightPos;
+layout(location = 5) out vec3 outTangLightDir;
 
 void main()
 {
-	gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-	outPosition = inPosition;		//outPosition = vec3(ubo.model * vec4(inPosition, 1.0));
+	gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);	
 	outUVCoord = inUVCoord;
 	outNormal = mat3(ubo.normalMatrix) * inNormal;
+	
+	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), inNormal), 0.f)));	// x
+	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(inNormal,    tangent ), 0.f)));	// y
+	mat3 TBN = transpose(mat3(tangent, bitangent, inNormal));									// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
+
+	outTangVertPos  = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));
+	outTangCampPos  = TBN * ubo.camPos.xyz;
+	outTangLightPos = TBN * ubo.lightPos.xyz;		// for point & spot light
+	outTangLightDir = TBN * ubo.lightDir.xyz;		// for directional light
 }
 
 

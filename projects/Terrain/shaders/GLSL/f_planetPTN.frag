@@ -170,21 +170,45 @@ vec4 triplanarTexture(sampler2D tex)
 	vec4 dz = texture(tex, inPosition.xy / tf);
 	
 	vec3 weights = abs(inNormal);
-	weights /= (weights.x + weights.y + weights.z);
+	weights /= weights.x + weights.y + weights.z;
 
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
-vec4 triplanarNormal(sampler2D diffuse, sampler2D specularMap, float shininess)
+vec4 triplanarNormal(sampler2D tex, sampler2D diffuse, sampler2D specularMap, float shininess)
 {
+/*
 	float tf = 50;            // texture factor
 	
-	vec2 uvX = inPosition.zy;	// x facing plane
-	vec2 uvY = inPosition.xz;	// y facing plane
-	vec2 uvZ = inPosition.xy;	// z facing plane
+	vec3 tx = texture(tex, inPosition.zy / tf);
+	vec3 ty = texture(tex, inPosition.xz / tf);
+	vec3 tz = texture(tex, inPosition.xy / tf);
+
+	vec3 weights = abs(inNormal);
+	weights *= weights;
+	weights /= weights.x + weights.y + weights.z;
 	
-	// ...
-	return vec4(0);
+	vec3 axis = sign(normal);
+	vec3 tangentX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));
+	vec3 bitangentX = normalize(cross(tangentX, inNormal)) * axis.x;
+	mat3 tbnX = mat3(tangentY, bitangentY, inNormal);
+
+	vec3 tangentY = normalize(cross(inNormal, vec3(0., 0., axis.y)));
+	vec3 bitangentY = normalize(cross(tangentY, inNormal)) * axis.y;
+	mat3 tbnY = mat3(tangentY, bitangentY, inNormal);
+
+	vec3 tangentZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));
+	vec3 bitangentZ = normalize(-cross(tangentZ, inNormal)) * axis.z;
+	mat3 tbnZ = mat3(tangentZ, bitangentZ, inNormal);
+	
+	vec3 worldNormal = normalize (
+		clamp(tbnX * tx, -1., 1.) * weights.x +
+		clamp(tbny * ty, -1., 1.) * weights.y +
+		clamp(tbnZ * tz, -1., 1.) * weights.z);
+	
+	return vec4(worldNormal, 0.);
+*/
+	return vec4(0.);
 }
 
 void getTexture_Grid(inout vec3 result)

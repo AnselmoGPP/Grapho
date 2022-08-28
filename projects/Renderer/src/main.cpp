@@ -130,47 +130,47 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	// Update UBOs
 	if (assets.find("points") != assets.end())
-		for (i = 0; i < assets["points"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++) {
 			assets["points"]->vsDynUBO.setUniform(i, 1, view);
 			assets["points"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
 	if (assets.find("axis") != assets.end())
-		for (i = 0; i < assets["axis"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["axis"]->vsDynUBO.numDynUBOs; i++) {
 			assets["axis"]->vsDynUBO.setUniform(i, 1, view);
 			assets["axis"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
 	if (assets.find("grid") != assets.end())
-		for (i = 0; i < assets["grid"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["grid"]->vsDynUBO.numDynUBOs; i++) {
 			assets["grid"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep * ((int)pos.x / gridStep), gridStep * ((int)pos.y / gridStep), 0.0f)));
 			assets["grid"]->vsDynUBO.setUniform(i, 1, view);
 			assets["grid"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
 	if (assets.find("skyBox") != assets.end())
-		for (i = 0; i < assets["skyBox"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["skyBox"]->vsDynUBO.numDynUBOs; i++) {
 			assets["skyBox"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
 			assets["skyBox"]->vsDynUBO.setUniform(i, 1, view);
 			assets["skyBox"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
 	if (assets.find("cottage") != assets.end())
-		for (i = 0; i < assets["cottage"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["cottage"]->vsDynUBO.numDynUBOs; i++) {
 			assets["cottage"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, frameTime * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
 			assets["cottage"]->vsDynUBO.setUniform(i, 1, view);
 			assets["cottage"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 		
 	if (assets.find("room") != assets.end())
-		for (i = 0; i < assets["room"]->vsDynUBO.dynBlocksCount; i++) {
+		for (i = 0; i < assets["room"]->vsDynUBO.numDynUBOs; i++) {
 			assets["room"]->vsDynUBO.setUniform(i, 1, view);
 			assets["room"]->vsDynUBO.setUniform(i, 2, proj);
 		}
 
 	if (assets.find("sun") != assets.end())
-		for (i = 0; i < assets["sun"]->vsDynUBO.dynBlocksCount; i++) {
-			assets["sun"]->vsDynUBO.setUniform(i, 0, sunMM(pos, dayTime, 0.5f, sunAngDist));
+		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) {
+			assets["sun"]->vsDynUBO.setUniform(i, 0, Sun::MM(pos, dayTime, 0.5f, sunAngDist));
 			assets["sun"]->vsDynUBO.setUniform(i, 1, view);
 			assets["sun"]->vsDynUBO.setUniform(i, 2, proj);
 		}
@@ -365,7 +365,7 @@ void setSun(Renderer& app)
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
 		true);
 
-	//sun.setDirectional(sunLightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
+	//sun.setDirectional(Sun::lightDirection(dayTime), glm::vec3(.1f, .1f, .1f), glm::vec3(1.f, 1.f, 1.f), glm::vec3(.5f, .5f, .5f));
 }
 
 void setReticule(Renderer& app)

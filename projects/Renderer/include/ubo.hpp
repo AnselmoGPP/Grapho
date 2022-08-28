@@ -27,12 +27,14 @@
 */
 
 extern size_t UniformAlignment;	// Alignment required for each uniform in the UBO (usually, 16 bytes).
+extern size_t vec3size;			// glm::vec3
+extern size_t vec4size;			// glm::vec4
+extern size_t mat4size;			// glm::mat4
 extern size_t MMsize;			// Model matrix
 extern size_t VMsize;			// View matrix
 extern size_t PMsize;			// Proyection matrix
 extern size_t MMNsize;			// Model matrix for Normals
 extern size_t lightSize;		// Light
-extern size_t vec4size;			// glm::vec4
 extern size_t materialSize;		// Material
 
 /// Class used for configuring the dynamic UBO. UBO attributes: Model/View/Projection matrices, Model matrix for normals, Lights.
@@ -116,14 +118,15 @@ struct UBO
 	UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each dynamic UBO required by the GPU).
 	~UBO() = default;
 
+	uint8_t* getUBOptr(size_t dynUBO);
 	template<typename T>
 	void setUniform(size_t dynBlock, size_t uniform, T &newValue, size_t offset = 0);
-	void resizeUBO(size_t newDynBlocksCount);			//!< Set the number of dynamic UBO in the UBO. This doesn't create new Uniform buffer.
+	void resizeUBO(size_t newNumDynUBOs);				//!< Set the number of dynamic UBO in the UBO. This doesn't create new Uniform buffer.
 
 	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
 	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 
-	size_t						dynBlocksCount;			//!< Number of dynamic UBOs
+	size_t						numDynUBOs;				//!< Number of dynamic UBOs
 
 	VkDeviceSize				range;					//!< Size (bytes) of an aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
 	size_t						totalBytes;				//!< Size (bytes) of the set of dynamic UBOs (example: 12)
