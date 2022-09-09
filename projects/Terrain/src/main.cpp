@@ -21,7 +21,6 @@
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void loadTextures(Renderer& app);
-void setLights();
 
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
@@ -96,7 +95,6 @@ int main(int argc, char* argv[])
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 
-	setLights();
 	loadTextures(app);
 
 	setPoints(app);
@@ -131,7 +129,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
 	dayTime = 5.00 + frameTime * 0.5;
-	sunLight.setDirectional(Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	//sunLight.turnOff();
+	sunLight.setDirectional  (Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	//sunLight.setPoint(-10.f * Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
+	//sunLight.setSpot(-10.f * Sun::lightDirection(dayTime), glm::vec3(0, 1, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0., 0.9, 0.8);
 
 	//std::cout
 	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
@@ -298,16 +299,6 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//outTangLightPos = TBN * ubo.lightPos.xyz;		// for point & spot light
 	//outTangLightDir = TBN * ubo.lightDir.xyz;		// for directional light
 
-}
-
-void setLights()
-{
-	std::cout << "> " << __func__ << "()" << std::endl;
-
-	//sunLight.turnOff();
-	sunLight.setDirectional(Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	//sunLight.setPoint(glm::vec3(0, 0, 50), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0.1, 0.01);
-	//sunLight.setSpot(glm::vec3(0, 0, 150), glm::vec3(0, 0, 1), glm::vec3(0.1, 0.1, 0.1), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 0, 0., 0.9, 0.8);
 }
 
 void loadTextures(Renderer& app)

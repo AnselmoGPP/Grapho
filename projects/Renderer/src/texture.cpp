@@ -48,6 +48,8 @@ Texture::~Texture()
 
 void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 {
+	std::cout << __func__ << "(): " << path << std::endl;
+
 	this->e = &e;
 	
 	createTextureImage();

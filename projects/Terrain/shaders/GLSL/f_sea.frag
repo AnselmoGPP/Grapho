@@ -74,20 +74,18 @@ vec3 directionalLightColor(Light light, vec3 albedo, vec3 normal, vec3 speculari
 {
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient.xyz * albedo;
+	
+	if(dot(light.direction.xyz, normal) > 0) return ambient;			// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(normal, -light.direction.xyz), 0.0);
+    float diff = max(dot(normal, -light.direction.xyz), 0.f);
     vec3 diffuse = light.diffuse.xyz * albedo * diff;
 
     // ----- Specular lighting -----
-    vec3 specular;
-	if(dot(-light.direction.xyz, normal) < 0) specular = vec3(0,0,0);	// If light comes from below the tangent plane
-	else {
-		vec3 viewDir    = normalize(inCamPos - inFragPos);
-		vec3 reflectDir = normalize(reflect(light.direction.xyz, normal));
-		float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-		specular        = light.specular.xyz * specularity * spec;
-	}
+	vec3 viewDir    = normalize(inCamPos - inFragPos);
+	vec3 reflectDir = reflect(light.direction.xyz, normal);
+	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 specular   = light.specular.xyz * specularity * spec;
 	
     // ----- Result -----
 	return vec3(ambient + diffuse + specular);
@@ -96,23 +94,24 @@ vec3 directionalLightColor(Light light, vec3 albedo, vec3 normal, vec3 speculari
 
 vec3 PointLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance = length(light.position.xyz - inFragPos);
+    float distance    = length(light.position.xyz - inFragPos);
     float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-	vec3 fragLightDir = normalize(light.position.xyz - inFragPos);
-	vec3 norm = normalize(normal);
+	vec3 lightDir 	  = normalize(inFragPos - light.position.xyz);
+
+	if(dot(lightDir, normal) > 0) return vec3(0,0,0);			// If light comes from below the tangent plane
 
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient.xyz * albedo * attenuation;
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(norm, fragLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * albedo * attenuation;
+    float diff   = max(dot(normal, -lightDir), 0.f);
+    vec3 diffuse = light.diffuse.xyz * albedo * diff * attenuation;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(inCamPos.xyz - inFragPos);
-    vec3 reflectDir = reflect(-fragLightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), roughness);
-    vec3 specular = light.specular.xyz * spec * specularity * attenuation;
+	vec3 viewDir    = normalize(inCamPos - inFragPos);
+	vec3 reflectDir = reflect(lightDir, normal);
+	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 specular   = light.specular.xyz * specularity * spec * attenuation;
 
     // ----- Result -----
     return vec3(ambient + diffuse + specular);
@@ -123,26 +122,27 @@ vec3 SpotLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, flo
 {
     float distance = length(light.position.xyz - inFragPos);
     float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-    vec3 fragLightDir = normalize(light.position.xyz - inFragPos);
-    vec3 norm = normalize(normal);
+    vec3 fraglightDir = normalize(inFragPos - light.position.xyz);
+	
+	if(dot(fraglightDir, normal) > 0) return vec3(0,0,0);				// If light comes from below the tangent plane
 	
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient.xyz * albedo * attenuation;
 
     // ----- Diffuse lighting -----
-    float theta = dot(fragLightDir, normalize(light.direction.xyz));	// The closer to 1, the more direct the light gets to fragment.
+    float theta = dot(fraglightDir, normalize(light.direction.xyz));	// The closer to 1, the more direct the light gets to fragment.
     if(theta < light.cutOff[1]) return vec3(ambient);
 
-    float epsilon = light.cutOff[0] - light.cutOff[1];
+    float epsilon   = light.cutOff[0] - light.cutOff[1];
     float intensity = clamp((theta - light.cutOff[1]) / epsilon, 0.0, 1.0);
-    float diff = max(dot(norm, fragLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * albedo * attenuation * intensity;
+    float diff      = max(dot(normal, -fraglightDir), 0.0);
+    vec3 diffuse    = light.diffuse.xyz * albedo * diff * attenuation * intensity;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(inCamPos.xyz - inFragPos);
-    vec3 reflectDir = reflect(-fragLightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), roughness);
-    vec3 specular = light.specular.xyz * spec * specularity * attenuation * intensity;
+	vec3 viewDir    = normalize(inCamPos - inFragPos);
+	vec3 reflectDir = reflect(fraglightDir, normal);
+	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 specular   = light.specular.xyz * specularity * spec * attenuation * intensity;
 
     // ----- Result -----
     return vec3(ambient + diffuse + specular);
