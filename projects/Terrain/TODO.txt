@@ -43,9 +43,20 @@ TODO:
 	Get textures
 	Try different scenarios
 
+
 	>Refactor normal maps shaders & Uniforms setting
 	Finish graphics article
 	Continue LearnOpenGL
+	Sea
+	-Bug (objects not destroyed): Looks like modelsToDelete still has objects
+	GUI
+	Reescalation of textures with distance
+	Omit VertexType, VertexPT, and similar things
+	Take UV coords out from terrain data
+	Create multiple "Renderer::models", one for each layer
+	Rotate skybox (with the sun)
+	-Fix specular lightning (if wrong) (it illuminates ground before sunrise)
+	-Move Light to vertex shader
 
 Rendering:
 	- Vertex struct has pos, color, text coord. Different vertex structs are required.

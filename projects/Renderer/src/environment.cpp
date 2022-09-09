@@ -658,7 +658,7 @@ VkSurfaceFormatKHR VulkanEnvironment::chooseSwapSurfaceFormat(const std::vector<
 	// Return our favourite surface format, if it exists
 	for (const auto& availableFormat : availableFormats)
 	{
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&			// Format: Color channel and types (example: VK_FORMAT_B8G8R8A8_SRGB is BGRA channels with 8 bit unsigned integer)
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&				// Format: Color channel and types (example: VK_FORMAT_B8G8R8A8_SRGB is BGRA channels with 8 bit unsigned integer)
 			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)	// Color space: Indicates if the sRGB color space is supported or not (https://stackoverflow.com/questions/12524623/what-are-the-practical-differences-when-working-with-colors-in-a-linear-vs-a-no).
 			return availableFormat;
 	}
@@ -831,17 +831,17 @@ void VulkanEnvironment::createImage(uint32_t width, uint32_t height, uint32_t mi
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;				// Kind of coordinate system the texels in the image are going to be addressed: 1D (to store an array of data or gradient...), 2D (textures...), 3D (to store voxel volumes...).
 	imageInfo.extent.width = width;						// Number of texels in X									
-	imageInfo.extent.height = height;						// Number of texels in Y
+	imageInfo.extent.height = height;					// Number of texels in Y
 	imageInfo.extent.depth = 1;
 	imageInfo.mipLevels = mipLevels;					// Number of levels (mipmaps)
 	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;						// Same format for the texels as the pixels in the buffer. This format is widespread, but if it is not supported by the graphics hardware, you should go with the best supported alternative.
-	imageInfo.tiling = tiling;						// This cannot be changed later. VK_IMAGE_TILING_ ... LINEAR (texels are laid out in row-major order like our pixels array), OPTIMAL (texels are laid out in an implementation defined order for optimal access).
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;	// VK_IMAGE_LAYOUT_ ... UNDEFINED (not usable by the GPU and the very first transition will discard the texels), PREINITIALIZED (not usable by the GPU, but the first transition will preserve the texels). We choose UNDEFINED because we're first going to transition the image to be a transfer destination and then copy texel data to it from a buffer object. There are few situations where PREINITIALIZED is necessary (example: when we want to use an image as a staging image in combination with the VK_IMAGE_TILING_LINEAR layout). 
-	imageInfo.usage = usage;						// The image is going to be used as destination for the buffer copy, so it should be set up as a transfer destination; and we also want to be able to access the image from the shader to color our mesh.
-	imageInfo.samples = numSamples;					// For multisampling. Only relevant for images that will be used as attachments.
+	imageInfo.format = format;							// Same format for the texels as the pixels in the buffer. This format is widespread, but if it is not supported by the graphics hardware, you should go with the best supported alternative.
+	imageInfo.tiling = tiling;							// This cannot be changed later. VK_IMAGE_TILING_ ... LINEAR (texels are laid out in row-major order like our pixels array), OPTIMAL (texels are laid out in an implementation defined order for optimal access).
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;// VK_IMAGE_LAYOUT_ ... UNDEFINED (not usable by the GPU and the very first transition will discard the texels), PREINITIALIZED (not usable by the GPU, but the first transition will preserve the texels). We choose UNDEFINED because we're first going to transition the image to be a transfer destination and then copy texel data to it from a buffer object. There are few situations where PREINITIALIZED is necessary (example: when we want to use an image as a staging image in combination with the VK_IMAGE_TILING_LINEAR layout). 
+	imageInfo.usage = usage;							// The image is going to be used as destination for the buffer copy, so it should be set up as a transfer destination; and we also want to be able to access the image from the shader to color our mesh.
+	imageInfo.samples = numSamples;						// For multisampling. Only relevant for images that will be used as attachments.
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;	// The image will only be used by one queue family: the one that supports graphics (and therefore also) transfer operations.
-	imageInfo.flags = 0;							// [Optional]  There are some optional flags for images that are related to sparse images (images where only certain regions are actually backed by memory). Example: If you were using a 3D texture for a voxel terrain, then you could use this to avoid allocating memory to store large volumes of "air" values.
+	imageInfo.flags = 0;								// [Optional]  There are some optional flags for images that are related to sparse images (images where only certain regions are actually backed by memory). Example: If you were using a 3D texture for a voxel terrain, then you could use this to avoid allocating memory to store large volumes of "air" values.
 
 	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create image!");
@@ -1299,15 +1299,21 @@ void VulkanEnvironment::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDeb
 
 void VulkanEnvironment::cleanup()
 {
+	std::cout << "   >>> " << 'A' << std::endl;
 	vkDestroyCommandPool(device, commandPool, nullptr);						// Command pool
 	vkDestroyDevice(device, nullptr);										// Logical device & device queues
 
+	std::cout << "   >>> " << 'B' << std::endl;
 	if (enableValidationLayers)												// Debug messenger
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 
+	std::cout << "   >>> " << 'C' << std::endl;
 	vkDestroySurfaceKHR(instance, surface, nullptr);						// Surface KHR
+	std::cout << "   >>> " << 'D' << std::endl;
 	vkDestroyInstance(instance, nullptr);									// Instance
+	std::cout << "   >>> " << 'E' << std::endl;
 	glfwDestroyWindow(window);												// GLFW window
+	std::cout << "   >>> " << 'F' << std::endl;
 	glfwTerminate();														// GLFW
 }
 

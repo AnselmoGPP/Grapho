@@ -23,7 +23,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	frameCount(0),
 	commandsCount(0) { }
 
-Renderer::~Renderer() { }
+Renderer::~Renderer() { std::cout << __func__ << std::endl; }
 
 int Renderer::run()
 {
@@ -360,7 +360,7 @@ void Renderer::cleanupSwapChain()
 
 void Renderer::cleanup()
 {
-	std::cout << __func__ << "()" << std::endl;
+	std::cout << __func__ << "() 1" << std::endl;
 
 	// Cleanup renderer
 	//cleanupSwapChain();
@@ -378,6 +378,7 @@ void Renderer::cleanup()
 		vkDestroyFence(e.device, framesInFlight[i], nullptr);
 	}
 
+	std::cout << __func__ << "() 2" << std::endl;
 	// Cleanup each model
 	models.clear();
 	modelsToLoad.clear();
@@ -386,13 +387,14 @@ void Renderer::cleanup()
 	textures.clear();
 
 	// Cleanup environment
+	std::cout << "   >>> Buffers size: " << models.size() << "(m), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
 	e.cleanupSwapChain();
 	e.cleanup(); 
 
 	std::cout << "Cleanup() end" << std::endl;
 }
 
-modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 {
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
@@ -401,7 +403,7 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 		numRenderings, 
 		(VkPrimitiveTopology) primitiveTopology, 
 		vertexLoader,
-		vsUboConfig, fsUboConfig, 
+		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		textures, 
 		VSpath, FSpath, 
 		transparency);
@@ -409,6 +411,7 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
+	/*
 	bool notLoadedYet = false;
 	for(modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
 		if (it == model) { notLoadedYet = true; break; }
@@ -420,6 +423,15 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 		modelsToDelete.splice(modelsToDelete.cend(), models, model);
 		updateCommandBuffer = true;
 	}
+	*/
+	if (model->inModels)
+	{
+		model->inModels = false;
+		modelsToDelete.splice(modelsToDelete.cend(), models, model);
+		updateCommandBuffer = true;
+	}
+	else
+		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);	// <<< MAY PRODUCE BUGS
 }
 
 texIterator Renderer::newTexture(const char* path)
@@ -580,9 +592,20 @@ void Renderer::updateStates(uint32_t currentImage)
 	{
 		modelIterator begin, end;
 		begin = end = modelsToLoad.begin();
-		while (end->fullyConstructed && end != modelsToLoad.end()) ++end;
+		while (end->fullyConstructed && end != modelsToLoad.end()) {
+			end->inModels = true;
+			++end;
+		}
 		models.splice(models.cend(), modelsToLoad, begin, end);
 		updateCommandBuffer = true;
+	}
+
+	while (lastModelsToDraw.size())
+	{
+		if (lastModelsToDraw[0]->inModels)
+			models.splice(models.end(), models, lastModelsToDraw[0]);
+
+		lastModelsToDraw.erase(lastModelsToDraw.begin());
 	}
 	
 	// - COPY DATA FROM UBOS TO GPU MEMORY
@@ -628,6 +651,11 @@ Camera& Renderer::getCamera() { return *input.cam; }
 Input& Renderer::getInput() { return input; }
 
 size_t Renderer::getRendersCount(modelIterator model) { return model->activeRenders; }
+
+void Renderer::toLastDraw(modelIterator model)
+{
+	lastModelsToDraw.push_back(model);
+}
 
 size_t Renderer::getFrameCount() { return frameCount; }
 

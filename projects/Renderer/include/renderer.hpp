@@ -34,21 +34,22 @@ class Renderer
 	int waitTime = 500;		//!< Time the loading-thread wait till next check.
 
 	// Main parameters
-	VulkanEnvironment					e;
-	Input								input;		//!< Input data
-	TimerSet							timer;		//!< Time control
-	std::list<ModelData>				models;		//!< Models (fully initialized). Each model is associated to one of the framebuffer (layer).
-	std::list<Texture>					textures;	//!< Texture set
-	size_t								numLayers;
+	VulkanEnvironment			e;
+	Input						input;						//!< Input data
+	TimerSet					timer;						//!< Time control
+	std::list<ModelData>		models;						//!< Models (fully initialized). Each model is associated to one of the framebuffer (layer).
+	std::list<Texture>			textures;					//!< Texture set
+	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
+	std::vector<modelIterator>	lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
 	// Threads stuff
-	std::thread thread_loadModels;					//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
-	std::mutex mutSnapshot;							//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
+	std::thread					thread_loadModels;			//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+	std::mutex					mutSnapshot;				//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
 
-	std::list<ModelData> modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
-	std::list<ModelData> modelsToDelete;			//!< Iterators to the loaded models that have to be deleted from Vulkan.
-	std::list<Texture> texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
-	std::list<Texture> texturesToDelete;			//!< Textures waiting for being deleted.
+	std::list<ModelData>		modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
+	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
+	std::list<Texture>			texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
+	std::list<Texture>			texturesToDelete;			//!< Textures waiting for being deleted.
 
 	// Member variables:
 	std::vector<VkCommandBuffer> commandBuffers;			//!< <<< List. Opaque handle to command buffer object. One for each swap chain framebuffer.
@@ -172,7 +173,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	/**
 	*	@brief
@@ -198,6 +199,9 @@ public:
 	*	@brief Not used
 	*/
 	size_t			getRendersCount(modelIterator model);
+
+	/// Make a model the last to be drawn within its own layer. Useful for transparent objects.
+	void			toLastDraw(modelIterator model);
 
 	size_t getFrameCount();
 	size_t getModelsCount();

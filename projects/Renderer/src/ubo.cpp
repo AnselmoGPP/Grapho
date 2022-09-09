@@ -11,72 +11,38 @@ size_t UniformAlignment	= 16;
 size_t vec3size			= sizeof(glm::vec3);
 size_t vec4size			= sizeof(glm::vec4);
 size_t mat4size			= sizeof(glm::mat4);
-
-size_t MMsize			= sizeof(glm::mat4);
-size_t VMsize			= sizeof(glm::mat4);
-size_t PMsize			= sizeof(glm::mat4);
-size_t MMNsize			= sizeof(glm::mat4);		// mat3
 size_t lightSize		= sizeof(Light);
 size_t materialSize		= sizeof(Material);
 
-UBOconfig::UBOconfig(size_t dynBlocksCount, size_t size1, size_t size2, size_t size3, size_t size4, size_t size5)
-{
-	this->dynBlocksCount = dynBlocksCount;
-
-	if (size1) attribsSize.push_back(size1);
-	if (size2) attribsSize.push_back(size2);
-	if (size3) attribsSize.push_back(size3);
-	if (size4) attribsSize.push_back(size4);
-	if (size5) attribsSize.push_back(size5);
-
-	// Apply alignment (16 bytes) for each variable in the UBO. If any of these variables is a struct, its members should be aligned too (16 bytes).
-	//if (size1) attribsSize.push_back(size1 % UniformAlignment ? size1 + UniformAlignment - (size1 % UniformAlignment) : size1);
-	//if (size2) attribsSize.push_back(size2 % UniformAlignment ? size2 + UniformAlignment - (size2 % UniformAlignment) : size2);
-	//if (size3) attribsSize.push_back(size3 % UniformAlignment ? size3 + UniformAlignment - (size3 % UniformAlignment) : size3);
-	//if (size4) attribsSize.push_back(size4 % UniformAlignment ? size4 + UniformAlignment - (size4 % UniformAlignment) : size4);
-	//if (size5) attribsSize.push_back(size5 % UniformAlignment ? size5 + UniformAlignment - (size5 % UniformAlignment) : size5);
-}
 
 /// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, dynamicOffsets).
-UBO::UBO(VulkanEnvironment& e, const UBOconfig& config, VkDeviceSize minUBOffsetAlignment)
-	: e(e), range(0)
+UBO::UBO(VulkanEnvironment& e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment)
+	: e(e), numDynUBOs(numDynUBOs), range(0)
 {	
-	attribsSize = config.attribsSize;
+	if (dynUBOsize)
+		range = minUBOffsetAlignment * (1 + dynUBOsize / minUBOffsetAlignment);
 
-	// range
-	size_t usefulUBOsize = 0;						// Section of the range that will be actually used(example: 3)
-	for (size_t i = 0; i < attribsSize.size(); i++)
-		usefulUBOsize += attribsSize[i];
+	totalBytes = range * numDynUBOs;
+	ubo.resize(totalBytes);
 
-	if (usefulUBOsize)
-		range = minUBOffsetAlignment * (1 + usefulUBOsize / minUBOffsetAlignment);
-
-	// dynBlocksCount, totalBytes, UBO, dynamicOffsets
-	resizeUBO(config.dynBlocksCount);
-
-	// uniformsOffsets
-	uniformsOffsets.resize(attribsSize.size());
-	if (uniformsOffsets.size()) uniformsOffsets[0] = 0;
-	for (size_t i = 1; i < uniformsOffsets.size(); i++)
-		uniformsOffsets[i] = uniformsOffsets[i - 1] + attribsSize[i - 1];
+	dynamicOffsets.resize(numDynUBOs);
+	for (size_t i = 0; i < numDynUBOs; i++)
+		dynamicOffsets[i] = i * range;
 }
 
-uint8_t* UBO::getUBOptr(size_t dynUBO) { return ubo.data(); }
+uint8_t* UBO::getUBOptr(size_t dynUBO) { return ubo.data() + dynUBO * range; }
 
 void UBO::resizeUBO(size_t newNumDynUBOs)// <<< what to do in modelData if uboType == 0
 {	
-	// dynBlocksCount
 	numDynUBOs = newNumDynUBOs;
 
-	// totalBytes
 	totalBytes = range * numDynUBOs;
 
-	// UBO
 	ubo.resize(totalBytes);
 
-	// dynamicOffsets
+	size_t oldSize = dynamicOffsets.size();
 	dynamicOffsets.resize(numDynUBOs);
-	for (size_t i = 0; i < dynamicOffsets.size(); ++i)
+	for (size_t i = oldSize; i < numDynUBOs; i++)
 		dynamicOffsets[i] = i * range;
 }
 

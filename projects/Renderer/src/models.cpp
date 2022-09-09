@@ -5,19 +5,19 @@
 
 std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
-UBOconfig noUBO;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
-	fullyConstructed(false),
 	hasTransparencies(transparency),
-	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	textures(textures),
-	vsDynUBO(e, vsUboConfig, e.minUniformBufferOffsetAlignment),
-	fsUBO(e, fsUboConfig, e.minUniformBufferOffsetAlignment),
+	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
+	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e.minUniformBufferOffsetAlignment),
+	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e.minUniformBufferOffsetAlignment),
 	layer(layer),
-	activeRenders(activeRenders)
+	activeRenders(activeRenders),
+	fullyConstructed(false),
+	inModels(false)
 {
 	copyCString(this->VSpath, VSpath);
 	copyCString(this->FSpath, FSpath);
@@ -31,6 +31,8 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 
 ModelData::~ModelData()
 {
+	//std::cout << __func__ << "() (" << FSpath << ')' << std::endl;
+
 	if (fullyConstructed) {
 		cleanupSwapChain();
 		cleanup();

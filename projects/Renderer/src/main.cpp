@@ -121,58 +121,66 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (check.ifBigger(frameTime, 10))
 	{
 		rend.setRenders(assets["room"], 4);			// TEST (in render loop): setRenders (out of range)
-		assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
-		assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
-		assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-		assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
-
+		memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -90.f), glm::vec3( 0.f, -50.f, 3.f)), mat4size);
+		memcpy(assets["points"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3( 0.f, -80.f, 3.f)), mat4size);
+		memcpy(assets["points"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  90.f), glm::vec3(30.f, -80.f, 3.f)), mat4size);
+		memcpy(assets["points"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 180.f), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 	}
 
 	// Update UBOs
+	uint8_t* dest;
+
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++) {
-			assets["points"]->vsDynUBO.setUniform(i, 1, view);
-			assets["points"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["points"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 
 	if (assets.find("axis") != assets.end())
 		for (i = 0; i < assets["axis"]->vsDynUBO.numDynUBOs; i++) {
-			assets["axis"]->vsDynUBO.setUniform(i, 1, view);
-			assets["axis"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["axis"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 
 	if (assets.find("grid") != assets.end())
 		for (i = 0; i < assets["grid"]->vsDynUBO.numDynUBOs; i++) {
-			assets["grid"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(gridStep * ((int)pos.x / gridStep), gridStep * ((int)pos.y / gridStep), 0.0f)));
-			assets["grid"]->vsDynUBO.setUniform(i, 1, view);
-			assets["grid"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["grid"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)pos.x / gridStep), gridStep * ((int)pos.y / gridStep), 0.0f)), mat4size);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 
 	if (assets.find("skyBox") != assets.end())
 		for (i = 0; i < assets["skyBox"]->vsDynUBO.numDynUBOs; i++) {
-			assets["skyBox"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(pos.x, pos.y, pos.z)));
-			assets["skyBox"]->vsDynUBO.setUniform(i, 1, view);
-			assets["skyBox"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["skyBox"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(pos.x, pos.y, pos.z)), mat4size);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 
 	if (assets.find("cottage") != assets.end())
 		for (i = 0; i < assets["cottage"]->vsDynUBO.numDynUBOs; i++) {
-			assets["cottage"]->vsDynUBO.setUniform(i, 0, modelMatrix(glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(90.0f, frameTime * 45.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
-			assets["cottage"]->vsDynUBO.setUniform(i, 1, view);
-			assets["cottage"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["cottage"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(90.f, frameTime * 45.f, 0.f), glm::vec3(0.f, 0.f, 0.f)), mat4size);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 		
 	if (assets.find("room") != assets.end())
 		for (i = 0; i < assets["room"]->vsDynUBO.numDynUBOs; i++) {
-			assets["room"]->vsDynUBO.setUniform(i, 1, view);
-			assets["room"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["room"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) {
-			assets["sun"]->vsDynUBO.setUniform(i, 0, Sun::MM(pos, dayTime, 0.5f, sunAngDist));
-			assets["sun"]->vsDynUBO.setUniform(i, 1, view);
-			assets["sun"]->vsDynUBO.setUniform(i, 2, proj);
+			dest = assets["sun"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * mat4size, &Sun::MM(pos, dayTime, 0.5f, sunAngDist), mat4size);
+			memcpy(dest + 1 * mat4size, &view, mat4size);
+			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
 }
 
@@ -204,14 +212,14 @@ void setPoints(Renderer& app)
 	assets["points"] = app.newModel(
 		1, 1, primitiveTopology::point,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		noTextures,
 		(SHADERS_DIR + "v_pointPC.spv").c_str(),
 		(SHADERS_DIR + "f_pointPC.spv").c_str(),
 		false);
 
-	assets["points"]->vsDynUBO.setUniform(0, 0, modelMatrix());
+	memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
 }
 
 void setAxis(Renderer& app)
@@ -227,14 +235,14 @@ void setAxis(Renderer& app)
 	assets["axis"] = app.newModel(
 		2, 1, primitiveTopology::line,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
 		false);
 
-	assets["axis"]->vsDynUBO.setUniform(0, 0, modelMatrix());
+	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
 }
 
 void setGrid(Renderer& app)
@@ -250,8 +258,8 @@ void setGrid(Renderer& app)
 	assets["grid"] = app.newModel(
 		1, 1, primitiveTopology::line,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		noTextures,
 		(SHADERS_DIR + "v_linePC.spv").c_str(),
 		(SHADERS_DIR + "f_linePC.spv").c_str(),
@@ -263,15 +271,14 @@ void setSkybox(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<texIterator> usedTextures = { textures["skybox"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "sky_box/space1.jpg").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 14, v_cube.data(), i_inCube, false);
 
 	assets["skyBox"] = app.newModel(
 		0, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
@@ -284,15 +291,14 @@ void setCottage(Renderer& app)
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<texIterator> usedTextures = { textures["cottage"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
@@ -306,8 +312,8 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
@@ -319,15 +325,14 @@ void setRoom(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	std::vector<texIterator> usedTextures = { textures["room"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "viking_room.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(2, MMsize, VMsize, PMsize),
-		noUBO,
+		2, 3 * mat4size,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
 		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
@@ -336,10 +341,10 @@ void setRoom(Renderer& app)
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
 	app.setRenders(assets["room"], 3);	// TEST(in render loop) : setRenders(out of range)
 
-	assets["room"]->vsDynUBO.setUniform(0, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, -90.0f), glm::vec3(0.0f, -50.0f, 3.0f)));
-	assets["room"]->vsDynUBO.setUniform(1, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -80.0f, 3.0f)));
-	assets["room"]->vsDynUBO.setUniform(2, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 90.0f), glm::vec3(30.0f, -80.0f, 3.0f)));
-	//assets["room"]->vsDynUBO.setUniform(3, 0, modelMatrix(glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0.0f, 0.0f, 180.0f), glm::vec3(30.0f, -50.0f, 3.0f)));
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -90.f), glm::vec3(0.f, -50.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, -80.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 90.f), glm::vec3(30.f, -80.f, 3.f)), mat4size);
+	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 180.f), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 }
 
 void setSun(Renderer& app)
@@ -348,18 +353,17 @@ void setSun(Renderer& app)
 
 	std::vector<VertexPT> v_sun;
 	std::vector<uint16_t> i_sun;
-	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f);		// LOOK dynamic adjustment of reticule size when window is resized
+	size_t numVertex = getPlane(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<texIterator> usedTextures = { textures["sun"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "Sun/sun2_1.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
 
 	assets["sun"] = app.newModel(
 		0, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(1, MMsize, VMsize, PMsize),
-		noUBO,
+		1, 3 * mat4size,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_sunPT.spv").c_str(),
 		(SHADERS_DIR + "f_sunPT.spv").c_str(),
@@ -377,15 +381,14 @@ void setReticule(Renderer& app)
 	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	std::vector<texIterator> usedTextures = { textures["reticule"] };
-	//std::vector<Texture> textures = { Texture((TEXTURES_DIR + "HUD/reticule_1.png").c_str()) };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
 
 	assets["reticule"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
-		UBOconfig(1),
-		noUBO,
+		1, 0,
+		0,
 		usedTextures,
 		(SHADERS_DIR + "v_hudPT.spv").c_str(),
 		(SHADERS_DIR + "f_hudPT.spv").c_str(),

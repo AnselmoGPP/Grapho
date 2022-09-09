@@ -14,7 +14,7 @@ const std::string MODELS_DIR("../../../models/");
 const std::string TEXTURES_DIR("../../../textures/");
 #endif
 
-float dayTime = 9.00;
+float dayTime = 6.00;
 float sunAngDist = 3.14 / 10;
 Light sunLight;
 

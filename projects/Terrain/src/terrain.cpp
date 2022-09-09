@@ -30,8 +30,8 @@ void Chunk::render(const char* vertexShader, const char* fragmentShader, std::ve
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        UBOconfig(1, MMsize, VMsize, PMsize, MMNsize, 3 * vec4size),     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3) + lightPos (vec3) + ligthDir (vec3)
-        UBOconfig(1, sizeof(Light)),                                     // Light
+        1, 4 * mat4size + 3 * vec4size,     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), lightPos (vec3), ligthDir (vec3)
+        sizeof(Light),                      // Light
         usedTextures,
         vertexShader,
         fragmentShader,

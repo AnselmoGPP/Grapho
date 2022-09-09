@@ -21,16 +21,18 @@ layout(location = 2) out vec3 outNormal;
 layout(location = 3) out vec3 outTangCampPos;
 layout(location = 4) out vec3 outTangLightPos;
 layout(location = 5) out vec3 outTangLightDir;
+layout(location = 6) out float outSlope;
 
 void main()
 {
-	gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);	
-	outUVCoord = inUVCoord;
-	outNormal = mat3(ubo.normalMatrix) * inNormal;
+	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);	
+	outUVCoord  = inUVCoord;
+	outNormal   = mat3(ubo.normalMatrix) * inNormal;
+	outSlope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
 	
 	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), inNormal), 0.f)));	// x
 	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(inNormal,    tangent ), 0.f)));	// y
-	mat3 TBN = transpose(mat3(tangent, bitangent, inNormal));									// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
+	mat3 TBN       = transpose(mat3(tangent, bitangent, inNormal));									// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
 
 	outTangVertPos  = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));
 	outTangCampPos  = TBN * ubo.camPos.xyz;

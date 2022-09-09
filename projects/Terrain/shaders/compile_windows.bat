@@ -16,5 +16,7 @@ set GLSLC=C:\VulkanSDK\1.3.211.0\Bin\glslc.exe
 %GLSLC% GLSL\f_hudPT.frag -o SPIRV\f_hudPT.spv
 %GLSLC% GLSL\v_sunPT.vert -o SPIRV\v_sunPT.spv
 %GLSLC% GLSL\f_sunPT.frag -o SPIRV\f_sunPT.spv
+%GLSLC% GLSL\v_sea.vert -o SPIRV\v_sea.spv
+%GLSLC% GLSL\f_sea.frag -o SPIRV\f_sea.spv
 
 pause

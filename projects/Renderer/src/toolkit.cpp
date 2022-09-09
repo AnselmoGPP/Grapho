@@ -10,6 +10,12 @@ double pi = 3.14159265359;
 
 float sphereArea(float radius) { return 4 * pi * radius * radius; }
 
+glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal)
+{
+	normal = glm::normalize(normal);
+	return lightRay - 2 * (glm::dot(lightRay, normal)) * normal;
+}
+
 // Model Matrix -----------------------------------------------------------------
 
 glm::mat4 modelMatrix() { return glm::mat4(1.0f); }
@@ -82,13 +88,13 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 	return numVertex;
 }
 
-size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
+size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize, float height)
 {
 	vertexDestination = std::vector<VertexPT>{
-	VertexPT(glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 0)),		// top left
-	VertexPT(glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 1)),		// low left
-	VertexPT(glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 1)),		// low right
-	VertexPT(glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 0)) };	// top right
+	VertexPT(glm::vec3(-horSize/2,  vertSize/2, height), glm::vec2(0, 0)),		// top left
+	VertexPT(glm::vec3(-horSize/2, -vertSize/2, height), glm::vec2(0, 1)),		// low left
+	VertexPT(glm::vec3( horSize/2, -vertSize/2, height), glm::vec2(1, 1)),		// low right
+	VertexPT(glm::vec3( horSize/2,  vertSize/2, height), glm::vec2(1, 0)) };	// top right
 
 	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
@@ -144,6 +150,7 @@ bool ifOnce::ifBigger(float a, float b)
 
 namespace Sun
 {
+	/// Get Model Matrix (MM) for the sun clipboard.
 	glm::mat4 MM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist)
 	{
 		float sunSize = 2 * sunDist * tan(sunAngDist / 2);
@@ -155,6 +162,7 @@ namespace Sun
 			glm::vec3(camPos.x + sunDist * cos(sunAng), camPos.y, camPos.z + sunDist * sin(sunAng)));
 	}
 
+	/// Get direction from where the light comes from.
 	glm::vec3 lightDirection(float dayTime)
 	{
 		float angle = (dayTime - 6) * (pi / 12);
@@ -163,7 +171,7 @@ namespace Sun
 		direction.y = 0.f;
 		direction.z = sin(angle);
 
-		return glm::normalize(direction);
+		return glm::normalize(-direction);
 	}
 }
 

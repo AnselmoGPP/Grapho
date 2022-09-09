@@ -15,7 +15,13 @@ Noiser::Noiser(
     unsigned CurveDegree,
     float OffsetX, float OffsetY, float OffsetZ,
     int Seed)
-    : noiseType(NoiseType), numOctaves(NumOctaves), lacunarity(Lacunarity), persistence(Persistence), scale(Scale), multiplier(Multiplier), curveDegree(CurveDegree), offsetX(OffsetX), offsetY(OffsetY), offsetZ(OffsetZ), seed(Seed)
+    : 
+    noiseType(NoiseType), 
+    numOctaves(NumOctaves), lacunarity(Lacunarity), persistence(Persistence), 
+    scale(Scale), multiplier(Multiplier), 
+    curveDegree(CurveDegree), 
+    offsetX(OffsetX), offsetY(OffsetY), offsetZ(OffsetZ), 
+    seed(Seed)
 {
     noise.SetNoiseType(noiseType);
     noise.SetSeed(seed);

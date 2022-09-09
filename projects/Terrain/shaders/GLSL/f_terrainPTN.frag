@@ -29,10 +29,9 @@ struct Material
 layout(set = 0, binding = 1) uniform ubobject
 {
     Light light;
-	vec4 camPos;
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[11];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 2) uniform sampler2D texSampler[41];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0) in vec3 inFragPos;
 layout(location = 1) in vec2 inUVCoord;
@@ -40,14 +39,17 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec3 inTangCamPos;
 layout(location = 4) in vec3 inTangLightPos;
 layout(location = 5) in vec3 inTangLightDir;
+layout(location = 6) in float inSlope;
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
-vec3 applyFog			 (vec3 fragment);
-void getTexture_Grid     (inout vec3 result);
-void getTex_test         (inout vec3 result);
-void getTexture_Sand     (inout vec3 result);
-void getTexture_GrassRock(inout vec3 result);
+vec3 applyFog		 (vec3 fragment);
+void getTex			 (inout vec3 result, int albedo, int normal, int specular, int roughness);
+void getTex_Grid     (inout vec3 result);
+void getTex_Grass1   (inout vec3 result);
+void getTex_Tech     (inout vec3 result);
+void getTex_Sand     (inout vec3 result);
+void getTex_GrassRock(inout vec3 result);
 
 void main()
 {
@@ -56,11 +58,13 @@ void main()
 	//outColor = vec4(inColor * texture(texSampler, inUVCoord).rgb, 1.0);
 
 	vec3 color;
-	
-	//getTexture_Grid(color);
-	getTex_test(color);
-	//getTexture_Sand(color);
-	//getTerrainTexture_GrassRock(color);
+
+	//getTex(color, 1, 2, 3, 4);
+	//getTex_Grid(color);
+	//getTex_Grass1(color);
+	//getTex_Tech(color);
+	getTex_Sand(color);
+	//getTex_GrassRock(color);
 
     //color = applyFog(color);
 	
@@ -68,29 +72,27 @@ void main()
 }
 
 
-vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 directionalLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-	vec3 norm = normalize(texture(texSampler[10], inUVCoord/10).rgb * 2. - 1.);
-	
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * diffuseMap;
+    vec3 ambient = light.ambient.xyz * albedo;
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(norm, -inTangLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap;
+    float diff = max(dot(normal, -inTangLightDir), 0.0);	// <<<
+    vec3 diffuse = light.diffuse.xyz * diff * albedo;
 
     // ----- Specular lighting -----
     vec3 viewDir = normalize(inTangCamPos - inFragPos);
-    vec3 reflectDir = reflect(-inTangLightPos, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular.xyz * spec * specularMap;
-
+    vec3 reflectDir = reflect(inTangLightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), roughness);
+    vec3 specular = light.specular.xyz * spec * specularity;
+	
     // ----- Result -----
 	return vec3(ambient + diffuse + specular);
 }
 
 
-vec3 PointLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 PointLightColor( Light light, vec3 diffuseMap, vec3 normalMap, vec3 specularMap, float shininess)
 {
     float distance = length(light.position.xyz - inFragPos);
     float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
@@ -115,7 +117,7 @@ vec3 PointLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shin
 }
 
 
-vec3 SpotLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 SpotLightColor( Light light, vec3 diffuseMap, vec3 normalMap, vec3 specularMap, float shininess)
 {
     float distance = length(light.position.xyz - inFragPos);
     float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
@@ -145,56 +147,78 @@ vec3 SpotLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shini
 }
 
 // Apply the lighting type you want to a fragment
-vec3 getFragColor(vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 getFragColor(vec3 diffuseMap, vec3 normalMap, vec3 specularMap, float shininess)
 {
 	if(ubo.light.lightType == 1)
-		return directionalLightColor(ubo.light, diffuseMap, specularMap, shininess);
+		return directionalLightColor(ubo.light, diffuseMap, normalMap, specularMap, shininess);
 	else if(ubo.light.lightType == 2)
-		return PointLightColor(ubo.light, diffuseMap, specularMap, shininess);
+		return PointLightColor(ubo.light, diffuseMap, normalMap, specularMap, shininess);
 	else if(ubo.light.lightType == 3)
-		return SpotLightColor(ubo.light, diffuseMap, specularMap, shininess);
+		return SpotLightColor(ubo.light, diffuseMap, normalMap, specularMap, shininess);
 	else
 		return diffuseMap;
 }
 
-void getTexture_Grid(inout vec3 result)
+void getTex (inout vec3 result, int albedo, int normal, int specular, int roughness)
 {
-	result = getFragColor(texture(texSampler[0], inUVCoord/10).rgb, vec3(0.1, 0.1, 0.1), 0.4);
+		result   = getFragColor(
+					texture(texSampler[albedo], inUVCoord/10).rgb,
+					normalize(texture(texSampler[normal], inUVCoord/10).rgb * 2.f - 1.f).rgb,
+					texture(texSampler[specular], inUVCoord/10).rgb, 
+					texture(texSampler[roughness], inUVCoord/10).r * 255 );
 }
 
-void getTex_test(inout vec3 result)
+void getTex_Grid(inout vec3 result)
 {
-	result   = getFragColor(texture(texSampler[9], inUVCoord/10).rgb, vec3(0.003, 0.003, 0.003), 0.05);
+	result = getFragColor(texture(texSampler[0], inUVCoord/10).rgb, inNormal, vec3(0.1, 0.1, 0.1), 0.4);
 }
 
-void getTexture_Sand(inout vec3 result)
+void getTex_Grass1(inout vec3 result)
+{
+	result   = getFragColor(
+					texture(texSampler[9], inUVCoord/10).rgb,
+					normalize(texture(texSampler[10], inUVCoord/10).rgb * 2.f - 1.f).rgb,
+					texture(texSampler[11], inUVCoord/10).rgb, 
+					texture(texSampler[12], inUVCoord/10).r * 255 );
+}
+
+void getTex_Tech(inout vec3 result)
+{
+		result   = getFragColor(
+					texture(texSampler[13], inUVCoord/100).rgb,
+					normalize(texture(texSampler[14], inUVCoord/100).rgb * 2.f - 1.f).rgb,
+					texture(texSampler[15], inUVCoord/100).rgb, 
+					texture(texSampler[16], inUVCoord/100).r * 255 );
+}
+
+void getTex_Sand(inout vec3 result)
 {
     float slopeThreshold = 0.3;           // sand-plainSand slope threshold
     float mixRange       = 0.1;           // threshold mixing range (slope range)
     float tf             = 50;            // texture factor
+    //float slope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
 
-    float slope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
+	float ratio;
+	if (inSlope < slopeThreshold - mixRange) ratio = 0;
+	else if(inSlope > slopeThreshold + mixRange) ratio = 1;
+	else ratio = (inSlope - (slopeThreshold - mixRange)) / (2 * mixRange);
+		
+	vec3 sandFrag = getFragColor(
+						texture(texSampler[17], inUVCoord/tf).rgb,
+						normalize(texture(texSampler[18], inUVCoord/tf).rgb * 2.f - 1.f).rgb,
+						texture(texSampler[19], inUVCoord/tf).rgb, 
+						texture(texSampler[20], inUVCoord/tf).r * 255 );
+						
+	vec3 plainFrag = getFragColor(
+						texture(texSampler[21], inUVCoord/tf).rgb,
+						normalize(texture(texSampler[22], inUVCoord/tf).rgb * 2.f - 1.f).rgb,
+						texture(texSampler[23], inUVCoord/tf).rgb, 
+						texture(texSampler[24], inUVCoord/tf).r * 255 );
 
-    // >>> DESERT
-    if (slope < slopeThreshold - mixRange)
-        result = getFragColor(texture(texSampler[5], inUVCoord/tf).rgb, texture(texSampler[6], inUVCoord/tf).rgb, 1.0);
-
-    // >>> PLAIN
-    else if(slope > slopeThreshold + mixRange)
-        result = getFragColor(texture(texSampler[7], inUVCoord/tf).rgb, texture(texSampler[8], inUVCoord/tf).rgb, 1.0);
-
-    // >>> MIXTURE
-    else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
-    {
-	    vec3 sandFrag  = getFragColor(texture(texSampler[5], inUVCoord/tf).rgb, texture(texSampler[6], inUVCoord/tf).rgb, 1.0);
-        vec3 plainFrag = getFragColor(texture(texSampler[7], inUVCoord/tf).rgb, texture(texSampler[8], inUVCoord/tf).rgb, 1.0);
-
-        float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-        result = plainFrag.xyz * ratio + sandFrag.xyz * (1-ratio);
-    }
+	result = (ratio) * plainFrag + (1-ratio) * sandFrag;
 }
 
-void getTexture_GrassRock(inout vec3 result)
+void getTex_GrassRock(inout vec3 result)
 {
 	float slopeThreshold = 0.5;           // grass-rock slope threshold
     float mixRange       = 0.05;          // threshold mixing range (slope range)
@@ -262,11 +286,11 @@ vec3 applyFog(vec3 fragment)
 	float fogMinSquareRadius = 1000;
 	float fogMaxSquareRadius = 5000;
 	vec3 skyColor = {0, 0, 0};
-	//float distance = length(ubo.camPos - inFragPos);
+	//float distance = length(inTangCamPos - inFragPos);
 	
-    float squareDistance = (inFragPos.x - ubo.camPos.x) * (inFragPos.x - ubo.camPos.x) +
-                           (inFragPos.y - ubo.camPos.y) * (inFragPos.y - ubo.camPos.y) +
-                           (inFragPos.z - ubo.camPos.z) * (inFragPos.z - ubo.camPos.z);
+    float squareDistance = (inFragPos.x - inTangCamPos.x) * (inFragPos.x - inTangCamPos.x) +
+                           (inFragPos.y - inTangCamPos.y) * (inFragPos.y - inTangCamPos.y) +
+                           (inFragPos.z - inTangCamPos.z) * (inFragPos.z - inTangCamPos.z);
 
     if(squareDistance > fogMinSquareRadius)
         if(squareDistance > fogMaxSquareRadius)

@@ -22,8 +22,6 @@
 
 extern std::vector<texIterator> noTextures;	// Vector with 0 Texture objects
 extern std::vector<uint16_t> noIndices;		// Vector with 0 indices
-extern UBOconfig noUBO;						// UBOtype with 0 elements
-
 
 /**
 	@class ModelData
@@ -92,7 +90,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, const UBOconfig& vsUboConfig, const UBOconfig& fsUboConfig, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
 
 	virtual ~ModelData();
 
@@ -108,7 +106,6 @@ public:
 	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.
 
-	//std::vector<Texture>		 textures;				//!< Set of textures used by this model.
 	std::vector<texIterator>	 textures;				//!< Set of textures used by this model.
 
 	VertexSet					 vertices;				//!< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
@@ -128,8 +125,8 @@ public:
 	size_t						 layer;					//!< Layer where this model will be drawn.
 	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
-
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
+	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
 
 	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
 	void setRenderCount(size_t numRenders);
