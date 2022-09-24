@@ -6,9 +6,11 @@
 std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
+	vertexShader(vertexShader),
+	fragmentShader(fragmentShader),
 	hasTransparencies(transparency),
 	textures(textures),
 	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
@@ -19,8 +21,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 	fullyConstructed(false),
 	inModels(false)
 {
-	copyCString(this->VSpath, VSpath);
-	copyCString(this->FSpath, FSpath);
 
 	this->vertexLoader = vertexLoader;
 	this->vertexLoader->setDestination(vertices, indices);
@@ -39,15 +39,12 @@ ModelData::~ModelData()
 	}
 
 	delete vertexLoader;
-
-	delete[] VSpath;
-	delete[] FSpath;
 }
 
 ModelData& ModelData::fullConstruction()
 {
 	createDescriptorSetLayout();
-	createGraphicsPipeline(VSpath, FSpath);
+	createGraphicsPipeline();
 
 	vertexLoader->loadVertex();
 	createVertexBuffer();
@@ -118,7 +115,7 @@ void ModelData::createDescriptorSetLayout()
 }
 
 // (10)
-void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
+void ModelData::createGraphicsPipeline()
 {
 	// Create pipeline layout   <<< sameMod
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -132,25 +129,24 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 		throw std::runtime_error("Failed to create pipeline layout!");
 
 	// Read shader files
-	std::vector<char> vertShaderCode = readFile(VSpath);
-	std::vector<char> fragShaderCode = readFile(FSpath);
-	
-	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+	//std::vector<char> vertShaderCode = readFile(VSpath);
+	//std::vector<char> fragShaderCode = readFile(FSpath);
+	//VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+	//VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 	
 	// Configure Vertex shader
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = vertShaderModule;
-	vertShaderStageInfo.pName = "main";			// Function to invoke (entrypoint). You may combine multiple fragment shaders into a single shader module and use different entry points (different behaviors).  
-	vertShaderStageInfo.pSpecializationInfo = nullptr;			// Optional. Specifies values for shader constants.
+	vertShaderStageInfo.module = *vertexShader;
+	vertShaderStageInfo.pName = "main";						// Function to invoke (entrypoint). You may combine multiple fragment shaders into a single shader module and use different entry points (different behaviors).  
+	vertShaderStageInfo.pSpecializationInfo = nullptr;		// Optional. Specifies values for shader constants.
 
 	// Configure Fragment shader
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = fragShaderModule;
+	fragShaderStageInfo.module = *fragmentShader;
 	fragShaderStageInfo.pName = "main";
 	fragShaderStageInfo.pSpecializationInfo = nullptr;
 
@@ -301,7 +297,7 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = nullptr;			// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = e.renderPass;		// <<< It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
+	pipelineInfo.renderPass = e.renderPass;			// <<< It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;	// [Optional] Specify the handle of an existing pipeline.
 	pipelineInfo.basePipelineIndex = -1;				// [Optional] Reference another pipeline that is about to be created by index.
@@ -310,28 +306,8 @@ void ModelData::createGraphicsPipeline(const char* VSpath, const char* FSpath)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 	
 	// Cleanup
-	vkDestroyShaderModule(e.device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
-}
-
-std::vector<char> ModelData::readFile(/*const std::string& filename*/ const char* filename)
-{
-	// Open file
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the of the file  /  binary: Read file as binary file (avoid text transformations)
-	if (!file.is_open())
-		throw std::runtime_error("Failed to open file!");
-
-	// Allocate the buffer
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> buffer(fileSize);
-
-	// Read data
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
-
-	// Close file
-	file.close();
-	return buffer;
+	//vkDestroyShaderModule(e.device, fragShaderModule, nullptr);
+	//vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
 }
 
 VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
@@ -598,12 +574,12 @@ void ModelData::createDescriptorSets()
 
 void ModelData::recreateSwapChain()
 {
-	createGraphicsPipeline(VSpath, FSpath);	// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
+	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
-	vsDynUBO.createUniformBuffers();		// Uniform buffers depend on the number of swap chain images.
+	vsDynUBO.createUniformBuffers();	// Uniform buffers depend on the number of swap chain images.
 	fsUBO.createUniformBuffers();
-	createDescriptorPool();					// Descriptor pool depends on the swap chain images.
-	createDescriptorSets();					// Descriptor sets
+	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
+	createDescriptorSets();				// Descriptor sets
 }
 
 void ModelData::cleanupSwapChain()

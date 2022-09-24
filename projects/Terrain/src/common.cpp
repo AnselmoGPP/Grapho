@@ -5,17 +5,17 @@
 
 
 #if defined(__unix__)
-const std::string SHADERS_DIR("../../../projects/Terrain/shaders/SPIRV/");
-const std::string MODELS_DIR("../../../models/");
-const std::string TEXTURES_DIR("../../../textures/");
+const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+const std::string vertexDir("../../../models/");
+const std::string texDir("../../../textures/");
 #elif _WIN64 || _WIN32
-const std::string SHADERS_DIR("../../../projects/Terrain/shaders/SPIRV/");
-const std::string MODELS_DIR("../../../models/");
-const std::string TEXTURES_DIR("../../../textures/");
+const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+const std::string vertexDir("../../../models/");
+const std::string texDir("../../../textures/");
 #endif
 
 float dayTime;
-float sunAngDist = 3.14 / 10;
+float sunAngDist = 3.14 / 10.;
 Light sunLight;
 
 FreePolarCam camera_1(

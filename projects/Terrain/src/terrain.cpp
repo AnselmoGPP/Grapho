@@ -5,8 +5,8 @@
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer)
-    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), lights(lights), layer(layer), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
 {
     baseCenter   = center;
     groundCenter = baseCenter;
@@ -18,7 +18,7 @@ Chunk::~Chunk()
         renderer.deleteModel(model);
 }
 
-void Chunk::render(const char* vertexShader, const char* fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
+void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
         VertexType(1, 0, 1, 1),
@@ -30,11 +30,10 @@ void Chunk::render(const char* vertexShader, const char* fragmentShader, std::ve
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + 3 * vec4size,     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), lightPos (vec3), ligthDir (vec3)
-        sizeof(Light),                      // Light
+        1, 4 * mat4size + vec4size + sizeof(Light), // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), Light (8*vec4)
+        vec4size,                                   // Time
         usedTextures,
-        vertexShader,
-        fragmentShader,
+        vertexShader, fragmentShader,
         false);
     
     uint8_t* dest = model->vsDynUBO.getUBOptr(0);
@@ -49,18 +48,17 @@ void Chunk::render(const char* vertexShader, const char* fragmentShader, std::ve
     //bytes += mat4size
     //memcpy(dest + bytes, &camPos, vec3size);
     //bytes += vec4size;
-    //memcpy(dest + bytes, &sunLight.position, vec3size);
-    //bytes += vec4size;
-    //memcpy(dest + bytes, &sunLight.direction, vec3size);
-    //bytes += vec4size;
- 
-    dest = model->fsUBO.getUBOptr(0);
-    memcpy(dest, lights[0], sizeof(Light));
+    //memcpy(dest + bytes, lights[0], sizeof(Light));
+    //bytes += sizeof(Light);
+    
+    //dest = model->fsUBO.getUBOptr(0);
+    //float fTime = (float)currentTime;
+    //memcpy(dest, &fTime, sizeof(fTime));
  
     modelOrdered = true;
 }
 
-void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
+void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time)
 {
     if (!modelOrdered) return;
 
@@ -68,6 +66,7 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         uint8_t* dest = model->vsDynUBO.getUBOptr(0);
+        //memcpy(dest + bytes, &modelMatrix(), mat4size);
         bytes += mat4size;
         memcpy(dest + bytes, &view, mat4size);
         bytes += mat4size;
@@ -75,10 +74,13 @@ void Chunk::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm
         bytes += mat4size + mat4size;
         memcpy(dest + bytes, &camPos, vec3size);
         bytes += vec4size;
-        memcpy(dest + bytes, &sunLight.position, vec3size);
-        bytes += vec4size;
-        memcpy(dest + bytes, &sunLight.direction, vec3size);
-        bytes += vec4size;
+        memcpy(dest + bytes, &light, sizeof(Light));
+        //bytes += sizeof(Light);
+
+        bytes = 0;
+        dest = model->fsUBO.getUBOptr(0);
+        memcpy(dest + bytes, &time, sizeof(time));
+        //bytes += vec4size;
     }
 }
 
@@ -104,7 +106,7 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 // PlainChunk ----------------------------------------------------------------------
 
 PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::vector<Light*> lights, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, lights, layer)
+    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, layer)
 {
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
 
@@ -373,7 +375,7 @@ void PlainChunk::computeSizes()
 // SphericalChunk ----------------------------------------------------------------------
 
 SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, lights, layer), nucleus(nucleus), radius(radius)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
 {   
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
@@ -763,10 +765,10 @@ DynamicGrid::~DynamicGrid()
 
 void DynamicGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
 
-void DynamicGrid::addShaders(const char* vertShader, const char* fragShader)
+void DynamicGrid::addShaders(ShaderIter vertexShader, ShaderIter fragmentShader)
 {
-    this->vertShader = std::string(vertShader);
-    this->fragShader = std::string(fragShader);
+    this->vertShader = vertexShader;
+    this->fragShader = fragmentShader;
 }
 
 void DynamicGrid::updateTree(glm::vec3 newCamPos)
@@ -820,7 +822,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         if (chunk->modelOrdered == false)
         {
             chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
-            chunk->render(vertShader.c_str(), fragShader.c_str(), textures, &indices);
+            chunk->render(vertShader, fragShader, textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
             renderer.setRenders(chunk->model, 0);
             loadedChunks++;
@@ -848,11 +850,13 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     }
 }
 
-void DynamicGrid::updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj)
+void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time)
 {
+    this->view   = view;
+    this->proj   = proj;
     this->camPos = camPos;
-    this->view = view;
-    this->proj = proj;
+    this->light  = &light;
+    this->time   = time;
 
     //preorder<Chunk*, void (QuadNode<Chunk*>*)>(root, nodeVisitor);
     updateUBOs_help(root[activeTree]);  // Preorder traversal
@@ -863,8 +867,8 @@ void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
     if (!node) return;
 
     if (node->isLeaf())
-    {
-        node->getElement()->updateUBOs(camPos, view, proj);
+    {light;
+        node->getElement()->updateUBOs(view, proj, camPos, *light, time);
         return;
     }
     else

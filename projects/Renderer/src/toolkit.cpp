@@ -12,8 +12,8 @@ float sphereArea(float radius) { return 4 * pi * radius * radius; }
 
 glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal)
 {
-	normal = glm::normalize(normal);
-	return lightRay - 2 * (glm::dot(lightRay, normal)) * normal;
+	//normal = glm::normalize(normal);
+	return lightRay - 2 * glm::dot(lightRay, normal) * normal;
 }
 
 // Model Matrix -----------------------------------------------------------------

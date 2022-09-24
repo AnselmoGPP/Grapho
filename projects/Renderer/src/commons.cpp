@@ -1,4 +1,6 @@
 
+#include <fstream>
+
 #include "commons.hpp"
 
 //std::vector< std::function<glm::mat4(float)> > room_MM{ /*room1_MM, room2_MM, room3_MM, room4_MM*/ };
@@ -38,4 +40,19 @@ void copyCString(const char*& destination, const char* source)
 	char* address = new char[siz];
 	strncpy(address, source, siz);
 	destination = address;
+}
+
+void readFile(std::vector<char>& destination, const char* filename)
+{
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);	// Open file. // ate: Start reading at the end of the of the file  /  binary: Read file as binary file (avoid text transformations)
+	if (!file.is_open())
+		throw std::runtime_error("Failed to open file!");
+
+	size_t fileSize = (size_t)file.tellg();
+	destination.resize(fileSize);									// Allocate the buffer
+
+	file.seekg(0);
+	file.read(destination.data(), fileSize);						// Read data
+
+	file.close();													// Close file
 }

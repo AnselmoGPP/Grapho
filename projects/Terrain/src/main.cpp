@@ -21,6 +21,7 @@
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void loadTextures(Renderer& app);
+void loadShaders(Renderer& app);
 
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
@@ -36,10 +37,11 @@ void setSphereGrid(Renderer& app);
 void setSun(Renderer& app);
 void setReticule(Renderer& app);
 
-// Models & textures
+// Models, textures, & shaders
 Renderer app(update, &camera_1, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
+std::map<std::string, ShaderIter> shaders;		// Shaders
 
 // Others
 int gridStep = 50;
@@ -81,10 +83,10 @@ PlanetGrid planetGrid_nY(app, noiser_1, lights, 100, 21, 8, 2, 1.2, 1000, glm::v
 PlanetGrid planetGrid_pX(app, noiser_1, lights, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), glm::vec3( 50,  0,  0));
 PlanetGrid planetGrid_nX(app, noiser_1, lights, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), glm::vec3(-50,  0,  0));
 
-bool updateChunk = false, updateChunkSet = false, updatePlanet = false, updatePlanetSet = false;
+bool updateChunk = false, updateChunkGrid = false, updatePlanet = false, updatePlanetSet = false;
 
 // Data to update
-long double frameTime;
+float frameTime;
 size_t fps;
 size_t maxfps;
 glm::vec3 camPos;
@@ -94,13 +96,14 @@ int main(int argc, char* argv[])
 {
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
-
+	
+	loadShaders(app);
 	loadTextures(app);
-
-	setPoints(app);
+	
+	//setPoints(app);
 	setAxis(app);
 	//setGrid(app);
-	setSea(app);
+	//setSea(app);
 	setSkybox(app);
 	//setCottage(app);
 	//setRoom(app);
@@ -109,7 +112,7 @@ int main(int argc, char* argv[])
 	//setSphereChunks(app);
 	//setSphereGrid(app);
 	setSun(app);
-	setReticule(app);
+	//setReticule(app);
 
 	app.run();		// Start rendering
 
@@ -117,9 +120,10 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
+
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
-	frameTime	= rend.getTimer().getTime();
+	frameTime	= (float)rend.getTimer().getTime();
 	fps			= rend.getTimer().getFPS();
 	maxfps		= rend.getTimer().getMaxPossibleFPS();
 	camPos		= rend.getCamera().camPos;
@@ -128,7 +132,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	std::cout << rend.getFrameCount() << ") \n";
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
-	dayTime = 5.00 + frameTime * 0.5;
+	dayTime = 0.00 + frameTime * 0.5;
 	//sunLight.turnOff();
 	sunLight.setDirectional  (Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//sunLight.setPoint(-10.f * Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
@@ -146,40 +150,40 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.getCamera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
 
 	// Chunks
-	if (updateChunk) singleChunk.updateUBOs(camPos, view, proj);
+	if (updateChunk) singleChunk.updateUBOs(view, proj, camPos, sunLight, frameTime);
 
-	if(updateChunkSet)
+	if(updateChunkGrid)
 	{
 		std::cout << "  Nodes: " << terrGrid.getRenderedChunks() << '/' << terrGrid.getloadedChunks() << '/' << terrGrid.getTotalNodes() << std::endl;
 		terrGrid.updateTree(camPos);
-		terrGrid.updateUBOs(camPos, view, proj);
+		terrGrid.updateUBOs(view, proj, camPos, sunLight, frameTime);
 	}
-
+	
 	if (updatePlanet)
 	{
-		sphereChunk_pX.updateUBOs(camPos, view, proj);
-		sphereChunk_nX.updateUBOs(camPos, view, proj);
-		sphereChunk_pY.updateUBOs(camPos, view, proj);
-		sphereChunk_nY.updateUBOs(camPos, view, proj);
-		sphereChunk_pZ.updateUBOs(camPos, view, proj);
-		sphereChunk_nZ.updateUBOs(camPos, view, proj);
+		sphereChunk_pX.updateUBOs(view, proj, camPos, sunLight, frameTime);
+		sphereChunk_nX.updateUBOs(view, proj, camPos, sunLight, frameTime);
+		sphereChunk_pY.updateUBOs(view, proj, camPos, sunLight, frameTime);
+		sphereChunk_nY.updateUBOs(view, proj, camPos, sunLight, frameTime);
+		sphereChunk_pZ.updateUBOs(view, proj, camPos, sunLight, frameTime);
+		sphereChunk_nZ.updateUBOs(view, proj, camPos, sunLight, frameTime);
 	}
 
 	if (updatePlanetSet)
 	{
 		//std::cout << "  Nodes: " << planetGrid_pZ.getloadedChunks() << '/' << planetGrid_pZ.getRenderedChunks() << '/' << planetGrid_pZ.getTotalNodes() << std::endl;
 		planetGrid_pZ.updateTree(camPos);
-		planetGrid_pZ.updateUBOs(camPos, view, proj);
+		planetGrid_pZ.updateUBOs(view, proj, camPos, sunLight, frameTime);
 		planetGrid_nZ.updateTree(camPos);
-		planetGrid_nZ.updateUBOs(camPos, view, proj);
+		planetGrid_nZ.updateUBOs(view, proj, camPos, sunLight, frameTime);
 		planetGrid_pY.updateTree(camPos);
-		planetGrid_pY.updateUBOs(camPos, view, proj);
+		planetGrid_pY.updateUBOs(view, proj, camPos, sunLight, frameTime);
 		planetGrid_nY.updateTree(camPos);
-		planetGrid_nY.updateUBOs(camPos, view, proj);
+		planetGrid_nY.updateUBOs(view, proj, camPos, sunLight, frameTime);
 		planetGrid_pX.updateTree(camPos);
-		planetGrid_pX.updateUBOs(camPos, view, proj);
+		planetGrid_pX.updateUBOs(view, proj, camPos, sunLight, frameTime);
 		planetGrid_nX.updateTree(camPos);
-		planetGrid_nX.updateUBOs(camPos, view, proj);
+		planetGrid_nX.updateUBOs(view, proj, camPos, sunLight, frameTime);
 	}
 
 /*
@@ -270,7 +274,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("sea") != assets.end())
 	{
 		app.toLastDraw(assets["sea"]);
-		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) 
+		for (i = 0; i < assets["sea"]->vsDynUBO.numDynUBOs; i++) 
 		{
 			dest = assets["sea"]->vsDynUBO.getUBOptr(0);
 			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(camPos.x, camPos.y, 0)), mat4size);
@@ -279,8 +283,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 3 * mat4size, &modelMatrixForNormals(modelMatrix()), mat4size);
 			memcpy(dest + 4 * mat4size, &camPos, vec3size);
 			memcpy(dest + 4 * mat4size + vec4size, &sunLight, sizeof(Light));
-			float fTime = (float)frameTime;
-			memcpy(assets["sea"]->fsUBO.getUBOptr(0), &fTime, sizeof(fTime));
+			memcpy(assets["sea"]->fsUBO.getUBOptr(0), &frameTime, sizeof(frameTime));
 		}
 	}
 	
@@ -301,76 +304,107 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 }
 
+void loadShaders(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
+}
+
 void loadTextures(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
 	// Special
-	textures["skybox"]	 = app.newTexture((TEXTURES_DIR + "sky_box/space1.jpg").c_str());
-	textures["cottage"]  = app.newTexture((TEXTURES_DIR + "cottage/cottage_diffuse.png").c_str());
-	textures["room"]	 = app.newTexture((TEXTURES_DIR + "viking_room.png").c_str());
-	textures["squares"]  = app.newTexture((TEXTURES_DIR + "squares.png").c_str());
-	textures["sun"]		 = app.newTexture((TEXTURES_DIR + "Sun/sun2_1.png").c_str());
-	textures["reticule"] = app.newTexture((TEXTURES_DIR + "HUD/reticule_1.png").c_str());
+	textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());
+	textures["cottage"]  = app.newTexture((texDir + "cottage/cottage_diffuse.png").c_str());
+	textures["room"]	 = app.newTexture((texDir + "viking_room.png").c_str());
+	textures["squares"]  = app.newTexture((texDir + "squares.png").c_str());
+	textures["sun"]		 = app.newTexture((texDir + "Sun/sun2_1.png").c_str());
+	textures["reticule"] = app.newTexture((texDir + "HUD/reticule_1.png").c_str());
 	app.deleteTexture(textures["skybox"]);													// TEST (before render loop): deleteTexture
-	textures["skybox"]	 = app.newTexture((TEXTURES_DIR + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
+	textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
 
 	// Plants
-	textures["green_a"] = app.newTexture((TEXTURES_DIR + "green_a.png").c_str());
-	textures["green_n"] = app.newTexture((TEXTURES_DIR + "green_n.png").c_str());
-	textures["green_s"] = app.newTexture((TEXTURES_DIR + "green_s.png").c_str());
-	textures["green_r"] = app.newTexture((TEXTURES_DIR + "green_r.png").c_str());
+	textures["green_a"] = app.newTexture((texDir + "green_a.png").c_str());
+	textures["green_n"] = app.newTexture((texDir + "green_n.png").c_str());
+	textures["green_s"] = app.newTexture((texDir + "green_s.png").c_str());
+	textures["green_r"] = app.newTexture((texDir + "green_r.png").c_str());
 
-	textures["grass_a"] = app.newTexture((TEXTURES_DIR + "grass_a.png").c_str());
-	textures["grass_n"] = app.newTexture((TEXTURES_DIR + "grass_n.png").c_str());
-	textures["grass_s"] = app.newTexture((TEXTURES_DIR + "grass_s.png").c_str());
-	textures["grass_r"] = app.newTexture((TEXTURES_DIR + "grass_r.png").c_str());
+	textures["grass_a"] = app.newTexture((texDir + "grass_a.png").c_str());
+	textures["grass_n"] = app.newTexture((texDir + "grass_n.png").c_str());
+	textures["grass_s"] = app.newTexture((texDir + "grass_s.png").c_str());
+	textures["grass_r"] = app.newTexture((texDir + "grass_r.png").c_str());
 
 	// Rocks
-	textures["bumpRock_a"] = app.newTexture((TEXTURES_DIR + "bumpRock_a.png").c_str());
-	textures["bumpRock_n"] = app.newTexture((TEXTURES_DIR + "bumpRock_n.png").c_str());
-	textures["bumpRock_s"] = app.newTexture((TEXTURES_DIR + "bumpRock_s.png").c_str());
-	textures["bumpRock_r"] = app.newTexture((TEXTURES_DIR + "bumpRock_r.png").c_str());
+	textures["bumpRock_a"] = app.newTexture((texDir + "bumpRock_a.png").c_str());
+	textures["bumpRock_n"] = app.newTexture((texDir + "bumpRock_n.png").c_str());
+	textures["bumpRock_s"] = app.newTexture((texDir + "bumpRock_s.png").c_str());
+	textures["bumpRock_r"] = app.newTexture((texDir + "bumpRock_r.png").c_str());
 
-	textures["dryRock_a"]  = app.newTexture((TEXTURES_DIR + "dryRock_a.png").c_str());
-	textures["dryRock_n"]  = app.newTexture((TEXTURES_DIR + "dryRock_n.png").c_str());
-	textures["dryRock_s"]  = app.newTexture((TEXTURES_DIR + "dryRock_s.png").c_str());
-	textures["dryRock_r"]  = app.newTexture((TEXTURES_DIR + "dryRock_r.png").c_str());
+	textures["dryRock_a"]  = app.newTexture((texDir + "dryRock_a.png").c_str());
+	textures["dryRock_n"]  = app.newTexture((texDir + "dryRock_n.png").c_str());
+	textures["dryRock_s"]  = app.newTexture((texDir + "dryRock_s.png").c_str());
+	textures["dryRock_r"]  = app.newTexture((texDir + "dryRock_r.png").c_str());
 
 	// Soils
-	textures["dunes_a"]  = app.newTexture((TEXTURES_DIR + "dunes_a.png").c_str());
-	textures["dunes_n"]  = app.newTexture((TEXTURES_DIR + "dunes_n.png").c_str());
-	textures["dunes_s"]  = app.newTexture((TEXTURES_DIR + "dunes_s.png").c_str());
-	textures["dunes_r"]  = app.newTexture((TEXTURES_DIR + "dunes_r.png").c_str());
+	textures["dunes_a"]  = app.newTexture((texDir + "dunes_a.png").c_str());
+	textures["dunes_n"]  = app.newTexture((texDir + "dunes_n.png").c_str());
+	textures["dunes_s"]  = app.newTexture((texDir + "dunes_s.png").c_str());
+	textures["dunes_r"]  = app.newTexture((texDir + "dunes_r.png").c_str());
 
-	textures["sand_a"]   = app.newTexture((TEXTURES_DIR + "sand_a.png").c_str());
-	textures["sand_n"]   = app.newTexture((TEXTURES_DIR + "sand_n.png").c_str());
-	textures["sand_s"]   = app.newTexture((TEXTURES_DIR + "sand_s.png").c_str());
-	textures["sand_r"]   = app.newTexture((TEXTURES_DIR + "sand_r.png").c_str());
+	textures["sand_a"]   = app.newTexture((texDir + "sand_a.png").c_str());
+	textures["sand_n"]   = app.newTexture((texDir + "sand_n.png").c_str());
+	textures["sand_s"]   = app.newTexture((texDir + "sand_s.png").c_str());
+	textures["sand_r"]   = app.newTexture((texDir + "sand_r.png").c_str());
 
-	textures["cobble_a"] = app.newTexture((TEXTURES_DIR + "cobble_a.png").c_str());
-	textures["cobble_n"] = app.newTexture((TEXTURES_DIR + "cobble_n.png").c_str());
-	textures["cobble_s"] = app.newTexture((TEXTURES_DIR + "cobble_s.png").c_str());
-	textures["cobble_r"] = app.newTexture((TEXTURES_DIR + "cobble_r.png").c_str());
+	textures["cobble_a"] = app.newTexture((texDir + "cobble_a.png").c_str());
+	textures["cobble_n"] = app.newTexture((texDir + "cobble_n.png").c_str());
+	textures["cobble_s"] = app.newTexture((texDir + "cobble_s.png").c_str());
+	textures["cobble_r"] = app.newTexture((texDir + "cobble_r.png").c_str());
 
 	// Water
-	textures["sea_n"]   = app.newTexture((TEXTURES_DIR + "sea_n.png").c_str());
+	textures["sea_n"]   = app.newTexture((texDir + "sea_n.png").c_str());
 					    
-	textures["snow_a"]  = app.newTexture((TEXTURES_DIR + "snow_a.png").c_str());
-	textures["snow_n"]  = app.newTexture((TEXTURES_DIR + "snow_n.png").c_str());
-	textures["snow_s"]  = app.newTexture((TEXTURES_DIR + "snow_s.png").c_str());
-	textures["snow_r"]  = app.newTexture((TEXTURES_DIR + "snow_r.png").c_str());
+	textures["snow_a"]  = app.newTexture((texDir + "snow_a.png").c_str());
+	textures["snow_n"]  = app.newTexture((texDir + "snow_n.png").c_str());
+	textures["snow_s"]  = app.newTexture((texDir + "snow_s.png").c_str());
+	textures["snow_r"]  = app.newTexture((texDir + "snow_r.png").c_str());
 
-	textures["snow2_a"] = app.newTexture((TEXTURES_DIR + "snow2_a.png").c_str());
-	textures["snow2_n"] = app.newTexture((TEXTURES_DIR + "snow2_n.png").c_str());
-	textures["snow2_s"] = app.newTexture((TEXTURES_DIR + "snow2_s.png").c_str());
+	textures["snow2_a"] = app.newTexture((texDir + "snow2_a.png").c_str());
+	textures["snow2_n"] = app.newTexture((texDir + "snow2_n.png").c_str());
+	textures["snow2_s"] = app.newTexture((texDir + "snow2_s.png").c_str());
 
 	// Others
-
-	textures["tech_a"] = app.newTexture((TEXTURES_DIR + "tech_a.png").c_str());
-	textures["tech_n"] = app.newTexture((TEXTURES_DIR + "tech_n.png").c_str());
-	textures["tech_s"] = app.newTexture((TEXTURES_DIR + "tech_s.png").c_str());
-	textures["tech_r"] = app.newTexture((TEXTURES_DIR + "tech_r.png").c_str());
+	textures["tech_a"] = app.newTexture((texDir + "tech_a.png").c_str());
+	textures["tech_n"] = app.newTexture((texDir + "tech_n.png").c_str());
+	textures["tech_s"] = app.newTexture((texDir + "tech_s.png").c_str());
+	textures["tech_r"] = app.newTexture((texDir + "tech_r.png").c_str());
 
 	// <<< You could build materials (make sets of textures) here
 	// <<< Then, user could make sets of materials and send them to a modelObject
@@ -390,8 +424,7 @@ void setPoints(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
-		(SHADERS_DIR + "v_pointPC.spv").c_str(),
-		(SHADERS_DIR + "f_pointPC.spv").c_str(),
+		shaders["v_point"], shaders["f_point"],
 		false);
 
 	memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
@@ -413,8 +446,7 @@ void setAxis(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
-		(SHADERS_DIR + "v_linePC.spv").c_str(),
-		(SHADERS_DIR + "f_linePC.spv").c_str(),
+		shaders["v_line"], shaders["f_line"],
 		false);
 
 	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
@@ -436,8 +468,7 @@ void setGrid(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
-		(SHADERS_DIR + "v_linePC.spv").c_str(),
-		(SHADERS_DIR + "f_linePC.spv").c_str(),
+		shaders["v_line"], shaders["f_line"],
 		false);
 }
 
@@ -455,8 +486,7 @@ void setSkybox(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_trianglePT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePT.spv").c_str(),
+		shaders["v_skybox"], shaders["f_skybox"],
 		false);
 }
 
@@ -467,7 +497,7 @@ void setCottage(Renderer& app)
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<texIterator> usedTextures = { textures["cottage"] };
 
-	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
+	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		1, 1, primitiveTopology::triangle,
@@ -475,14 +505,13 @@ void setCottage(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
+		shaders["v_house"], shaders["f_house"],
 		false);
 
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);			// TEST (before render loop): deleteModel
 
-	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "cottage_obj.obj").c_str());
+	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
@@ -490,8 +519,7 @@ void setCottage(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
+		shaders["v_house"], shaders["f_house"],
 		false);
 }
 
@@ -501,7 +529,7 @@ void setRoom(Renderer& app)
 
 	std::vector<texIterator> usedTextures = { textures["room"] };
 
-	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (MODELS_DIR + "viking_room.obj").c_str());
+	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
@@ -509,8 +537,7 @@ void setRoom(Renderer& app)
 		2, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_trianglePCT.spv").c_str(),
-		(SHADERS_DIR + "f_trianglePCT.spv").c_str(),
+		shaders["v_house"], shaders["f_house"],
 		false);
 
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
@@ -547,8 +574,7 @@ void setSea(Renderer& app)
 		1, 4 * mat4size + vec4size + sizeof(Light),	// M, V, P, MN, camPos, Light
 		vec4size,									// time
 		usedTextures,
-		(SHADERS_DIR + "v_sea.spv").c_str(),
-		(SHADERS_DIR + "f_sea.spv").c_str(),
+		shaders["v_sea"], shaders["f_sea"],
 		false);
 }
 
@@ -560,13 +586,13 @@ void setChunk(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	singleChunk.computeTerrain(true);
-	singleChunk.render((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str(), usedTextures, nullptr);
+	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr);
 }
 
 void setChunkGrid(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
-	updateChunkSet = true;
+	updateChunkGrid = true;
 
 	std::vector<texIterator> usedTextures = 
 	{
@@ -589,7 +615,7 @@ void setChunkGrid(Renderer& app)
 	};
 
 	terrGrid.addTextures(usedTextures);
-	terrGrid.addShaders((SHADERS_DIR + "v_terrainPTN.spv").c_str(), (SHADERS_DIR + "f_terrainPTN.spv").c_str());
+	terrGrid.addShaders(shaders["v_terrain"], shaders["f_terrain"]);
 	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
 
@@ -601,22 +627,22 @@ void setSphereChunks(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	sphereChunk_nY.computeTerrain(true);
-	sphereChunk_nY.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_nY.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 	
 	sphereChunk_pX.computeTerrain(true);
-	sphereChunk_pX.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_pX.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 	
 	sphereChunk_pZ.computeTerrain(true);
-	sphereChunk_pZ.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_pZ.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 	
 	sphereChunk_pY.computeTerrain(true);
-	sphereChunk_pY.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_pY.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 	
 	sphereChunk_nX.computeTerrain(true);
-	sphereChunk_nX.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_nX.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 	
 	sphereChunk_nZ.computeTerrain(true);
-	sphereChunk_nZ.render((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str(), usedTextures, nullptr);
+	sphereChunk_nZ.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
 }
 
 void setSphereGrid(Renderer& app)
@@ -627,22 +653,22 @@ void setSphereGrid(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
 
 	planetGrid_pZ.addTextures(usedTextures);
-	planetGrid_pZ.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_pZ.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	planetGrid_nZ.addTextures(usedTextures);
-	planetGrid_nZ.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_nZ.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	planetGrid_pY.addTextures(usedTextures);
-	planetGrid_pY.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_pY.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	planetGrid_nY.addTextures(usedTextures);
-	planetGrid_nY.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_nY.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	planetGrid_pX.addTextures(usedTextures);
-	planetGrid_pX.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_pX.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	planetGrid_nX.addTextures(usedTextures);
-	planetGrid_nX.addShaders((SHADERS_DIR + "v_planetPTN.spv").c_str(), (SHADERS_DIR + "f_planetPTN.spv").c_str());
+	planetGrid_nX.addShaders(shaders["v_planet"], shaders["f_planet"]);
 
 	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
@@ -665,8 +691,7 @@ void setSun(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_sunPT.spv").c_str(),
-		(SHADERS_DIR + "f_sunPT.spv").c_str(),
+		shaders["v_sun"], shaders["f_sun"],
 		true);
 }
 
@@ -688,7 +713,6 @@ void setReticule(Renderer& app)
 		1, 0,
 		0,
 		usedTextures,
-		(SHADERS_DIR + "v_hudPT.spv").c_str(),
-		(SHADERS_DIR + "f_hudPT.spv").c_str(),
+		shaders["v_hud"], shaders["f_hud"],
 		true);
 }

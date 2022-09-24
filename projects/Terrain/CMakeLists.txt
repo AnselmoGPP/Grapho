@@ -43,9 +43,6 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 )
 
 TARGET_SOURCES(${PROJECT_NAME} PRIVATE
-	#../../extern/glad/src/glad.c
-	#../../extern/glew/glew-2.1.0/src/glew.c
-
 	#../../extern/imgui/imgui-1.72b/imgui.cpp
 	#../../extern/imgui/imgui-1.72b/imgui_demo.cpp
 	#../../extern/imgui/imgui-1.72b/imgui_draw.cpp
@@ -56,6 +53,7 @@ TARGET_SOURCES(${PROJECT_NAME} PRIVATE
 
 TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	include
+	C:/VulkanSDK/1.3.211.0/Include
 	../Renderer/include
 	../../extern/glfw/glfw-3.3.2/include
 	../../extern/glm/glm-0.9.9.5
@@ -63,14 +61,8 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/tinyobjloader
 	../../extern/FastNoiseLite
 	../../extern/FastNoise2/include
-	../../extern/FastNoise2/include
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
-
-	#../../extern/glad/include
-	#../../extern/glew/glew-2.1.0/include
-
 	#../../extern/imgui/imgui-1.72b
-
 	#../../extern/eigen-3.3.8
 )
 
@@ -80,14 +72,17 @@ if( UNIX )
 	TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
 		${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/libglfw3.a
 		${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/libglm_static.a
+		C:/VulkanSDK/1.3.211.0/Lib/shaderc_combined.lib
 		-lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi #-lglfw 
 	)
 elseif( WIN32 )
 	TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
+		#Vulkan::Vulkan
+		optimized	C:/VulkanSDK/1.3.211.0/Lib/vulkan-1.lib
+		optimized	C:/VulkanSDK/1.3.211.0/Lib/shaderc_combined.lib
+		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/projects/Renderer/Release/Vk_renderer.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/Release/glfw3.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/Release/glm_static.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/projects/Renderer/Release/Vk_renderer.lib
-		Vulkan::Vulkan
 	)
 endif()
 

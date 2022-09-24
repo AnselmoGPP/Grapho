@@ -379,12 +379,18 @@ void Renderer::cleanup()
 	}
 
 	std::cout << __func__ << "() 2" << std::endl;
+
 	// Cleanup each model
 	models.clear();
 	modelsToLoad.clear();
 	
 	// Cleanup textures
 	textures.clear();
+
+	// Cleanup shaders
+	for (ShaderIter it = shaders.begin(); it != shaders.end(); it++)
+		vkDestroyShaderModule(e.device, *it, nullptr);
+	shaders.clear();
 
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: " << models.size() << "(m), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
@@ -394,7 +400,7 @@ void Renderer::cleanup()
 	std::cout << "Cleanup() end" << std::endl;
 }
 
-modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency)
+modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency)
 {
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
@@ -405,7 +411,7 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 		vertexLoader,
 		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		textures, 
-		VSpath, FSpath, 
+		vertexShader, fragmentShader,
 		transparency);
 }
 
@@ -449,6 +455,90 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), texturesToLoad, texture);
 	else
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
+}
+
+ShaderIter Renderer::newShader(const std::string filename, shaderc_shader_kind shaderKind, bool optimize)
+{
+	std::cout << __func__ << "(): " << filename << std::endl;
+
+	// Get data from txt file:
+
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
+	if (!file.is_open())
+		throw std::runtime_error("Failed to open file!");
+
+	size_t fileSize = (size_t)file.tellg();
+	std::vector<char> glslData(fileSize);
+
+	file.seekg(0);
+	file.read(glslData.data(), fileSize);
+
+	file.close();
+	
+	// Compile data:
+	
+	shaderc::Compiler compiler;
+	shaderc::CompileOptions options;
+	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
+
+	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(glslData.data(), glslData.size(), shaderKind, filename.c_str(), options);
+	if (module.GetCompilationStatus() != shaderc_compilation_status_success)
+		std::cerr << "Error compiling shader module - " << module.GetErrorMessage() << std::endl;
+	
+	std::vector<uint32_t> spirv = { module.cbegin(), module.cend() };
+
+	//Create shader module:
+
+	VkShaderModuleCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = spirv.size() * sizeof(uint32_t);
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(e.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create shader module!");
+
+	shaders.push_back(shaderModule);
+	return (--shaders.end());
+
+	/*
+	shaderc_compile_options_t options(shaderc_compile_options_initialize());
+	shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level::shaderc_optimization_level_zero);
+	if (optimize) shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_performance);
+	else          shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero);
+
+	shaderc_compiler_t compiler = shaderc_compiler_initialize();
+	
+	shaderc_compilation_result_t result = shaderc_compile_into_spv(compiler, buffer.data(), buffer.size(), shaderc_glsl_vertex_shader, "main.vert", "main", nullptr);
+	if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success)
+		std::cerr << "Error compiling module (" << shaderc_result_get_num_warnings(result) << '/' << shaderc_result_get_num_errors(result) << "): " << shaderc_result_get_error_message(result) << std::endl;
+	
+	std::vector<uint8_t> spirv;
+	spirv.insert(spirv.begin(), shaderc_result_get_bytes(result), shaderc_result_get_bytes(result) + shaderc_result_get_length(result));
+	
+	shaderc_result_release(result);
+	shaderc_compiler_release(compiler);
+
+	 Create shader module:
+
+	VkShaderModuleCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = spirv.size();
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
+	
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(e.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create shader module!");
+	
+	shaders.push_back(shaderModule);
+	return (--shaders.end());
+	*/
+}
+
+void Renderer::deleteShader(ShaderIter shader)
+{
+	vkDestroyShaderModule(e.device, *shader, nullptr);
+	shaders.erase(shader);
 }
 
 void Renderer::setRenders(modelIterator model, size_t numberOfRenders)

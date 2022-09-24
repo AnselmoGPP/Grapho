@@ -25,8 +25,8 @@ layout(set = 0, binding = 1) uniform ubobject
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[1];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0) in vec3 inFragPos;
-layout(location = 1) in vec3 inNormal;
-layout(location = 2) flat in vec3 inCamPos;
+layout(location = 1) flat in vec3 inCamPos;
+layout(location = 2) in vec3 lightDir;
 layout(location = 3) flat in Light inLight;
 
 layout(location = 0) out vec4 outColor;								// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
@@ -75,17 +75,19 @@ vec3 directionalLightColor(Light light, vec3 albedo, vec3 normal, vec3 speculari
     // ----- Ambient lighting -----
     vec3 ambient = light.ambient.xyz * albedo;
 	
-	if(dot(light.direction.xyz, normal) > 0) return ambient;			// If light comes from below the tangent plane
+	if(dot(lightDir, normal) > 0) return ambient;			// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(normal, -light.direction.xyz), 0.f);
+    float diff   = max(dot(normal, -lightDir), 0.f);
     vec3 diffuse = light.diffuse.xyz * albedo * diff;
 
     // ----- Specular lighting -----
-	vec3 viewDir    = normalize(inCamPos - inFragPos);
-	vec3 reflectDir = reflect(light.direction.xyz, normal);
-	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 specular   = light.specular.xyz * specularity * spec;
+	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	//vec3 reflectDir = normalize(reflect(lightDir, normal));
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 halfwayDir   = normalize(-lightDir + viewDir);
+	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+	vec3 specular     = light.specular.xyz * specularity * spec;
 	
     // ----- Result -----
 	return vec3(ambient + diffuse + specular);

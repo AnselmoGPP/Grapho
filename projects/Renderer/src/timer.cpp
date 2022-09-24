@@ -7,6 +7,9 @@
 #include <cmath>
 
 
+void sleep(int milliseconds) { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
+
+
 TimerSet::TimerSet(int maximumFPS)
     : currentTime(std::chrono::system_clock::duration::zero()), maxFPS(maximumFPS)
 {

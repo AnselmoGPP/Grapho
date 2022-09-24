@@ -7,9 +7,9 @@
 #include "camera.hpp"
 
 // File's paths
-extern const std::string SHADERS_DIR;
-extern const std::string MODELS_DIR;
-extern const std::string TEXTURES_DIR;
+extern const std::string shadersDir;
+extern const std::string vertexDir;
+extern const std::string texDir;
 
 // Camera
 extern FreePolarCam camera_1;

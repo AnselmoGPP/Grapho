@@ -17,6 +17,7 @@
 #include "ubo.hpp"
 #include "texture.hpp"
 #include "loaddata.hpp"
+#include "commons.hpp"
 
 #define LINE_WIDTH 1.0f
 
@@ -34,9 +35,8 @@ class ModelData
 	VulkanEnvironment& e;
 	VertexLoader* vertexLoader;
 	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
-
-	const char* VSpath;						//!< Path to vertex shader
-	const char* FSpath;						//!< Path to fragment shader
+	ShaderIter vertexShader;
+	ShaderIter fragmentShader;
 	
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
@@ -63,7 +63,7 @@ class ModelData
 		Some programmable stages are optional (example: tessellation and geometry stages).
 		In Vulkan, the graphics pipeline is almost completely immutable. You will have to create a number of pipelines representing all of the different combinations of states you want to use.
 	*/
-	void createGraphicsPipeline(const char* VSpath, const char* FSpath);
+	void createGraphicsPipeline();
 
 	/// Vertex buffer creation.
 	void createVertexBuffer();
@@ -82,15 +82,12 @@ class ModelData
 
 	// Helper methods:
 
-	/// Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
-	static std::vector<char>	readFile(/*const std::string& filename*/ const char* filename);
-
 	/// Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
-	VkShaderModule				createShaderModule(const std::vector<char>& code);
+	VkShaderModule				createShaderModule(const std::vector<char>& code);				//!< Not used
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency);
 
 	virtual ~ModelData();
 

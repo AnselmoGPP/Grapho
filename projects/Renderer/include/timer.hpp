@@ -5,6 +5,9 @@
 #include <thread>
 #include <string>
 
+
+void sleep(int milliseconds);
+
 /**
 *   Object used for getting the time between events.Two ways :
 *       <ul>

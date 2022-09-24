@@ -7,9 +7,12 @@
 #include <mutex>
 #include <optional>			// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 
+#include "shaderc/shaderc.hpp"		// Compile GLSL code to SPIR-V
+
 #include "models.hpp"
 #include "input.hpp"
 #include "timer.hpp"
+#include "commons.hpp"
 
 
 /// Used for the user to specify what primitive type represents the vertex data. 
@@ -37,8 +40,9 @@ class Renderer
 	VulkanEnvironment			e;
 	Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
-	std::list<ModelData>		models;						//!< Models (fully initialized). Each model is associated to one of the framebuffer (layer).
-	std::list<Texture>			textures;					//!< Texture set
+	std::list<ModelData>		models;						//!< Set of fully initialized models.
+	std::list<Texture>			textures;					//!< Set of textures
+	std::list<VkShaderModule>	shaders;					//!< Set of shaders
 	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIterator>	lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
@@ -173,22 +177,14 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, const char* VSpath, const char* FSpath, bool transparency);
-
-	/**
-	*	@brief
-	*/
+	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency);
 	void			deleteModel(modelIterator model);
 
-	/**
-	*	@brief Insert a partially initialized texture object in texturesToLoad list.
-	*/
-	texIterator		newTexture(const char* path);
-
-	/**
-	*	@brief 
-	*/
+	texIterator		newTexture(const char* path);		//!< Insert a partially initialized texture object in texturesToLoad list.
 	void			deleteTexture(texIterator texture);
+
+	ShaderIter		newShader(const std::string filename, shaderc_shader_kind kind, bool optimize);
+	void			deleteShader(ShaderIter shader);
 
 	/**
 	*	@brief 

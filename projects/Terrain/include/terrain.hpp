@@ -16,6 +16,18 @@
 #include "noise.hpp"
 #include "common.hpp"
 
+/*
+	QuadNode
+
+	Chunk
+		PlainChunk
+		SphericalChunk
+
+	DynamicGrid (QuadNode)
+		TerrainGrid (PlainChunk)
+		PlanetGrid (SphericalChunk)
+*/
+
 // -------------------------------
 
 /// Generic Binary Search Tree Node.
@@ -75,7 +87,7 @@ protected:
 	std::vector<float> vertex;				//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
-	std::vector<Light*> lights;
+	//std::vector<Light*> lights;
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
 	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
@@ -84,7 +96,7 @@ protected:
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
-	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, unsigned layer);
+	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
 	virtual ~Chunk();
 
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
@@ -95,8 +107,8 @@ public:
 	virtual void debug() { std::cout << "Nothing" << std::endl; };
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
-	void render(const char* vertexShader, const char* fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
-	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time);
 
 	unsigned getLayer() { return layer; }
 	glm::vec3 getGroundCenter() { return groundCenter; }
@@ -170,13 +182,15 @@ public:
 	DynamicGrid(glm::vec3 camPos, std::vector<Light*> lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	virtual ~DynamicGrid();
 
-	glm::vec3 camPos;
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::vec3 camPos;
+	Light* light;
+	float time;
 
 	void addTextures(const std::vector<texIterator>& textures);
-	void addShaders(const char* fragShader, const char* vertShader);
-	void updateUBOs(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj);
+	void addShaders(ShaderIter vertexShader, ShaderIter fragmentShader);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time);
 	void updateTree(glm::vec3 newCamPos);
 	unsigned getTotalNodes() { return chunks.size(); }
 	unsigned getloadedChunks() { return loadedChunks; }
@@ -190,8 +204,8 @@ protected:
 	std::vector<Light*> lights;
 	Renderer& renderer;
 	Noiser noiseGenerator;
-	std::string vertShader;
-	std::string fragShader;
+	ShaderIter vertShader;
+	ShaderIter fragShader;
 
 	unsigned activeTree;
 	unsigned loadedChunks;

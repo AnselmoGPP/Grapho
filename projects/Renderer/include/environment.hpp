@@ -5,9 +5,10 @@
 #include <optional>					// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 #include <mutex>
 
-//#include <vulkan/vulkan.h>		// From LunarG SDK. Used for off-screen rendering
-#define GLFW_INCLUDE_VULKAN			// Makes GLFW load the Vulkan header with it
+#include "vulkan/vulkan.h"			// From LunarG SDK. Can be used for off-screen rendering
+//#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"
+
 
 #define DEGUB						// Standards: NDEBUG, _DEBUG
 #ifdef RELEASE
