@@ -120,8 +120,6 @@ namespace Sun
     glm::vec3 lightDirection(float dayTime);
 };
 
-
-
 /// Icosahedron data (vertices, colors, indices, normals)
 struct Icosahedron
 {
@@ -140,5 +138,6 @@ struct Icosahedron
     static std::vector<float> index;    // Indices
 };
 
+bool getEndianness();
 
 #endif

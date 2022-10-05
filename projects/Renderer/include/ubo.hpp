@@ -67,6 +67,44 @@ struct Light
 	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
 };
 
+struct LightPosDir
+{
+	alignas(16) glm::vec3 position;
+	alignas(16) glm::vec3 direction;	//!< Direction FROM the light source
+};
+
+struct LightProps
+{
+	alignas(16) int type;				//!< 0: no light, 1: directional, 2: point, 3: spot
+
+	alignas(16) glm::vec3 ambient;
+	alignas(16) glm::vec3 diffuse;
+	alignas(16) glm::vec3 specular;
+
+	alignas(16) glm::vec3 degree;		//!< vec3( constant, linear, quadratic )
+	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
+};
+
+struct LightSet
+{
+	LightSet(int numLights);
+	~LightSet();
+	void turnOff(size_t index);
+	void setDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);
+	void setPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
+	void setSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
+
+	LightPosDir* posDir;
+	LightProps* props;
+
+	int numLights;
+	size_t posDirBytes;
+	size_t propsBytes;
+};
+
+enum lightProps { pos = 0, dir = 1, lightType = 0, ambient, diffuse, specular, degree, cutOff };
+
+
 /**
 	@struct Material
 	@brief Data structure for a material. Passed to shader as UBO. No textures, just values for Diffuse, Specular & Shininess.

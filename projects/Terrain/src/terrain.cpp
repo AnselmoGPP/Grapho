@@ -30,8 +30,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + vec4size + sizeof(Light), // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), Light (8*vec4)
-        vec4size,                                   // Time
+        1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), 2 * LightPosDir (2*vec4)
+        2 * vec4size + 2 * sizeof(LightProps),                  // Time (float), numLights (int), 2 * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         false);
@@ -48,17 +48,20 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
     //bytes += mat4size
     //memcpy(dest + bytes, &camPos, vec3size);
     //bytes += vec4size;
-    //memcpy(dest + bytes, lights[0], sizeof(Light));
-    //bytes += sizeof(Light);
+    //memcpy(dest + bytes, lights.posDir, lights.posDirBytes);
+    //bytes += lights.posDirBytes;
     
     //dest = model->fsUBO.getUBOptr(0);
     //float fTime = (float)currentTime;
     //memcpy(dest, &fTime, sizeof(fTime));
+    //bytes += vec4size;
+    //memcpy(dest + bytes, lights.props, lights.propsBytes);
+    //bytes += lights.propsBytes;
  
     modelOrdered = true;
 }
 
-void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time)
+void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time)
 {
     if (!modelOrdered) return;
 
@@ -74,13 +77,17 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         bytes += mat4size + mat4size;
         memcpy(dest + bytes, &camPos, vec3size);
         bytes += vec4size;
-        memcpy(dest + bytes, &light, sizeof(Light));
-        //bytes += sizeof(Light);
+        memcpy(dest + bytes, lights.posDir, lights.posDirBytes);
+        //bytes += lights.posDirBytes;
 
         bytes = 0;
         dest = model->fsUBO.getUBOptr(0);
         memcpy(dest + bytes, &time, sizeof(time));
-        //bytes += vec4size;
+        bytes += vec4size;
+        memcpy(dest + bytes, &lights.numLights, sizeof(lights.numLights));
+        bytes += vec4size;
+        memcpy(dest + bytes, lights.props, lights.propsBytes);
+        //bytes += lights.propsBytes;
     }
 }
 
@@ -105,7 +112,7 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
 
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, std::vector<Light*> lights, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
     : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, layer)
 {
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
@@ -374,7 +381,7 @@ void PlainChunk::computeSizes()
 
 // SphericalChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, std::vector<Light*> lights, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
     : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
 {   
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
@@ -745,8 +752,8 @@ void SphericalChunk::computeSizes()
 
 // DynamicGrid ----------------------------------------------------------------------
 
-DynamicGrid::DynamicGrid(glm::vec3 camPos, std::vector<Light*> lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : camPos(camPos), lights(lights), renderer(renderer), noiseGenerator(noiseGenerator), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
+DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : camPos(camPos), lights(&lights), renderer(renderer), noiseGenerator(noiseGenerator), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
 { 
     root[0] = root[1] = nullptr;
     Chunk::computeIndices(indices, numSideVertex, numSideVertex);
@@ -850,12 +857,12 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     }
 }
 
-void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, Light& light, float time)
+void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time)
 {
     this->view   = view;
     this->proj   = proj;
     this->camPos = camPos;
-    this->light  = &light;
+    this->lights  = &lights;
     this->time   = time;
 
     //preorder<Chunk*, void (QuadNode<Chunk*>*)>(root, nodeVisitor);
@@ -867,8 +874,8 @@ void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
     if (!node) return;
 
     if (node->isLeaf())
-    {light;
-        node->getElement()->updateUBOs(view, proj, camPos, *light, time);
+    {
+        node->getElement()->updateUBOs(view, proj, camPos, *lights, time);
         return;
     }
     else
@@ -962,14 +969,14 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 
 // TerrainGrid ----------------------------------------------------------------------
 
-TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier)
 { }
 
 QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new PlainChunk(renderer, noiseGenerator, lights, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength/(numSideVertex-1), numSideVertex, numSideVertex, layer);
+        chunks[center] = new PlainChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength/(numSideVertex-1), numSideVertex, numSideVertex, layer);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }
@@ -987,13 +994,13 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 
 // PlanetGrid ----------------------------------------------------------------------
 
-PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, std::vector<Light*> lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
+PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) { }
 
 QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new SphericalChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, lights, radius, nucleus, cubePlane, layer);
+        chunks[center] = new SphericalChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, radius, nucleus, cubePlane, layer);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }

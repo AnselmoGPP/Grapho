@@ -3,7 +3,7 @@
 
 struct Light
 {
-    int lightType;		// int   0: no light   1: directional   2: point   3: spot
+    int type;			// int   0: no light   1: directional   2: point   3: spot
 	
     vec4 position;		// vec3
     vec4 direction;		// vec3
@@ -16,31 +16,36 @@ struct Light
     vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
 };
 
+struct LightPD
+{
+    vec4 position;		// vec3
+    vec4 direction;		// vec3
+};
+
 layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
     mat4 view;
     mat4 proj;
     mat4 normalMatrix;		// mat3
 	vec4 camPos;			// vec3
-	Light light;			// vec4 * 8
+	LightPD light[2];		// 2 * (vec4 * 2)
 } ubo;
 
 layout(location = 0) in vec3 inVertPos;
 layout(location = 1) in vec2 inUVCoord;
 layout(location = 2) in vec3 inNormal;
 
-layout(location = 0) out vec3 outVertPos;
+layout(location = 0) out vec3 outVertPos;	// Each location has 16 bytes
 layout(location = 1) out vec2 outUVCoord;
 layout(location = 2) out vec3 outNormal;
-layout(location = 3) out vec3 outCampPos;
-layout(location = 4) out Light outLight;	// This occupies 8 locations (16 bytes each)
-layout(location = 12) out float outSlope;
-layout(location = 13) out vec3 lightDir;
+layout(location = 3) out vec3 outCamPos;
+layout(location = 4) out float outSlope;
+layout(location = 5) out LightPD outLight[2];
 
 void main()
 {
 	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);
-	outLight    = ubo.light;
+	//outLight  = ubo.light;
 	outUVCoord  = inUVCoord;
 	vec3 normal = mat3(ubo.normalMatrix) * inNormal;
 	outSlope    = dot( normalize(normal), normalize(vec3(normal.xy, 0.0)) );
@@ -51,11 +56,12 @@ void main()
 	mat3 TBN       = transpose(mat3(tangent, bitangent, normal));							// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
 	
 	// Values transformed to tangent space:
-	outVertPos 			   = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));	// inverted TBN transforms vectors to tangent space
-	outCampPos             = TBN * ubo.camPos.xyz;
-	outLight.position.xyz  = TBN * ubo.light.position.xyz;						// for point & spot light
-	outLight.direction.xyz = TBN * normalize(ubo.light.direction.xyz);			// for directional light
-	lightDir 			   = TBN * normalize(ubo.light.direction.xyz);
+	outVertPos 			      = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));				// inverted TBN transforms vectors to tangent space
+	outCamPos                 = TBN * ubo.camPos.xyz;
+	outLight[0].position.xyz  = TBN * ubo.light[0].position.xyz;							// for point & spot light
+	outLight[0].direction.xyz = TBN * normalize(ubo.light[0].direction.xyz);				// for directional light
+	outLight[1].position.xyz  = TBN * ubo.light[1].position.xyz;
+	outLight[1].direction.xyz = TBN * normalize(ubo.light[1].direction.xyz);
 }
 
 

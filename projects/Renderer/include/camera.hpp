@@ -46,6 +46,8 @@ public:
     glm::mat4 GetProjectionMatrix(const float& aspectRatio);
 
     void setYScrollOffset(double yScrollOffset) { this->yScrollOffset = yScrollOffset; }
+
+    glm::vec3 getDirection() { return front; }
  
 protected:
     // Camera vectors

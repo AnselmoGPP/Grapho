@@ -3,10 +3,28 @@
 
 struct Light
 {
-    int lightType;		// int   0: no light   1: directional   2: point   3: spot
+    int type;			// int   0: no light   1: directional   2: point   3: spot
 	
     vec4 position;		// vec3
     vec4 direction;		// vec3
+
+    vec4 ambient;		// vec3
+    vec4 diffuse;		// vec3
+    vec4 specular;		// vec3
+
+    vec4 degree;		// vec3	(constant, linear, quadratic)
+    vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
+};
+
+struct LightPD
+{
+    vec4 position;		// vec3
+    vec4 direction;		// vec3
+};
+
+struct LightProps
+{
+    int type;			// int   0: no light   1: directional   2: point   3: spot
 
     vec4 ambient;		// vec3
     vec4 diffuse;		// vec3
@@ -28,20 +46,19 @@ struct Material
 // https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 layout(set = 0, binding = 1) uniform ubobject
 {
-    vec4 time;
+    vec4 time;				// float
+	ivec4 numLights;		// int
+	LightProps light[2];
 } ubo;
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[41];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0)  in vec3  inFragPos;
-layout(location = 1)  in vec2  inUVCoord;
-layout(location = 2)  in vec3  inNormal;
-layout(location = 3)  in vec3  inCamPos;
-layout(location = 4)  flat in  Light inLight;
-layout(location = 12) in float inSlope;
-layout(location = 13) in vec3  lightDir;
-layout(location = 14) in vec3 lightDiff;
-layout(location = 15) in vec3 lightSpec;
+layout(location = 0) in vec3  inFragPos;
+layout(location = 1) in vec2  inUVCoord;
+layout(location = 2) in vec3  inNormal;
+layout(location = 3) in vec3  inCamPos;
+layout(location = 4) in float inSlope;
+layout(location = 5) in LightPD inLight[2];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -63,11 +80,11 @@ void main()
 
 	vec3 color;
 
-	//getTex(color, 1, 2, 3, 4);
+	//getTex(color, 6, 7, 8, 9);
 	//getTex_Grid(color);
 	//getTex_Grass1(color);
-	//getTex_Tech(color);
-	getTex_Sand(color);
+	getTex_Tech(color);
+	//getTex_Sand(color);
 	//getTex_GrassRock(color);
 
     //color = applyFog(color);
@@ -75,98 +92,103 @@ void main()
 	outColor = vec4(color, 1.0);
 }
 
-vec3 directionalLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
+vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * albedo;
+	    // ----- Ambient lighting -----
+		vec3 ambient = ubo.light[i].ambient.xyz * albedo;
+		if(dot(inLight[i].direction.xyz, normal) > 0) return ambient;		// If light comes from below the tangent plane
 	
-	if(dot(lightDir, normal) > 0) return ambient;			// If light comes from below the tangent plane
+		// ----- Diffuse lighting -----
+		float diff   = max(dot(normal, -inLight[i].direction.xyz), 0.f);
+		vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff;		
+	
+		// ----- Specular lighting -----
+		vec3 viewDir      = normalize(inCamPos - inFragPos);
+		//vec3 reflectDir = normalize(reflect(inLight[i].direction.xyz, normal));
+		//float spec	  = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+		vec3 halfwayDir   = normalize(-inLight[i].direction.xyz + viewDir);
+		float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+		vec3 specular     = ubo.light[i].specular.xyz * specularity * spec;
+		
+		// ----- Result -----
+		return vec3(ambient + diffuse + specular);
+}
+
+
+vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
+{
+    float distance    = length(inLight[i].position.xyz - inFragPos);
+    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);
+	vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
+
+    // ----- Ambient lighting -----
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
+	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-	float diff   = max(dot(normal, -lightDir), 0.f);
-    vec3 diffuse = light.diffuse.xyz * albedo * diff;		
+    float diff   = max(dot(normal, -lightDir), 0.f);
+    vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff * attenuation;
+	
+    // ----- Specular lighting -----
+	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	//vec3 reflectDir = normalize(reflect(lightDir, normal));
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 halfwayDir   = normalize(-lightDir + viewDir);
+	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation;
+	
+    // ----- Result -----
+    return vec3(ambient + diffuse + specular);	
+}
+
+
+vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
+{
+    float distance = length(inLight[i].position.xyz - inFragPos);
+    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);
+    vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
+
+    // ----- Ambient lighting -----
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
+	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
+
+    // ----- Diffuse lighting -----
+	float theta		= dot(lightDir, inLight[i].direction.xyz);	// The closer to 1, the more direct the light gets to fragment.
+	float epsilon   = ubo.light[i].cutOff[0] - ubo.light[i].cutOff[1];
+    float intensity = clamp((theta - ubo.light[i].cutOff[1]) / epsilon, 0.0, 1.0);
+	float diff      = max(dot(normal, -lightDir), 0.f);
+    vec3 diffuse    = ubo.light[i].diffuse.xyz * albedo * diff * attenuation * intensity;
 
     // ----- Specular lighting -----
 	vec3 viewDir      = normalize(inCamPos - inFragPos);
 	//vec3 reflectDir = normalize(reflect(lightDir, normal));
-	//float spec	  = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
 	vec3 halfwayDir   = normalize(-lightDir + viewDir);
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness * 4);
 	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
-	vec3 specular     = light.specular.xyz * specularity * spec;
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation * intensity;
 	
     // ----- Result -----
-	return vec3(ambient + diffuse + specular);
-}
-
-
-vec3 PointLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
-{
-    float distance    = length(light.position.xyz - inFragPos);
-    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-	vec3 lightDir 	  = normalize(inFragPos - light.position.xyz);
-
-	if(dot(lightDir, normal) > 0) return vec3(0,0,0);			// If light comes from below the tangent plane
-
-    // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * albedo * attenuation;
-
-    // ----- Diffuse lighting -----
-    float diff   = max(dot(normal, -lightDir), 0.f);
-    vec3 diffuse = light.diffuse.xyz * albedo * diff * attenuation;
-
-    // ----- Specular lighting -----
-	vec3 viewDir    = normalize(inCamPos - inFragPos);
-	vec3 reflectDir = reflect(lightDir, normal);
-	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 specular   = light.specular.xyz * specularity * spec * attenuation;
-
-    // ----- Result -----
-    return vec3(ambient + diffuse + specular);
-}
-
-
-vec3 SpotLightColor(Light light, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
-{
-    float distance = length(light.position.xyz - inFragPos);
-    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-    vec3 fraglightDir = normalize(inFragPos - light.position.xyz);
-	
-	if(dot(fraglightDir, normal) > 0) return vec3(0,0,0);				// If light comes from below the tangent plane
-	
-    // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * albedo * attenuation;
-
-    // ----- Diffuse lighting -----
-    float theta = dot(fraglightDir, normalize(light.direction.xyz));	// The closer to 1, the more direct the light gets to fragment.
-    if(theta < light.cutOff[1]) return vec3(ambient);
-
-    float epsilon   = light.cutOff[0] - light.cutOff[1];
-    float intensity = clamp((theta - light.cutOff[1]) / epsilon, 0.0, 1.0);
-    float diff      = max(dot(normal, -fraglightDir), 0.0);
-    vec3 diffuse    = light.diffuse.xyz * albedo * diff * attenuation * intensity;
-
-    // ----- Specular lighting -----
-	vec3 viewDir    = normalize(inCamPos - inFragPos);
-	vec3 reflectDir = reflect(fraglightDir, normal);
-	float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 specular   = light.specular.xyz * specularity * spec * attenuation * intensity;
-
-    // ----- Result -----
-    return vec3(ambient + diffuse + specular);
+    return vec3(ambient + diffuse + specular);	
 }
 
 
 // Apply the lighting type you want to a fragment
 vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-	if(inLight.lightType == 1)
-		return directionalLightColor(inLight, albedo, normal, specularity, roughness);
-	else if(inLight.lightType == 2)
-		return PointLightColor(inLight, albedo, normal, specularity, roughness);
-	else if(inLight.lightType == 3)
-		return SpotLightColor(inLight, albedo, normal, specularity, roughness);
-	else
-		return albedo;
+	vec3 result = vec3(0,0,0);
+
+	for(int i = 0; i < ubo.numLights[0]; i++)		// for each light source
+	{
+		if(ubo.light[i].type == 1)
+			result += directionalLightColor	(i, albedo, normal, specularity, roughness);
+		else if(ubo.light[i].type == 2)
+			result += PointLightColor		(i, albedo, normal, specularity, roughness);
+		else if(ubo.light[i].type == 3)
+			result += SpotLightColor		(i, albedo, normal, specularity, roughness);
+	}
+	
+	return result;
 }
 
 void getTex (inout vec3 result, int albedo, int normal, int specular, int roughness)
@@ -190,19 +212,19 @@ void getTex_Grid(inout vec3 result)
 void getTex_Grass1(inout vec3 result)
 {
 	result   = getFragColor(
-					texture(texSampler[9], inUVCoord/10).rgb,
-					normalize(toSRGB(texture(texSampler[10], inUVCoord/10).rgb) * 2.f - 1.f).rgb,
-					texture(texSampler[11], inUVCoord/10).rgb, 
-					texture(texSampler[12], inUVCoord/10).r * 255 );
+					texture(texSampler[5], inUVCoord/10).rgb,
+					normalize(toSRGB(texture(texSampler[6], inUVCoord/10).rgb) * 2.f - 1.f).rgb,
+					texture(texSampler[7], inUVCoord/10).rgb, 
+					texture(texSampler[8], inUVCoord/10).r * 255 );
 }
 
 void getTex_Tech(inout vec3 result)
 {
 		result   = getFragColor(
-					texture(texSampler[13], inUVCoord/100).rgb,
-					normalize(toSRGB(texture(texSampler[14], inUVCoord/100).rgb) * 2.f - 1.f).rgb,
-					texture(texSampler[15], inUVCoord/100).rgb, 
-					texture(texSampler[16], inUVCoord/100).r * 255 );
+					texture(texSampler[37], inUVCoord/100).rgb,
+					normalize(toSRGB(texture(texSampler[38], inUVCoord/100).rgb) * 2.f - 1.f).rgb,
+					texture(texSampler[39], inUVCoord/100).rgb, 
+					texture(texSampler[40], inUVCoord/100).r * 255 );
 }
 
 void getTex_Sand(inout vec3 result)

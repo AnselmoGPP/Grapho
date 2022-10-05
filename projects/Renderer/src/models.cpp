@@ -21,7 +21,6 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 	fullyConstructed(false),
 	inModels(false)
 {
-
 	this->vertexLoader = vertexLoader;
 	this->vertexLoader->setDestination(vertices, indices);
 

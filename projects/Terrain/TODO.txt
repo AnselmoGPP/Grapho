@@ -1,4 +1,8 @@
 TODO:
+	Clouds
+	Mist
+	Don't forget to flip textures around X axis
+	Move skybox with the sun
 	Create Light objects containing 2 structures (one with data for vertex shader and other for fragment shader)
 	Optimize shaders (normalization...)
 	deleteModel(): problem with models that are still in modelsToLoad
