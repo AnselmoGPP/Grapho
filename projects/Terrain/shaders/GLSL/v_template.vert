@@ -3,21 +3,6 @@
 
 #define numLights 2
 
-struct Light
-{
-    int type;			// int   0: no light   1: directional   2: point   3: spot
-	
-    vec4 position;		// vec3
-    vec4 direction;		// vec3
-
-    vec4 ambient;		// vec3
-    vec4 diffuse;		// vec3
-    vec4 specular;		// vec3
-
-    vec4 degree;		// vec3	(constant, linear, quadratic)
-    vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
-};
-
 struct LightPD
 {
     vec4 position;		// vec3
@@ -28,9 +13,9 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
     mat4 view;
     mat4 proj;
-    mat4 normalMatrix;		// mat3
-	vec4 camPos;			// vec3
-	LightPD light[2];		// 2 * (vec4 * 2)
+    mat4 normalMatrix;	// mat3
+	vec4 camPos;		// vec3
+	LightPD light[2];	// n * (2 * vec4)
 } ubo;
 
 layout(location = 0) in vec3 inVertPos;
@@ -46,19 +31,20 @@ layout(location = 4) out LightPD outLight[numLights];
 void main()
 {
 	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);
-	//outLight  = ubo.light;
 	outUVCoord  = inUVCoord;
 	vec3 normal = mat3(ubo.normalMatrix) * inNormal;
 	outSlope    = dot( normalize(normal), normalize(vec3(normal.xy, 0.0)) );
 	
 	// TBN matrix:
+	
 	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), normal), 0.f)));	// X
-	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(normal, tangent ), 0.f)));		// Y
+	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(normal, tangent), 0.f)));		// Y
 	mat3 TBN       = transpose(mat3(tangent, bitangent, normal));							// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
 	
 	// Values transformed to tangent space:
-	outVertPos 			      = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));				// inverted TBN transforms vectors to tangent space
-	outCamPos                 = TBN * ubo.camPos.xyz;
+	
+	outVertPos = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));								// inverted TBN transforms vectors to tangent space
+	outCamPos  = TBN * ubo.camPos.xyz;
 	for(int i = 0; i < numLights; i++) {
 		outLight[i].position.xyz  = TBN * ubo.light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = TBN * normalize(ubo.light[i].direction.xyz);			// for directional light

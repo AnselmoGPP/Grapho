@@ -3,21 +3,6 @@
 
 #define numLights 2
 
-struct Light
-{
-    int type;			// int   0: no light   1: directional   2: point   3: spot
-	
-    vec4 position;		// vec3
-    vec4 direction;		// vec3
-
-    vec4 ambient;		// vec3
-    vec4 diffuse;		// vec3
-    vec4 specular;		// vec3
-
-    vec4 degree;		// vec3	(constant, linear, quadratic)
-    vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
-};
-
 struct LightPD
 {
     vec4 position;		// vec3
@@ -65,126 +50,24 @@ vec3  applyFog		(vec3 fragColor, vec3 fogColor);
 float applyFog		(float value,   float fogValue);
 float modulus		(float dividend, float divider);	// modulus(%) = a - (b * floor(a/b))
 
-void getTex_Sand     (inout vec3 result);
-void getTex_GrassRock(inout vec3 result);
-
 // Definitions:
 
 void main()
 {
-	//outColor = vec4(inColor * texture(texSampler, inUVCoord).rgb, 1.0);
-
 	vec3 color;
 
+	//outColor = vec4(inColor * texture(texSampler, inUVCoord).rgb, 1.0);
 	//color = getFragColor(texture(texSampler[0], inUVCoord/10).rgb, vec3(0,0,1), vec3(0.1, 0.1, 0.1), 1);	// Grid
-	//getTex(color,  1,  2,  3,  4, 10);	// Green
-	//getTex(color,  5,  6,  7,  8, 10);	// Grass
-	//getTex(color,  9, 10, 11, 12, 10);	// Bumpy rock
-	//getTex(color, 13, 14, 15, 16, 10);	// Dry rock
-	//getTex(color, 13, 14, 15, 16, 10);	// Cobble
-	//getTex(color, 30, 31, 32, 33, 10);	// Snow 1
-	//getTex(color, 34, 35, 36, 33, 10);	// Snow 1
-	//getTex(color, 37, 38, 39, 40, 10);	// Tech
-	
-	getTex_Sand(color);
-	//getTex_GrassRock(color);
+	//getTex(color,  1,  2,  3,  4, 10);																	// Green
 	
 	outColor = vec4(color, 1.0);
 }
 
 
-void getTex_Sand(inout vec3 result)
-{
-    float slopeThreshold = 0.3;           // sand-plainSand slope threshold
-    float mixRange       = 0.1;           // threshold mixing range (slope range)
-    float tf             = 50;            // texture factor
-    //float slope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
-
-	float ratio;
-	if (inSlope < slopeThreshold - mixRange) ratio = 0;
-	else if(inSlope > slopeThreshold + mixRange) ratio = 1;
-	else ratio = (inSlope - (slopeThreshold - mixRange)) / (2 * mixRange);
-		
-	vec3 sandFrag = getFragColor(
-						texture(texSampler[17], inUVCoord/tf).rgb,
-						normalize(toSRGB(texture(texSampler[18], inUVCoord/tf).rgb) * 2.f - 1.f).rgb,
-						texture(texSampler[19], inUVCoord/tf).rgb, 
-						texture(texSampler[20], inUVCoord/tf).r * 255 );
-						
-	vec3 plainFrag = getFragColor(
-						texture(texSampler[21], inUVCoord/tf).rgb,
-						normalize(toSRGB(texture(texSampler[22], inUVCoord/tf).rgb) * 2.f - 1.f).rgb,
-						texture(texSampler[23], inUVCoord/tf).rgb, 
-						texture(texSampler[24], inUVCoord/tf).r * 255 );
-
-	result = (ratio) * plainFrag + (1-ratio) * sandFrag;
-}
-
-void getTex_GrassRock(inout vec3 result)
-{
-	float slopeThreshold = 0.5;           // grass-rock slope threshold
-    float mixRange       = 0.05;          // threshold mixing range (slope range)
-    float rtf            = 30;            // rock texture factor
-    float gtf            = 20;            // grass texture factor
-
-    float maxSnowLevel   = 80;            // maximum snow height (up from here, there's only snow within the maxSnowSlopw)
-    float minSnowLevel   = 50;            // minimum snow height (down from here, there's zero snow)
-    float maxSnowSlope   = 0.90;          // maximum slope where snow can rest
-    float snowSlope      = maxSnowSlope * ( (inFragPos.z - minSnowLevel) / (maxSnowLevel - minSnowLevel) );
-    float mixSnowRange   = 0.1;           // threshold mixing range (slope range)
-
-    if(snowSlope > maxSnowSlope) snowSlope = maxSnowSlope;
-    //float slope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
-/*
-    // >>> SNOW
-    if(slope < snowSlope)
-    {
-        vec4 snowFrag = getFragColor( sun, snow.diffuse, snow.specular, snow.shininess, 1.0 );
-
-        // >>> MIXTURE (SNOW + GRASS + ROCK)
-        if(slope > (snowSlope - mixSnowRange) && slope < snowSlope)
-        {
-            vec4 rockFrag  = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-            vec4 grassFrag = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-            float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-            if(ratio < 0) ratio = 0;
-            else if(ratio > 1) ratio = 1;
-            vec3 mixGround = rockFrag.xyz * ratio + grassFrag.xyz * (1-ratio);
-
-            ratio      = (snowSlope - slope) / mixSnowRange;
-            if(ratio < 0) ratio = 0;
-            else if (ratio > 1) ratio = 1;
-            vec3 mix   = mixGround.xyz * (1-ratio) + snowFrag.xyz * ratio;
-            snowFrag   = vec4( mix, 1.0 );
-        }
-
-        result = snowFrag;
-    }
-
-    // >>> GRASS
-    else if (slope < slopeThreshold - mixRange)
-        result = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-
-    // >>> ROCK
-    else if(slope > slopeThreshold + mixRange)
-        result = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-
-    // >>> MIXTURE (GRASS + ROCK)
-    else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
-    {
-        vec4 rockFrag  = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-        vec4 grassFrag = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-
-        float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-        vec3 mixGround = rockFrag.xyz * ratio + grassFrag.xyz * (1-ratio);
-
-        result = vec4(mixGround, 1.0);
-    }
-*/
-}
 
 
-// Basics ---------------------------------------------------------------------------------------------
+
+// Tools ---------------------------------------------------------------------------------------------
 
 
 vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)

@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
 	//setPoints(app);
 	setAxis(app);
 	//setGrid(app);
-	//setSea(app);
+	setSea(app);
 	setSkybox(app);
 	//setCottage(app);
 	//setRoom(app);
@@ -136,6 +136,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
 	dayTime = 0.00 + frameTime * 0.5;
+
 	//sunLight.turnOff();
 	sunLight.setDirectional  (Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//sunLight.setPoint(-10.f * Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
@@ -289,8 +290,11 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 2 * mat4size, &proj, mat4size);
 			memcpy(dest + 3 * mat4size, &modelMatrixForNormals(modelMatrix()), mat4size);
 			memcpy(dest + 4 * mat4size, &camPos, vec3size);
-			memcpy(dest + 4 * mat4size + vec4size, &sunLight, sizeof(Light));
-			memcpy(assets["sea"]->fsUBO.getUBOptr(0), &frameTime, sizeof(frameTime));
+			memcpy(dest + 4 * mat4size + vec4size, lightss.posDir, lightss.posDirBytes);
+
+			dest = assets["sea"]->fsUBO.getUBOptr(0);					// << Add to dest when advancing pointer
+			memcpy(dest + 0 * vec4size, &frameTime, sizeof(frameTime));
+			memcpy(dest + 1 * vec4size, lightss.props, lightss.propsBytes);
 		}
 	}
 	
@@ -316,7 +320,7 @@ void setLights()
 	//lightss.turnOff(0);
 	lightss.setDirectional(0, Sun::lightDirection(dayTime), glm::vec3(0.01, 0.01, 0.01), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//lightss.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
-	lightss.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(100, 100, 100), glm::vec3(100, 100, 100), 1, 1, 1., 0.9, 0.8);
+	lightss.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(80, 80, 80), glm::vec3(80, 80, 80), 1, 1, 0.5, 0.9, 0.8);
 }
 
 void loadShaders(Renderer& app)
@@ -586,11 +590,11 @@ void setSea(Renderer& app)
 	assets["sea"] = app.newModel(
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		1, 4 * mat4size + vec4size + sizeof(Light),	// M, V, P, MN, camPos, Light
-		vec4size,									// time
+		1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
+		vec4size + 2 * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
 		usedTextures,
 		shaders["v_sea"], shaders["f_sea"],
-		false);
+		true);
 }
 
 void setChunk(Renderer& app)

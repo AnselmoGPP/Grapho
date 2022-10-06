@@ -26,12 +26,12 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         vertex.data(),
         indices ? *indices : this->indices,
         true);
-
+    
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
         1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), 2 * LightPosDir (2*vec4)
-        2 * vec4size + 2 * sizeof(LightProps),                  // Time (float), numLights (int), 2 * LightProps (6*vec4)
+        vec4size + 2 * sizeof(LightProps),                      // Time (float), 2 * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         false);
@@ -74,7 +74,9 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         memcpy(dest + bytes, &view, mat4size);
         bytes += mat4size;
         memcpy(dest + bytes, &proj, mat4size);
-        bytes += mat4size + mat4size;
+        bytes += mat4size;
+        //memcpy(dest + bytes, &modelMatrixForNormals(modelMatrix()), mat4size);
+        bytes += mat4size;
         memcpy(dest + bytes, &camPos, vec3size);
         bytes += vec4size;
         memcpy(dest + bytes, lights.posDir, lights.posDirBytes);
@@ -83,8 +85,6 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         bytes = 0;
         dest = model->fsUBO.getUBOptr(0);
         memcpy(dest + bytes, &time, sizeof(time));
-        bytes += vec4size;
-        memcpy(dest + bytes, &lights.numLights, sizeof(lights.numLights));
         bytes += vec4size;
         memcpy(dest + bytes, lights.props, lights.propsBytes);
         //bytes += lights.propsBytes;
