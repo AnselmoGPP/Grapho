@@ -230,8 +230,6 @@ void Renderer::drawFrame()
 {
 	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
 	vkWaitForFences(e.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
-	//vkWaitForFences(e.device, 1, &framesInFlight[0], VK_TRUE, UINT64_MAX);
-	//vkWaitForFences(e.device, 1, &framesInFlight[1], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;		// Swap chain image index (0, 1, 2)
@@ -315,12 +313,16 @@ void Renderer::recreateSwapChain()
 {
 	std::cout << __func__ << "()" << std::endl;
 
+	// Get window size
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(e.window, &width, &height);
-	while (width == 0 || height == 0) {
+	while (width == 0 || height == 0) 
+	{
 		glfwGetFramebufferSize(e.window, &width, &height);
 		glfwWaitEvents();
 	}
+	e.width = width;
+	e.height = height;
 
 	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
 
@@ -751,4 +753,6 @@ size_t Renderer::getFrameCount() { return frameCount; }
 
 size_t Renderer::getModelsCount() { return models.size(); }
 
-size_t Renderer::getCommandsCount() { return commandsCount; };
+size_t Renderer::getCommandsCount() { return commandsCount; }
+
+float Renderer::getAspectRatio() { return (float)e.height / e.width; }

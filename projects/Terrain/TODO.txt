@@ -1,4 +1,5 @@
 TODO:
+	Review vertex.hpp classes
 	numLights in Chunk::render() ?
 	numLights passed to vertex shader
 	Shader template & Fix other shaders using the template

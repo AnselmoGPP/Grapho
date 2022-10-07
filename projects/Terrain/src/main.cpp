@@ -24,6 +24,7 @@ void setLights();
 void loadTextures(Renderer& app);
 void loadShaders(Renderer& app);
 
+void setReticule(Renderer& app);
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
 void setGrid(Renderer& app);
@@ -36,7 +37,6 @@ void setChunkGrid(Renderer& app);
 void setSphereChunks(Renderer& app);
 void setSphereGrid(Renderer& app);
 void setSun(Renderer& app);
-void setReticule(Renderer& app);
 
 // Models, textures, & shaders
 Renderer app(update, &camera_1, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
@@ -91,6 +91,7 @@ bool updateChunk = false, updateChunkGrid = false, updatePlanet = false, updateP
 float frameTime;
 size_t fps, maxfps;
 glm::vec3 camPos, camDir;
+float aspectRatio;
 
 
 int main(int argc, char* argv[])
@@ -102,19 +103,19 @@ int main(int argc, char* argv[])
 	loadShaders(app);
 	loadTextures(app);
 	
-	//setPoints(app);
+	setPoints(app);
 	setAxis(app);
-	//setGrid(app);
-	setSea(app);
+	setGrid(app);
+	//setSea(app);
 	setSkybox(app);
 	//setCottage(app);
 	//setRoom(app);
 	//setChunk(app);
-	setChunkGrid(app);
+	//setChunkGrid(app);
 	//setSphereChunks(app);
 	//setSphereGrid(app);
 	setSun(app);
-	//setReticule(app);
+	setReticule(app);
 
 	app.run();		// Start rendering
 
@@ -125,11 +126,12 @@ int main(int argc, char* argv[])
 
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
+	//fps		= rend.getTimer().getFPS();
+	//maxfps	= rend.getTimer().getMaxPossibleFPS();
 	frameTime	= (float)rend.getTimer().getTime();
-	fps			= rend.getTimer().getFPS();
-	maxfps		= rend.getTimer().getMaxPossibleFPS();
 	camPos		= rend.getCamera().camPos;
 	camDir		= rend.getCamera().getDirection();
+	aspectRatio = rend.getAspectRatio();
 	size_t i;
 	
 	std::cout << rend.getFrameCount() << ") \n";
@@ -225,6 +227,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 */
 	// Update UBOs
 	uint8_t* dest;
+
+	if (assets.find("reticule") != assets.end())
+		for (i = 0; i < assets["reticule"]->vsDynUBO.numDynUBOs; i++)
+			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
 
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++)	{
@@ -602,9 +608,27 @@ void setChunk(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 	updateChunk = true;
 
-	std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
+	std::vector<texIterator> usedTextures =
+	{
+		/* 0 */  textures["squares"],
 
-	singleChunk.computeTerrain(true);
+		/*1 - 4*/textures["green_a"], textures["green_n"], textures["green_s"], textures["green_r"],
+		/*5 - 8*/textures["grass_a"], textures["grass_n"], textures["grass_s"], textures["grass_r"],
+
+		/*9 -12*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"],
+		/*13-16*/textures["dryRock_a"], textures["dryRock_n"], textures["dryRock_s"], textures["dryRock_r"],
+
+		/*17-20*/textures["dunes_a"], textures["dunes_n"], textures["dunes_s"], textures["dunes_r"],
+		/*21-24*/textures["sand_a"], textures["sand_n"], textures["sand_s"], textures["sand_r"],
+		/*25-28*/textures["cobble_a"], textures["cobble_n"], textures["cobble_s"], textures["cobble_r"],
+
+		/* 29 */ textures["sea_n"],
+		/*30-33*/textures["snow_a"],textures["snow_n"], textures["snow_s"], textures["snow_r"],
+		/*34-36*/textures["snow2_a"], textures["snow2_n"], textures["snow2_s"],
+		/*37-40*/textures["tech_a"], textures["tech_n"], textures["tech_s"], textures["tech_r"]
+	};
+
+	singleChunk.computeTerrain(true, 1.f);
 	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr);
 }
 
@@ -718,18 +742,32 @@ void setReticule(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	std::vector<VertexPT> v_ret;
-	std::vector<uint16_t> i_ret;
-	size_t numVertex = getPlaneNDC(v_ret, i_ret, 0.2f, 0.2f);		// LOOK dynamic adjustment of reticule size when window is resized
+	//vertexDestination = std::vector<VertexPT>{
+	//VertexPT(glm::vec3(-horSize / 2, -vertSize / 2, 0.f), glm::vec2(0, 0)),
+	//VertexPT(glm::vec3(-horSize / 2,  vertSize / 2, 0.f), glm::vec2(0, 1)),
+	//VertexPT(glm::vec3(horSize / 2,  vertSize / 2, 0.f), glm::vec2(1, 1)),
+	//VertexPT(glm::vec3(horSize / 2, -vertSize / 2, 0.f), glm::vec2(1, 0)) };
+	//
+	//indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
+
+	float siz = 0.1;
+	float v_ret[4 * 5] =
+	{
+		-siz,-siz, 0,  0, 0,
+		-siz, siz, 0,  0, 1,
+		 siz, siz, 0,  1, 1,
+		 siz,-siz, 0,  1, 0
+	};
+	std::vector<uint16_t> i_ret = { 0,1,3, 1,2,3 };
 
 	std::vector<texIterator> usedTextures = { textures["reticule"] };
 
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_ret.data(), i_ret, true);
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
 
 	assets["reticule"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
-		1, 0,
+		1, vec4size,				// aspect ratio (float)
 		0,
 		usedTextures,
 		shaders["v_hud"], shaders["f_hud"],

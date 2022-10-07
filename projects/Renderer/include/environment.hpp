@@ -81,14 +81,14 @@ class VulkanEnvironment
 
 	bool printInfo = true;
 
-	const uint32_t WIDTH  = 1920 / 2;	// <<< Does this change when recreating swap chain?
-	const uint32_t HEIGHT = 1080 / 2;
-
 	const std::vector<const char*> requiredValidationLayers = {	"VK_LAYER_KHRONOS_validation" };
 	const std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };	//!< Swap chain: Queue of images that are waiting to be presented to the screen. Our application will acquire such an image to draw to it, and then return it to the queue. Its general purpose is to synchronize the presentation of images with the refresh rate of the screen.
 
 public:
 	// Public parameters:
+
+	uint32_t width      = 1920 / 2;		// <<< Does this change when recreating swap chain?
+	uint32_t height     = 1080 / 2;
 
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
 	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).

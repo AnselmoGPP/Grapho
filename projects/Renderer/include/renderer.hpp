@@ -202,6 +202,7 @@ public:
 	size_t getFrameCount();
 	size_t getModelsCount();
 	size_t getCommandsCount();
+	float  getAspectRatio();
 };
 
 #endif

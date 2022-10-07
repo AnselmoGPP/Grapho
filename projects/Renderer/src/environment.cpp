@@ -47,7 +47,7 @@ void VulkanEnvironment::initWindow()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);	// Tell GLFW not to create an OpenGL context
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);		// Enable resizable window (default)
 
-	window = glfwCreateWindow((int)WIDTH, (int)HEIGHT, "Grapho", nullptr, nullptr);
+	window = glfwCreateWindow((int)width, (int)height, "Grapho", nullptr, nullptr);
 	//glfwSetWindowUserPointer(window, this);								// Input class has been set as windowUserPointer
 	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// This callback has been set in Input
 

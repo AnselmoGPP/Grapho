@@ -105,7 +105,6 @@ public:
 
 	virtual void computeTerrain(bool computeIndices, float textureFactor = 1.f) = 0;
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
-	virtual void debug() { std::cout << "Nothing" << std::endl; };
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
 	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
@@ -161,17 +160,6 @@ public:
 
 	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
-
-	void debug() override
-	{
-		//std::cout << baseCenter.x << ", " << baseCenter.y << ", " << baseCenter.z << " / "
-		//	<< groundCenter.x << ", " << groundCenter.y << ", " << groundCenter.z << " / "
-		//	<< stride << " / " << numHorVertex << '/' << numVertVertex << " / " 
-		//	<< horSize << ", " << vertSize << " / "
-		//	<< nucleus.x << ", " << nucleus.y << ", " << nucleus.z << " / "
-		//	<< cubePlane.x << ", " << cubePlane.y << ", " << cubePlane.z << " / "
-		//	<< radius << std::endl;
-	}
 };
 
 
