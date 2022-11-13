@@ -30,8 +30,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
     model = renderer.newModel(
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), 2 * LightPosDir (2*vec4)
-        vec4size + 2 * sizeof(LightProps),                      // Time (float), 2 * LightProps (6*vec4)
+        1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4)
+        vec4size + 2 * sizeof(LightProps),                      // Time (float), n * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         false);
@@ -61,33 +61,31 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
     modelOrdered = true;
 }
 
-void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time)
+void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter)
 {
     if (!modelOrdered) return;
 
-    int bytes = 0;
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         uint8_t* dest = model->vsDynUBO.getUBOptr(0);
-        //memcpy(dest + bytes, &modelMatrix(), mat4size);
-        bytes += mat4size;
-        memcpy(dest + bytes, &view, mat4size);
-        bytes += mat4size;
-        memcpy(dest + bytes, &proj, mat4size);
-        bytes += mat4size;
-        //memcpy(dest + bytes, &modelMatrixForNormals(modelMatrix()), mat4size);
-        bytes += mat4size;
-        memcpy(dest + bytes, &camPos, vec3size);
-        bytes += vec4size;
-        memcpy(dest + bytes, lights.posDir, lights.posDirBytes);
-        //bytes += lights.posDirBytes;
+        //memcpy(dest, &modelMatrix(), mat4size);
+        dest += mat4size;
+        memcpy(dest, &view, mat4size);
+        dest += mat4size;
+        memcpy(dest, &proj, mat4size);
+        dest += mat4size;
+        //memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
+        dest += mat4size;
+        memcpy(dest, &camPos, vec3size);
+        dest += vec4size;
+        memcpy(dest, lights.posDir, lights.posDirBytes);
+        //dest += lights.posDirBytes;
 
-        bytes = 0;
         dest = model->fsUBO.getUBOptr(0);
-        memcpy(dest + bytes, &time, sizeof(time));
-        bytes += vec4size;
-        memcpy(dest + bytes, lights.props, lights.propsBytes);
-        //bytes += lights.propsBytes;
+        memcpy(dest, &time, sizeof(time));
+        dest += vec4size;
+        memcpy(dest, lights.props, lights.propsBytes);
+        //dest += lights.propsBytes;
     }
 }
 

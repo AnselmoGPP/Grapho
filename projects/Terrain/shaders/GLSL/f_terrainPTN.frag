@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define numLights 2
+#define NUMLIGHTS 2
 
 struct Light
 {
@@ -45,13 +45,13 @@ layout(set = 0, binding = 1) uniform ubobject
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[41];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0) in vec3  inFragPos;
-layout(location = 1) in vec2  inUVCoord;
-layout(location = 2) in vec3  inCamPos;
-layout(location = 3) in float inSlope;
-layout(location = 4) in LightPD inLight[numLights];
+layout(location = 0) in vec3    inFragPos;
+layout(location = 1) in vec2    inUVCoord;
+layout(location = 2) in vec3    inCamPos;
+layout(location = 3) in float   inSlope;
+layout(location = 4) in LightPD inLight[NUMLIGHTS];
 
-layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
+layout(location = 0) out vec4   outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
 // Declarations:
 
@@ -277,7 +277,7 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 
 	vec3 result = vec3(0,0,0);
 
-	for(int i = 0; i < numLights; i++)		// for each light source
+	for(int i = 0; i < NUMLIGHTS; i++)		// for each light source
 	{
 		if(ubo.light[i].type == 1)
 			result += directionalLightColor	(i, albedo, normal, specularity, roughness);

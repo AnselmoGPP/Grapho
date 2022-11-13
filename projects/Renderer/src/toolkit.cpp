@@ -6,7 +6,7 @@
 #include "toolkit.hpp"
 
 
-double pi = 3.14159265359;
+double pi = 3.141592653589793238462;
 
 float sphereArea(float radius) { return 4 * pi * radius * radius; }
 

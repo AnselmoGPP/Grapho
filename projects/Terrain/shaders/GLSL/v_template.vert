@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define numLights 2
+#define NUMLIGHTS 2
 
 struct LightPD
 {
@@ -18,34 +18,44 @@ layout(set = 0, binding = 0) uniform ubobject {
 	LightPD light[2];	// n * (2 * vec4)
 } ubo;
 
-layout(location = 0) in vec3 inVertPos;
-layout(location = 1) in vec2 inUVCoord;
-layout(location = 2) in vec3 inNormal;
+layout(location = 0) in vec3     inVertPos;
+layout(location = 1) in vec2     inUVCoord;
+layout(location = 2) in vec3     inNormal;
 
-layout(location = 0) out vec3 outVertPos;	// Each location has 16 bytes
-layout(location = 1) out vec2 outUVCoord;
-layout(location = 2) out vec3 outCamPos;
-layout(location = 3) out float outSlope;
-layout(location = 4) out LightPD outLight[numLights];
+layout(location = 0) out vec3    outVertPos;	// Each location has 16 bytes
+layout(location = 1) out vec3    outPos;
+layout(location = 2) out vec2    outUVCoord;
+layout(location = 3) out vec3    outCamPos;
+layout(location = 4) out vec3    outNormal;
+layout(location = 5) out float   outSlope;
+layout(location = 6) out float   outDist;
+layout(location = 7) out float   outHeight;
+layout(location = 8) out LightPD outLight[NUMLIGHTS];
 
 void main()
 {
 	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);
+	
+	outPos      = inVertPos;
 	outUVCoord  = inUVCoord;
-	vec3 normal = mat3(ubo.normalMatrix) * inNormal;
-	outSlope    = dot( normalize(normal), normalize(vec3(normal.xy, 0.0)) );
+	outNormal   = mat3(ubo.normalMatrix) * inNormal;
+	vec3 diff   = inVertPos - ubo.camPos.xyz;
+	outDist     = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+	outHeight   = sqrt(inVertPos.x * inVertPos.x + inVertPos.y * inVertPos.y + inVertPos.z * inVertPos.z);
+	//outSlope  = dot( normalize(outNormal), normalize(vec3(outNormal.xy, 0.0)) );	// Plain surface
+	outSlope    = 1. - dot(outNormal, normalize(inVertPos - vec3(0,0,0)));			// Sphere surface. Note: vec3(0,0,0) == planetCenter
 	
 	// TBN matrix:
 	
-	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), normal), 0.f)));	// X
-	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(normal, tangent), 0.f)));		// Y
-	mat3 TBN       = transpose(mat3(tangent, bitangent, normal));							// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
+	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), outNormal), 0.f)));	// X
+	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(outNormal, tangent), 0.f)));		// Y
+	mat3 TBN       = transpose(mat3(tangent, bitangent, outNormal));						// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
 	
 	// Values transformed to tangent space:
 	
 	outVertPos = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));								// inverted TBN transforms vectors to tangent space
 	outCamPos  = TBN * ubo.camPos.xyz;
-	for(int i = 0; i < numLights; i++) {
+	for(int i = 0; i < NUMLIGHTS; i++) {
 		outLight[i].position.xyz  = TBN * ubo.light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = TBN * normalize(ubo.light[i].direction.xyz);			// for directional light
 	}

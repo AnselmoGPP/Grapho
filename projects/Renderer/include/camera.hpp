@@ -10,6 +10,8 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "GLFW/glfw3.h"
 
+#include "physics.hpp"
+
 
 /**
 * @brief ADT. Processes input and calculates the view and projection matrices.
@@ -51,8 +53,8 @@ public:
  
 protected:
     // Camera vectors
-    glm::vec3 right;        //!< camera right vector
     glm::vec3 front;        //!< camera front vector
+    glm::vec3 right;        //!< camera right vector
     glm::vec3 camUp;        //!< camera up vector (used in lookAt()) (computed from cross(right, front))
 
     // Controls
@@ -84,8 +86,8 @@ protected:
      */
     virtual void ProcessMouseScroll(float deltaTime) = 0;
 
-    /// Compute Front, Right and camUp from Euler angles
-    virtual void updateCameraVectors() = 0;
+    /// Compute Front, Right and camUp from Euler angles (yaw, pitch, roll). 
+    virtual void updateCameraVectors();
 };
 
 
@@ -100,7 +102,6 @@ private:
     void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseScroll(float deltaTime) override;
-    void updateCameraVectors() override;
 };
 
 
@@ -117,16 +118,28 @@ private:
 };
 
 
+class PlaneCam2 : public Camera
+{
+public:
+    PlaneCam2(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane);
+
+private:
+    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseScroll(float deltaTime) override;
+};
+
+
 class SphereCam : public Camera
 {
 public:
-    SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 worldUp, glm::vec3 nucleus, float radius, float longitude, float latitude);
+    SphereCam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 worldUp, glm::vec3 nucleus, float radius, float latitude, float longitude);
 
     glm::mat4 GetViewMatrix() override;
 
 private:
-    float radius;
     glm::vec3 nucleus;
+    float radius;
     float latitude;
     float longitude;
     glm::vec3 worldUp;      //!< World up vector (used for elevating/descending to/from the sky)
@@ -134,7 +147,46 @@ private:
     void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseScroll(float deltaTime) override;
-    void updateCameraVectors() override;
 };
+
+
+/// Class for detecting when a key has been began to be pressed.
+class PressBegin
+{
+    int GLFW_KEY;
+    bool wasPressed;
+
+public:
+    PressBegin(int GLFW_KEY);
+
+    bool isFirstPress(GLFWwindow* window);
+};
+
+extern class Noiser;
+
+class PlanetFPcam : public Camera
+{
+public:
+    PlanetFPcam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 nucleus, float radius, float latitude, float longitude);
+
+private:
+    const glm::vec3 nucleus;
+    float radius;
+    glm::vec3 worldUp;          //!< Points to planet's sky. Used for jumps
+    PlanetParticle camParticle; //!< Manages physics of the camera
+
+    PressBegin spaceKey;        //!< Used for checking whether the space key has started to be pressed
+    bool onFloor;               //!< True if camera lies on the floor
+    float maxAngle;             //!< Maximum angle at which camera can move the pitch
+
+    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
+    void ProcessMouseScroll(float deltaTime) override;
+    void updateCameraVectors() override;
+
+    //void updateLatLon(glm::vec3 pos);
+};
+
+
 
 #endif

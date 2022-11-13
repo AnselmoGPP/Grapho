@@ -108,7 +108,7 @@ public:
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
 	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	unsigned getLayer() { return layer; }
 	glm::vec3 getGroundCenter() { return groundCenter; }

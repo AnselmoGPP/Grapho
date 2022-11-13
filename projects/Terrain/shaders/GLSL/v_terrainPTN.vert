@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define numLights 2
+#define NUMLIGHTS 2
 
 struct Light
 {
@@ -33,15 +33,15 @@ layout(set = 0, binding = 0) uniform ubobject {
 	LightPD light[2];		// 2 * (vec4 * 2)
 } ubo;
 
-layout(location = 0) in vec3 inVertPos;
-layout(location = 1) in vec2 inUVCoord;
-layout(location = 2) in vec3 inNormal;
+layout(location = 0) in vec3     inVertPos;
+layout(location = 1) in vec2     inUVCoord;
+layout(location = 2) in vec3     inNormal;
 
-layout(location = 0) out vec3 outVertPos;	// Each location has 16 bytes
-layout(location = 1) out vec2 outUVCoord;
-layout(location = 2) out vec3 outCamPos;
-layout(location = 3) out float outSlope;
-layout(location = 4) out LightPD outLight[numLights];
+layout(location = 0) out vec3    outVertPos;	// Each location has 16 bytes
+layout(location = 1) out vec2    outUVCoord;
+layout(location = 2) out vec3    outCamPos;
+layout(location = 3) out float   outSlope;
+layout(location = 4) out LightPD outLight[NUMLIGHTS];
 
 void main()
 {
@@ -59,7 +59,7 @@ void main()
 	// Values transformed to tangent space:
 	outVertPos 			      = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));				// inverted TBN transforms vectors to tangent space
 	outCamPos                 = TBN * ubo.camPos.xyz;
-	for(int i = 0; i < numLights; i++) {
+	for(int i = 0; i < NUMLIGHTS; i++) {
 		outLight[i].position.xyz  = TBN * ubo.light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = TBN * normalize(ubo.light[i].direction.xyz);			// for directional light
 	}

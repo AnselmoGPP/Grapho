@@ -1,0 +1,12 @@
+Taken from:
+https://github.com/bulletphysics/bullet3
+
+Useful libraries:
+	Bullet3Collision || BulletCollision
+	Bullet3Dynamics || BulletDynamics
+	Bullet3Common
+	LinearMath
+
+Tutorial & docs:
+https://www.kodeco.com/2606-bullet-physics-tutorial-getting-started
+https://github.com/bulletphysics/bullet3/tree/master/docs

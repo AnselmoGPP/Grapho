@@ -113,11 +113,12 @@ app.run();
 
 <h4>Dependencies of these projects:</h4>
 
-- **GLFW** (Window system and inputs)
-- **GLM** (Mathematics library)
-- **stb_image** (Image loader)
-- **tinyobjloader** (Load vertices and faces from an OBJ file)
-- **Vulkan SDK** (Set of repositories useful for Vulkan development) (installed in platform-specfic directories)
+- **GLFW** (Window system and inputs) ([Link](https://github.com/glfw/glfw))
+- **GLM** (Mathematics library) ([Link](https://github.com/g-truc/glm))
+- **stb_image** (Image loader) ([Link](https://github.com/nothings/stb))
+- **tinyobjloader** (Load vertices and faces from an OBJ file) ([Link](https://github.com/tinyobjloader/tinyobjloader))
+- **bullet3** (Physics) ([Link](https://github.com/bulletphysics/bullet3))
+- **Vulkan SDK** ([Link](https://vulkan.lunarg.com/sdk/home)) (Set of repositories useful for Vulkan development) (installed in platform-specfic directories)
   - Vulkan loader (Khronos)
   - Vulkan validation layer (Khronos)
   - Vulkan extension layer (Khronos)

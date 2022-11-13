@@ -52,7 +52,7 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
-	std::cout << __func__ << "()" << std::endl;
+	//std::cout << __func__ << "()" << std::endl;
 	commandsCount = 0;
 
 	// Commmand buffer allocation

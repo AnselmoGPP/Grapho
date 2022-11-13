@@ -1,10 +1,13 @@
 TODO:
-	Review vertex.hpp classes
-	numLights in Chunk::render() ?
-	numLights passed to vertex shader
+	All angles in radians
+	Document: Vulkan system, loading thread system, Grid system
 	Shader template & Fix other shaders using the template
+	Optimize fragment shader (light elements...)
+	Pass numLights to Chunk, DynamicGrid, etc.
+	Review vertex.hpp classes
 	Clouds
 	Don't forget to flip textures around X axis
+	Delete elements to load that are no longer required to load (models, textures)
 	Move skybox with the sun
 	Create Light objects containing 2 structures (one with data for vertex shader and other for fragment shader)
 	Optimize shaders (normalization...)
@@ -15,7 +18,7 @@ TODO:
 	GUI
 	FPS > 30
 	Profiling
-	learnopengl.com / Simon
+	learnopengl.com / SimonDev
 	Later: Readme.md
 	Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
 	Later: Compute MVP matrix and pass it to the shader
@@ -23,6 +26,12 @@ TODO:
 	Scheme pictures
 	Computer graphics article
 	Read specs & tutorial
+
+Not required:
+	
+	Spherical chunks borders are not perfect (acceptable bug)
+
+----------------------------------------
 
 	- Axis
 	- Sun billboard (transparencies)
@@ -115,6 +124,12 @@ BUGS:
 	Camera jump when starting to move camera.
 	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
 	Bug? In updateStates: render() & set UBOs > move models > Copy UBOs to GPU. Problem: UBOs must be set immediatly after render() because, if it's rendered too fast, the model could be rendered before moving models.
+	When ESC pressed, a bug arises if modelsToLoad has still models when closing
+	Fragment shader (f_planet.frag): Artifact lines
+	Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
+	Check that normal maps are correctly put in each face of the planet during Triplanar mapping (I suspect they may not be)
+	BUG: PRESS ESCAPE JUST BEFORE RENDERING
+	Bug when resizing window (crashes)
 
 --------------------------------------------------------------------------
 

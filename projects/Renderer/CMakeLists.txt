@@ -40,6 +40,7 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	src/loaddata.cpp
 	src/timer.cpp
 	src/toolkit.cpp
+	src/physics.cpp
 	src/commons.cpp
 
 	include/renderer.hpp
@@ -53,6 +54,7 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	include/loaddata.hpp
 	include/timer.hpp
 	include/toolkit.hpp
+	include/physics.hpp
 	include/commons.hpp
 
 	../../Readme.md
@@ -62,11 +64,13 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 
 TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	include
+
 	C:/VulkanSDK/1.3.211.0/Include
 	../../extern/glfw/glfw-3.3.2/include
 	../../extern/glm/glm-0.9.9.5
 	../../extern/stb
 	../../extern/tinyobjloader
+	../../extern/BulletPhysics/bullet3/src
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
 	#../../extern/imgui/imgui-1.72b
 	#../../extern/eigen-3.3.8
