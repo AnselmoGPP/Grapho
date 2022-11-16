@@ -26,6 +26,8 @@
 	DynamicGrid (QuadNode)
 		TerrainGrid (PlainChunk)
 		PlanetGrid (SphericalChunk)
+
+	Planet (PlanetGrid)
 */
 
 // -------------------------------
@@ -243,6 +245,8 @@ class PlanetGrid : public DynamicGrid
 public:
 	PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
 
+	float getRadius();
+
 private:
 	float radius;
 	glm::vec3 nucleus;
@@ -251,6 +255,59 @@ private:
 
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer) override;
 	std::tuple<float, float, float> closestCenter() override;
+};
+
+
+// Planet ----------------------------------------------------------------
+
+/// Six SphericalChunk objects that make up a planet.
+struct BasicPlanet
+{
+	BasicPlanet(Renderer& renderer, Noiser& noiseGenerator, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus);
+
+	void computeAndRender(std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);
+	void updateUbos(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);
+
+	const float radius;
+	const glm::vec3 nucleus;
+
+private:
+	Noiser noiseGen;
+	SphericalChunk sphereChunk_pX;
+	SphericalChunk sphereChunk_nX;
+	SphericalChunk sphereChunk_pY;
+	SphericalChunk sphereChunk_nY;
+	SphericalChunk sphereChunk_pZ;
+	SphericalChunk sphereChunk_nZ;
+
+	bool readyForUpdate;
+};
+
+// Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
+struct Planet
+{
+	Planet(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+
+	void add_tex_shad(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);
+	void update_tree_ubo(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);
+
+	const float radius;
+	const glm::vec3 nucleus;
+
+	const float area;	// sqr kms
+
+private:
+	Noiser noiseGen;
+	PlanetGrid planetGrid_pZ;
+	PlanetGrid planetGrid_nZ;
+	PlanetGrid planetGrid_pY;
+	PlanetGrid planetGrid_nY;
+	PlanetGrid planetGrid_pX;
+	PlanetGrid planetGrid_nX;
+
+	bool readyForUpdate;
+
+	float callBack_getFloorHeight(const glm::vec3& pos);	// Callback example
 };
 
 

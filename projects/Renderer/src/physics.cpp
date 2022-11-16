@@ -23,11 +23,9 @@ PhysicsWorld::~PhysicsWorld()
 	delete broadphase;
 }
 
+// BulletPhysics ----------------------------------------------------------
 
-PhysicsObject::PhysicsObject()
-{
-
-}
+PhysicsObject::PhysicsObject() { }
 
 void PhysicsObject::createShapeWithVertices(std::vector<float> &vertices, bool convex)
 {
@@ -84,10 +82,12 @@ void PhysicsObject::createBodyWithMass(float mass)
 }
 
 
-// ----------------------------------------------------------
+// Particle ----------------------------------------------------------
+
+float getFHeight(const glm::vec3& pos) { return 1050; }
 
 Particle::Particle(glm::vec3 position, glm::vec3 direction, float speed, float gValue, glm::vec3 gDirection)
-	: pos(position), speedVecNP(0,0,0), speedVecP(0,0,0), gVec(gDirection * gValue), onFloor(false) { }
+	: pos(position), speedVecNP(0,0,0), speedVecP(0,0,0), gVec(gDirection * gValue), onFloor(false), getFloorHeight(getFHeight) { }
 
 Particle::~Particle() { }
 
@@ -101,13 +101,16 @@ void Particle::setSpeedNP(glm::vec3 speedVector) { speedVecNP = speedVector; }
 
 void Particle::setSpeedP(glm::vec3 speedVector) { speedVecP += speedVector; }
 
-void Particle::updateState(float deltaTime, float floorHeight)
+void Particle::setCallback(float(*getFloorHeight)(const glm::vec3& pos)) { this->getFloorHeight = getFloorHeight; }
+
+void Particle::updateState(float deltaTime)
 {
 	// Get new position
 	// UARM: Uniformly Accelerated Rectilinear Motion ( s = 0.5 g t^2 + v t + s0 ). Links: https://www.youtube.com/watch?v=9NoHru1SlwQ, https://stackoverflow.com/questions/72686481/planet-position-by-time
 	glm::vec3 newPos = pos + (speedVecNP + speedVecP) * deltaTime + 0.5f * gVec * (deltaTime * deltaTime);	
 
 	// Adjust position to ground
+	float floorHeight = getFloorHeight(newPos);
 	if (pos.z < floorHeight) 
 	{
 		pos.z = floorHeight;
@@ -118,10 +121,10 @@ void Particle::updateState(float deltaTime, float floorHeight)
 	{
 		pos = newPos;
 		speedVecP += gVec * deltaTime;
-		onFloor = false;
+		if(pos.z < (floorHeight + 0.15f)) onFloor = true;		// Allows to jump before touching ground
+		else onFloor = false;
 	}
 }
-
 
 // ----------------------------------------------------------
 
@@ -134,7 +137,7 @@ void PlanetParticle::setPos(glm::vec3 position)
 	gVec = glm::normalize(nucleus - position) * g;
 }
 
-void PlanetParticle::updateState(float deltaTime, float floorHeight)
+void PlanetParticle::updateState(float deltaTime)
 {
 	// Get new position
 	// UARM: Uniformly Accelerated Rectilinear Motion ( s = 0.5 g t^2 + v t + s0 ). Links: https://www.youtube.com/watch?v=9NoHru1SlwQ, https://stackoverflow.com/questions/72686481/planet-position-by-time
@@ -146,6 +149,7 @@ void PlanetParticle::updateState(float deltaTime, float floorHeight)
 	glm::vec3 gDir = glm::normalize(nucleus - newPos);
 
 	gVec = glm::normalize(nucleus - newPos) * g;
+	float floorHeight = getFloorHeight(newPos);
 
 	if (newHeight < floorHeight) 
 	{
@@ -157,7 +161,7 @@ void PlanetParticle::updateState(float deltaTime, float floorHeight)
 	{
 		pos = newPos;
 		speedVecP += gVec * deltaTime;
-		onFloor = false;
+		onFloor = false;				// if (newHeight < (floorHeight + 0.15f)) onFloor = true; else onFloor = false;	// Allows to jump before touching ground
 	}
 
 	speedVecNP = { 0,0,0 };
@@ -226,4 +230,12 @@ glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle)
 		2 * (q3 * q2 + q0 * q1),
 		q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3
 	);
+}
+
+
+// Others ----------------------------------------------------------
+
+void printV(std::string begin, glm::vec3 vec)
+{
+	std::cout << begin << vec.x << ", " << vec.y << ", " << vec.z << std::endl;
 }

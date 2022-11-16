@@ -18,6 +18,8 @@ float dayTime;
 float sunAngDist = 3.14 / 10.;
 Light sunLight;
 
+// Cameras --------------------------------------------------
+
 FreePolarCam camera_1(
 	glm::vec3(0.f, 0.f, 20.0f),		// camera position
 	50.f, 0.001f, 5.f,				// keyboard/mouse/scroll speed
@@ -32,7 +34,7 @@ SphereCam camera_2(
 	0.1f, 5000.f,					// near & far view planes
 	glm::vec3(0.f, 0.f, 1.f),		// world up
 	glm::vec3(0.f, 0.f, 0.f),		// nucleus
-	2000.f,							// radius
+	4000.f,							// radius
 	45.f, 45.f );					// latitude & longitude
 
 PlaneCam2 camera_3(
@@ -43,9 +45,9 @@ PlaneCam2 camera_3(
 	0.1f, 5000.f );					// near & far view planes
 
 PlanetFPcam camera_4(
-	50.f, 0.001f, 5.f,				// keyboard/mouse/scroll speed
+	10.f, 0.001f, 5.f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	0.1f, 5000.f,					// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
-	1900,							// radius
-	0.f, 90.f );					// latitude & longitude
+	1000,							// radius
+	0.f, 45.f );					// latitude & longitude

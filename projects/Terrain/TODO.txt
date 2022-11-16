@@ -1,4 +1,17 @@
 TODO:
+	-Problem with light(normals) in some faces of the cube sphere.Test with other normal maps
+	-Abstract User input and make it visible for everybody (and fix it)
+	Steps: Physics calculations should be done in each step of X length
+	Walking only permitted on certain levels of slopes (decrease speed exponentially or similar) 
+	Rozamiento / Fuerza instead of speed
+	Slopes are longer steps than plains
+
+	Shader:
+		Optimize shader lightning
+		Can some job be done in the vertex shader?
+		Prevent from computing sqrt in vertex shader? Maybe it is better for a logarithmic texture scaling?
+
+	Paths using Perlin noise
 	All angles in radians
 	Document: Vulkan system, loading thread system, Grid system
 	Shader template & Fix other shaders using the template
@@ -29,7 +42,20 @@ TODO:
 
 Not required:
 	
-	Spherical chunks borders are not perfect (acceptable bug)
+	Spherical chunks borders (for texture scaling) are not perfect (acceptable bug)
+
+BUGS:
+	Sometimes camera continue moving backwards/left indefinetely.
+	Camera jump when starting to move camera.
+	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
+	Bug? In updateStates: render() & set UBOs > move models > Copy UBOs to GPU. Problem: UBOs must be set immediatly after render() because, if it's rendered too fast, the model could be rendered before moving models.
+	When ESC pressed, a bug arises if modelsToLoad has still models when closing
+	Fragment shader (f_planet.frag): Artifact lines
+	Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
+	Check that normal maps are correctly put in each face of the planet during Triplanar mapping (I suspect they may not be)
+	BUG: PRESS ESCAPE JUST BEFORE RENDERING
+	Bug when resizing window (crashes)
+	Make terrain too big makes chunks not to update (maybe because chunk's center is too far)
 
 ----------------------------------------
 
@@ -118,18 +144,6 @@ Model & Data system:
 	Unique elements (always): Vertices, indices, shaders
 	Unique elements (sometimes): Color buffer, texture coords,
 	Shared elements (sometimes): UBO class, Textures, vertex struct(Vertices, color, textCoords)
-
-BUGS:
-	Sometimes camera continue moving backwards/left indefinetely.
-	Camera jump when starting to move camera.
-	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
-	Bug? In updateStates: render() & set UBOs > move models > Copy UBOs to GPU. Problem: UBOs must be set immediatly after render() because, if it's rendered too fast, the model could be rendered before moving models.
-	When ESC pressed, a bug arises if modelsToLoad has still models when closing
-	Fragment shader (f_planet.frag): Artifact lines
-	Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
-	Check that normal maps are correctly put in each face of the planet during Triplanar mapping (I suspect they may not be)
-	BUG: PRESS ESCAPE JUST BEFORE RENDERING
-	Bug when resizing window (crashes)
 
 --------------------------------------------------------------------------
 

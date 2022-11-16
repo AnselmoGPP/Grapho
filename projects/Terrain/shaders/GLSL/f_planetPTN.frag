@@ -55,6 +55,7 @@ vec3  applyLinearFog  (vec3 fragColor, vec3 fogColor, float minDist, float maxDi
 float applyLinearFog  (float value, float fogValue, float minDist, float maxDist);
 vec3  applyFog		  (vec3 fragColor, vec3 fogColor);
 float applyFog		  (float value,   float fogValue);
+float getTexScaling	  (float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2);
 float modulus		  (float dividend, float divider);		// modulus(%) = a - (b * floor(a/b))
 
 void getTexture_Sand(inout vec3 result);
@@ -107,73 +108,62 @@ void getTexture_Sand(inout vec3 result)
 
 void getTexture_GrassRock(inout vec3 result)
 {
-	// Can some job be done in the vertex shader?
-	// Prevent from computing sqrt in vertex shader? Maybe it is better for a logarithmic texture scaling?
-	
-	float tf = 50;									// Texture factor
-	//float tf = tf + 2 * tf * floor(inDist/500);	// Scale texture factor (linear)
-	//float tf = tf + tf * floor(sqrt(inDist)/5);	// Scale texture factor (quadratic)
-	float sqrtDist = sqrt(inDist/100);				// Scale texture factor (quadratic & fuzzy). // The divisor (100) sets the frequency of scaling updates.
-	float floorSqrtDist = floor(sqrtDist);
-	float tf1 =  tf + tf * floor(sqrt(floorSqrtDist * floorSqrtDist - 1));	// Increases scale or decreases with distance? Note: sqrt(-1)==0
-	tf = tf + tf * floorSqrtDist;
-	
+	float tf[2];
+	float ratio = getTexScaling(10, 40, 0.1, tf[0], tf[1]);	// initialTF, stepSize, mixRange, resultingTFs
+
 	vec3 grass  = getFragColor(
-						triplanarTexture(texSampler[5], tf).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[6], tf).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[7], tf).rgb,
-						triplanarTexture(texSampler[8], tf).r * 255 );
-	
-	vec3 rock = getFragColor(
-						triplanarTexture(texSampler[9], tf).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[10], tf).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[11], tf).rgb,
-						triplanarTexture(texSampler[12], tf).r * 255 );
-	
-	vec3 snow = getFragColor(
-						triplanarTexture(texSampler[34], tf).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[35], tf).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[36], tf).rgb,
-						triplanarTexture(texSampler[37], tf).r * 255 );
+						triplanarTexture(texSampler[5], tf[0]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[6], tf[0]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[7], tf[0]).rgb,
+						triplanarTexture(texSampler[8], tf[0]).r * 255 );
 		
 	vec3 grass1  = getFragColor(
-						triplanarTexture(texSampler[5], tf1).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[6], tf1).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[7], tf1).rgb,
-						triplanarTexture(texSampler[8], tf1).r * 255 );
+						triplanarTexture(texSampler[5], tf[1]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[6], tf[1]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[7], tf[1]).rgb,
+						triplanarTexture(texSampler[8], tf[1]).r * 255 );
+	
+	vec3 rock = getFragColor(
+						triplanarTexture(texSampler[9], tf[0]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[10], tf[0]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[11], tf[0]).rgb,
+						triplanarTexture(texSampler[12], tf[0]).r * 255 );
 				
 	vec3 rock1 = getFragColor(
-						triplanarTexture(texSampler[9], tf1).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[10], tf1).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[11], tf1).rgb,
-						triplanarTexture(texSampler[12], tf1).r * 255 );
-	
+						triplanarTexture(texSampler[9], tf[1]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[10], tf[1]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[11], tf[1]).rgb,
+						triplanarTexture(texSampler[12], tf[1]).r * 255 );
+		
+	vec3 snow = getFragColor(
+						triplanarTexture(texSampler[34], tf[0]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[35], tf[0]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[36], tf[0]).rgb,
+						triplanarTexture(texSampler[37], tf[0]).r * 255 );
+						
 	vec3 snow1 = getFragColor(
-						triplanarTexture(texSampler[34], tf1).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[35], tf1).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[36], tf1).rgb,
-						triplanarTexture(texSampler[37], tf1).r * 255 );	
+						triplanarTexture(texSampler[34], tf[1]).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[35], tf[1]).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[36], tf[1]).rgb,
+						triplanarTexture(texSampler[37], tf[1]).r * 255 );	
 
-	float mixRange = 0.1 * floorSqrtDist;									// The multiplier (0.1) sets length of the mixing range between textures of different scale
-	float ratio = clamp((sqrtDist - floorSqrtDist) / mixRange, 0.f, 1.f);	// The closer to 0, the bigger the range
-	
 	grass = (ratio) * grass + (1-ratio) * grass1;
 	rock  = (ratio) * rock  + (1-ratio) * rock1;
 	snow  = (ratio) * snow  + (1-ratio) * snow1;	// <<< BUG: Artifact lines between textures of different scale. Possible cause: Textures are get with non-constant tf values, which determine the texture scale. Possible solutions: (1) Not using mipmaps (and maybe AntiAliasing & Anisotropic filthering); (2) Getting all textures of all scales used; (3) Maybe using dFdx() & dFdy() properly. See more in: https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162
 
 	// Grass + Rock:
 
-	float slopeThreshold = 0.05;          // grass-rock slope threshold
-    mixRange             = 0.02;          // threshold mixing range (slope range)
+	float slopeThreshold = 0.22;          // grass-rock slope threshold
+    float mixRange       = 0.02;          // threshold mixing range (slope range)
 	
 	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
 	result = rock * (ratio) + grass * (1-ratio);
 
 	// Snow:
-
+	float radius = 2000;
 	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
 	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
-	float lat[2]      = {700, 3000};
+	float lat[2]      = {radius * 0.7, 2 * radius};
 	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);
 	mixRange          = 0.015;										// slope threshold mixing range
 	
@@ -183,7 +173,6 @@ void getTexture_GrassRock(inout vec3 result)
 
 
 // Tools ---------------------------------------------------------------------------------------------
-
 
 vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
@@ -452,6 +441,29 @@ float applyFog(float value, float fogValue)
 	
 	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);
 	return value * attenuation + fogValue * (1. - attenuation);
+}
+
+float getTexScaling(float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2)
+{
+	// initialTexFactor: Starting texture factor
+	// stepSize: Size of each step (meters)
+	// mixRange: Percentage of mix area with respect to max distance
+	
+	// Compute current and next step
+	float linearStep = 1 + floor(inDist / stepSize);	// Linear step [1, inf)
+	float quadraticStep = ceil(log(linearStep) / log(2));
+	float step[2];
+	step[0] = pow (2, quadraticStep);					// Exponential step [0, inf)
+	step[1] = pow(2, quadraticStep + 1);				// Next exponential step
+	
+	// Get texture resolution for each section
+	texFactor1 = step[0] * initialTexFactor;
+	texFactor2 = step[1] * initialTexFactor;
+	
+	// Get mixing ratio
+	float maxDist = stepSize * step[0];
+	mixRange = mixRange * maxDist;						// mixRange is now an absolute value (not percentage)
+	return clamp((maxDist - inDist) / mixRange, 0.f, 1.f);
 }
 
 float modulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }

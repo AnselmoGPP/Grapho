@@ -169,15 +169,19 @@ class PlanetFPcam : public Camera
 public:
     PlanetFPcam(float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, float nearViewPlane, float farViewPlane, glm::vec3 nucleus, float radius, float latitude, float longitude);
 
+    PlanetParticle camParticle; //!< Manages physics of the camera
+
 private:
     const glm::vec3 nucleus;
     float radius;
     glm::vec3 worldUp;          //!< Points to planet's sky. Used for jumps
-    PlanetParticle camParticle; //!< Manages physics of the camera
 
     PressBegin spaceKey;        //!< Used for checking whether the space key has started to be pressed
     bool onFloor;               //!< True if camera lies on the floor
     float maxAngle;             //!< Maximum angle at which camera can move the pitch
+    float xoffset, yoffset;
+    glm::vec3 moveDir;
+    glm::vec3 newCamPos;
 
     void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
     void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;

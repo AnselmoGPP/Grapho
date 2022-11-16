@@ -72,6 +72,8 @@ private:
     float frequency;
     float amplitude;
 
+    float powLinInterp(float base, float exponent);     //!< Uses linear interpolation to get an aproximation of a base raised to a float exponent
+
     /*
     *  @brief Used for testing purposes. Checks the noise values for a size x size terrain and outputs the absolute maximum and minimum
     *  @param size Size of one side of the square that will be tested

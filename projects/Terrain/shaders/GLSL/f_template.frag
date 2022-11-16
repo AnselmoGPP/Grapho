@@ -54,6 +54,7 @@ float applyLinearFog  (float value, float fogValue, float minDist, float maxDist
 vec3  applyFog		  (vec3 fragColor, vec3 fogColor);
 float applyFog		  (float value,   float fogValue);
 float modulus		  (float dividend, float divider);		// modulus(%) = a - (b * floor(a/b))
+float getTexScaling	  (float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2)
 
 // Definitions:
 
@@ -315,6 +316,29 @@ float applyFog(float value, float fogValue)
 	
 	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);
 	return value * attenuation + fogValue * (1. - attenuation);
+}
+
+float getTexScaling(float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2)
+{
+	// initialTexFactor: Starting texture factor
+	// stepSize: Size of each step (meters)
+	// mixRange: Percentage of mix area with respect to max distance
+	
+	// Compute current and next step
+	float linearStep = 1 + floor(inDist / stepSize);	// Linear step [1, inf)
+	float quadraticStep = ceil(log(linearStep) / log(2));
+	float step[2];
+	step[0] = pow (2, quadraticStep);					// Exponential step [0, inf)
+	step[1] = pow(2, quadraticStep + 1);				// Next exponential step
+	
+	// Get texture resolution for each section
+	texFactor1 = step[0] * initialTexFactor;
+	texFactor2 = step[1] * initialTexFactor;
+	
+	// Get mixing ratio
+	float maxDist = stepSize * step[0];
+	mixRange = mixRange * maxDist;						// mixRange is now an absolute value (not percentage)
+	return clamp((maxDist - inDist) / mixRange, 0.f, 1.f);
 }
 
 float modulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }

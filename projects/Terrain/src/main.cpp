@@ -23,6 +23,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void setLights();
 void loadTextures(Renderer& app);
 void loadShaders(Renderer& app);
+float getFloorHeight(const glm::vec3& pos);
 
 void setReticule(Renderer& app);
 void setPoints(Renderer& app);
@@ -34,12 +35,10 @@ void setCottage(Renderer& app);
 void setRoom(Renderer& app);
 void setChunk(Renderer& app);
 void setChunkGrid(Renderer& app);
-void setSphereChunks(Renderer& app);
-void setSphereGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_4, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -47,11 +46,10 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
-std::vector<Light*> lights = { &sunLight };
+//std::vector<Light*> lights = { &sunLight };
 LightSet lightss(2u);
 std::vector<texIterator> usedTextures;	// Package of textures from std::map<> textures
 
-// Terrain
 Noiser noiser_1(	// Desert
 	FastNoiseLite::NoiseType_Cellular,	// Noise type
 	4, 1.5, 0.28f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
@@ -62,31 +60,19 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	8, 10., 0.2f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-	1, 10,//50,							// Scale, Multiplier
-	0,									// Curve degree
+	8, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	3, 1,//120,								// Scale, Multiplier
+	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
 	4952);								// Seed
 
 PlainChunk singleChunk(app, noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-
 TerrainGrid terrGrid(app, noiser_1, lightss, 6400, 21, 8, 2, 1.2);
 
-SphericalChunk sphereChunk_pX(app, noiser_1, glm::vec3( 50,  0,  0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0));
-SphericalChunk sphereChunk_nX(app, noiser_1, glm::vec3(-50,  0,  0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0));
-SphericalChunk sphereChunk_pY(app, noiser_1, glm::vec3(  0, 50,  0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0));
-SphericalChunk sphereChunk_nY(app, noiser_1, glm::vec3(  0,-50,  0), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0));
-SphericalChunk sphereChunk_pZ(app, noiser_1, glm::vec3(  0,  0, 50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1));
-SphericalChunk sphereChunk_nZ(app, noiser_1, glm::vec3(  0,  0,-50), 1, 101, 101, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1));
+BasicPlanet planetChunks(app, noiser_2, 1, 101, 101, 1000, { 0.f, 0.f, 0.f });
+Planet planetGrid(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
-PlanetGrid planetGrid_pZ(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0, 1), glm::vec3(  0,  0, 50));
-PlanetGrid planetGrid_nZ(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 0,-1), glm::vec3(  0,  0,-50));
-PlanetGrid planetGrid_pY(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 0, 1, 0), glm::vec3(  0, 50,  0));
-PlanetGrid planetGrid_nY(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 0,-1, 0), glm::vec3(  0,-50,  0));
-PlanetGrid planetGrid_pX(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3( 1, 0, 0), glm::vec3( 50,  0,  0));
-PlanetGrid planetGrid_nX(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 1000, glm::vec3(0, 0, 0), glm::vec3(-1, 0, 0), glm::vec3(-50,  0,  0));
-
-bool updateChunk = false, updateChunkGrid = false, updatePlanet = false, updatePlanetGrid = false;
+bool updateChunk = false, updateChunkGrid = false;
 
 // Data to update
 float frameTime;
@@ -95,10 +81,14 @@ glm::vec3 camPos, camDir;
 float aspectRatio;
 
 
+// main ---------------------------------------------------------------------
+
 int main(int argc, char* argv[])
 {
 	std::cout << std::setprecision(7);
-
+	camera_4.camParticle.setCallback(getFloorHeight);
+	std::cout << "R: " << planetGrid.area << std::endl;
+	
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 	
@@ -115,8 +105,8 @@ int main(int argc, char* argv[])
 	  //setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	//setSphereChunks(app);
-	setSphereGrid(app);
+	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	setSun(app);
 	setReticule(app);
 
@@ -171,33 +161,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		terrGrid.updateTree(camPos);
 		terrGrid.updateUBOs(view, proj, camPos, lightss, frameTime);
 	}
-	
-	if (updatePlanet)
-	{
-		sphereChunk_pX.updateUBOs(view, proj, camPos, lightss, frameTime);
-		sphereChunk_nX.updateUBOs(view, proj, camPos, lightss, frameTime);
-		sphereChunk_pY.updateUBOs(view, proj, camPos, lightss, frameTime);
-		sphereChunk_nY.updateUBOs(view, proj, camPos, lightss, frameTime);
-		sphereChunk_pZ.updateUBOs(view, proj, camPos, lightss, frameTime);
-		sphereChunk_nZ.updateUBOs(view, proj, camPos, lightss, frameTime);
-	}
+		
+	planetChunks.updateUbos(camPos, view, proj, lightss, frameTime);
 
-	if (updatePlanetGrid)
-	{
-		//std::cout << "  Nodes: " << planetGrid_pZ.getloadedChunks() << '/' << planetGrid_pZ.getRenderedChunks() << '/' << planetGrid_pZ.getTotalNodes() << std::endl;
-		planetGrid_pZ.updateTree(camPos);
-		planetGrid_pZ.updateUBOs(view, proj, camPos, lightss, frameTime);
-		planetGrid_nZ.updateTree(camPos);
-		planetGrid_nZ.updateUBOs(view, proj, camPos, lightss, frameTime);
-		planetGrid_pY.updateTree(camPos);
-		planetGrid_pY.updateUBOs(view, proj, camPos, lightss, frameTime);
-		planetGrid_nY.updateTree(camPos);
-		planetGrid_nY.updateUBOs(view, proj, camPos, lightss, frameTime);
-		planetGrid_pX.updateTree(camPos);
-		planetGrid_pX.updateUBOs(view, proj, camPos, lightss, frameTime);
-		planetGrid_nX.updateTree(camPos);
-		planetGrid_nX.updateUBOs(view, proj, camPos, lightss, frameTime);
-	}
+	planetGrid.update_tree_ubo(camPos, view, proj, lightss, frameTime);
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -329,7 +296,7 @@ void setLights()
 	//lightss.turnOff(0);
 	lightss.setDirectional(0, Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//lightss.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
-	lightss.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(80, 80, 80), glm::vec3(80, 80, 80), 1, 1, 0.5, 0.9, 0.8);
+	lightss.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0.5, 0.9, 0.8);
 }
 
 void loadShaders(Renderer& app)
@@ -379,15 +346,15 @@ void loadTextures(Renderer& app)
 	//textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
 
 	// Plants
-	textures["green_a"] = app.newTexture((texDir + "green_a.png").c_str());
-	textures["green_n"] = app.newTexture((texDir + "green_n.png").c_str());
-	textures["green_s"] = app.newTexture((texDir + "green_s.png").c_str());
-	textures["green_r"] = app.newTexture((texDir + "green_r.png").c_str());
+	textures["grass1_a"] = app.newTexture((texDir + "grass1_a.png").c_str());
+	textures["grass1_n"] = app.newTexture((texDir + "grass1_n.png").c_str());
+	textures["grass1_s"] = app.newTexture((texDir + "grass1_s.png").c_str());
+	textures["grass1_r"] = app.newTexture((texDir + "grass1_r.png").c_str());
 
-	textures["grass_a"] = app.newTexture((texDir + "grass_a.png").c_str());
-	textures["grass_n"] = app.newTexture((texDir + "grass_n.png").c_str());
-	textures["grass_s"] = app.newTexture((texDir + "grass_s.png").c_str());
-	textures["grass_r"] = app.newTexture((texDir + "grass_r.png").c_str());
+	textures["grass2_a"] = app.newTexture((texDir + "grass2_a.png").c_str());
+	textures["grass2_n"] = app.newTexture((texDir + "grass2_n.png").c_str());
+	textures["grass2_s"] = app.newTexture((texDir + "grass2_s.png").c_str());
+	textures["grass2_r"] = app.newTexture((texDir + "grass2_r.png").c_str());
 
 	// Rocks
 	textures["bumpRock_a"] = app.newTexture((texDir + "bumpRock_a.png").c_str());
@@ -439,8 +406,8 @@ void loadTextures(Renderer& app)
 	{
 		/* 0 */  textures["squares"],
 
-		/*1 - 4*/textures["green_a"], textures["green_n"], textures["green_s"], textures["green_r"],
-		/*5 - 8*/textures["grass_a"], textures["grass_n"], textures["grass_s"], textures["grass_r"],
+		/*1 - 4*/textures["grass1_a"], textures["grass1_n"], textures["grass1_s"], textures["grass1_r"],
+		/*5 - 8*/textures["grass2_a"], textures["grass2_n"], textures["grass2_s"], textures["grass2_r"],
 
 		/*9 -12*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"],
 		/*13-16*/textures["dryRock_a"], textures["dryRock_n"], textures["dryRock_s"], textures["dryRock_r"],
@@ -460,6 +427,11 @@ void loadTextures(Renderer& app)
 	// <<< Then, user could make sets of materials and send them to a modelObject
 }
 
+float getFloorHeight(const glm::vec3& pos)
+{
+	glm::vec3 espheroid = glm::normalize(pos - planetGrid.nucleus) * planetGrid.radius;
+	return 1.70 + planetGrid.radius + noiser_2.GetNoise(espheroid.x, espheroid.y, espheroid.z);
+}
 
 void setPoints(Renderer& app)
 {
@@ -644,60 +616,6 @@ void setChunkGrid(Renderer& app)
 
 	terrGrid.addTextures(usedTextures);
 	terrGrid.addShaders(shaders["v_terrain"], shaders["f_terrain"]);
-	//terrChunks.updateTree(glm::vec3(0,0,0));
-}
-
-void setSphereChunks(Renderer& app)
-{
-	std::cout << "> " << __func__ << "()" << std::endl;
-	updatePlanet = true;
-
-	//std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
-
-	sphereChunk_nY.computeTerrain(true);
-	sphereChunk_nY.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-	
-	sphereChunk_pX.computeTerrain(true);
-	sphereChunk_pX.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-	
-	sphereChunk_pZ.computeTerrain(true);
-	sphereChunk_pZ.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-	
-	sphereChunk_pY.computeTerrain(true);
-	sphereChunk_pY.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-	
-	sphereChunk_nX.computeTerrain(true);
-	sphereChunk_nX.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-	
-	sphereChunk_nZ.computeTerrain(true);
-	sphereChunk_nZ.render(shaders["v_planet"], shaders["f_planet"], usedTextures, nullptr);
-}
-
-void setSphereGrid(Renderer& app)
-{
-	std::cout << "> " << __func__ << "()" << std::endl;
-	updatePlanetGrid = true;
-
-	//std::vector<texIterator> usedTextures = { textures["squares"], textures["grass"], textures["grassSpec"], textures["rock"], textures["rockSpec"], textures["sand"], textures["sandSpec"], textures["plainSand"], textures["plainSandSpec"] };
-
-	planetGrid_pZ.addTextures(usedTextures);
-	planetGrid_pZ.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
-	planetGrid_nZ.addTextures(usedTextures);
-	planetGrid_nZ.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
-	planetGrid_pY.addTextures(usedTextures);
-	planetGrid_pY.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
-	planetGrid_nY.addTextures(usedTextures);
-	planetGrid_nY.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
-	planetGrid_pX.addTextures(usedTextures);
-	planetGrid_pX.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
-	planetGrid_nX.addTextures(usedTextures);
-	planetGrid_nX.addShaders(shaders["v_planet"], shaders["f_planet"]);
-
 	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
 

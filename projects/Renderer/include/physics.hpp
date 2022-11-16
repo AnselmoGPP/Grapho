@@ -2,6 +2,7 @@
 #define PHYSICS_HPP
 
 #include <vector>
+#include <iostream>
 
 //#define GLM_FORCE_RADIANS
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE		// GLM uses OpenGL depth range [-1.0, 1.0]. This macro forces GLM to use Vulkan range [0.0, 1.0].
@@ -14,13 +15,7 @@
 #include "btBulletDynamicsCommon.h"
 
 
-// <<< Problems: 
-//		OK - Floor check should be done after calculation of destination. However, floor is not known in destination
-//		Floor check should be done in each step of X length
-//      Walking on a slope will not work ok: camera's next step is always underground, so adjustment is made. Recommendation: walking only permitted on certain levels of slopes (decrease speed exponentially or similar) 
-//      Rozamiento
-//      Slopes are longer steps than plains
-
+// BulletPhysics ----------------------------------------------------------
 
 class PhysicsWorld
 {
@@ -36,6 +31,8 @@ public:
 
 };
 
+
+// https://www.kodeco.com/2606-bullet-physics-tutorial-getting-started
 class PhysicsObject
 {
 public:
@@ -54,6 +51,10 @@ public:
     //std::vector<float> vertices;
 };
 
+
+// Particle ----------------------------------------------------------
+
+float getFHeight(const glm::vec3& pos);
 
 
 /// State of a particle in a 3D space, with some speed, and subject to gravity acceleration towards (0,0,-1).
@@ -79,10 +80,13 @@ public:
     virtual void setPos(glm::vec3 position);
     void setSpeedNP(glm::vec3 speedVector);
     void setSpeedP(glm::vec3 speedVector);
+    void setCallback(float(*getFloorHeight)(const glm::vec3& pos));
     //void setDir(glm::vec3 direction);
     //void setSpeed(float speed);
 
-    virtual void updateState(float deltaTime, float floorHeight);
+    virtual void updateState(float deltaTime);
+
+    float(*getFloorHeight) (const glm::vec3& pos);
 };
 
 
@@ -97,7 +101,7 @@ public:
 
     void setPos(glm::vec3 position) override;
 
-    void updateState(float deltaTime, float floorHeight) override;
+    void updateState(float deltaTime) override;
 };
 
 
@@ -119,5 +123,9 @@ glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2, const glm::vec4&
 /// Get rotation matrix. Use it to rotate a point (result = rotMatrix * point) (http://answers.google.com/answers/threadview/id/361441.html)
 glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle);
 
+
+// Others ----------------------------------------------------------
+
+void printV(std::string begin, glm::vec3 vec);
 
 #endif

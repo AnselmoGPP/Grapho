@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <numbers>
 
 #include "noise.hpp"
 
@@ -31,7 +32,7 @@ Noiser::Noiser(
     noise.SetFractalOctaves(numOctaves);    // Set to 0 or 1 if getProcessedNoise is used
 
     noise.SetFrequency(0.01f);
-    noise.SetFractalType(FastNoiseLite::FractalType::FractalType_None);
+    noise.SetFractalType(FastNoiseLite::FractalType::FractalType_FBm);
     noise.SetFractalWeightedStrength(0.0f);
 
     noise.SetFractalPingPongStrength(2.0f);
@@ -98,6 +99,18 @@ float Noiser::GetNoise(float x, float y)
 {
     result = multiplier * scale * noise.GetNoise((x + offsetX) / scale, (y + offsetY) / scale) / totalAmplitude;
     return result * std::pow(result / maxHeight, curveDegree);
+}
+
+float Noiser::powLinInterp(float base, float exponent)
+{
+    float down = std::floor(exponent);
+    float up   = down + 1;
+    float diff = exponent - down;
+    
+    up = std::pow(base, up);
+    down = std::pow(base, down);
+
+    return down + diff * (up - down);
 }
 
 void Noiser::noiseTester(size_t size)

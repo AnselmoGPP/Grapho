@@ -6,6 +6,7 @@
 #include "ubo.hpp"
 #include "camera.hpp"
 
+
 // File's paths
 extern const std::string shadersDir;
 extern const std::string vertexDir;

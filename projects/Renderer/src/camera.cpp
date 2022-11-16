@@ -437,6 +437,7 @@ PlanetFPcam::PlanetFPcam(float keysSpeed, float mouseSpeed, float scrollSpeed, f
         sin(lat) * radius + nucleus.z };
 
     camParticle.setPos(camPos); // <<< Replace camPos (and maybe others) with camParticle
+    //camParticle.setCallback(getFloorHeight);
 
     // Orientate camera (always starts pointing north)
     worldUp = glm::normalize(camPos - nucleus);
@@ -454,65 +455,40 @@ PlanetFPcam::PlanetFPcam(float keysSpeed, float mouseSpeed, float scrollSpeed, f
 void PlanetFPcam::updateCameraVectors()
 {
     //Camera::updateCameraVectors();
-
     //worldUp = glm::normalize(camPos - nucleus);
-    //std::cout << worldUp.x - camUp.x << ", " << worldUp.y - camUp.y << ", " << worldUp.z - camUp.z << ", " << std::endl;
 }
 
 void PlanetFPcam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
 {
-    /*
-        X) Está petando al rato de moverme. Veo variables -nan(ind) (investigar por ahí)
-        X) Ángulo máximo y mínimo (use glm::dot(front, worldUp))
-        X) g speed is not incrementing due to acceleration
-        X) Camera turns aside (maybe already fixed: previously, I didn't make rotations when move==false)
-        Light and shadows in the middle of each sphere face work a little wrong
-        Moves on the actual ground
-        X) Jump system
-        Problem with light (normals) in some faces of the cube sphere. Test with other normal maps
-    */
-
     glm::vec3 moveDir(0.f, 0.f, 0.f);
     glm::vec3 jumpVec(0.f, 0.f, 0.f);
-    bool moved = false;
-
+    
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    {
         moveDir += glm::normalize(glm::cross(worldUp, right));
-        moved = true;
-    }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    {
         moveDir -= glm::normalize(glm::cross(worldUp, right));
-        moved = true;
-    }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    {
         moveDir -= right;
-        moved = true;
-    }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    {
         moveDir += right;
-        moved = true;
-    }
     if (spaceKey.isFirstPress(window) && onFloor) 
         jumpVec = worldUp * 10.f;
-
     //if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS);// yaw +=  0.05 * velocity;
     //if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS);// yaw += -0.05 * velocity;
 
-    if (!moveDir.x && !moveDir.y && !moveDir.z) moved = false;
+    if (!moveDir.x && !moveDir.y && !moveDir.z) {
+        if (!jumpVec.x && !jumpVec.y && !jumpVec.z && onFloor) return;  // Keeps camPos still when no move is made
+    }
     else moveDir = glm::normalize(moveDir);
 
     // Get new camera position
-    if(moved) camParticle.setSpeedNP(keysSpeed * moveDir);
+    camParticle.setSpeedNP(keysSpeed * moveDir);
     camParticle.setSpeedP(jumpVec);
-    camParticle.updateState(deltaTime, 1050);       // <<< Altitude should be computed after position calculation
+    camParticle.updateState(deltaTime);       // <<< Altitude should be computed after position calculation
     glm::vec3 newCamPos = camParticle.getPos();
     onFloor = camParticle.isOnFloor();
 
-    // Rotate camera axes
+    // Rotate camera axes (keyboard)
     if (camPos != newCamPos)
     {
         glm::vec4 rotQuat = getRotQuat(glm::cross(worldUp, moveDir), angleBetween(camPos, newCamPos, nucleus));
@@ -549,17 +525,15 @@ void PlanetFPcam::ProcessMouseMovement(GLFWwindow* window, float deltaTime)
         float nextPitchAngle = currentPitchAngle - yoffset * mouseSpeed;
         if (nextPitchAngle > maxAngle) yoffset = (yoffset * mouseSpeed + (nextPitchAngle - maxAngle)) / mouseSpeed;
         else if (nextPitchAngle < -maxAngle) yoffset = (yoffset * mouseSpeed + (nextPitchAngle + maxAngle)) / mouseSpeed;
-        
-        std::cout << ">>> " << yoffset * mouseSpeed << " / " << nextPitchAngle - maxAngle << std::endl;
 
-        // Rotate axis
+        // Rotate camera axes (mouse)
         glm::vec4 rotQuat = productQuat(
                 getRotQuat(-worldUp, xoffset * mouseSpeed),     // worldUp rotation (Yaw)
                 getRotQuat(-right, yoffset * mouseSpeed)        // right rotation (Pitch)
             );
         front = rotatePoint(rotQuat, front);
-        right = rotatePoint(rotQuat, right);
-        camUp = rotatePoint(rotQuat, camUp);
+        right = glm::normalize(glm::cross(front, worldUp));
+        camUp = glm::normalize(glm::cross(right, front));
     }
     else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)    // if LMB released
     {
