@@ -12,7 +12,6 @@ size_t vec3size			= sizeof(glm::vec3);
 size_t vec4size			= sizeof(glm::vec4);
 size_t ivec4size		= sizeof(glm::ivec4);
 size_t mat4size			= sizeof(glm::mat4);
-size_t lightSize		= sizeof(Light);
 size_t materialSize		= sizeof(Material);
 
 
@@ -82,62 +81,7 @@ Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)
 	: diffuse(diffuse), specular(specular), shininess(shininess) { }
 
 
-// Light -----------------------------------------------------------------
-
-Light::Light() { lightType = 0; }
-
-void Light::turnOff() { lightType = 0; }
-
-void Light::setDirectional(glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
-{
-	this->lightType = 1;
-
-	this->direction = direction;
-
-	this->ambient = ambient;
-	this->diffuse = diffuse;
-	this->specular = specular;
-
-	this->degree[0] = 1;
-	this->degree[1] = 1;
-	this->degree[2] = 1;
-}
-
-void Light::setPoint(glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic)
-{
-	this->lightType = 2;
-
-	this->position = position;
-
-	this->ambient = ambient;
-	this->diffuse = diffuse;
-	this->specular = specular;
-
-	this->degree[0] = constant;
-	this->degree[1] = linear;
-	this->degree[2] = quadratic;
-}
-
-void Light::setSpot(glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff)
-{
-	this->lightType = 3;
-
-	this->position = position;
-	this->direction = direction;
-
-	this->ambient = ambient;
-	this->diffuse = diffuse;
-	this->specular = specular;
-
-	this->degree[0] = constant;
-	this->degree[1] = linear;
-	this->degree[2] = quadratic;
-
-	this->cutOff[0] = cutOff;
-	this->cutOff[1] = outerCutOff;
-}
-
-// ---------
+// LightSet -------------------------------------------------------------
 
 LightSet::LightSet(int numLights)
 	: numLights(numLights), posDirBytes(numLights * sizeof(LightPosDir)), propsBytes(numLights * sizeof(LightProps))

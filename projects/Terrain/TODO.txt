@@ -1,15 +1,19 @@
 TODO:
-	-Problem with light(normals) in some faces of the cube sphere.Test with other normal maps
+	All in radians
+	Black stains due to bad normals
+	Find a way to automatically PBR render whole planet when distance is too far
+	-delete inUVCoord vertex attribute
+	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
 	Steps: Physics calculations should be done in each step of X length
 	Walking only permitted on certain levels of slopes (decrease speed exponentially or similar) 
 	Rozamiento / Fuerza instead of speed
 	Slopes are longer steps than plains
+	Add FastNoise2 library (https://github.com/Auburn/FastNoise2/wiki/2:-Including-the-library-in-your-project) or libnoise
 
 	Shader:
-		Optimize shader lightning
+		-Optimize shader lightning
 		Can some job be done in the vertex shader?
-		Prevent from computing sqrt in vertex shader? Maybe it is better for a logarithmic texture scaling?
 
 	Paths using Perlin noise
 	All angles in radians
@@ -19,7 +23,6 @@ TODO:
 	Pass numLights to Chunk, DynamicGrid, etc.
 	Review vertex.hpp classes
 	Clouds
-	Don't forget to flip textures around X axis
 	Delete elements to load that are no longer required to load (models, textures)
 	Move skybox with the sun
 	Create Light objects containing 2 structures (one with data for vertex shader and other for fragment shader)

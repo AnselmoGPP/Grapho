@@ -24,11 +24,12 @@ glm::mat4 modelMatrix() { return glm::mat4(1.0f); }
 glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const glm::vec3& translation)
 {
 	glm::mat4 mm(1.0f);
-
+	
+	// Execution order: Scale > X rot > Y rot > Z rot > Translation
 	mm = glm::translate(mm, translation);
-	mm = glm::rotate(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
-	mm = glm::rotate(mm, glm::radians(rotation[1]), glm::vec3(0.0f, 1.0f, 0.0f));
 	mm = glm::rotate(mm, glm::radians(rotation[2]), glm::vec3(0.0f, 0.0f, 1.0f));
+	mm = glm::rotate(mm, glm::radians(rotation[1]), glm::vec3(0.0f, 1.0f, 0.0f));
+	mm = glm::rotate(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
 	mm = glm::scale(mm, scale);
 
 	return mm;
@@ -148,31 +149,61 @@ bool ifOnce::ifBigger(float a, float b)
 		return false;
 }
 
-namespace Sun
-{
-	/// Get Model Matrix (MM) for the sun clipboard.
-	glm::mat4 MM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist)
-	{
-		float sunSize = 2 * sunDist * tan(sunAngDist / 2);
-		float sunAng = (dayTime - 6) * (pi / 12);
+SunSystem::SunSystem(float initialDayTime, float speed, float angularWidth, float distance, unsigned mode)
+	: mode(mode == 1? 1 : 2), angularWidth(angularWidth), speed(speed), distance(distance), initialDayTime(initialDayTime), dayTime(initialDayTime) { }
 
+void SunSystem::updateTime(long double frameTime)
+{
+	dayTime = initialDayTime + frameTime * speed;
+	dayTime = dayTime - (24 * ((int)dayTime / 24));
+}
+
+glm::mat4 SunSystem::MM(glm::vec3 camPos)
+{
+	float sunSize = 2 * distance * tan(angularWidth / 2);
+	float sunAng = dayTime * pi / 12;
+	
+	switch (mode)
+	{
+	case 1:		// XZ plane
 		return modelMatrix(
 			glm::vec3(sunSize, sunSize, sunSize),
-			glm::vec3(0.f, -90.f - glm::degrees(sunAng), 0.f),
-			glm::vec3(camPos.x + sunDist * cos(sunAng), camPos.y, camPos.z + sunDist * sin(sunAng)));
+			glm::vec3(0.f, - glm::degrees(sunAng), 0.f),
+			glm::vec3(camPos.x + distance * sin(sunAng), camPos.y, camPos.z - distance * cos(sunAng)) );
+		break;
+	case 2:		// XY plane
+		return modelMatrix(
+			glm::vec3(sunSize, sunSize, sunSize),
+			glm::vec3(0.f, -90.f, -glm::degrees(sunAng)),
+			glm::vec3(camPos.x + distance * cos(sunAng), camPos.y - distance * sin(sunAng), camPos.z));
+		break;
+	default:
+		break;
 	}
+}
 
-	/// Get direction from where the light comes from.
-	glm::vec3 lightDirection(float dayTime)
+glm::vec3 SunSystem::lightDirection()
+{
+	float angle = dayTime * pi / 12;
+	glm::vec3 direction;
+
+	switch (mode)
 	{
-		float angle = (dayTime - 6) * (pi / 12);
-		glm::vec3 direction;
-		direction.x = cos(angle);
+	case 1:		// XZ plane
+		direction.x =  sin(angle);
 		direction.y = 0.f;
-		direction.z = sin(angle);
-
-		return glm::normalize(-direction);
+		direction.z = -cos(angle);
+		break;
+	case 2:		// XY plane
+		direction.x =  cos(angle);
+		direction.y = -sin(angle);
+		direction.z = 0.f;
+		break;
+	default:
+		break;
 	}
+
+	return glm::normalize(-direction);
 }
 
 Icosahedron::Icosahedron(float multiplier)
@@ -296,3 +327,10 @@ std::vector<float> Icosahedron::index =
 	3,  9,  8,
 	4,  8,  0
 };
+
+bool isBigEndian()
+{
+	int n = 1;
+	if (*(char*)&n == 1) return false;
+	else return true;
+}

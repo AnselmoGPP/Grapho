@@ -27,6 +27,7 @@
 		TerrainGrid (PlainChunk)
 		PlanetGrid (SphericalChunk)
 
+	BasicPlanet(SphericalChunk)
 	Planet (PlanetGrid)
 */
 
@@ -151,7 +152,7 @@ class SphericalChunk : public Chunk
 	//glm::vec3 cubePlane;
 	glm::vec3 nucleus;
 	float radius;
-	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coord. system of the cube side plane.
+	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coordinate system of the cube side plane.
 
 	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis);
 	void computeSizes() override;
@@ -167,6 +168,12 @@ public:
 
 // Grid systems -------------------------------
 
+/**
+	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks in order to present 
+	higher resolution Chunks near the camera. Process:
+		1. Constructor(...)
+		2. Add textures(...)
+*/
 class DynamicGrid
 {
 public:

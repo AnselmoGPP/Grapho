@@ -385,41 +385,24 @@ SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 c
     glm::vec3 sphere = unitVec * radius;
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
-    //if ((cubePlane.x || cubePlane.y || cubePlane.z) && (!cubePlane.x || !cubePlane.y) && (!cubePlane.x || !cubePlane.z) && (!cubePlane.y || !cubePlane.z))
-    if (!(cubePlane.x * cubePlane.y) && !(cubePlane.y * cubePlane.z) && !(cubePlane.x * cubePlane.z) && (cubePlane.x || cubePlane.y || cubePlane.z))
+    // Set relative axes of the cube face (needed for computing indices in good order)
+    //if (!(cubePlane.x * cubePlane.y) && !(cubePlane.y * cubePlane.z) && !(cubePlane.x * cubePlane.z) && (cubePlane.x || cubePlane.y || cubePlane.z))
+     if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
     {
-        if (cubePlane.x == 1.f)
-        {
-            xAxis = glm::vec3(0, 1, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.x == -1.f)
-        {
-            xAxis = glm::vec3(0, -1, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.y == 1.f)
-        {
-            xAxis = glm::vec3(-1, 0, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.y == -1.f)
-        {
-            xAxis = glm::vec3(1, 0, 0);
-            yAxis = glm::vec3(0, 0, 1);
-        }
-        else if (cubePlane.z == 1.f)
-        {
-            xAxis = glm::vec3(1, 0, 0);
-            yAxis = glm::vec3(0, 1, 0);
-        }
-        else if (cubePlane.z == -1.f)
-        {
-            xAxis = glm::vec3(-1, 0, 0);
-            yAxis = glm::vec3(0, 1, 0);
-        }
+        xAxis = glm::vec3(0, cubePlane.x, 0);
+        yAxis = glm::vec3(0, 0, 1);
     }
-    else std::cout << "cubePlane parameter has wrong format" << std::endl;   // cubePlane must contain 2 zeros
+    else if (cubePlane.y != 0)      // 1: (-x, z)  // -1: (x, z)
+    {
+        xAxis = glm::vec3(-cubePlane.y, 0, 0);
+        yAxis = glm::vec3(0, 0, 1);
+    }
+    else if (cubePlane.z != 0)       // 1: (x, y)  // -1: (-x, y)
+    {
+        xAxis = glm::vec3(cubePlane.z, 0, 0);
+        yAxis = glm::vec3(0, 1, 0);
+    }
+    //else std::cout << "cubePlane parameter has wrong format" << std::endl;   // cubePlane must contain 2 zeros
 
     computeSizes();
 }

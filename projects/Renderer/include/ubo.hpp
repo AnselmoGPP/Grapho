@@ -34,39 +34,6 @@ extern size_t lightSize;		// Light
 extern size_t materialSize;		// Material
 
 
-/**
-	@struct Light
-	@brief Data structure for light. Sent to fragment shader.
-
-	Maybe their members should be 16-bytes aligned (alignas(16)).
-	Usual light values:
-	<ul>
-		<li>Ambient: Low value</li>
-		<li>Diffuse: Exact color of the light</li>
-		<li>Specular: Full intensity: vec3(1.0)</li>
-	</ul>
-*/
-struct Light
-{
-	Light();
-	void turnOff();
-	void setDirectional(glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);
-	void setPoint(glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
-	void setSpot(glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
-
-	alignas(16) int lightType;			//!< 0: no light, 1: directional, 2: point, 3: spot
-
-	alignas(16) glm::vec3 position;
-	alignas(16) glm::vec3 direction;	//!< Direction from the light source
-
-	alignas(16) glm::vec3 ambient;
-	alignas(16) glm::vec3 diffuse;
-	alignas(16) glm::vec3 specular;
-
-	alignas(16) glm::vec3 degree;		//!< vec3( constant, linear, quadratic )
-	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
-};
-
 struct LightPosDir
 {
 	alignas(16) glm::vec3 position;
@@ -85,6 +52,18 @@ struct LightProps
 	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
 };
 
+/**
+	@struct LightSet
+	@brief Data structure for light. The LightPosDir is passed to vertex shader, and LightProps to fragment shader.
+
+	Maybe their members should be 16-bytes aligned (alignas(16)).
+	Usual light values:
+	<ul>
+		<li>Ambient: Low value</li>
+		<li>Diffuse: Exact color of the light</li>
+		<li>Specular: Full intensity is vec3(1.0)</li>
+	</ul>
+*/
 struct LightSet
 {
 	LightSet(int numLights);
@@ -94,8 +73,8 @@ struct LightSet
 	void setPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
 	void setSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
 
-	LightPosDir* posDir;
-	LightProps* props;
+	LightPosDir* posDir;	// To vertex & fragment shader
+	LightProps* props;		// To fragment shader
 
 	int numLights;
 	size_t posDirBytes;

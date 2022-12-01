@@ -38,7 +38,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_4, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -46,9 +46,9 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
-//std::vector<Light*> lights = { &sunLight };
-LightSet lightss(2u);
-std::vector<texIterator> usedTextures;	// Package of textures from std::map<> textures
+LightSet lights(2);
+std::vector<texIterator> usedTextures;		// Package of textures from std::map<> textures
+SunSystem sun(0.00, 0.0, 3.14/10, 0.5f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
 Noiser noiser_1(	// Desert
 	FastNoiseLite::NoiseType_Cellular,	// Noise type
@@ -61,21 +61,22 @@ Noiser noiser_1(	// Desert
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
 	8, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-	3, 1,//120,								// Scale, Multiplier
+	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
 	4952);								// Seed
 
 PlainChunk singleChunk(app, noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-TerrainGrid terrGrid(app, noiser_1, lightss, 6400, 21, 8, 2, 1.2);
+TerrainGrid terrGrid(app, noiser_1, lights, 6400, 21, 8, 2, 1.2);
 
 BasicPlanet planetChunks(app, noiser_2, 1, 101, 101, 1000, { 0.f, 0.f, 0.f });
-Planet planetGrid(app, noiser_2, lightss, 100, 21, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
 bool updateChunk = false, updateChunkGrid = false;
 
 // Data to update
 float frameTime;
+long double frameTimeLD;
 size_t fps, maxfps;
 glm::vec3 camPos, camDir;
 float aspectRatio;
@@ -121,25 +122,24 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
 	//fps		= rend.getTimer().getFPS();
 	//maxfps	= rend.getTimer().getMaxPossibleFPS();
-	frameTime	= (float)rend.getTimer().getTime();
+	frameTimeLD = rend.getTimer().getTime();
+	frameTime	= (float)frameTimeLD;
+
 	camPos		= rend.getCamera().camPos;
 	camDir		= rend.getCamera().getDirection();
 	aspectRatio = rend.getAspectRatio();
 	size_t i;
 	
 	std::cout << rend.getFrameCount() << ") \n";
+	//std::cout << "camPos: " << camPos.x << ", " << camPos.y << ", " << camPos.z << " (" << sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z) << ")" << std::endl;
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
-	dayTime = 6.00;		// 0.00 + frameTime * 0.5;
+	sun.updateTime(frameTime);
+	//dayTime = 6.00 + frameTime * 0.5;	// 0.5
 
-	//sunLight.turnOff();
-	sunLight.setDirectional  (Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	//sunLight.setPoint(-10.f * Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
-	//sunLight.setSpot(-10.f * Sun::lightDirection(dayTime), glm::vec3(0, 1, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0., 0.9, 0.8);
-
-	lightss.posDir[0].direction = Sun::lightDirection(dayTime);	// Directional (sun)
-	lightss.posDir[1].position = camPos;
-	lightss.posDir[1].direction = camDir;
+	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
+	lights.posDir[1].position = camPos;
+	lights.posDir[1].direction = camDir;
 
 	//std::cout
 	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
@@ -153,18 +153,18 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.ge65Camera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
 
 	// Chunks
-	if (updateChunk) singleChunk.updateUBOs(view, proj, camPos, lightss, frameTime);
+	if (updateChunk) singleChunk.updateUBOs(view, proj, camPos, lights, frameTime);
 
 	if(updateChunkGrid)
 	{
 		//std::cout << "  Nodes: " << terrGrid.getRenderedChunks() << '/' << terrGrid.getloadedChunks() << '/' << terrGrid.getTotalNodes() << std::endl;
 		terrGrid.updateTree(camPos);
-		terrGrid.updateUBOs(view, proj, camPos, lightss, frameTime);
+		terrGrid.updateUBOs(view, proj, camPos, lights, frameTime);
 	}
 		
-	planetChunks.updateUbos(camPos, view, proj, lightss, frameTime);
+	planetChunks.updateUbos(camPos, view, proj, lights, frameTime);
 
-	planetGrid.update_tree_ubo(camPos, view, proj, lightss, frameTime);
+	planetGrid.update_tree_ubo(camPos, view, proj, lights, frameTime);
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -250,7 +250,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["sun"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &Sun::MM(camPos, dayTime, 0.5f, sunAngDist), mat4size);
+			memcpy(dest + 0 * mat4size, &sun.MM(camPos), mat4size);
 			memcpy(dest + 1 * mat4size, &view, mat4size);
 			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
@@ -266,11 +266,11 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 2 * mat4size, &proj, mat4size);
 			memcpy(dest + 3 * mat4size, &modelMatrixForNormals(modelMatrix()), mat4size);
 			memcpy(dest + 4 * mat4size, &camPos, vec3size);
-			memcpy(dest + 4 * mat4size + vec4size, lightss.posDir, lightss.posDirBytes);
+			memcpy(dest + 4 * mat4size + vec4size, lights.posDir, lights.posDirBytes);
 
 			dest = assets["sea"]->fsUBO.getUBOptr(0);					// << Add to dest when advancing pointer
 			memcpy(dest + 0 * vec4size, &frameTime, sizeof(frameTime));
-			memcpy(dest + 1 * vec4size, lightss.props, lightss.propsBytes);
+			memcpy(dest + 1 * vec4size, lights.props, lights.propsBytes);
 		}
 	}
 	
@@ -294,9 +294,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 void setLights()
 {
 	//lightss.turnOff(0);
-	lightss.setDirectional(0, Sun::lightDirection(dayTime), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	lights.setDirectional(0, sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//lightss.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
-	lightss.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0.5, 0.9, 0.8);
+	lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0.5, 0.9, 0.8);
 }
 
 void loadShaders(Renderer& app)
@@ -346,42 +346,31 @@ void loadTextures(Renderer& app)
 	//textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
 
 	// Plants
-	textures["grass1_a"] = app.newTexture((texDir + "grass1_a.png").c_str());
-	textures["grass1_n"] = app.newTexture((texDir + "grass1_n.png").c_str());
-	textures["grass1_s"] = app.newTexture((texDir + "grass1_s.png").c_str());
-	textures["grass1_r"] = app.newTexture((texDir + "grass1_r.png").c_str());
-
-	textures["grass2_a"] = app.newTexture((texDir + "grass2_a.png").c_str());
-	textures["grass2_n"] = app.newTexture((texDir + "grass2_n.png").c_str());
-	textures["grass2_s"] = app.newTexture((texDir + "grass2_s.png").c_str());
-	textures["grass2_r"] = app.newTexture((texDir + "grass2_r.png").c_str());
+	textures["grassDry_a"] = app.newTexture((texDir + "grassDry_a.png").c_str());
+	textures["grassDry_n"] = app.newTexture((texDir + "grassDry_n.png").c_str());
+	textures["grassDry_s"] = app.newTexture((texDir + "grassDry_s.png").c_str());
+	textures["grassDry_r"] = app.newTexture((texDir + "grassDry_r.png").c_str());
+	textures["grassDry_h"] = app.newTexture((texDir + "grassDry_h.png").c_str());
 
 	// Rocks
 	textures["bumpRock_a"] = app.newTexture((texDir + "bumpRock_a.png").c_str());
 	textures["bumpRock_n"] = app.newTexture((texDir + "bumpRock_n.png").c_str());
 	textures["bumpRock_s"] = app.newTexture((texDir + "bumpRock_s.png").c_str());
 	textures["bumpRock_r"] = app.newTexture((texDir + "bumpRock_r.png").c_str());
-
-	textures["dryRock_a"]  = app.newTexture((texDir + "dryRock_a.png").c_str());
-	textures["dryRock_n"]  = app.newTexture((texDir + "dryRock_n.png").c_str());
-	textures["dryRock_s"]  = app.newTexture((texDir + "dryRock_s.png").c_str());
-	textures["dryRock_r"]  = app.newTexture((texDir + "dryRock_r.png").c_str());
+	textures["bumpRock_h"] = app.newTexture((texDir + "bumpRock_h.png").c_str());
 
 	// Soils
-	textures["dunes_a"]  = app.newTexture((texDir + "dunes_a.png").c_str());
-	textures["dunes_n"]  = app.newTexture((texDir + "dunes_n.png").c_str());
-	textures["dunes_s"]  = app.newTexture((texDir + "dunes_s.png").c_str());
-	textures["dunes_r"]  = app.newTexture((texDir + "dunes_r.png").c_str());
+	textures["sandDunes_a"]  = app.newTexture((texDir + "sandDunes_a.png").c_str());
+	textures["sandDunes_n"]  = app.newTexture((texDir + "sandDunes_n.png").c_str());
+	textures["sandDunes_s"]  = app.newTexture((texDir + "sandDunes_s.png").c_str());
+	textures["sandDunes_r"]  = app.newTexture((texDir + "sandDunes_r.png").c_str());
+	textures["sandDunes_h"]  = app.newTexture((texDir + "sandDunes_h.png").c_str());
 
-	textures["sand_a"]   = app.newTexture((texDir + "sand_a.png").c_str());
-	textures["sand_n"]   = app.newTexture((texDir + "sand_n.png").c_str());
-	textures["sand_s"]   = app.newTexture((texDir + "sand_s.png").c_str());
-	textures["sand_r"]   = app.newTexture((texDir + "sand_r.png").c_str());
-
-	textures["cobble_a"] = app.newTexture((texDir + "cobble_a.png").c_str());
-	textures["cobble_n"] = app.newTexture((texDir + "cobble_n.png").c_str());
-	textures["cobble_s"] = app.newTexture((texDir + "cobble_s.png").c_str());
-	textures["cobble_r"] = app.newTexture((texDir + "cobble_r.png").c_str());
+	textures["sandWavy_a"]   = app.newTexture((texDir + "sandWavy_a.png").c_str());
+	textures["sandWavy_n"]   = app.newTexture((texDir + "sandWavy_n.png").c_str());
+	textures["sandWavy_s"]   = app.newTexture((texDir + "sandWavy_s.png").c_str());
+	textures["sandWavy_r"]   = app.newTexture((texDir + "sandWavy_r.png").c_str());
+	textures["sandWavy_h"]   = app.newTexture((texDir + "sandWavy_h.png").c_str());
 
 	// Water
 	textures["sea_n"]   = app.newTexture((texDir + "sea_n.png").c_str());
@@ -390,36 +379,20 @@ void loadTextures(Renderer& app)
 	textures["snow_n"]  = app.newTexture((texDir + "snow_n.png").c_str());
 	textures["snow_s"]  = app.newTexture((texDir + "snow_s.png").c_str());
 	textures["snow_r"]  = app.newTexture((texDir + "snow_r.png").c_str());
-
-	textures["snow2_a"] = app.newTexture((texDir + "snow2_a.png").c_str());
-	textures["snow2_n"] = app.newTexture((texDir + "snow2_n.png").c_str());
-	textures["snow2_s"] = app.newTexture((texDir + "snow2_s.png").c_str());
-
-	// Others
-	textures["tech_a"] = app.newTexture((texDir + "tech_a.png").c_str());
-	textures["tech_n"] = app.newTexture((texDir + "tech_n.png").c_str());
-	textures["tech_s"] = app.newTexture((texDir + "tech_s.png").c_str());
-	textures["tech_r"] = app.newTexture((texDir + "tech_r.png").c_str());
+	textures["snow_h"]	= app.newTexture((texDir + "snow_h.png").c_str());
 
 	// Package textures
 	usedTextures =
 	{
-		/* 0 */  textures["squares"],
+		/*0 - 4*/textures["grassDry_a"], textures["grassDry_n"], textures["grassDry_s"], textures["grassDry_r"], textures["grassDry_h"],
+		/*5 - 9*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"], textures["bumpRock_h"],
+		/*10-14*/textures["snow_a"],textures["snow_n"], textures["snow_s"], textures["snow_r"], textures["snow_h"],
 
-		/*1 - 4*/textures["grass1_a"], textures["grass1_n"], textures["grass1_s"], textures["grass1_r"],
-		/*5 - 8*/textures["grass2_a"], textures["grass2_n"], textures["grass2_s"], textures["grass2_r"],
+		/*15-19*/textures["sandDunes_a"], textures["sandDunes_n"], textures["sandDunes_s"], textures["sandDunes_r"], textures["sandDunes_h"],
+		/*20-24*/textures["sandWavy_a"], textures["sandWavy_n"], textures["sandWavy_s"], textures["sandWavy_r"], textures["sandWavy_h"],
 
-		/*9 -12*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"],
-		/*13-16*/textures["dryRock_a"], textures["dryRock_n"], textures["dryRock_s"], textures["dryRock_r"],
-
-		/*17-20*/textures["dunes_a"], textures["dunes_n"], textures["dunes_s"], textures["dunes_r"],
-		/*21-24*/textures["sand_a"], textures["sand_n"], textures["sand_s"], textures["sand_r"],
-		/*25-28*/textures["cobble_a"], textures["cobble_n"], textures["cobble_s"], textures["cobble_r"],
-
-		/* 29 */ textures["sea_n"],
-		/*30-33*/textures["snow_a"],textures["snow_n"], textures["snow_s"], textures["snow_r"],
-		/*34-36*/textures["snow2_a"], textures["snow2_n"], textures["snow2_s"],
-		/*37-40*/textures["tech_a"], textures["tech_n"], textures["tech_s"], textures["tech_r"]
+		/* 25 */ textures["squares"],
+		/* 26 */ textures["sea_n"]
 	};
 
 
@@ -458,7 +431,7 @@ void setAxis(Renderer& app)
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 1000, 0.8);
+	size_t numVertex = getAxis(v_axis, i_axis, 2000, 0.8);
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 

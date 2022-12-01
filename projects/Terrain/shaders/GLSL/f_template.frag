@@ -45,7 +45,7 @@ layout(location = 0) out vec4   outColor;					// layout(location=0) specifies th
 
 vec3  getFragColor	  (vec3 albedo, vec3 normal, vec3 specularity, float roughness);
 void  getTex		  (inout vec3 result, int albedo, int normal, int specular, int roughness, float scale);
-vec4 triplanarTexture (sampler2D tex, float texFactor);
+vec4  triplanarTexture(sampler2D tex, float texFactor);
 vec4  triplanarNormal (sampler2D tex, sampler2D diffuse, sampler2D specularMap, float shininess);
 vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
 vec3  toSRGB		  (vec3 vec);							// Transforms linear RGB color to non-linear sRGB

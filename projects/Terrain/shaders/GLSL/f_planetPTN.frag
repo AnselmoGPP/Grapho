@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 #define NUMLIGHTS 2
+#define RADIUS 2000
 
 struct LightPD
 {
@@ -27,17 +28,22 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 	LightProps light[2];
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[41];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 2) uniform sampler2D texSampler[27];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0) in vec3    inFragPos;				// Vertex position transformed with TBN matrix
-layout(location = 1) in vec3    inPos;					// Vertex position not transformed with TBN matrix
-layout(location = 2) in vec2    inUVCoord;
-layout(location = 3) in vec3    inCamPos;
-layout(location = 4) in float   inSlope;
-layout(location = 5) in vec3    inNormal;
-layout(location = 6) in float   inDist;
-layout(location = 7) in float   inHeight;
-layout(location = 8) in LightPD inLight[NUMLIGHTS];
+layout(location = 0)  in vec3    inPos;
+layout(location = 1)  in vec2    inUV;
+layout(location = 2)  in vec3    inCamPos;
+layout(location = 3)  in float   inSlope;
+layout(location = 4)  in vec3    inNormal;
+layout(location = 5)  in float   inDist;
+layout(location = 6)  in float   inHeight;
+layout(location = 7)  in vec3	 inTanX;
+layout(location = 8)  in vec3	 inBTanX;
+layout(location = 9)  in vec3	 inTanY;
+layout(location = 10) in vec3	 inBTanY;
+layout(location = 11) in vec3	 inTanZ;
+layout(location = 12) in vec3	 inBTanZ;
+layout(location = 13) in LightPD inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -47,10 +53,11 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 vec3  getFragColor	  (vec3 albedo, vec3 normal, vec3 specularity, float roughness);
 void  getTex		  (inout vec3 result, int albedo, int normal, int specular, int roughness, float scale);
 vec4  triplanarTexture(sampler2D tex, float texFactor);
-vec4  triplanarTextureGrad(sampler2D tex, float texFactor);
-vec4  triplanarNormal (sampler2D tex, sampler2D diffuse, sampler2D specularMap, float shininess);	// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
+vec3  triplanarNormal (sampler2D tex, float texFactor);		// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
 vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
 vec3  toSRGB		  (vec3 vec);							// Transforms linear RGB color to non-linear sRGB
+vec2  unpackUV		  (vec2 UV, float texFactor);
+vec3  unpackNormal    (vec3 normal);
 vec3  applyLinearFog  (vec3 fragColor, vec3 fogColor, float minDist, float maxDist);
 float applyLinearFog  (float value, float fogValue, float minDist, float maxDist);
 vec3  applyFog		  (vec3 fragColor, vec3 fogColor);
@@ -71,11 +78,12 @@ void main()
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
 
 	vec3 color;
-	
+
 	//getTexture_Sand(color);
 	getTexture_GrassRock(color);
 	
 	outColor = vec4(color, 1.0);
+	//outColor = vec4(abs(normalize(inNormal.xyz)), 1.0);
 }
 
 
@@ -109,47 +117,174 @@ void getTexture_Sand(inout vec3 result)
 void getTexture_GrassRock(inout vec3 result)
 {
 	float tf[2];
-	float ratio = getTexScaling(10, 40, 0.1, tf[0], tf[1]);	// initialTF, stepSize, mixRange, resultingTFs
+	float ratio = getTexScaling(10, 40, 0.1, tf[0], tf[1]);	// initialTexFactor, stepSize, mixRange, resultingTFs[2]
 
-	vec3 grass  = getFragColor(
-						triplanarTexture(texSampler[5], tf[0]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[6], tf[0]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[7], tf[0]).rgb,
-						triplanarTexture(texSampler[8], tf[0]).r * 255 );
-		
-	vec3 grass1  = getFragColor(
-						triplanarTexture(texSampler[5], tf[1]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[6], tf[1]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[7], tf[1]).rgb,
-						triplanarTexture(texSampler[8], tf[1]).r * 255 );
+	vec3 grass;
+	vec3 grass2;
+	vec3 rock;
+	vec3 rock2;
+	vec3 snow;
+	vec3 snow2;
+
+	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.00000000002;
+	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.00000000002;
 	
-	vec3 rock = getFragColor(
-						triplanarTexture(texSampler[9], tf[0]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[10], tf[0]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[11], tf[0]).rgb,
-						triplanarTexture(texSampler[12], tf[0]).r * 255 );
-				
-	vec3 rock1 = getFragColor(
-						triplanarTexture(texSampler[9], tf[1]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[10], tf[1]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[11], tf[1]).rgb,
-						triplanarTexture(texSampler[12], tf[1]).r * 255 );
+	if(inDist > lowResDist * 1.2)
+	{
+		grass  = getFragColor(
+					triplanarTexture(texSampler[0], tf[0]).rgb,
+					inNormal,
+					vec3(0.06, 0.06, 0.06),
+					200 );
 		
-	vec3 snow = getFragColor(
-						triplanarTexture(texSampler[34], tf[0]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[35], tf[0]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[36], tf[0]).rgb,
-						triplanarTexture(texSampler[37], tf[0]).r * 255 );
+		grass2  = getFragColor(
+					triplanarTexture(texSampler[0], tf[1]).rgb,
+					inNormal,
+					vec3(0.06, 0.06, 0.06),
+					200 );
+			
+		rock = getFragColor(
+					triplanarTexture(texSampler[5], tf[0]).rgb,
+					inNormal,
+					vec3(0.7, 0.7, 0.7),
+					125 );
+				
+		rock2 = getFragColor(
+					triplanarTexture(texSampler[5], tf[1]).rgb,
+					inNormal,
+					vec3(0.7, 0.7, 0.7),
+					125 );
+		
+		snow = getFragColor(
+					triplanarTexture(texSampler[10], tf[0]).rgb,
+					inNormal,
+					vec3(1,1,1),
+					125 );
 						
-	vec3 snow1 = getFragColor(
-						triplanarTexture(texSampler[34], tf[1]).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[35], tf[1]).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[36], tf[1]).rgb,
-						triplanarTexture(texSampler[37], tf[1]).r * 255 );	
+		snow2 = getFragColor(
+					triplanarTexture(texSampler[10], tf[1]).rgb,
+					inNormal,
+					vec3(1,1,1),
+					125 );
+	}
+	else if(inDist > lowResDist)
+	{
+		float ratio = clamp((inDist - lowResDist) / (lowResDist * 0.2), 0, 1);
+		
+		grass  = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[0], tf[0]).rgb,
+							inNormal,
+							vec3(0.06, 0.06, 0.06),
+							200 ) +
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[0], tf[0]).rgb,
+							triplanarNormal (texSampler[1], tf[0]),
+							triplanarTexture(texSampler[2], tf[0]).rgb,
+							triplanarTexture(texSampler[3], tf[0]).r * 255 );
+		
+		grass2  = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[0], tf[1]).rgb,
+							inNormal,
+							vec3(0.06, 0.06, 0.06),
+							200 ) +
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[0], tf[1]).rgb,
+							triplanarNormal (texSampler[1], tf[1]),
+							triplanarTexture(texSampler[2], tf[1]).rgb,
+							triplanarTexture(texSampler[3], tf[1]).r * 255 );
 
-	grass = (ratio) * grass + (1-ratio) * grass1;
-	rock  = (ratio) * rock  + (1-ratio) * rock1;
-	snow  = (ratio) * snow  + (1-ratio) * snow1;	// <<< BUG: Artifact lines between textures of different scale. Possible cause: Textures are get with non-constant tf values, which determine the texture scale. Possible solutions: (1) Not using mipmaps (and maybe AntiAliasing & Anisotropic filthering); (2) Getting all textures of all scales used; (3) Maybe using dFdx() & dFdy() properly. See more in: https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162
+		rock = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[5], tf[0]).rgb,
+							inNormal,
+							vec3(0.7, 0.7, 0.7),
+							125 ) +
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[5], tf[0]).rgb,
+							triplanarNormal (texSampler[6], tf[0]),
+							triplanarTexture(texSampler[7], tf[0]).rgb,
+							triplanarTexture(texSampler[8], tf[0]).r * 255 );
+		
+		rock2 = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[5], tf[1]).rgb,
+							inNormal,
+							vec3(0.7, 0.7, 0.7),
+							125 ) +
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[5], tf[1]).rgb,
+							triplanarNormal (texSampler[6], tf[1]),
+							triplanarTexture(texSampler[7], tf[1]).rgb,
+							triplanarTexture(texSampler[8], tf[1]).r * 255 );
+							
+		snow = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[10], tf[0]).rgb,
+							inNormal,
+							vec3(0.8, 0.8, 0.8),
+							125 ) +		
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[10], tf[0]).rgb,
+							triplanarNormal (texSampler[11], tf[0]),
+							triplanarTexture(texSampler[12], tf[0]).rgb,
+							triplanarTexture(texSampler[13], tf[0]).r * 255 );
+							
+		snow2 = 
+			ratio * getFragColor(
+							triplanarTexture(texSampler[10], tf[1]).rgb,
+							inNormal,
+							vec3(0.8, 0.8, 0.8),
+							125 ) +	
+			(1 - ratio) * getFragColor(
+							triplanarTexture(texSampler[10], tf[1]).rgb,
+							triplanarNormal (texSampler[11], tf[1]),
+							triplanarTexture(texSampler[12], tf[1]).rgb,
+							triplanarTexture(texSampler[13], tf[1]).r * 255 );
+	}
+	else
+	{
+		grass  = getFragColor(
+					triplanarTexture(texSampler[0], tf[0]).rgb,
+					triplanarNormal (texSampler[1], tf[0]),
+					triplanarTexture(texSampler[2], tf[0]).rgb,
+					triplanarTexture(texSampler[3], tf[0]).r * 255 );
+		
+		grass2  = getFragColor(
+					triplanarTexture(texSampler[0], tf[1]).rgb,
+					triplanarNormal (texSampler[1], tf[1]),
+					triplanarTexture(texSampler[2], tf[1]).rgb,
+					triplanarTexture(texSampler[3], tf[1]).r * 255 );
+	
+		rock = getFragColor(
+					triplanarTexture(texSampler[5], tf[0]).rgb,
+					triplanarNormal (texSampler[6], tf[0]),
+					triplanarTexture(texSampler[7], tf[0]).rgb,
+					triplanarTexture(texSampler[8], tf[0]).r * 255 );
+				
+		rock2 = getFragColor(
+					triplanarTexture(texSampler[5], tf[1]).rgb,
+					triplanarNormal (texSampler[6], tf[1]),
+					triplanarTexture(texSampler[7], tf[1]).rgb,
+					triplanarTexture(texSampler[8], tf[1]).r * 255 );
+		
+		snow = getFragColor(
+					triplanarTexture(texSampler[10], tf[0]).rgb,
+					triplanarNormal (texSampler[11], tf[0]),
+					triplanarTexture(texSampler[12], tf[0]).rgb,
+					triplanarTexture(texSampler[13], tf[0]).r * 255 );
+						
+		snow2 = getFragColor(
+					triplanarTexture(texSampler[10], tf[1]).rgb,
+					triplanarNormal (texSampler[11], tf[1]),
+					triplanarTexture(texSampler[12], tf[1]).rgb,
+					triplanarTexture(texSampler[13], tf[1]).r * 255 );	
+	}
+
+	grass = (ratio) * grass + (1-ratio) * grass2;
+	rock  = (ratio) * rock  + (1-ratio) * rock2;
+	snow  = (ratio) * snow  + (1-ratio) * snow2;	// <<< BUG: Artifact lines between textures of different scale. Possible cause: Textures are get with non-constant tf values, which determine the texture scale. Possible solutions: (1) Not using mipmaps (and maybe AntiAliasing & Anisotropic filthering); (2) Getting all textures of all scales that are being used; (3) Maybe using dFdx() & dFdy() properly (https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control). See more in: https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162
 
 	// Grass + Rock:
 
@@ -160,6 +295,7 @@ void getTexture_GrassRock(inout vec3 result)
 	result = rock * (ratio) + grass * (1-ratio);
 
 	// Snow:
+	
 	float radius = 2000;
 	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
 	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
@@ -176,6 +312,8 @@ void getTexture_GrassRock(inout vec3 result)
 
 vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
+	//normal = vec3(0, 0, 1);
+	
 	// ----- Ambient lighting -----
 	vec3 ambient = ubo.light[i].ambient.xyz * albedo;
 	if(dot(inLight[i].direction.xyz, normal) > 0) return ambient;		// If light comes from below the tangent plane
@@ -185,7 +323,7 @@ vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, fl
 	vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff;		
 	
 	// ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	vec3 viewDir      = normalize(inCamPos - inPos);
 	//vec3 reflectDir = normalize(reflect(inLight[i].direction.xyz, normal));
 	//float spec	  = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
 	vec3 halfwayDir   = normalize(-inLight[i].direction.xyz + viewDir);
@@ -199,9 +337,9 @@ vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, fl
 
 vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance    = length(inLight[i].position.xyz - inFragPos);
+    float distance    = length(inLight[i].position.xyz - inPos);
     float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
-	vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
+	vec3 lightDir = normalize(inPos - inLight[i].position.xyz);			// Direction from light source to fragment
 
     // ----- Ambient lighting -----
     vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
@@ -212,7 +350,7 @@ vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float ro
     vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff * attenuation;
 	
     // ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	vec3 viewDir      = normalize(inCamPos - inPos);
 	//vec3 reflectDir = normalize(reflect(lightDir, normal));
 	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
 	vec3 halfwayDir   = normalize(-lightDir + viewDir);
@@ -226,9 +364,9 @@ vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float ro
 
 vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance = length(inLight[i].position.xyz - inFragPos);
+    float distance = length(inLight[i].position.xyz - inPos);
     float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
-    vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
+    vec3 lightDir = normalize(inPos - inLight[i].position.xyz);			// Direction from light source to fragment
 
     // ----- Ambient lighting -----
     vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
@@ -242,7 +380,7 @@ vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float rou
     vec3 diffuse    = ubo.light[i].diffuse.xyz * albedo * diff * attenuation * intensity;
 
     // ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	vec3 viewDir      = normalize(inCamPos - inPos);
 	//vec3 reflectDir = normalize(reflect(lightDir, normal));
 	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
 	vec3 halfwayDir   = normalize(-lightDir + viewDir);
@@ -253,7 +391,6 @@ vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float rou
     // ----- Result -----
     return vec3(ambient + diffuse + specular);	
 }
-
 
 // Apply the lighting type you want to a fragment
 vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
@@ -280,85 +417,57 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 void getTex(inout vec3 result, int albedo, int normal, int specular, int roughness, float scale)
 {
 	result   = getFragColor(
-				texture(texSampler[albedo], inUVCoord/scale).rgb,
-				normalize(toSRGB(texture(texSampler[normal], inUVCoord/scale).rgb) * 2.f - 1.f).rgb,
-				texture(texSampler[specular], inUVCoord/scale).rgb, 
-				texture(texSampler[roughness], inUVCoord/scale).r * 255 );
+				texture(texSampler[albedo], inUV/scale).rgb,
+				normalize(toSRGB(texture(texSampler[normal], inUV/scale).rgb) * 2.f - 1.f).rgb,
+				texture(texSampler[specular], inUV/scale).rgb, 
+				texture(texSampler[roughness], inUV/scale).r * 255 );
+}
+
+vec2 unpackUV(vec2 UV, float texFactor)
+{
+	return UV.xy * vec2(1, -1) / texFactor;
 }
 
 vec4 triplanarTexture(sampler2D tex, float texFactor)
 {
-	vec4 dx = texture(tex, inPos.zy / texFactor);
-	vec4 dy = texture(tex, inPos.xz / texFactor);
-	vec4 dz = texture(tex, inPos.xy / texFactor);
+	vec4 dx = texture(tex, unpackUV(inPos.zy, texFactor));
+	vec4 dy = texture(tex, unpackUV(inPos.xz, texFactor));
+	vec4 dz = texture(tex, unpackUV(inPos.xy, texFactor));
 	
 	vec3 weights = abs(normalize(inNormal));
-	weights /= weights.x + weights.y + weights.z;
+	weights *= weights;
+	weights = weights / (weights.x + weights.y + weights.z);
 
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
-vec4 triplanarTextureGrad(sampler2D tex, float texFactor)	// https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control
+vec3 unpackNormal(vec3 normal)
 {
-	vec2 zyDx = dFdx(inPos.zy / texFactor);
-	vec2 zyDy = dFdy(inPos.zy / texFactor);
-	vec2 xzDx = dFdx(inPos.xz / texFactor);
-	vec2 xzDy = dFdy(inPos.xz / texFactor);
-	vec2 xyDx = dFdx(inPos.xy / texFactor);
-	vec2 xyDy = dFdy(inPos.xy / texFactor);
-
-	vec4 dx = textureGrad(tex, inPos.zy / texFactor, zyDx, zyDy);
-	vec4 dy = textureGrad(tex, inPos.xz / texFactor, xzDx, xzDy);
-	vec4 dz = textureGrad(tex, inPos.xy / texFactor, xyDx, xyDy);
-	
-	vec3 weights = abs(normalize(inNormal));
-	weights /= weights.x + weights.y + weights.z;
-
-	return dx * weights.x + dy * weights.y + dz * weights.z;
+	return normalize(toSRGB(normal) * 2.f - 1.f);
 }
 
-vec4 triplanarNormal(sampler2D tex, sampler2D diffuse, sampler2D specularMap, float shininess)
-{
-	vec4 dx = texture(tex, inFragPos.zy / 1);
-	vec4 dy = texture(tex, inFragPos.xz / 1);
-	vec4 dz = texture(tex, inFragPos.xy / 1);
+vec3 triplanarNormal(sampler2D tex, float texFactor)
+{	
+	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
+	vec3 tnormalX = unpackNormal(texture(tex, unpackUV(inPos.zy, texFactor)).xyz);
+	vec3 tnormalY = unpackNormal(texture(tex, unpackUV(inPos.xz, texFactor)).xyz);
+	vec3 tnormalZ = unpackNormal(texture(tex, unpackUV(inPos.xy, texFactor)).xyz);
 	
-	vec3 weights = abs(inNormal);
-	weights /= weights.x + weights.y + weights.z;
-
-	return dx * weights.x + dy * weights.y + dz * weights.z;
-
-/*
-	float tf = 50;            // texture factor
+	// Fix X plane projection over positive X axis
+	vec3 axis = sign(inNormal);
+	tnormalX.x *= -axis.x;	
 	
-	vec3 tx = texture(tex, inFragPos.zy / tf);
-	vec3 ty = texture(tex, inFragPos.xz / tf);
-	vec3 tz = texture(tex, inFragPos.xy / tf);
-
+	// World space normals
+	tnormalX = mat3(inTanX, inBTanX, inNormal) * tnormalX;	// TBN_X * tnormalX
+	tnormalY = mat3(inTanY, inBTanY, inNormal) * tnormalY;	// TBN_Y * tnormalY
+	tnormalZ = mat3(inTanZ, inBTanZ, inNormal) * tnormalZ;	// TBN_Z * tnormalZ
+	
+	// Weighted average
 	vec3 weights = abs(inNormal);
 	weights *= weights;
 	weights /= weights.x + weights.y + weights.z;
-	
-	vec3 axis = sign(normal);
-	vec3 tangentX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));
-	vec3 bitangentX = normalize(cross(tangentX, inNormal)) * axis.x;
-	mat3 tbnX = mat3(tangentY, bitangentY, inNormal);
-
-	vec3 tangentY = normalize(cross(inNormal, vec3(0., 0., axis.y)));
-	vec3 bitangentY = normalize(cross(tangentY, inNormal)) * axis.y;
-	mat3 tbnY = mat3(tangentY, bitangentY, inNormal);
-
-	vec3 tangentZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));
-	vec3 bitangentZ = normalize(-cross(tangentZ, inNormal)) * axis.z;
-	mat3 tbnZ = mat3(tangentZ, bitangentZ, inNormal);
-	
-	vec3 worldNormal = normalize (
-		clamp(tbnX * tx, -1., 1.) * weights.x +
-		clamp(tbny * ty, -1., 1.) * weights.y +
-		clamp(tbnZ * tz, -1., 1.) * weights.z);
-	
-	return vec4(worldNormal, 0.);
-*/
+		
+	return normalize(tnormalX * weights.x  +  tnormalY * weights.y  +  tnormalZ * weights.z);
 }
 
 vec3 toRGB(vec3 vec)
@@ -397,7 +506,7 @@ vec3 applyLinearFog(vec3 fragColor, vec3 fogColor, float minDist, float maxDist)
 {
 	float minSqrRadius = minDist * minDist;
 	float maxSqrRadius = maxDist * maxDist;
-	vec3 diff = inFragPos - inCamPos;
+	vec3 diff = inPos - inCamPos;
 	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 
     if(sqrDist > maxSqrRadius) return fogColor;
@@ -412,7 +521,7 @@ float applyLinearFog(float value, float fogValue, float minDist, float maxDist)
 {
 	float minSqrRadius = minDist * minDist;
 	float maxSqrRadius = maxDist * maxDist;
-	vec3 diff = inFragPos - inCamPos;
+	vec3 diff = inPos - inCamPos;
 	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 
     if(sqrDist > maxSqrRadius) return fogValue;
@@ -426,7 +535,7 @@ float applyLinearFog(float value, float fogValue, float minDist, float maxDist)
 vec3 applyFog(vec3 fragColor, vec3 fogColor)
 {
 	float coeff[3] = { 1, 0.000000000001, 0.000000000001 };		// coefficients  ->  a + b*dist + c*dist^2
-	vec3 diff = inFragPos - inCamPos;
+	vec3 diff = inPos - inCamPos;
 	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 	
 	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);
@@ -436,7 +545,7 @@ vec3 applyFog(vec3 fragColor, vec3 fogColor)
 float applyFog(float value, float fogValue)
 {
 	float coeff[3] = { 1, 0.000000000001, 0.000000000001 };		// coefficients  ->  a + b*dist + c*dist^2
-	vec3 diff = inFragPos - inCamPos;
+	vec3 diff = inPos - inCamPos;
 	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 	
 	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);

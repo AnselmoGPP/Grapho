@@ -1,12 +1,17 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-struct Light
+#define NUMLIGHTS 2
+
+struct LightPD
 {
-    int lightType;		// int   0: no light   1: directional   2: point   3: spot
-	
     vec4 position;		// vec3
     vec4 direction;		// vec3
+};
+
+struct LightProps
+{
+    int type;			// int   0: no light   1: directional   2: point   3: spot
 
     vec4 ambient;		// vec3
     vec4 diffuse;		// vec3
@@ -16,42 +21,49 @@ struct Light
     vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
 };
 
-struct Material
+layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-    vec4 diffuse;			// vec3
-    vec4 specular;			// vec3
-    vec4 shininess;			// float
-	
-	//sampler2D diffuse;
-	//sampler2D normal;
-	//sampler2D specular;
-	//sampler2D shininess;
-};
-
-layout(set = 0, binding = 1) uniform dataBlock		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
-{
-    Light light;
-	vec4 camPos;		// vec3
+    vec4 time;				// float
+	LightProps light[2];
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[9];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 2) uniform sampler2D texSampler[41];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in vec3 inNormal;
+layout(location = 0) in vec3    inFragPos;				// Vertex position transformed with TBN matrix
+layout(location = 1) in vec3    inPos;					// Vertex position not transformed with TBN matrix
+layout(location = 2) in vec2    inUV;
+layout(location = 3) in vec3    inCamPos;
+layout(location = 4) in float   inSlope;
+layout(location = 5) in vec3    inNormal;
+layout(location = 6) in float   inDist;
+layout(location = 7) in float   inHeight;
+layout(location = 8) in LightPD inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
-vec3 applyFog			  (vec3 fragment);
-void getTexture_Grid      (inout vec3 result);
-void getTexture_Sand      (inout vec3 result);
-void getTexture_GrassRock (inout vec3 result);
-vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
-vec3 PointLightColor      (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
-vec3 SpotLightColor       (Light light, vec3 diffuseMap, vec3 specularMap, float shininess);
-vec3 getFragColor         (vec3 diffuseMap, vec3 specularMap, float shininess);
-vec4 triplanarTexture     (sampler2D tex);
-vec4 triplanarNormal      (sampler2D diffuse, sampler2D specularMap, float shininess);
+
+// Declarations:
+
+vec3  getFragColor	  (vec3 albedo, vec3 normal, vec3 specularity, float roughness);
+void  getTex		  (inout vec3 result, int albedo, int normal, int specular, int roughness, float scale);
+vec4  triplanarTexture(sampler2D tex, float texFactor);
+vec4  triplanarTextureGrad(sampler2D tex, float texFactor);	// https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control
+vec3  triplanarNormal (sampler2D tex, float texFactor);		// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
+vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
+vec3  toSRGB		  (vec3 vec);							// Transforms linear RGB color to non-linear sRGB
+vec3  unpackNormal    (vec3 normal);
+vec3  applyLinearFog  (vec3 fragColor, vec3 fogColor, float minDist, float maxDist);
+float applyLinearFog  (float value, float fogValue, float minDist, float maxDist);
+vec3  applyFog		  (vec3 fragColor, vec3 fogColor);
+float applyFog		  (float value,   float fogValue);
+float getTexScaling	  (float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2);
+float modulus		  (float dividend, float divider);		// modulus(%) = a - (b * floor(a/b))
+
+void getTexture_Sand(inout vec3 result);
+void getTexture_GrassRock(inout vec3 result);
+
+
+// Definitions:
 
 void main()
 {
@@ -60,129 +72,435 @@ void main()
 	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
 
 	vec3 color;
-	
-	//getTexture_Grid(color);
-	getTexture_Sand(color);
-	//getTerrainTexture_GrassRock(color);
 
-    //color = applyFog(color);
+	//getTexture_Sand(color);
+	getTexture_GrassRock(color);
 	
 	outColor = vec4(color, 1.0);
+	//outColor = vec4(abs(normalize(inNormal.xyz)), 1.0);
 }
 
 
-vec3 directionalLightColor(Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+void getTexture_Sand(inout vec3 result)
 {
-	vec3 fragLightDir = normalize(light.direction.xyz);
-	vec3 norm = normalize(inNormal);
+    float slopeThreshold = 0.04;          // sand-plainSand slope threshold
+    float mixRange       = 0.02;          // threshold mixing range (slope range)
+    float tf             = 50;            // texture factor
 	
-    // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * diffuseMap;
+	//float ratio;
+	//if (inSlope < slopeThreshold - mixRange) ratio = 0;
+	//else if(inSlope > slopeThreshold + mixRange) ratio = 1;
+	//else ratio = (inSlope - (slopeThreshold - mixRange)) / (2 * mixRange);	// <<< change for clamp()
+	float ratio = clamp((inSlope - slopeThreshold) / (2 * mixRange), 0.f, 1.f);
+		
+	vec3 dunes  = getFragColor(
+						triplanarTexture(texSampler[17], tf).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[18], tf).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[19], tf).rgb,
+						triplanarTexture(texSampler[20], tf).r * 255 );
+						
+	vec3 plains = getFragColor(
+						triplanarTexture(texSampler[21], tf).rgb,
+						normalize(toSRGB(triplanarTexture(texSampler[22], tf).rgb) * 2.f - 1.f).rgb,
+						triplanarTexture(texSampler[23], tf).rgb,
+						triplanarTexture(texSampler[24], tf).r * 255 );
 
-    // ----- Diffuse lighting -----
-    float diff = max(dot(norm, fragLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap;
+	result = (ratio) * plains + (1-ratio) * dunes;
+}
 
-    // ----- Specular lighting -----
-    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
-    vec3 reflectDir = reflect(-fragLightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular.xyz * spec * specularMap;
+void getTexture_GrassRock(inout vec3 result)
+{
+	float tf[2];
+	float ratio = getTexScaling(10, 40, 0.1, tf[0], tf[1]);	// initialTF, stepSize, mixRange, resultingTFs
 
-    // ----- Result -----
+	vec3 grass  = getFragColor(
+						triplanarTexture(texSampler[5], tf[0]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[6], tf[0])),
+						triplanarNormal(texSampler[6], tf[0]),
+						triplanarTexture(texSampler[7], tf[0]).rgb,
+						triplanarTexture(texSampler[8], tf[0]).r * 255 );
+		
+	vec3 grass1  = getFragColor(
+						triplanarTexture(texSampler[5], tf[1]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[6], tf[1])),
+						triplanarNormal(texSampler[6], tf[1]),
+						triplanarTexture(texSampler[7], tf[1]).rgb,
+						triplanarTexture(texSampler[8], tf[1]).r * 255 );
+	
+	vec3 rock = getFragColor(
+						triplanarTexture(texSampler[9], tf[0]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[10], tf[0])),
+						triplanarNormal(texSampler[10], tf[0]),
+						triplanarTexture(texSampler[11], tf[0]).rgb,
+						triplanarTexture(texSampler[12], tf[0]).r * 255 );
+				
+	vec3 rock1 = getFragColor(
+						triplanarTexture(texSampler[9], tf[1]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[10], tf[1])),
+						triplanarNormal(texSampler[10], tf[1]),
+						triplanarTexture(texSampler[11], tf[1]).rgb,
+						triplanarTexture(texSampler[12], tf[1]).r * 255 );
+		
+	vec3 snow = getFragColor(
+						triplanarTexture(texSampler[34], tf[0]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[35], tf[0]).rgb),
+						triplanarNormal(texSampler[35], tf[0]),
+						triplanarTexture(texSampler[36], tf[0]).rgb,
+						triplanarTexture(texSampler[37], tf[0]).r * 255 );
+						
+	vec3 snow1 = getFragColor(
+						triplanarTexture(texSampler[34], tf[1]).rgb,
+						//unpackNormal(triplanarTexture(texSampler[35], tf[1]).rgb),
+						triplanarNormal(texSampler[35], tf[1]),
+						triplanarTexture(texSampler[36], tf[1]).rgb,
+						triplanarTexture(texSampler[37], tf[1]).r * 255 );	
+
+	grass = (ratio) * grass + (1-ratio) * grass1;
+	rock  = (ratio) * rock  + (1-ratio) * rock1;
+	snow  = (ratio) * snow  + (1-ratio) * snow1;	// <<< BUG: Artifact lines between textures of different scale. Possible cause: Textures are get with non-constant tf values, which determine the texture scale. Possible solutions: (1) Not using mipmaps (and maybe AntiAliasing & Anisotropic filthering); (2) Getting all textures of all scales used; (3) Maybe using dFdx() & dFdy() properly. See more in: https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162
+
+	result = grass;
+	return;
+
+	// Grass + Rock:
+
+	float slopeThreshold = 0.22;          // grass-rock slope threshold
+    float mixRange       = 0.02;          // threshold mixing range (slope range)
+	
+	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
+	result = rock * (ratio) + grass * (1-ratio);
+
+	// Snow:
+	float radius = 2000;
+	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
+	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
+	float lat[2]      = {radius * 0.7, 2 * radius};
+	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);
+	mixRange          = 0.015;										// slope threshold mixing range
+	
+	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
+	result = result * (ratio) + snow * (1-ratio);
+}
+
+
+// Tools ---------------------------------------------------------------------------------------------
+
+vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
+{
+	//normal = vec3(0, 0, 1);
+	
+	// ----- Ambient lighting -----
+	vec3 ambient = ubo.light[i].ambient.xyz * albedo;
+	if(dot(inLight[i].direction.xyz, normal) > 0) return ambient;		// If light comes from below the tangent plane
+	
+	// ----- Diffuse lighting -----
+	float diff   = max(dot(normal, -inLight[i].direction.xyz), 0.f);
+	vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff;		
+	
+	// ----- Specular lighting -----
+	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	//vec3 reflectDir = normalize(reflect(inLight[i].direction.xyz, normal));
+	//float spec	  = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 halfwayDir   = normalize(-inLight[i].direction.xyz + viewDir);
+	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec;
+	
+	// ----- Result -----
 	return vec3(ambient + diffuse + specular);
 }
 
 
-vec3 PointLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance = length(light.position.xyz - inPosition);
-    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-	vec3 fragLightDir = normalize(light.position.xyz - inPosition);
-	vec3 norm = normalize(inNormal);
+    float distance    = length(inLight[i].position.xyz - inFragPos);
+    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
+	vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
 
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * diffuseMap * attenuation;
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
+	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-    float diff = max(dot(norm, fragLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap * attenuation;
-
+    float diff   = max(dot(normal, -lightDir), 0.f);
+    vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff * attenuation;
+	
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
-    vec3 reflectDir = reflect(-fragLightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular.xyz * spec * specularMap * attenuation;
-
+	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	//vec3 reflectDir = normalize(reflect(lightDir, normal));
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 halfwayDir   = normalize(-lightDir + viewDir);
+	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation;
+	
     // ----- Result -----
-    return vec3(ambient + diffuse + specular);
+    return vec3(ambient + diffuse + specular);	
 }
 
 
-vec3 SpotLightColor( Light light, vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance = length(light.position.xyz - inPosition);
-    float attenuation = 1.0 / (light.degree[0] + light.degree[1] * distance + light.degree[2] * distance * distance);
-    vec3 fragLightDir = normalize(light.position.xyz - inPosition);
-    vec3 norm = normalize(inNormal);
-	
+    float distance = length(inLight[i].position.xyz - inFragPos);
+    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
+    vec3 lightDir = normalize(inFragPos - inLight[i].position.xyz);			// Direction from light source to fragment
+
     // ----- Ambient lighting -----
-    vec3 ambient = light.ambient.xyz * diffuseMap * attenuation;
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
+	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-    float theta = dot(fragLightDir, normalize(light.direction.xyz));	// The closer to 1, the more direct the light gets to fragment.
-    if(theta < light.cutOff[1]) return vec3(ambient);
-
-    float epsilon = light.cutOff[0] - light.cutOff[1];
-    float intensity = clamp((theta - light.cutOff[1]) / epsilon, 0.0, 1.0);
-    float diff = max(dot(norm, fragLightDir), 0.0);
-    vec3 diffuse = light.diffuse.xyz * diff * diffuseMap * attenuation * intensity;
+	float theta		= dot(lightDir, inLight[i].direction.xyz);	// The closer to 1, the more direct the light gets to fragment.
+	float epsilon   = ubo.light[i].cutOff[0] - ubo.light[i].cutOff[1];
+    float intensity = clamp((theta - ubo.light[i].cutOff[1]) / epsilon, 0.0, 1.0);
+	float diff      = max(dot(normal, -lightDir), 0.f);
+    vec3 diffuse    = ubo.light[i].diffuse.xyz * albedo * diff * attenuation * intensity;
 
     // ----- Specular lighting -----
-    vec3 viewDir = normalize(ubo.camPos.xyz - inPosition);
-    vec3 reflectDir = reflect(-fragLightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = light.specular.xyz * spec * specularMap * attenuation * intensity;
-
+	vec3 viewDir      = normalize(inCamPos - inFragPos);
+	//vec3 reflectDir = normalize(reflect(lightDir, normal));
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
+	vec3 halfwayDir   = normalize(-lightDir + viewDir);
+	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness * 4);
+	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation * intensity;
+	
     // ----- Result -----
-    return vec3(ambient + diffuse + specular);
+    return vec3(ambient + diffuse + specular);	
 }
 
 // Apply the lighting type you want to a fragment
-vec3 getFragColor(vec3 diffuseMap, vec3 specularMap, float shininess)
+vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-	if(ubo.light.lightType == 1)
-		return directionalLightColor(ubo.light, diffuseMap, specularMap, shininess);
-	else if(ubo.light.lightType == 2)
-		return PointLightColor(ubo.light, diffuseMap, specularMap, shininess);
-	else if(ubo.light.lightType == 3)
-		return SpotLightColor(ubo.light, diffuseMap, specularMap, shininess);
-	else
-		return diffuseMap;
+	//albedo      = applyLinearFog(albedo, vec3(.1,.1,.1), 100, 500);
+	//specularity = applyLinearFog(specularity, vec3(0,0,0), 100, 500);
+	//roughness   = applyLinearFog(roughness, 0, 100, 500);
+
+	vec3 result = vec3(0,0,0);
+
+	for(int i = 0; i < NUMLIGHTS; i++)		// for each light source
+	{
+		if(ubo.light[i].type == 1)
+			result += directionalLightColor	(i, albedo, normal, specularity, roughness);
+		else if(ubo.light[i].type == 2)
+			result += PointLightColor		(i, albedo, normal, specularity, roughness);
+		else if(ubo.light[i].type == 3)
+			result += SpotLightColor		(i, albedo, normal, specularity, roughness);
+	}
+	
+	return result;
 }
 
-vec4 triplanarTexture(sampler2D tex)
+void getTex(inout vec3 result, int albedo, int normal, int specular, int roughness, float scale)
 {
-	float tf = 50;            // texture factor
+	result   = getFragColor(
+				texture(texSampler[albedo], inUV/scale).rgb,
+				normalize(toSRGB(texture(texSampler[normal], inUV/scale).rgb) * 2.f - 1.f).rgb,
+				texture(texSampler[specular], inUV/scale).rgb, 
+				texture(texSampler[roughness], inUV/scale).r * 255 );
+}
 
-	vec4 dx = texture(tex, inPosition.zy / tf);
-	vec4 dy = texture(tex, inPosition.xz / tf);
-	vec4 dz = texture(tex, inPosition.xy / tf);
+vec2 unpackUV(vec2 UV, float texFactor)
+{
+	return UV.xy * vec2(1, -1) / texFactor;
+}
+
+vec4 triplanarTexture(sampler2D tex, float texFactor)
+{
+	vec4 dx = texture(tex, unpackUV(inPos.zy, texFactor));
+	vec4 dy = texture(tex, unpackUV(inPos.xz, texFactor));
+	vec4 dz = texture(tex, unpackUV(inPos.xy, texFactor));
 	
-	vec3 weights = abs(inNormal);
-	weights /= weights.x + weights.y + weights.z;
+	vec3 weights = abs(normalize(inNormal));
+	weights = weights / (weights.x + weights.y + weights.z);
 
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
-vec4 triplanarNormal(sampler2D tex, sampler2D diffuse, sampler2D specularMap, float shininess)
+vec3 unpackNormal(vec3 normal)
 {
+	return normalize(toSRGB(normal) * vec3(2.f, 2.f, 2.f) - vec3(1.f, 1.f, 1.f));
+}
+
+vec3 rnmBlendUnpacked(vec3 n1, vec3 n2)		// n1 (up-normal), n2(map-normal)
+{
+    n1 += vec3( 0, 0, 1);
+    n2 *= vec3(-1,-1, 1);
+    return n1 * dot(n1, n2) / n1.z - n2;
+}
+
+vec3 triplanarNormal(sampler2D tex, float texFactor)
+{
+	//vec4 result = triplanarTexture(tex, texFactor);
+	//return unpackNormal(result.rgb);
+	//return normalize(inNormal);
+	
+	// Triplanar uvs
+	vec2 uvX = unpackUV(inPos.zy, texFactor); // x facing plane
+	vec2 uvY = unpackUV(inPos.xz, texFactor); // y facing plane
+	vec2 uvZ = unpackUV(inPos.xy, texFactor); // z facing plane
+
+	// Tangent space normal maps
+	vec3 tnormalX = unpackNormal(texture(tex, uvX).xyz);
+	vec3 tnormalY = unpackNormal(texture(tex, uvY).xyz);
+	vec3 tnormalZ = unpackNormal(texture(tex, uvZ).xyz);
+	
+	// Get the sign (-1 or 1) of the surface normal
+	vec3 axisSign = sign(normalize(inNormal));
+	
+	if(true)		// My approach
+	{
+		//if(axisSign.x == 1) tnormalX *= vec3(-1, 1, 1);
+		//if(axisSign.y == 1) tnormalY *= vec3( 1, 1, 1);// <<< (++-)(+--)(-+-)(---)  // (-++)(+-+)(--+)(+++)
+		//if(axisSign.y ==-1) tnormalY *= vec3( 1, 1, 1);
+		// Ok in theory:
+		//if(axisSign.z ==-1) tnormalZ *= vec3(-1, 1, 1);
+		//if(axisSign.x == 1) tnormalX *= vec3(-1, 1, 1);
+		tnormalZ.x *= axisSign.z;
+		tnormalX.x *= -axisSign.x;
+		
+		return tnormalY;
+	}
+	if(true)		// (RNM) Reoriented Normal Mapping blend
+	{
+			// <<< Get absolute value of normal to ensure positive tangent "z" for blend
+			vec3 absVertNormal = abs(inNormal);
+			
+			// <<< Swizzle world normals to match tangent space and apply RNM blend
+			tnormalX = rnmBlendUnpacked(vec3(inNormal.zy, absVertNormal.x), tnormalX);
+			tnormalY = rnmBlendUnpacked(vec3(inNormal.xz, absVertNormal.y), tnormalY);
+			tnormalZ = rnmBlendUnpacked(vec3(inNormal.xy, absVertNormal.z), tnormalZ);
+			
+			// <<< Get the sign (-1 or 1) of the surface normal
+			vec3 axisSign = sign(inNormal);
+			
+			// <<< Reapply sign to Z
+			tnormalX.z *= axisSign.x;
+			tnormalY.z *= axisSign.y;
+			tnormalZ.z *= axisSign.z;
+		
+		// Triblend normals and add to world normal
+		vec3 weights = abs(normalize(inNormal));
+		//weights *= weights;
+		weights /= weights.x + weights.y + weights.z;
+		
+		vec3 worldNormal = normalize(
+			tnormalX.xyz * weights.x +
+			tnormalY.xyz * weights.y +
+			tnormalZ.xyz * weights.z +
+			vec3(0,0,1)
+			);
+			
+		return worldNormal;
+	}
+	else if(true)	// Naive method
+	{
+		vec3 dx = unpackNormal(texture(tex, inPos.zy / texFactor).xyz);
+		vec3 dy = unpackNormal(texture(tex, inPos.xz / texFactor).xyz);
+		vec3 dz = unpackNormal(texture(tex, inPos.xy / texFactor).xyz);
+		
+		vec3 weights = abs(normalize(inNormal));
+		//weights *= weights;
+		weights /= weights.x + weights.y + weights.z;
+		
+		return normalize(dx * weights.x + dy * weights.y + dz * weights.z);
+	}
+	else if(true)	// Basic Swizzle
+	{
+		// Flip tangent normal z to account for surface normal facing
+		tnormalX.z *= axisSign.x;
+		tnormalY.z *= axisSign.y;
+		tnormalZ.z *= axisSign.z;
+		
+		// Swizzle tangent normals to match world orientation and triblend
+		vec3 weights = abs(normalize(inNormal));
+		weights *= weights;
+		weights /= weights.x + weights.y + weights.z;
+		
+		vec3 worldNormal = normalize(
+			tnormalX.zyx * weights.x +
+			tnormalY.xzy * weights.y +
+			tnormalZ.xyz * weights.z );
+			
+		return worldNormal;
+	}
+	else if(true)	// SimonDev
+	{		
+		vec3 tx = unpackNormal(texture(tex, inPos.zy / texFactor).xyz);
+		vec3 ty = unpackNormal(texture(tex, inPos.xz / texFactor).xyz);
+		vec3 tz = unpackNormal(texture(tex, inPos.xy / texFactor).xyz);
+		
+		vec3 weights = abs(normalize(inNormal));
+		weights *= weights;
+		weights = weights / (weights.x + weights.y + weights.z);
+		
+		vec3 axis = sign(inNormal);
+		
+		vec3 tangentX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));	// z,y
+		vec3 bitangentX = normalize(cross(tangentX, inNormal)) * axis.x;
+		mat3 tbnX = mat3(tangentX, bitangentX, inNormal);
+		
+		vec3 tangentY = normalize(cross(inNormal, vec3(0., 0., axis.y)));	// x,z
+		vec3 bitangentY = normalize(cross(tangentY, inNormal)) * axis.y;
+		mat3 tbnY = mat3(tangentY, bitangentY, inNormal);
+		
+		vec3 tangentZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));	// 
+		vec3 bitangentZ = normalize(-cross(tangentZ, inNormal)) * axis.z;
+		mat3 tbnZ = mat3(tangentZ, bitangentZ, inNormal);
+		
+		vec3 worldNormal = normalize (
+			clamp(tbnX * tx, -1., 1.) * weights.x +
+			clamp(tbnY * ty, -1., 1.) * weights.y +
+			clamp(tbnZ * tz, -1., 1.) * weights.z );
+	
+		return worldNormal;
+	}
+
+	vec3 weights = abs(normalize(inNormal));
+	//weights *= weights;
+	weights /= weights.x + weights.y + weights.z;
+		
+	return normalize(tnormalX * weights.x + tnormalY * weights.y + tnormalZ * weights.z);
+
+/*
+	// Triplanar uvs
+	float2 uvX = i.worldPos.zy; // x facing plane
+	float2 uvY = i.worldPos.xz; // y facing plane
+	float2 uvZ = i.worldPos.xy; // z facing plane
+	
+	// Tangent space normal maps
+	half3 tnormalX = UnpackNormal(tex2D(_BumpMap, uvX));
+	half3 tnormalY = UnpackNormal(tex2D(_BumpMap, uvY));
+	half3 tnormalZ = UnpackNormal(tex2D(_BumpMap, uvZ));
+	
+	// Get absolute value of normal to ensure positive tangent "z" for blend
+	half3 absVertNormal = abs(i.worldNormal);
+	
+	// Swizzle world normals to match tangent space and apply RNM blend
+	tnormalX = rnmBlendUnpacked(half3(i.worldNormal.zy, absVertNormal.x), tnormalX);
+	tnormalY = rnmBlendUnpacked(half3(i.worldNormal.xz, absVertNormal.y), tnormalY);
+	tnormalZ = rnmBlendUnpacked(half3(i.worldNormal.xy, absVertNormal.z), tnormalZ);
+	
+	// Get the sign (-1 or 1) of the surface normal
+	half3 axisSign = sign(i.worldNormal);
+	
+	// Reapply sign to Z
+	tnormalX.z *= axisSign.x;
+	tnormalY.z *= axisSign.y;
+	tnormalZ.z *= axisSign.z;
+	
+	// Triblend normals and add to world normal
+	half3 worldNormal = normalize(
+		normalX.xyz * blend.x +
+		normalY.xyz * blend.y +
+		normalZ.xyz * blend.z +
+		i.worldNormal
+    );
+*/
 /*
 	float tf = 50;            // texture factor
 	
-	vec3 tx = texture(tex, inPosition.zy / tf);
-	vec3 ty = texture(tex, inPosition.xz / tf);
-	vec3 tz = texture(tex, inPosition.xy / tf);
+	vec3 tx = texture(tex, inFragPos.zy / tf);
+	vec3 ty = texture(tex, inFragPos.xz / tf);
+	vec3 tz = texture(tex, inFragPos.xy / tf);
 
 	vec3 weights = abs(inNormal);
 	weights *= weights;
@@ -208,136 +526,111 @@ vec4 triplanarNormal(sampler2D tex, sampler2D diffuse, sampler2D specularMap, fl
 	
 	return vec4(worldNormal, 0.);
 */
-	return vec4(0.);
 }
 
-void getTexture_Grid(inout vec3 result)
+vec3 toRGB(vec3 vec)
 {
-	result = getFragColor(texture(texSampler[0], inTexCoord).rgb, vec3(0.1, 0.1, 0.1), 0.4);
-}
-
-void getTexture_Sand(inout vec3 result)
-{
-    float slopeThreshold = 0.3;           // sand-plainSand slope threshold
-    float mixRange       = 0.1;           // threshold mixing range (slope range)
-    float tf             = 50;            // texture factor
-
-	//precision highp float;
-	//vec3 normal = normalize(normalize(inNormal));
-	//float slope = dot( inNormal, normalize(vec3(inNormal.x, inNormal.y, 0)) );
-	vec3 normalXradius = cross(inNormal, inPosition);
-	vec3 radiusXprevious = cross(inPosition, normalXradius);
-	float slope = dot( inNormal, normalize(radiusXprevious) );
-
-    // >>> DESERT
-    if (slope < slopeThreshold - mixRange)
-        //result = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
-        result = getFragColor(triplanarTexture(texSampler[5]).rgb, triplanarTexture(texSampler[6]).rgb, 1.0);
-
-    // >>> PLAIN
-    else if(slope > slopeThreshold + mixRange)
-        //result = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
-		result = getFragColor(triplanarTexture(texSampler[7]).rgb, triplanarTexture(texSampler[8]).rgb, 1.0);
-
-    // >>> MIXTURE
-    else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
-    {
-	    //vec3 sandFrag  = getFragColor(texture(texSampler[5], inPosition.xy/tf).rgb, texture(texSampler[6], inPosition.xy/tf).rgb, 1.0);
-        //vec3 plainFrag = getFragColor(texture(texSampler[7], inPosition.xy/tf).rgb, texture(texSampler[8], inPosition.xy/tf).rgb, 1.0);
-		vec3 sandFrag = getFragColor(triplanarTexture(texSampler[5]).rgb, triplanarTexture(texSampler[6]).rgb, 1.0);
-		vec3 plainFrag = getFragColor(triplanarTexture(texSampler[7]).rgb, triplanarTexture(texSampler[8]).rgb, 1.0);
-
-        float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-        result = plainFrag.xyz * ratio + sandFrag.xyz * (1-ratio);
-    }
-	else result = vec3(0.5, 0.5, 0.5);
-}
-
-void getTexture_GrassRock(inout vec3 result)
-{
-	float slopeThreshold = 0.5;           // grass-rock slope threshold
-    float mixRange       = 0.05;          // threshold mixing range (slope range)
-    float rtf            = 30;            // rock texture factor
-    float gtf            = 20;            // grass texture factor
-
-    float maxSnowLevel   = 80;            // maximum snow height (up from here, there's only snow within the maxSnowSlopw)
-    float minSnowLevel   = 50;            // minimum snow height (down from here, there's zero snow)
-    float maxSnowSlope   = 0.90;          // maximum slope where snow can rest
-    float snowSlope      = maxSnowSlope * ( (inPosition.z - minSnowLevel) / (maxSnowLevel - minSnowLevel) );
-    float mixSnowRange   = 0.1;           // threshold mixing range (slope range)
-
-    if(snowSlope > maxSnowSlope) snowSlope = maxSnowSlope;
-    float slope = dot( normalize(inNormal), normalize(vec3(inNormal.x, inNormal.y, 0.0)) );
-/*
-    // >>> SNOW
-    if(slope < snowSlope)
-    {
-        vec4 snowFrag = getFragColor( sun, snow.diffuse, snow.specular, snow.shininess, 1.0 );
-
-        // >>> MIXTURE (SNOW + GRASS + ROCK)
-        if(slope > (snowSlope - mixSnowRange) && slope < snowSlope)
-        {
-            vec4 rockFrag  = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-            vec4 grassFrag = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-            float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-            if(ratio < 0) ratio = 0;
-            else if(ratio > 1) ratio = 1;
-            vec3 mixGround = rockFrag.xyz * ratio + grassFrag.xyz * (1-ratio);
-
-            ratio      = (snowSlope - slope) / mixSnowRange;
-            if(ratio < 0) ratio = 0;
-            else if (ratio > 1) ratio = 1;
-            vec3 mix   = mixGround.xyz * (1-ratio) + snowFrag.xyz * ratio;
-            snowFrag   = vec4( mix, 1.0 );
-        }
-
-        result = snowFrag;
-    }
-
-    // >>> GRASS
-    else if (slope < slopeThreshold - mixRange)
-        result = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-
-    // >>> ROCK
-    else if(slope > slopeThreshold + mixRange)
-        result = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-
-    // >>> MIXTURE (GRASS + ROCK)
-    else if(slope >= slopeThreshold - mixRange && slope <= slopeThreshold + mixRange)
-    {
-        vec4 rockFrag  = getFragColor( sun, vec3(texture(rock.diffuseT, TexCoord/rtf)), vec3(texture(rock.specularT, TexCoord/rtf)), rock.shininess, 1.0 );
-        vec4 grassFrag = getFragColor( sun, vec3(texture(grass.diffuseT, TexCoord/gtf)), vec3(texture(grass.specularT, TexCoord/gtf)), grass.shininess, 1.0 );
-
-        float ratio    = (slope - (slopeThreshold - mixRange)) / (2 * mixRange);
-        vec3 mixGround = rockFrag.xyz * ratio + grassFrag.xyz * (1-ratio);
-
-        result = vec4(mixGround, 1.0);
-    }
-*/
-}
-
-vec3 applyFog(vec3 fragment)
-{
-	float fogMinSquareRadius = 1000;
-	float fogMaxSquareRadius = 5000;
-	vec3 skyColor = {0, 0, 0};
-	//float distance = length(ubo.camPos - inPosition);
+	vec3 linear;
 	
-    float squareDistance = (inPosition.x - ubo.camPos.x) * (inPosition.x - ubo.camPos.x) +
-                           (inPosition.y - ubo.camPos.y) * (inPosition.y - ubo.camPos.y) +
-                           (inPosition.z - ubo.camPos.z) * (inPosition.z - ubo.camPos.z);
-
-    if(squareDistance > fogMinSquareRadius)
-        if(squareDistance > fogMaxSquareRadius)
-            fragment = skyColor;
-        else
-    {
-        float ratio  = (squareDistance - fogMinSquareRadius) / (fogMaxSquareRadius - fogMinSquareRadius);
-        fragment = vec3(fragment * (1-ratio) + skyColor * ratio);
-    }
-
-    return fragment;
+	if (vec.x <= 0.04045) linear.x = vec.x / 12.92;
+	else linear.x = pow((vec.x + 0.055) / 1.055, 2.4);
+	
+	if (vec.y <= 0.04045) linear.y = vec.y / 12.92;
+	else linear.y = pow((vec.y + 0.055) / 1.055, 2.4);
+	
+	if (vec.z <= 0.04045) linear.z = vec.z / 12.92;
+	else linear.z = pow((vec.z + 0.055) / 1.055, 2.4);
+	
+	return linear;
 }
 
+vec3 toSRGB(vec3 vec)
+{
+	vec3 nonLinear;
+	
+	if (vec.x <= 0.0031308) nonLinear.x = vec.x * 12.92;
+	else nonLinear.x = 1.055 * pow(vec.x, 1.0/2.4) - 0.055;
+	
+	if (vec.y <= 0.0031308) nonLinear.y = vec.y * 12.92;
+	else nonLinear.y = 1.055 * pow(vec.y, 1.0/2.4) - 0.055;
+	
+	if (vec.z <= 0.0031308) nonLinear.z = vec.z * 12.92;
+	else nonLinear.z = 1.055 * pow(vec.z, 1.0/2.4) - 0.055;
+	
+	return nonLinear;
+}
 
-// modulus(%) = a - (b * floor(a/b))
+vec3 applyLinearFog(vec3 fragColor, vec3 fogColor, float minDist, float maxDist)
+{
+	float minSqrRadius = minDist * minDist;
+	float maxSqrRadius = maxDist * maxDist;
+	vec3 diff = inFragPos - inCamPos;
+	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+
+    if(sqrDist > maxSqrRadius) return fogColor;
+    else
+    {
+        float ratio  = (sqrDist - minSqrRadius) / (maxSqrRadius - minSqrRadius);
+        return fragColor * (1-ratio) + fogColor * ratio;
+    }
+}
+
+float applyLinearFog(float value, float fogValue, float minDist, float maxDist)
+{
+	float minSqrRadius = minDist * minDist;
+	float maxSqrRadius = maxDist * maxDist;
+	vec3 diff = inFragPos - inCamPos;
+	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+
+    if(sqrDist > maxSqrRadius) return fogValue;
+    else
+    {
+        float ratio  = (sqrDist - minSqrRadius) / (maxSqrRadius - minSqrRadius);
+        return value * (1-ratio) + fogValue * ratio;
+    }
+}
+
+vec3 applyFog(vec3 fragColor, vec3 fogColor)
+{
+	float coeff[3] = { 1, 0.000000000001, 0.000000000001 };		// coefficients  ->  a + b*dist + c*dist^2
+	vec3 diff = inFragPos - inCamPos;
+	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+	
+	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);
+	return fragColor * attenuation + fogColor * (1. - attenuation);
+}
+
+float applyFog(float value, float fogValue)
+{
+	float coeff[3] = { 1, 0.000000000001, 0.000000000001 };		// coefficients  ->  a + b*dist + c*dist^2
+	vec3 diff = inFragPos - inCamPos;
+	float sqrDist  = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+	
+	float attenuation = 1.0 / (coeff[0] + coeff[1] * sqrDist + coeff[2] * sqrDist * sqrDist);
+	return value * attenuation + fogValue * (1. - attenuation);
+}
+
+float getTexScaling(float initialTexFactor, float stepSize, float mixRange, inout float texFactor1, inout float texFactor2)
+{
+	// initialTexFactor: Starting texture factor
+	// stepSize: Size of each step (meters)
+	// mixRange: Percentage of mix area with respect to max distance
+	
+	// Compute current and next step
+	float linearStep = 1 + floor(inDist / stepSize);	// Linear step [1, inf)
+	float quadraticStep = ceil(log(linearStep) / log(2));
+	float step[2];
+	step[0] = pow (2, quadraticStep);					// Exponential step [0, inf)
+	step[1] = pow(2, quadraticStep + 1);				// Next exponential step
+	
+	// Get texture resolution for each section
+	texFactor1 = step[0] * initialTexFactor;
+	texFactor2 = step[1] * initialTexFactor;
+	
+	// Get mixing ratio
+	float maxDist = stepSize * step[0];
+	mixRange = mixRange * maxDist;						// mixRange is now an absolute value (not percentage)
+	return clamp((maxDist - inDist) / mixRange, 0.f, 1.f);
+}
+
+float modulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }

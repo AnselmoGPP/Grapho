@@ -18,11 +18,6 @@ extern SphereCam camera_2;
 extern PlaneCam2 camera_3;
 extern PlanetFPcam camera_4;
 
-// Sun & light
-extern float dayTime;
-extern float sunAngDist;
-extern Light sunLight;
-
 #endif
 
 

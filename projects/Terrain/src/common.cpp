@@ -14,9 +14,6 @@ const std::string vertexDir("../../../models/");
 const std::string texDir("../../../textures/");
 #endif
 
-float dayTime;
-float sunAngDist = 3.14 / 10.;
-Light sunLight;
 
 // Cameras --------------------------------------------------
 
@@ -50,4 +47,4 @@ PlanetFPcam camera_4(
 	0.1f, 5000.f,					// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
 	1000,							// radius
-	0.f, 45.f );					// latitude & longitude
+	45.f, 0.f );					// latitude & longitude

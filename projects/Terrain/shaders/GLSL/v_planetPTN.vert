@@ -18,46 +18,54 @@ layout(set = 0, binding = 0) uniform ubobject {
 	LightPD light[2];	// n * (2 * vec4)
 } ubo;
 
-layout(location = 0) in vec3     inVertPos;
-layout(location = 1) in vec2     inUVCoord;
+layout(location = 0) in vec3     inPos;
+layout(location = 1) in vec2     inUV;
 layout(location = 2) in vec3     inNormal;
 
-layout(location = 0) out vec3    outVertPos;	// Each location has 16 bytes
-layout(location = 1) out vec3    outPos;		// Vertex position not transformed with TBN matrix
-layout(location = 2) out vec2    outUVCoord;
-layout(location = 3) out vec3    outCamPos;
-layout(location = 4) out float   outSlope;
-layout(location = 5) out vec3    outNormal;
-layout(location = 6) out float   outDist;
-layout(location = 7) out float   outHeight;
-layout(location = 8) out LightPD outLight[NUMLIGHTS];
+layout(location = 0)  out vec3	outPos;			// Vertex position. Each location has 16 bytes
+layout(location = 1)  out vec2	outUV;			// Vertex UVs coordinates
+layout(location = 2)  out vec3	outCamPos;		// Camera position
+layout(location = 3)  out float	outSlope;		// Ground slope
+layout(location = 4)  out vec3	outNormal;		// Ground normaliz
+layout(location = 5)  out float	outDist;		// Distace vertex-camera
+layout(location = 6)  out float	outHeight;		// Camera height over nucleus
+layout(location = 7)  out vec3	outTanX;		// Tangents & Bitangents
+layout(location = 8)  out vec3	outBTanX;
+layout(location = 9)  out vec3	outTanY;
+layout(location = 10) out vec3	outBTanY;
+layout(location = 11) out vec3	outTanZ;
+layout(location = 12) out vec3	outBTanZ;
+layout(location = 13) out LightPD outLight[NUMLIGHTS];
 
 void main()
 {
-	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inVertPos, 1.0);
+	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
 	
-	outPos      = inVertPos;
-	outUVCoord  = inUVCoord;
+	outPos      = inPos;
+	outUV  		= inUV;
 	outNormal   = mat3(ubo.normalMatrix) * inNormal;
-	vec3 diff   = inVertPos - ubo.camPos.xyz;
+	vec3 diff   = inPos - ubo.camPos.xyz;
 	outDist     = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-	outHeight   = sqrt(inVertPos.x * inVertPos.x + inVertPos.y * inVertPos.y + inVertPos.z * inVertPos.z);
-	outSlope    = 1. - dot(outNormal, normalize(inVertPos - vec3(0,0,0)));			// vec3(0,0,0) == planetCenter
-	
-	// TBN matrix:
-	
-	vec3 tangent   = normalize(vec3(ubo.model * vec4(cross(vec3(0,1,0), outNormal), 0.f)));	// X
-	vec3 bitangent = normalize(vec3(ubo.model * vec4(cross(outNormal, tangent), 0.f)));		// Y
-	mat3 TBN       = transpose(mat3(tangent, bitangent, outNormal));						// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
-	
-	// Values transformed to tangent space:
-	
-	outVertPos = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));								// inverted TBN transforms vectors to tangent space
-	outCamPos  = TBN * ubo.camPos.xyz;
-	for(int i = 0; i < NUMLIGHTS; i++) {
-		outLight[i].position.xyz  = TBN * ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = TBN * normalize(ubo.light[i].direction.xyz);			// for directional light
+	outHeight   = sqrt(ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z);
+	outSlope    = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
+	outCamPos   = ubo.camPos.xyz;
+	for(int i = 0; i < NUMLIGHTS; i++) 
+	{
+		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional light
 	}
+	
+	// TBN matrices for triplanar shader:	<<< Maybe I can reduce X & Z plane projections into a single one
+	vec3 axis = sign(inNormal);
+
+	outTanX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));		// z,y
+	outBTanX = normalize(cross(outTanX, inNormal)) * axis.x;
+	
+	outTanY = normalize(cross(inNormal, vec3(0., 0., axis.y)));		// x,z
+	outBTanY = normalize(cross(outTanY, inNormal)) * axis.y;
+	
+	outTanZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));	// x,y
+	outBTanZ = normalize(-cross(outTanZ, inNormal)) * axis.z;
 }
 
 

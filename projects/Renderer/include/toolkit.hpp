@@ -105,19 +105,37 @@ public:
 	bool ifBigger(float a, float b);
 };
 
-namespace Sun
+class SunSystem
 {
+    const unsigned mode;        //!< Orbit mode: 1 (XZ plane) or 2 (XY plane)
+    const float angularWidth;   //!< Angular sun width
+    const float speed;          //!< Orbital speed
+    const float distance;       //!< Distance to camera
+    const float initialDayTime;       //!< Range [0.0, 24.0)
+    float dayTime;              //!< Range [0.0, 24.0)
+
+public:
     /**
-    @brief Get Model matrix for the sun.
+        @brief Constructor
+        @param initialTime Range [0.0, 24.0).
+        @param speed Orbital speed.
+        @param mode Orbit mode: 1 (XZ plane) or 2 (XY plane).
+    */
+    SunSystem(float initialDayTime, float speed, float angularWidth, float dist, unsigned mode);
+
+    void updateTime(long double frameTime);     //!< Update sun time. Param: frameTime (real time since the beggining of object existence)
+
+    /**
+    @brief Get Model Matrix (MM) for the sun clipboard.
         @param pos Camera position.
-        @param dayTime Time of the day (12,5 = 12:30). It determines the sun angle.
+        @param dayTime Time of the day(12, 5 = 12:30).It determines the sun angle.
         @param sunDist Sun distance from camPos.
         @param sunAngDist Sun size as angle in the celestial sphere.
     */
-    glm::mat4 MM(glm::vec3 camPos, float dayTime, float sunDist, float sunAngDist);
+    glm::mat4 MM(glm::vec3 camPos);
 
     /// Get light direction from sun, given a day time. Used for directional and spot lights.
-    glm::vec3 lightDirection(float dayTime);
+    glm::vec3 lightDirection();
 };
 
 /// Icosahedron data (vertices, colors, indices, normals)
@@ -138,6 +156,7 @@ struct Icosahedron
     static std::vector<float> index;    // Indices
 };
 
-bool getEndianness();
+/// Returns true (big endian) or false (little endian).
+bool isBigEndian();
 
 #endif
