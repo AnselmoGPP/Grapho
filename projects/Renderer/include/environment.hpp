@@ -14,7 +14,7 @@
 #ifdef RELEASE
 const bool enableValidationLayers = false;
 #else
-const bool enableValidationLayers = false;// true;
+const bool enableValidationLayers = true;
 #endif
 
 typedef std::vector<VkFramebuffer> framebufferSet;

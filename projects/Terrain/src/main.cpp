@@ -60,7 +60,7 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	8, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	7, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
@@ -235,7 +235,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("cottage") != assets.end())
 		for (i = 0; i < assets["cottage"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["cottage"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(90.f, frameTime * 45.f, 0.f), glm::vec3(0.f, 0.f, 0.f)), mat4size);
+			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(pi/2, frameTime * pi/2, 0.f), glm::vec3(0.f, 0.f, 0.f)), mat4size);
 			memcpy(dest + 1 * mat4size, &view, mat4size);
 			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
@@ -295,8 +295,8 @@ void setLights()
 {
 	//lightss.turnOff(0);
 	lights.setDirectional(0, sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	//lightss.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0);
-	lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 1, 1, 0.5, 0.9, 0.8);
+	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
+	lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
 }
 
 void loadShaders(Renderer& app)
@@ -538,10 +538,10 @@ void setRoom(Renderer& app)
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
 	app.setRenders(assets["room"], 3);	// TEST(in render loop) : setRenders(out of range)
 
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -90.f), glm::vec3( 0.f, -50.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -pi/2), glm::vec3( 0.f, -50.f, 3.f)), mat4size);
 	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3( 0.f, -80.f, 3.f)), mat4size);
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  90.f), glm::vec3(30.f, -80.f, 3.f)), mat4size);
-	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 180.f), glm::vec3(30.f, -50.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi/2), glm::vec3(30.f, -80.f, 3.f)), mat4size);
+	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 }
 
 void setSea(Renderer& app)

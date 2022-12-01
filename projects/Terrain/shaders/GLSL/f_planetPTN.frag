@@ -22,10 +22,19 @@ struct LightProps
     vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
 };
 
+struct PreCalcValues
+{
+	vec3 halfwayDir[NUMLIGHTS];		// Bisector of the angle viewDir-lightDir
+	vec3 lightDirFrag[NUMLIGHTS];	// Light direction from lightSource to fragment
+	float attenuation[NUMLIGHTS];	// How light attenuates with distance
+	float intensity[NUMLIGHTS];
+	
+} pre;
+
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
     vec4 time;				// float
-	LightProps light[2];
+	LightProps light[NUMLIGHTS];
 } ubo;
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[27];		// sampler1D, sampler2D, sampler3D
@@ -56,6 +65,7 @@ vec4  triplanarTexture(sampler2D tex, float texFactor);
 vec3  triplanarNormal (sampler2D tex, float texFactor);		// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
 vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
 vec3  toSRGB		  (vec3 vec);							// Transforms linear RGB color to non-linear sRGB
+void  precalculateValues();
 vec2  unpackUV		  (vec2 UV, float texFactor);
 vec3  unpackNormal    (vec3 normal);
 vec3  applyLinearFog  (vec3 fragColor, vec3 fogColor, float minDist, float maxDist);
@@ -73,17 +83,14 @@ void getTexture_GrassRock(inout vec3 result);
 
 void main()
 {
-	//outColor = vec4(inColor, 1.0);
-	//outColor = texture(texSampler[0], inTexCoord);
-	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
-
+	precalculateValues();
 	vec3 color;
-
+	
 	//getTexture_Sand(color);
 	getTexture_GrassRock(color);
 	
+	//outColor = vec4(inColor * texture(texSampler, inTexCoord).rgb, 1.0);
 	outColor = vec4(color, 1.0);
-	//outColor = vec4(abs(normalize(inNormal.xyz)), 1.0);
 }
 
 
@@ -93,10 +100,6 @@ void getTexture_Sand(inout vec3 result)
     float mixRange       = 0.02;          // threshold mixing range (slope range)
     float tf             = 50;            // texture factor
 	
-	//float ratio;
-	//if (inSlope < slopeThreshold - mixRange) ratio = 0;
-	//else if(inSlope > slopeThreshold + mixRange) ratio = 1;
-	//else ratio = (inSlope - (slopeThreshold - mixRange)) / (2 * mixRange);	// <<< change for clamp()
 	float ratio = clamp((inSlope - slopeThreshold) / (2 * mixRange), 0.f, 1.f);
 		
 	vec3 dunes  = getFragColor(
@@ -126,8 +129,7 @@ void getTexture_GrassRock(inout vec3 result)
 	vec3 snow;
 	vec3 snow2;
 
-	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.00000000002;
-	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.00000000002;
+	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.000000000018;
 	
 	if(inDist > lowResDist * 1.2)
 	{
@@ -312,23 +314,17 @@ void getTexture_GrassRock(inout vec3 result)
 
 vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-	//normal = vec3(0, 0, 1);
-	
 	// ----- Ambient lighting -----
 	vec3 ambient = ubo.light[i].ambient.xyz * albedo;
-	if(dot(inLight[i].direction.xyz, normal) > 0) return ambient;		// If light comes from below the tangent plane
+	if(dot(inLight[i].direction.xyz, normal) > 0) return ambient;			// If light comes from below the tangent plane
 	
 	// ----- Diffuse lighting -----
 	float diff   = max(dot(normal, -inLight[i].direction.xyz), 0.f);
 	vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff;		
 	
 	// ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inPos);
-	//vec3 reflectDir = normalize(reflect(inLight[i].direction.xyz, normal));
-	//float spec	  = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 halfwayDir   = normalize(-inLight[i].direction.xyz + viewDir);
-	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
-	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec;
+	float spec		= pow(max(dot(normal, pre.halfwayDir[i]), 0.0), roughness * 4);
+	vec3 specular	= ubo.light[i].specular.xyz * specularity * spec;
 	
 	// ----- Result -----
 	return vec3(ambient + diffuse + specular);
@@ -337,25 +333,17 @@ vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, fl
 
 vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance    = length(inLight[i].position.xyz - inPos);
-    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
-	vec3 lightDir = normalize(inPos - inLight[i].position.xyz);			// Direction from light source to fragment
-
     // ----- Ambient lighting -----
-    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
-	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * pre.attenuation[i];
+	if(dot(pre.lightDirFrag[i], normal) > 0) return ambient;				// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-    float diff   = max(dot(normal, -lightDir), 0.f);
-    vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff * attenuation;
+    float diff   = max(dot(normal, -pre.lightDirFrag[i]), 0.f);
+    vec3 diffuse = ubo.light[i].diffuse.xyz * albedo * diff * pre.attenuation[i];
 	
     // ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inPos);
-	//vec3 reflectDir = normalize(reflect(lightDir, normal));
-	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 halfwayDir   = normalize(-lightDir + viewDir);
-	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
-	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation;
+	float spec        = pow(max(dot(normal, pre.halfwayDir[i]), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * pre.attenuation[i];
 	
     // ----- Result -----
     return vec3(ambient + diffuse + specular);	
@@ -364,32 +352,20 @@ vec3 PointLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float ro
 
 vec3 SpotLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 {
-    float distance = length(inLight[i].position.xyz - inPos);
-    float attenuation = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distance + ubo.light[i].degree[2] * distance * distance);	// How light attenuates with distance
-    vec3 lightDir = normalize(inPos - inLight[i].position.xyz);			// Direction from light source to fragment
-
     // ----- Ambient lighting -----
-    vec3 ambient = ubo.light[i].ambient.xyz * albedo * attenuation;
-	if(dot(lightDir, normal) > 0) return ambient;							// If light comes from below the tangent plane
+    vec3 ambient = ubo.light[i].ambient.xyz * albedo * pre.attenuation[i];
+	if(dot(pre.lightDirFrag[i], normal) > 0) return ambient;				// If light comes from below the tangent plane
 
     // ----- Diffuse lighting -----
-	float theta		= dot(lightDir, inLight[i].direction.xyz);	// The closer to 1, the more direct the light gets to fragment.
-	float epsilon   = ubo.light[i].cutOff[0] - ubo.light[i].cutOff[1];
-    float intensity = clamp((theta - ubo.light[i].cutOff[1]) / epsilon, 0.0, 1.0);
-	float diff      = max(dot(normal, -lightDir), 0.f);
-    vec3 diffuse    = ubo.light[i].diffuse.xyz * albedo * diff * attenuation * intensity;
+	float diff      = max(dot(normal, -pre.lightDirFrag[i]), 0.f);
+    vec3 diffuse    = ubo.light[i].diffuse.xyz * albedo * diff * pre.attenuation[i] * pre.intensity[i];
 
     // ----- Specular lighting -----
-	vec3 viewDir      = normalize(inCamPos - inPos);
-	//vec3 reflectDir = normalize(reflect(lightDir, normal));
-	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness);
-	vec3 halfwayDir   = normalize(-lightDir + viewDir);
-	//float spec      = pow(max(dot(viewDir, reflectDir), 0.f), roughness * 4);
-	float spec        = pow(max(dot(normal, halfwayDir), 0.0), roughness * 4);
-	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * attenuation * intensity;
+	float spec        = pow(max(dot(normal, pre.halfwayDir[i]), 0.0), roughness * 4);
+	vec3 specular     = ubo.light[i].specular.xyz * specularity * spec * pre.attenuation[i] * pre.intensity[i];
 	
     // ----- Result -----
-    return vec3(ambient + diffuse + specular);	
+    return vec3(ambient + diffuse + specular);
 }
 
 // Apply the lighting type you want to a fragment
@@ -416,11 +392,46 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 
 void getTex(inout vec3 result, int albedo, int normal, int specular, int roughness, float scale)
 {
-	result   = getFragColor(
+	result = getFragColor(
 				texture(texSampler[albedo], inUV/scale).rgb,
 				normalize(toSRGB(texture(texSampler[normal], inUV/scale).rgb) * 2.f - 1.f).rgb,
 				texture(texSampler[specular], inUV/scale).rgb, 
 				texture(texSampler[roughness], inUV/scale).r * 255 );
+}
+
+void precalculateValues()
+{
+	vec3 viewDir = normalize(inCamPos - inPos);	// Camera view direction
+	float distFragLight;						// Distance fragment-lightSource
+	float theta;								// The closer to 1, the more direct the light gets to fragment.
+	float epsilon;								// Cutoff range
+	int type;									// Light type
+	
+	for(int i = 0; i < NUMLIGHTS; i++)
+	{
+		type = ubo.light[i].type;
+		if(type == 1)
+		{
+			pre.halfwayDir[i]	= normalize(-inLight[i].direction.xyz + viewDir);
+		}
+		else if(type == 2)
+		{
+			distFragLight		= length(inLight[i].position.xyz - inPos);
+			pre.lightDirFrag[i]	= normalize(inPos - inLight[i].position.xyz);
+			pre.halfwayDir[i]   = normalize(-pre.lightDirFrag[i] + viewDir);
+			pre.attenuation[i]  = 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distFragLight + ubo.light[i].degree[2] * distFragLight * distFragLight);
+		}
+		else if(type == 3)
+		{
+			distFragLight		= length(inLight[i].position.xyz - inPos);
+			pre.lightDirFrag[i]	= normalize(inPos - inLight[i].position.xyz);
+			pre.halfwayDir[i]   = normalize(-pre.lightDirFrag[i] + viewDir);
+			pre.attenuation[i]	= 1.0 / (ubo.light[i].degree[0] + ubo.light[i].degree[1] * distFragLight + ubo.light[i].degree[2] * distFragLight * distFragLight);
+			theta				= dot(pre.lightDirFrag[i], inLight[i].direction.xyz);
+			epsilon				= ubo.light[i].cutOff[0] - ubo.light[i].cutOff[1];
+			pre.intensity[i]	= clamp((theta - ubo.light[i].cutOff[1]) / epsilon, 0.0, 1.0);
+		}
+	}
 }
 
 vec2 unpackUV(vec2 UV, float texFactor)

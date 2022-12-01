@@ -13,9 +13,9 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
     mat4 view;
     mat4 proj;
-    mat4 normalMatrix;	// mat3
-	vec4 camPos;		// vec3
-	LightPD light[2];	// n * (2 * vec4)
+    mat4 normalMatrix;			// mat3
+	vec4 camPos;				// vec3
+	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
 layout(location = 0) in vec3     inPos;
@@ -58,13 +58,13 @@ void main()
 	// TBN matrices for triplanar shader:	<<< Maybe I can reduce X & Z plane projections into a single one
 	vec3 axis = sign(inNormal);
 
-	outTanX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));		// z,y
+	outTanX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));	// z,y
 	outBTanX = normalize(cross(outTanX, inNormal)) * axis.x;
 	
-	outTanY = normalize(cross(inNormal, vec3(0., 0., axis.y)));		// x,z
+	outTanY = normalize(cross(inNormal, vec3(0., 0., axis.y)));			// x,z
 	outBTanY = normalize(cross(outTanY, inNormal)) * axis.y;
 	
-	outTanZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));	// x,y
+	outTanZ = normalize(cross(inNormal, vec3(0., -axis.z, 0.)));		// x,y
 	outBTanZ = normalize(-cross(outTanZ, inNormal)) * axis.z;
 }
 

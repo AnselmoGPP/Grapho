@@ -47,4 +47,4 @@ PlanetFPcam camera_4(
 	0.1f, 5000.f,					// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
 	1000,							// radius
-	45.f, 0.f );					// latitude & longitude
+	50.f, 90.f );					// latitude & longitude

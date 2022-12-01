@@ -1,7 +1,7 @@
 TODO:
-	All in radians
+	Scale up textures
+	Color filters for textures depending on height
 	Black stains due to bad normals
-	Find a way to automatically PBR render whole planet when distance is too far
 	-delete inUVCoord vertex attribute
 	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
@@ -57,7 +57,7 @@ BUGS:
 	Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
 	Check that normal maps are correctly put in each face of the planet during Triplanar mapping (I suspect they may not be)
 	BUG: PRESS ESCAPE JUST BEFORE RENDERING
-	Bug when resizing window (crashes)
+	Bug when resizing window (crashes) (and maybe not everything is loaded yet) (Out-of-date/Suboptimal KHR or window resized)
 	Make terrain too big makes chunks not to update (maybe because chunk's center is too far)
 
 ----------------------------------------

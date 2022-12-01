@@ -27,9 +27,9 @@ glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const g
 	
 	// Execution order: Scale > X rot > Y rot > Z rot > Translation
 	mm = glm::translate(mm, translation);
-	mm = glm::rotate(mm, glm::radians(rotation[2]), glm::vec3(0.0f, 0.0f, 1.0f));
-	mm = glm::rotate(mm, glm::radians(rotation[1]), glm::vec3(0.0f, 1.0f, 0.0f));
-	mm = glm::rotate(mm, glm::radians(rotation[0]), glm::vec3(1.0f, 0.0f, 0.0f));
+	mm = glm::rotate(mm, rotation[2], glm::vec3(0.0f, 0.0f, 1.0f));
+	mm = glm::rotate(mm, rotation[1], glm::vec3(0.0f, 1.0f, 0.0f));
+	mm = glm::rotate(mm, rotation[0], glm::vec3(1.0f, 0.0f, 0.0f));
 	mm = glm::scale(mm, scale);
 
 	return mm;
@@ -168,13 +168,13 @@ glm::mat4 SunSystem::MM(glm::vec3 camPos)
 	case 1:		// XZ plane
 		return modelMatrix(
 			glm::vec3(sunSize, sunSize, sunSize),
-			glm::vec3(0.f, - glm::degrees(sunAng), 0.f),
+			glm::vec3(0.f, -sunAng, 0.f),
 			glm::vec3(camPos.x + distance * sin(sunAng), camPos.y, camPos.z - distance * cos(sunAng)) );
 		break;
 	case 2:		// XY plane
 		return modelMatrix(
 			glm::vec3(sunSize, sunSize, sunSize),
-			glm::vec3(0.f, -90.f, -glm::degrees(sunAng)),
+			glm::vec3(0.f, -90.f, -sunAng),
 			glm::vec3(camPos.x + distance * cos(sunAng), camPos.y - distance * sin(sunAng), camPos.z));
 		break;
 	default:
