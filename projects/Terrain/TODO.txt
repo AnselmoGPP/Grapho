@@ -12,7 +12,6 @@ TODO:
 	Add FastNoise2 library (https://github.com/Auburn/FastNoise2/wiki/2:-Including-the-library-in-your-project) or libnoise
 
 	Shader:
-		-Optimize shader lightning
 		Can some job be done in the vertex shader?
 
 	Paths using Perlin noise

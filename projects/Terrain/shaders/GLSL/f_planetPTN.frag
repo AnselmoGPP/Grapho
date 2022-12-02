@@ -40,19 +40,18 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[27];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0)  in vec3    inPos;
-layout(location = 1)  in vec2    inUV;
-layout(location = 2)  in vec3    inCamPos;
+layout(location = 1)  in vec3    inCamPos;
+layout(location = 2)  in vec3    inNormal;
 layout(location = 3)  in float   inSlope;
-layout(location = 4)  in vec3    inNormal;
-layout(location = 5)  in float   inDist;
-layout(location = 6)  in float   inHeight;
-layout(location = 7)  in vec3	 inTanX;
-layout(location = 8)  in vec3	 inBTanX;
-layout(location = 9)  in vec3	 inTanY;
-layout(location = 10) in vec3	 inBTanY;
-layout(location = 11) in vec3	 inTanZ;
-layout(location = 12) in vec3	 inBTanZ;
-layout(location = 13) in LightPD inLight[NUMLIGHTS];
+layout(location = 4)  in float   inDist;
+layout(location = 5)  in float   inSqrHeight;
+layout(location = 6)  in vec3	 inTanX;
+layout(location = 7)  in vec3	 inBTanX;
+layout(location = 8)  in vec3	 inTanY;
+layout(location = 9)  in vec3	 inBTanY;
+layout(location = 10) in vec3	 inTanZ;
+layout(location = 11) in vec3	 inBTanZ;
+layout(location = 12) in LightPD inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -60,7 +59,7 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 // Declarations:
 
 vec3  getFragColor	  (vec3 albedo, vec3 normal, vec3 specularity, float roughness);
-void  getTex		  (inout vec3 result, int albedo, int normal, int specular, int roughness, float scale);
+void  getTex		  (inout vec3 result, int albedo, int normal, int specular, int roughness, float scale, vec2 UV);
 vec4  triplanarTexture(sampler2D tex, float texFactor);
 vec3  triplanarNormal (sampler2D tex, float texFactor);		// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
 vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
@@ -122,14 +121,14 @@ void getTexture_GrassRock(inout vec3 result)
 	float tf[2];
 	float ratio = getTexScaling(10, 40, 0.1, tf[0], tf[1]);	// initialTexFactor, stepSize, mixRange, resultingTFs[2]
 
-	vec3 grass;
-	vec3 grass2;
-	vec3 rock;
-	vec3 rock2;
-	vec3 snow;
-	vec3 snow2;
+	vec3 grass;		vec3 grass2;
+	vec3 rock;		vec3 rock2;
+	vec3 snow;		vec3 snow2;
+	float grassHeight = 0;	float grass2Height = 0;
+	float rockHeight  = 0;	float rock2Height  = 0;
+	float snowHeight  = 0;	float snow2Height  = 0;
 
-	float lowResDist = inHeight * inHeight * inHeight * inHeight * 0.000000000018;
+	float lowResDist = inSqrHeight * inSqrHeight * 0.000000000018;	// Distance from where low resolution starts
 	
 	if(inDist > lowResDist * 1.2)
 	{
@@ -282,6 +281,16 @@ void getTexture_GrassRock(inout vec3 result)
 					triplanarNormal (texSampler[11], tf[1]),
 					triplanarTexture(texSampler[12], tf[1]).rgb,
 					triplanarTexture(texSampler[13], tf[1]).r * 255 );	
+	
+		if(inDist < 5)
+		{
+			grassHeight  = triplanarTexture(texSampler[ 4], tf[0]).r;
+			grass2Height = triplanarTexture(texSampler[ 4], tf[1]).r;
+			rockHeight   = triplanarTexture(texSampler[ 9], tf[0]).r;
+			rock2Height  = triplanarTexture(texSampler[ 9], tf[1]).r;
+			snowHeight   = triplanarTexture(texSampler[14], tf[0]).r;
+			snow2Height  = triplanarTexture(texSampler[14], tf[1]).r;
+		}
 	}
 
 	grass = (ratio) * grass + (1-ratio) * grass2;
@@ -294,17 +303,25 @@ void getTexture_GrassRock(inout vec3 result)
     float mixRange       = 0.02;          // threshold mixing range (slope range)
 	
 	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
-	result = rock * (ratio) + grass * (1-ratio);
-
-	// Snow:
+	//result = rock * (ratio) + grass * (1-ratio);
 	
-	float radius = 2000;
+	if(inDist < 5) 
+	{
+		float ma = max(rockHeight  + ratio, grassHeight + (1-ratio)) - 0.1;		// 0.1 = depth
+		float b1 = max(rockHeight  + ratio       - ma, 0);
+		float b2 = max(grassHeight + (1-ratio) - ma, 0);
+		result = (rock * b1 + grass * b2) / (b1 + b2);
+	}
+	else result = rock * (ratio) + grass * (1-ratio);
+	
+	// Snow:
+
 	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
 	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
-	float lat[2]      = {radius * 0.7, 2 * radius};
+	float lat[2]      = {RADIUS * 0.7, 2 * RADIUS};
 	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);
 	mixRange          = 0.015;										// slope threshold mixing range
-	
+
 	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
 	result = result * (ratio) + snow * (1-ratio);
 }
@@ -390,13 +407,13 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 	return result;
 }
 
-void getTex(inout vec3 result, int albedo, int normal, int specular, int roughness, float scale)
+void getTex(inout vec3 result, int albedo, int normal, int specular, int roughness, float scale, vec2 UV)
 {
 	result = getFragColor(
-				texture(texSampler[albedo], inUV/scale).rgb,
-				normalize(toSRGB(texture(texSampler[normal], inUV/scale).rgb) * 2.f - 1.f).rgb,
-				texture(texSampler[specular], inUV/scale).rgb, 
-				texture(texSampler[roughness], inUV/scale).r * 255 );
+				texture(texSampler[albedo], UV/scale).rgb,
+				normalize(toSRGB(texture(texSampler[normal], UV/scale).rgb) * 2.f - 1.f).rgb,
+				texture(texSampler[specular], UV/scale).rgb, 
+				texture(texSampler[roughness], UV/scale).r * 255 );
 }
 
 void precalculateValues()
