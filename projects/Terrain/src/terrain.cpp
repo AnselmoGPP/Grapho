@@ -20,7 +20,7 @@ Chunk::~Chunk()
 void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
-        VertexType(1, 0, 1, 1),
+        VertexType(1, 0, 0, 1),
         numHorVertex * numVertVertex,
         vertex.data(),
         indices ? *indices : this->indices,
@@ -124,7 +124,7 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
     float y0 = baseCenter.y - vertChunkSize / 2;
 
     // Vertex data
-    vertex.reserve(numHorVertex * numVertVertex * 8);
+    vertex.reserve(numHorVertex * numVertVertex * 6);
 
     for (size_t y = 0; y < numVertVertex; y++)
         for (size_t x = 0; x < numHorVertex; x++)
@@ -132,18 +132,18 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)
             index = y * numHorVertex + x;
 
             // positions (0, 1, 2)
-            vertex[index * 8 + 0] = x0 + x * stride;
-            vertex[index * 8 + 1] = y0 + y * stride;
-            vertex[index * 8 + 2] = noiseGen.GetNoise((float)vertex[index * 8 + 0], (float)vertex[index * 8 + 1]);
+            vertex[index * 6 + 0] = x0 + x * stride;
+            vertex[index * 6 + 1] = y0 + y * stride;
+            vertex[index * 6 + 2] = noiseGen.GetNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
             //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
 
             // textures (3, 4)
-            vertex[index * 8 + 3] = vertex[index * 8 + 0] * textureFactor;
-            vertex[index * 8 + 4] = vertex[index * 8 + 1] * textureFactor;     // LOOK produces textures reflected in the x-axis
+            //vertex[index * 8 + 3] = vertex[index * 8 + 0] * textureFactor;
+            //vertex[index * 8 + 4] = vertex[index * 8 + 1] * textureFactor;     // LOOK produces textures reflected in the x-axis
             //std::cout << vertex[pos * 8 + 3] << ", " << vertex[pos * 8 + 4] << std::endl;
         }
 
-    // Normals (5, 6, 7)
+    // Normals (3, 4, 5)
     computeGridNormals();
 
     // Indices
@@ -351,9 +351,9 @@ void PlainChunk::computeGridNormals()
     {
         tempNormals[i] = glm::normalize(tempNormals[i]);
 
-        vertex[i * 8 + 5] = tempNormals[i].x;
-        vertex[i * 8 + 6] = tempNormals[i].y;
-        vertex[i * 8 + 7] = tempNormals[i].z;
+        vertex[i * 6 + 3] = tempNormals[i].x;
+        vertex[i * 6 + 4] = tempNormals[i].y;
+        vertex[i * 6 + 5] = tempNormals[i].z;
     }
 }
 
@@ -386,7 +386,6 @@ SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 c
     groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
 
     // Set relative axes of the cube face (needed for computing indices in good order)
-    //if (!(cubePlane.x * cubePlane.y) && !(cubePlane.y * cubePlane.z) && !(cubePlane.x * cubePlane.z) && (cubePlane.x || cubePlane.y || cubePlane.z))
      if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
     {
         xAxis = glm::vec3(0, cubePlane.x, 0);
@@ -413,7 +412,7 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
     glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f) - (yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
     glm::vec3 unitVec, cube, sphere, ground;
     float index;
-    vertex.reserve(numHorVertex * numVertVertex * 8);
+    vertex.reserve(numHorVertex * numVertVertex * 6);
 
     for (float v = 0; v < numVertVertex; v++)
         for (float h = 0; h < numHorVertex; h++)
@@ -425,13 +424,13 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
             unitVec = glm::normalize(cube - nucleus);
             sphere = unitVec * radius;
             ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
-            vertex[index * 8 + 0] = ground.x;
-            vertex[index * 8 + 1] = ground.y;
-            vertex[index * 8 + 2] = ground.z;
+            vertex[index * 6 + 0] = ground.x;
+            vertex[index * 6 + 1] = ground.y;
+            vertex[index * 6 + 2] = ground.z;
 
             // textures (3, 4)
-            vertex[index * 8 + 3] = h * textureFactor;
-            vertex[index * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
+            //vertex[index * 8 + 3] = h * textureFactor;
+            //vertex[index * 8 + 4] = v * textureFactor;     // LOOK produces textures reflected in the x-axis
         }
 
     // Normals (5, 6, 7)
@@ -692,9 +691,9 @@ void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::ve
     for (int i = 0; i < numVertex; i++)
     {
         tempNormals[i] = glm::normalize(tempNormals[i]);
-        vertex[i * 8 + 5] = tempNormals[i].x;
-        vertex[i * 8 + 6] = tempNormals[i].y;
-        vertex[i * 8 + 7] = tempNormals[i].z;
+        vertex[i * 6 + 3] = tempNormals[i].x;
+        vertex[i * 6 + 4] = tempNormals[i].y;
+        vertex[i * 6 + 5] = tempNormals[i].z;
     }
 }
 
@@ -725,9 +724,6 @@ void SphericalChunk::computeSizes()
     glm::vec3 top = radius * glm::normalize(baseCenter + (yAxis * vertBaseSize / 2.f) - nucleus);
     horChunkSize = glm::length(left - right);
     vertChunkSize = glm::length(bottom - top);
-
-    //std::cout << horChunkSize << ", " << vertChunkSize << std::endl;
-    //std::cout << baseCenter.x << ", " << baseCenter.y << ", " << baseCenter.z << ", " << std::endl;
 }
 
 // DynamicGrid ----------------------------------------------------------------------

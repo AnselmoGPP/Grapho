@@ -94,9 +94,9 @@ protected:
 	//LightSet* lights;
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
-	size_t getPos(size_t x, size_t y) const { return y * numHorVertex + x; }
-	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 8 + 0], vertex[position * 8 + 1], vertex[position * 8 + 2]); };
-	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 8 + 5], vertex[position * 8 + 6], vertex[position * 8 + 7]); };
+	size_t getPos(size_t x, size_t y) const    { return y * numHorVertex + x; }
+	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 6 + 0], vertex[position * 6 + 1], vertex[position * 6 + 2]); };
+	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 6 + 3], vertex[position * 6 + 4], vertex[position * 6 + 5]); };
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
@@ -113,11 +113,11 @@ public:
 	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
-	unsigned getLayer() { return layer; }
-	glm::vec3 getGroundCenter() { return groundCenter; }
-	unsigned getNumVertex() { return numHorVertex * numVertVertex; }
-	float getHorChunkSide() { return horChunkSize; };
-	float getHorBaseSide() { return horBaseSize; };
+	unsigned getLayer()			{ return layer; }
+	glm::vec3 getGroundCenter()	{ return groundCenter; }
+	unsigned getNumVertex()		{ return numHorVertex * numVertVertex; }
+	float getHorChunkSide()		{ return horChunkSize; };
+	float getHorBaseSide()		{ return horBaseSize; };
 };
 
 
