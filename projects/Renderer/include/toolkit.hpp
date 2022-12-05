@@ -85,7 +85,7 @@ size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>&
 size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize);
 
 /// Get vertex data (NDC space vertices & UVs coordinates) and indices of a screen quad. Used for draws that doesn't use MVP matrix (example: reticule or postprocessing effect).
-void getScreenQuad(float radius, float zValue, float vertices[4 * 20], std::vector<uint16_t> &indices);
+void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vector<uint16_t> &indices);
 
 void getBillboard();
 

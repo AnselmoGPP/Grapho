@@ -1,6 +1,7 @@
 TODO:
 	Post-processing pipeline
-	Fix plane camera (and possible any other camera)
+	getBillboard()
+	Fix plane camera (and possibly other cameras)
 	Scale up textures
 	Color filters for textures depending on height
 	Black stains due to bad normals
