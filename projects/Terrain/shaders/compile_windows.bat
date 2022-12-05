@@ -14,6 +14,8 @@ set GLSLC=C:\VulkanSDK\1.3.211.0\Bin\glslc.exe
 %GLSLC% GLSL\f_pointPC.frag -o SPIRV\f_pointPC.spv
 %GLSLC% GLSL\v_hudPT.vert -o SPIRV\v_hudPT.spv
 %GLSLC% GLSL\f_hudPT.frag -o SPIRV\f_hudPT.spv
+%GLSLC% GLSL\v_hudPT.vert -o SPIRV\v_atmosphere.spv
+%GLSLC% GLSL\f_hudPT.frag -o SPIRV\f_atmosphere.spv
 %GLSLC% GLSL\v_sunPT.vert -o SPIRV\v_sunPT.spv
 %GLSLC% GLSL\f_sunPT.frag -o SPIRV\f_sunPT.spv
 %GLSLC% GLSL\v_sea.vert -o SPIRV\v_sea.spv

@@ -115,6 +115,27 @@ size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_
 	return 4;
 }
 
+void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vector<uint16_t> &indices)
+{
+	float temp[4 * 5] =
+	{
+		-radius,-radius, zValue,  0, 0,
+		-radius, radius, zValue,  0, 1,
+		 radius, radius, zValue,  1, 1,
+		 radius,-radius, zValue,  1, 0
+	};
+
+	for (unsigned i = 0; i < 20; i++)
+		vertices[i] = temp[i];
+
+	indices = std::vector<uint16_t>{ 0,1,3, 1,2,3 };
+}
+
+void getBillboard()
+{
+
+}
+
 // Skybox
 std::vector<VertexPT> v_cube =
 {

@@ -18,22 +18,22 @@ layout(set = 0, binding = 0) uniform ubobject {
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
-layout(location = 0) in vec3     inPos;			// Each location has 16 bytes
+layout(location = 0) in vec3     inPos;					// Each location has 16 bytes
 layout(location = 1) in vec3     inNormal;
 
-layout(location = 0)  out vec3	outPos;			// Vertex position.
-layout(location = 1)  out vec3	outCamPos;		// Camera position
-layout(location = 2)  out vec3	outNormal;		// Ground normal
-layout(location = 3)  out float	outSlope;		// Ground slope
-layout(location = 4)  out float	outDist;		// Distace vertex-camera
-layout(location = 5)  out float	outSqrHeight;	// Camera square height over nucleus
-layout(location = 6)  out vec3	outTanX;		// Tangents & Bitangents
-layout(location = 7)  out vec3	outBTanX;
-layout(location = 8)  out vec3	outTanY;
-layout(location = 9)  out vec3	outBTanY;
-layout(location = 10) out vec3	outTanZ;
-layout(location = 11) out vec3	outBTanZ;
-layout(location = 12) out LightPD outLight[NUMLIGHTS];
+layout(location = 0)  		out vec3	outPos;			// Vertex position.
+layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
+layout(location = 2)  		out vec3	outNormal;		// Ground normal
+layout(location = 3)  		out float	outSlope;		// Ground slope
+layout(location = 4)  		out float	outDist;		// Distace vertex-camera
+layout(location = 5)  flat	out float	outSqrHeight;	// Camera square height over nucleus
+layout(location = 6)  		out vec3	outTanX;		// Tangents & Bitangents
+layout(location = 7)  		out vec3	outBTanX;
+layout(location = 8)  		out vec3	outTanY;
+layout(location = 9)  		out vec3	outBTanY;
+layout(location = 10) 		out vec3	outTanZ;
+layout(location = 11) 		out vec3	outBTanZ;
+layout(location = 12) flat	out LightPD outLight[NUMLIGHTS];
 
 void main()
 {

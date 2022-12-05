@@ -26,6 +26,7 @@ void loadShaders(Renderer& app);
 float getFloorHeight(const glm::vec3& pos);
 
 void setReticule(Renderer& app);
+void setAtmosphere(Renderer& app);
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
 void setGrid(Renderer& app);
@@ -38,7 +39,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -88,7 +89,7 @@ int main(int argc, char* argv[])
 {
 	std::cout << std::setprecision(7);
 	camera_4.camParticle.setCallback(getFloorHeight);
-	std::cout << "R: " << planetGrid.area << std::endl;
+	std::cout << "PlanetGrid area: " << planetGrid.area << std::endl;
 	
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
@@ -109,6 +110,7 @@ int main(int argc, char* argv[])
 	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	setSun(app);
+	//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 	setReticule(app);
 
 	app.run();		// Start rendering
@@ -120,6 +122,7 @@ int main(int argc, char* argv[])
 
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
+	// Parameters
 	//fps		= rend.getTimer().getFPS();
 	//maxfps	= rend.getTimer().getMaxPossibleFPS();
 	frameTimeLD = rend.getTimer().getTime();
@@ -134,9 +137,11 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//std::cout << "camPos: " << camPos.x << ", " << camPos.y << ", " << camPos.z << " (" << sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z) << ")" << std::endl;
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
+	// Time
 	sun.updateTime(frameTime);
 	//dayTime = 6.00 + frameTime * 0.5;	// 0.5
 
+	// Light
 	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
 	lights.posDir[1].position = camPos;
 	lights.posDir[1].direction = camDir;
@@ -201,6 +206,14 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("reticule") != assets.end())
 		for (i = 0; i < assets["reticule"]->vsDynUBO.numDynUBOs; i++)
 			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
+
+	if (assets.find("atmosphere") != assets.end())
+		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
+		{
+			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
+			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &camPos, sizeof(camPos));
+			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &camDir, sizeof(camDir));
+		}	
 
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++)	{
@@ -329,6 +342,9 @@ void loadShaders(Renderer& app)
 
 	shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
 }
 
 void loadTextures(Renderer& app)
@@ -618,23 +634,9 @@ void setReticule(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	//vertexDestination = std::vector<VertexPT>{
-	//VertexPT(glm::vec3(-horSize / 2, -vertSize / 2, 0.f), glm::vec2(0, 0)),
-	//VertexPT(glm::vec3(-horSize / 2,  vertSize / 2, 0.f), glm::vec2(0, 1)),
-	//VertexPT(glm::vec3(horSize / 2,  vertSize / 2, 0.f), glm::vec2(1, 1)),
-	//VertexPT(glm::vec3(horSize / 2, -vertSize / 2, 0.f), glm::vec2(1, 0)) };
-	//
-	//indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
-
-	float siz = 0.1;
-	float v_ret[4 * 5] =
-	{
-		-siz,-siz, 0,  0, 0,
-		-siz, siz, 0,  0, 1,
-		 siz, siz, 0,  1, 1,
-		 siz,-siz, 0,  1, 0
-	};
-	std::vector<uint16_t> i_ret = { 0,1,3, 1,2,3 };
+	float v_ret[4 * 5];
+	std::vector<uint16_t> i_ret;
+	getScreenQuad(0.1, 0.1, v_ret, i_ret);
 
 	std::vector<texIterator> usedTextures = { textures["reticule"] };
 
@@ -647,5 +649,27 @@ void setReticule(Renderer& app)
 		0,
 		usedTextures,
 		shaders["v_hud"], shaders["f_hud"],
+		true);
+}
+
+void setAtmosphere(Renderer& app)
+{
+	std::cout << "> " << __func__ << "()" << std::endl;
+
+	float v_ret[4 * 5];
+	std::vector<uint16_t> i_ret;
+	getScreenQuad(1.f, 0.5, v_ret, i_ret);
+
+	std::vector<texIterator> usedTextures = { textures["sun"] };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
+
+	assets["atmosphere"] = app.newModel(
+		2, 1, primitiveTopology::triangle,
+		vertexLoader,
+		1, 3 *vec4size,				// aspect ratio (float), camPos (vec3)
+		0,
+		usedTextures,
+		shaders["v_atmosphere"], shaders["f_atmosphere"],
 		true);
 }

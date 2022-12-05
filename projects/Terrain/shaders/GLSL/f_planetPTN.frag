@@ -39,19 +39,19 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[27];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0)  in vec3    inPos;
-layout(location = 1)  in vec3    inCamPos;
-layout(location = 2)  in vec3    inNormal;
-layout(location = 3)  in float   inSlope;
-layout(location = 4)  in float   inDist;
-layout(location = 5)  in float   inSqrHeight;
-layout(location = 6)  in vec3	 inTanX;
-layout(location = 7)  in vec3	 inBTanX;
-layout(location = 8)  in vec3	 inTanY;
-layout(location = 9)  in vec3	 inBTanY;
-layout(location = 10) in vec3	 inTanZ;
-layout(location = 11) in vec3	 inBTanZ;
-layout(location = 12) in LightPD inLight[NUMLIGHTS];
+layout(location = 0)  		in vec3    inPos;
+layout(location = 1)  flat	in vec3    inCamPos;
+layout(location = 2)  		in vec3    inNormal;
+layout(location = 3)  		in float   inSlope;
+layout(location = 4)  		in float   inDist;
+layout(location = 5)  flat	in float   inSqrHeight;
+layout(location = 6)  		in vec3	 inTanX;
+layout(location = 7)  		in vec3	 inBTanX;
+layout(location = 8)  		in vec3	 inTanY;
+layout(location = 9)  		in vec3	 inBTanY;
+layout(location = 10) 		in vec3	 inTanZ;
+layout(location = 11) 		in vec3	 inBTanZ;
+layout(location = 12) flat	in LightPD inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -308,7 +308,7 @@ void getTexture_GrassRock(inout vec3 result)
 	if(inDist < 5) 
 	{
 		float ma = max(rockHeight  + ratio, grassHeight + (1-ratio)) - 0.1;		// 0.1 = depth
-		float b1 = max(rockHeight  + ratio       - ma, 0);
+		float b1 = max(rockHeight  + ratio     - ma, 0);
 		float b2 = max(grassHeight + (1-ratio) - ma, 0);
 		result = (rock * b1 + grass * b2) / (b1 + b2);
 	}
@@ -318,8 +318,8 @@ void getTexture_GrassRock(inout vec3 result)
 
 	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
 	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
-	float lat[2]      = {RADIUS * 0.7, 2 * RADIUS};
-	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);
+	float lat[2]      = {0.7 * RADIUS, 2.2 * RADIUS};
+	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);	// Latitude ratio == Slope threshold
 	mixRange          = 0.015;										// slope threshold mixing range
 
 	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);

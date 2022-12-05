@@ -1,8 +1,9 @@
 TODO:
+	Post-processing pipeline
+	Fix plane camera (and possible any other camera)
 	Scale up textures
 	Color filters for textures depending on height
 	Black stains due to bad normals
-	-delete inUVCoord vertex attribute
 	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
 	Steps: Physics calculations should be done in each step of X length

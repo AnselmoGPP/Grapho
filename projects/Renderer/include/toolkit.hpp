@@ -78,11 +78,16 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 /// Get a set of lines that form a grid
 size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color);
 
-/// (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix (example: sun).
+/// DELETE (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix (example: sun).
 size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize, float height);
 
-/// (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix (example: reticule).
+/// DELETE (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix (example: reticule).
 size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize);
+
+/// Get vertex data (NDC space vertices & UVs coordinates) and indices of a screen quad. Used for draws that doesn't use MVP matrix (example: reticule or postprocessing effect).
+void getScreenQuad(float radius, float zValue, float vertices[4 * 20], std::vector<uint16_t> &indices);
+
+void getBillboard();
 
 /// Skybox
 extern std::vector<VertexPT> v_cube;
