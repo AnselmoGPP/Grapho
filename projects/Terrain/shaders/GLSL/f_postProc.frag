@@ -31,6 +31,7 @@ void main()
 	//subpassLoad(inputAttachment, vec2(NDCs.x, NDCs.y));
 	
 	outColor = texture(inputColor, inUVcoord);
+	outColor.xyz = outColor.xyz;
 }
 
 

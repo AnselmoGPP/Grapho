@@ -269,7 +269,7 @@ void Texture::createTextureSampler()
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-	if (1)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
+	if (e->supportsAF)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
 	{
 		samplerInfo.anisotropyEnable = VK_TRUE;							// Specify if anisotropic filtering should be used
 		VkPhysicalDeviceProperties properties{};

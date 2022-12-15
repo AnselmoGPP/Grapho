@@ -26,16 +26,19 @@ VulkanEnvironment::VulkanEnvironment(size_t layers)
 	createLogicalDevice();
 
 	createSwapChain();
-	createImageViews();
-	createRenderPass();
+	createSwapChainImageViews();
+
 	createCommandPool();
+
+	createRenderPass();
 	createResolveColorResources();
-	if (msaaSamples > 1) createColorResources();
+	if (msaaSamples > 1) createMsaaColorResources();
 	createDepthResources();
 	createFramebuffers();
 
 	// Others
 	minUniformBufferOffsetAlignment = getMinUniformBufferOffsetAlignment();
+	supportsAF = supportsAnisotropicFiltering();
 }
 
 void VulkanEnvironment::initWindow()
@@ -368,10 +371,12 @@ void VulkanEnvironment::pickPhysicalDevice()
 
 	if (printInfo)
 	{
-		std::cout << "MSAA samples: " << msaaSamples << std::endl;
-		std::cout << "Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
-		std::cout << "Large points supported: " << largePointsSupported() << std::endl;
-		std::cout << "Wide lines supported: " << wideLinesSupported() << std::endl;
+		std::cout << "Device features: " << std::endl;
+		std::cout << "   MSAA samples: " << msaaSamples << std::endl;
+		std::cout << "   Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
+		std::cout << "   Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
+		std::cout << "   Large points supported: " << largePointsSupported() << std::endl;
+		std::cout << "   Wide lines supported: " << wideLinesSupported() << std::endl;
 	}
 }
 
@@ -716,7 +721,7 @@ VkPresentModeKHR VulkanEnvironment::chooseSwapPresentMode(const std::vector<VkPr
 
 // (7)
 /// Creates a basic image view for every image in the swap chain so that we can use them as color targets later on.
-void VulkanEnvironment::createImageViews()
+void VulkanEnvironment::createSwapChainImageViews()
 {
 	std::cout << __func__ << "()" << std::endl;
 
@@ -829,19 +834,19 @@ void VulkanEnvironment::createRenderPass()
 	// Attachments 1:
 
 	// Final color attachment. If we use MSAA, it will be used for resolving multisampled images to a regular image (multisampled images cannot be presented directly). This doesn't apply to the depth buffer, since it is never presented.
-	VkAttachmentDescription colorAttachmentResolve{};
-	colorAttachmentResolve.format = swapChainImageFormat;
-	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentResolve.loadOp = (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentDescription colorResolveAttachment{};
+	colorResolveAttachment.format = swapChainImageFormat;
+	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorResolveAttachment.loadOp = (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference colorAttachmentResolveRef{};
-	colorAttachmentResolveRef.attachment = 0;
-	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference colorResolveAttachmentRef{};
+	colorResolveAttachmentRef.attachment = 0;
+	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// Depth attachment
 	VkAttachmentDescription depthAttachment{};
@@ -858,30 +863,32 @@ void VulkanEnvironment::createRenderPass()
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	// Color attachment (for multisampling or not).
-	VkAttachmentDescription colorAttachment{};
-	colorAttachment.format = swapChainImageFormat;
-	colorAttachment.samples = msaaSamples;									// Single color buffer attachment, or many (multisampling).
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;					// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;		// What to do with the stencil data in the attachment before rendering.
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;		// What to do with the stencil data in the attachment after rendering.
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
+	// Color attachment for multisampling.
+	VkAttachmentDescription msaaColorAttachment{};
+	msaaColorAttachment.format = swapChainImageFormat;
+	msaaColorAttachment.samples = msaaSamples;									// Single color buffer attachment, or many (multisampling).
+	msaaColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;					// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
+	msaaColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
+	msaaColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;		// What to do with the stencil data in the attachment before rendering.
+	msaaColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;		// What to do with the stencil data in the attachment after rendering.
+	msaaColorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
+	msaaColorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
 
-	VkAttachmentReference colorAttachmentRef{};
-	colorAttachmentRef.attachment = 2;										// Specify which attachment to reference by its index in the attachment descriptions array.
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
+	VkAttachmentReference msaaColorAttachmentRef{};
+	msaaColorAttachmentRef.attachment = 2;										// Specify which attachment to reference by its index in the attachment descriptions array.
+	msaaColorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
 
 	// Subpass 1:
 
 	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
 	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = (msaaSamples > 1) ? &colorAttachmentRef : &colorAttachmentResolveRef;	// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
+	if (msaaSamples > 1) {
+		subpass.pColorAttachments = &msaaColorAttachmentRef;		// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
+		subpass.pResolveAttachments = &colorResolveAttachmentRef;	// Attachments used for resolving multisampling color attachments.
+	}
+	else subpass.pColorAttachments = &colorResolveAttachmentRef;
 	subpass.pDepthStencilAttachment = &depthAttachmentRef;			// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
-	if (msaaSamples > 1)
-		subpass.pResolveAttachments = &colorAttachmentResolveRef;	// Attachments used for resolving multisampling color attachments.
 	subpass.inputAttachmentCount;
 	subpass.pInputAttachments;										// Attachments read from a shader.
 	subpass.preserveAttachmentCount;
@@ -899,8 +906,8 @@ void VulkanEnvironment::createRenderPass()
 
 	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
 	std::vector<VkAttachmentDescription> attachments;
-	if (msaaSamples > 1) attachments = std::vector<VkAttachmentDescription>{ colorAttachmentResolve, depthAttachment, colorAttachment };
-	else attachments = std::vector<VkAttachmentDescription>{ colorAttachmentResolve, depthAttachment };
+	if (msaaSamples > 1) attachments = std::vector<VkAttachmentDescription>{ colorResolveAttachment, depthAttachment, msaaColorAttachment };
+	else attachments = std::vector<VkAttachmentDescription>{ colorResolveAttachment, depthAttachment };
 
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -920,10 +927,10 @@ void VulkanEnvironment::createRenderPass()
 	// Attachments 2:
 	
 	// Final color attachment (from previous render pass)
-	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	colorAttachmentResolveRef.attachment = 0;
+	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	colorResolveAttachmentRef.attachment = 0;
 
 	// Final color Post-Processed attachment
 	VkAttachmentDescription colorAttachmentPP{};
@@ -949,7 +956,7 @@ void VulkanEnvironment::createRenderPass()
 	subpass2.pDepthStencilAttachment = nullptr;
 	subpass2.pResolveAttachments = nullptr;
 	//VkAttachmentReference inputAttachmentRefs[2] = { colorAttachmentResolveRef, depthAttachmentRef };
-	VkAttachmentReference inputAttachments[1] = { colorAttachmentResolveRef };
+	VkAttachmentReference inputAttachments[1] = { colorResolveAttachmentRef };
 	subpass2.inputAttachmentCount = 1;
 	subpass2.pInputAttachments = inputAttachments;
 	subpass2.preserveAttachmentCount;
@@ -965,7 +972,7 @@ void VulkanEnvironment::createRenderPass()
 
 	// Render Pass 2:
 
-	std::vector<VkAttachmentDescription> attachments2 = std::vector<VkAttachmentDescription>{ colorAttachmentResolve, colorAttachmentPP };
+	std::vector<VkAttachmentDescription> attachments2 = std::vector<VkAttachmentDescription>{ colorResolveAttachment, colorAttachmentPP };
 
 	VkRenderPassCreateInfo renderPassInfo2{};
 	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1169,7 +1176,7 @@ void VulkanEnvironment::createResolveColorResources()
 
 // (12)<<<
 /// Create resources needed for MSAA (MultiSampling AntiAliasing). Create a multisampled color buffer.
-void VulkanEnvironment::createColorResources()
+void VulkanEnvironment::createMsaaColorResources()
 {
 	std::cout << __func__ << "()" << std::endl;
 
@@ -1188,10 +1195,10 @@ void VulkanEnvironment::createColorResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,				// DEVICE_LOCAL: Memory will be used exclusively by the device, rather than being mappable to host memory. Better performance.
-		colorImage,
-		colorImageMemory);
+		msaaColorImage,
+		msaaColorImageMemory);
 
-	colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	msaaColorImageView = createImageView(msaaColorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 // (13)<<<
@@ -1406,7 +1413,7 @@ void VulkanEnvironment::createFramebuffers()
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
 	{
 		// Framebuffers for main color.
-		if (msaaSamples > 1) attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView, colorImageView };
+		if (msaaSamples > 1) attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView, msaaColorImageView };
 		else attachments = std::vector<VkImageView>{ swapChainImageViews[i], depthImageView};
 		//attachments.push_back(colorImageView[j]);	// Multisampled color buffer
 		//attachments.push_back(depthImageView[j]);
@@ -1446,11 +1453,12 @@ void VulkanEnvironment::createFramebuffers()
 void VulkanEnvironment::recreateSwapChain()
 {
 	createSwapChain();					// Recreate the swap chain.
-	createImageViews();					// Recreate image views because they are based directly on the swap chain images.
+	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
+
 	createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
 
 	if (msaaSamples > 1)
-		createColorResources();			// Recreate MSAA resources
+		createMsaaColorResources();		// Recreate MSAA resources
 	createDepthResources();				// Recreate depth resources
 	createResolveColorResources();
 	createFramebuffers();				// Framebuffers directly depend on the swap chain images.
@@ -1463,9 +1471,9 @@ void VulkanEnvironment::cleanupSwapChain()
 	// MSAA buffer
 	if (msaaSamples > 1)
 	{
-		vkDestroyImageView(device, colorImageView, nullptr);		// MSAA buffer		(VkImageView)
-		vkDestroyImage(device, colorImage, nullptr);				// MSAA buffer		(VkImage)
-		vkFreeMemory(device, colorImageMemory, nullptr);			// MSAA buffer		(VkDeviceMemory)
+		vkDestroyImageView(device, msaaColorImageView, nullptr);		// MSAA buffer		(VkImageView)
+		vkDestroyImage(device, msaaColorImage, nullptr);				// MSAA buffer		(VkImage)
+		vkFreeMemory(device, msaaColorImageMemory, nullptr);			// MSAA buffer		(VkDeviceMemory)
 	}
 	
 	// Depth buffer
@@ -1555,6 +1563,13 @@ VkDeviceSize VulkanEnvironment::getMinUniformBufferOffsetAlignment()
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	return deviceProperties.limits.minUniformBufferOffsetAlignment;
+}
+
+bool VulkanEnvironment::supportsAnisotropicFiltering()
+{
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+	return deviceFeatures.samplerAnisotropy;
 }
 
 VkBool32 VulkanEnvironment::largePointsSupported()

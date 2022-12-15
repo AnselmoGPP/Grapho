@@ -89,7 +89,7 @@ public:
 	uint32_t height     = 1080 / 2;
 
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
-	const bool add_SS   = false;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_SS   = true;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 
 	VulkanEnvironment(size_t layers);
 
@@ -124,8 +124,9 @@ public:
 	VkFormat					swapChainImageFormat;				///< Swap chain format.
 	VkExtent2D					swapChainExtent;					///< Swap chain extent.
 	
-	VkRenderPass				renderPass[2];						///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	VkCommandPool				commandPool;						///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
+	VkRenderPass				renderPass[2];						///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
 	std::vector<std::array<VkFramebuffer, 2>> swapChainFramebuffers;///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 
 	VkSwapchainKHR				swapChain;							///< Swap chain object.
@@ -137,38 +138,37 @@ public:
 	VkImageView					resolveColorImageView;				///< For resolving MSAA. RenderPass attachment. One per render pass
 	VkSampler					resolveColorSampler;				///< For using this image as input attachment
 
-	VkImage						colorImage;							///< For MSAA. One per render pass
-	VkDeviceMemory				colorImageMemory;					///< For MSAA. One per render pass
-	VkImageView					colorImageView;						///< For MSAA. RenderPass attachment. One per render pass
+	VkImage						msaaColorImage;						///< For MSAA. One per render pass
+	VkDeviceMemory				msaaColorImageMemory;				///< For MSAA. One per render pass
+	VkImageView					msaaColorImageView;					///< For MSAA. RenderPass attachment. One per render pass
 
 	VkImage						depthImage;							///< Depth buffer (image object). One per render pass
 	VkDeviceMemory				depthImageMemory;					///< Depth buffer memory (memory object). One per render pass
 	VkImageView					depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
 
-	VkCommandPool				commandPool;						///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
-
 	// Additional variables
 
-	VkDeviceSize minUniformBufferOffsetAlignment;	///< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
-	std::mutex queueMutex;							///< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
+	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
+	VkDeviceSize minUniformBufferOffsetAlignment;	//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
+	std::mutex queueMutex;							//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
 	std::mutex mutCommandPool;						//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
 
 private:
-	// Main methods:
-
 	void initWindow();
 	void createInstance();
 	void setupDebugMessenger();
 	void createSurface();
 	void pickPhysicalDevice();
 	void createLogicalDevice();
+
 	void createSwapChain();
-	void createImageViews();
-	void createRenderPass();
+	void createSwapChainImageViews();
 
 	void createCommandPool();
+
+	void createRenderPass();
 	void createResolveColorResources();
-	void createColorResources();
+	void createMsaaColorResources();
 	void createDepthResources();
 	void createFramebuffers();
 
@@ -193,6 +193,7 @@ private:
 	VkFormat				findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	bool					hasStencilComponent(VkFormat format);
 	VkDeviceSize			getMinUniformBufferOffsetAlignment();
+	bool					supportsAnisotropicFiltering();
 	VkBool32				largePointsSupported();
 	VkBool32				wideLinesSupported();
 };

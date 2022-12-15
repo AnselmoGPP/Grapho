@@ -88,11 +88,11 @@ void Renderer::createCommandBuffers()
 		renderPassInfo.renderPass = e.renderPass[0];
 		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][0];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = e.swapChainExtent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-		std::array<VkClearValue, 3> clearValues{};										// The order of clearValues should be identical to the order of your attachments.
-		clearValues[0].color = backgroundColor;											// Background color (alpha = 1 means 100% opacity)
-		clearValues[1].depthStencil = { 1.0f, 0 };								// Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
-		clearValues[2].color = backgroundColor;
+		renderPassInfo.renderArea.extent = e.swapChainExtent;					// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+		std::array<VkClearValue, 3> clearValues{};								// The order of clearValues should be identical to the order of your attachments.
+		clearValues[0].color = backgroundColor;									// Resolve color buffer. Background color (alpha = 1 means 100% opacity)
+		clearValues[1].depthStencil = { 1.0f, 0 };								// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+		clearValues[2].color = backgroundColor;									// MSAA color buffer.
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
 		renderPassInfo.pClearValues = clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
 
@@ -146,6 +146,11 @@ void Renderer::createCommandBuffers()
 
 		renderPassInfo.renderPass = e.renderPass[1];
 		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][1];
+		std::array<VkClearValue, 2> clearValues_2{};
+		clearValues_2[0].color = backgroundColor;
+		clearValues_2[1].color = backgroundColor;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues_2.size());
+		renderPassInfo.pClearValues = clearValues_2.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
