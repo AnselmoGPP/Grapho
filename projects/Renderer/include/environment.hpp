@@ -41,7 +41,7 @@ struct SwapChainSupportDetails
 /** Each framebuffer has a number of attachments. Each swapChainImage has one or more framebuffers associated (framebufferSet). Each framebufferSet have the same attachments the other sets have (i.e. they share a common group of attachments)  */
 struct Framebuffer
 {
-	VkRenderPass				renderPass;
+	VkRenderPass	renderPass;
 
 	std::vector<framebufferSet> swapChainFramebuffer;	///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][numRenderPasses].
 
@@ -55,8 +55,6 @@ struct Framebuffer
 
 	//std::vector<VkImageView>	swapChainImageViews;
 };
-
-typedef std::vector<Framebuffer> framebufferSet_2;
 
 
 /**
@@ -91,7 +89,7 @@ public:
 	uint32_t height     = 1080 / 2;
 
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
-	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_SS   = false;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 
 	VulkanEnvironment(size_t layers);
 
@@ -112,7 +110,6 @@ public:
 	// Main member variables:
 
 	GLFWwindow*					window;								///< Opaque window object.
-
 	VkInstance					instance;							///< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	debugMessenger;						///< Opaque handle to a debug messenger object (the debug callback is part of it).
 	VkSurfaceKHR				surface;							///< Opaque handle to a surface object (abstract type of surface to present rendered images to)
@@ -124,14 +121,21 @@ public:
 	VkQueue						graphicsQueue;						///< Opaque handle to a queue object (computer graphics).
 	VkQueue						presentQueue;						///< Opaque handle to a queue object (presentation to window surface).
 
-	VkSwapchainKHR				swapChain;							///< Swap chain object.
 	VkFormat					swapChainImageFormat;				///< Swap chain format.
 	VkExtent2D					swapChainExtent;					///< Swap chain extent.
+	
+	VkRenderPass				renderPass[2];						///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+
+	std::vector<std::array<VkFramebuffer, 2>> swapChainFramebuffers;///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+
+	VkSwapchainKHR				swapChain;							///< Swap chain object.
 	std::vector<VkImage>		swapChainImages;					///< List. Opaque handle to an image object.
 	std::vector<VkImageView>	swapChainImageViews;				///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkRenderPass				renderPass;							///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	std::vector<VkFramebuffer>	swapChainFramebuffers;				///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages].
+	VkImage						resolveColorImage;					///< For resolving MSAA. One per render pass
+	VkDeviceMemory				resolveColorImageMemory;			///< For resolving MSAA. One per render pass
+	VkImageView					resolveColorImageView;				///< For resolving MSAA. RenderPass attachment. One per render pass
+	VkSampler					resolveColorSampler;				///< For using this image as input attachment
 
 	VkImage						colorImage;							///< For MSAA. One per render pass
 	VkDeviceMemory				colorImageMemory;					///< For MSAA. One per render pass
@@ -156,13 +160,14 @@ private:
 	void createInstance();
 	void setupDebugMessenger();
 	void createSurface();
-	void pickPhysicalDevice();		void pickPhysicalDevice_2();
+	void pickPhysicalDevice();
 	void createLogicalDevice();
 	void createSwapChain();
 	void createImageViews();
 	void createRenderPass();
 
 	void createCommandPool();
+	void createResolveColorResources();
 	void createColorResources();
 	void createDepthResources();
 	void createFramebuffers();
@@ -176,8 +181,8 @@ private:
 	bool					checkExtensionSupport(const char* const* requiredExtensions, uint32_t reqExtCount);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 	int						evaluateDevice(VkPhysicalDevice device);
-	int isDeviceSuitable_2(VkPhysicalDevice device, const int mode);
-	VkSampleCountFlagBits	getMaxUsableSampleCount(bool getMinimum = false);
+	int						isDeviceSuitable_2(VkPhysicalDevice device, const int mode);
+	VkSampleCountFlagBits	getMaxUsableSampleCount(bool getMinimum);
 	QueueFamilyIndices		findQueueFamilies(VkPhysicalDevice device);
 	bool					checkDeviceExtensionSupport(VkPhysicalDevice device);
 	SwapChainSupportDetails	querySwapChainSupport(VkPhysicalDevice device);

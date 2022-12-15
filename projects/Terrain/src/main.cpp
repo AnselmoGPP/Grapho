@@ -25,8 +25,8 @@ void loadTextures(Renderer& app);
 void loadShaders(Renderer& app);
 float getFloorHeight(const glm::vec3& pos);
 
+void setPostProcessing(Renderer& app);
 void setReticule(Renderer& app);
-void setAtmosphere(Renderer& app);
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
 void setGrid(Renderer& app);
@@ -61,7 +61,7 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	7, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	5, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	setSun(app);
-	//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+	setPostProcessing(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 	setReticule(app);
 
 	app.run();		// Start rendering
@@ -207,12 +207,12 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["reticule"]->vsDynUBO.numDynUBOs; i++)
 			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
 
-	if (assets.find("atmosphere") != assets.end())
-		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
+	if (assets.find("postProc") != assets.end())
+		for (i = 0; i < assets["postProc"]->vsDynUBO.numDynUBOs; i++)
 		{
-			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
-			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &camPos, sizeof(camPos));
-			memcpy(assets["atmosphere"]->vsDynUBO.getUBOptr(i), &camDir, sizeof(camDir));
+			memcpy(assets["postProc"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
+			memcpy(assets["postProc"]->vsDynUBO.getUBOptr(i), &camPos, sizeof(camPos));
+			memcpy(assets["postProc"]->vsDynUBO.getUBOptr(i), &camDir, sizeof(camDir));
 		}	
 
 	if (assets.find("points") != assets.end())
@@ -343,8 +343,8 @@ void loadShaders(Renderer& app)
 	shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
+	shaders["v_postProc"] = app.newShader((shadersDir + "v_postProc.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_postProc"] = app.newShader((shadersDir + "f_postProc.frag").c_str(), shaderc_fragment_shader, true);
 }
 
 void loadTextures(Renderer& app)
@@ -652,7 +652,7 @@ void setReticule(Renderer& app)
 		true);
 }
 
-void setAtmosphere(Renderer& app)
+void setPostProcessing(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
@@ -664,12 +664,18 @@ void setAtmosphere(Renderer& app)
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
 
-	assets["atmosphere"] = app.newModel(
+	assets["postProc"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 3 *vec4size,				// aspect ratio (float), camPos (vec3)
 		0,
 		usedTextures,
-		shaders["v_atmosphere"], shaders["f_atmosphere"],
-		true);
+		shaders["v_postProc"], shaders["f_postProc"],
+		false,
+		1);
+
+	// TODO:
+	//		newPostProc()
+	//		createCommandBuffer()
+	//		attachment properties (loadOp...)
 }

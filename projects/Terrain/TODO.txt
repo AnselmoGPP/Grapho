@@ -1,10 +1,24 @@
 TODO:
+	Group images? (colorImage, depthImage, resolveColorImage)
+	Reorder order of call of methods from Environment
+	Force the attachment for MSAA to stay (similar to post processing)
+	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
+	Input attachment sampler. Assigned in descriptorDescriptorSet()
+	Review command buffer creation
+	Review anisotropic filtering
+	Review VertexLoader
+	Review createUniformBuffers
+	Review ModelData::fullConstruction() (i.e., union of vertexLoader->loadVertex() & createVertexBuffer())
+	Review ModelData::vertex & ModelData::indices. Maybe, not required once VkBuffer is created.
+	Review UBO::ubo. Maybe not required if we can copy data into VkBuffer directly 
+	Increment snow scale
 	Post-processing pipeline
-	getBillboard()
+	Conmplete getBillboard()
 	Fix plane camera (and possibly other cameras)
 	Scale up textures
 	Color filters for textures depending on height
 	Black stains due to bad normals
+	Don't render non-visible Chunks
 	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
 	Steps: Physics calculations should be done in each step of X length

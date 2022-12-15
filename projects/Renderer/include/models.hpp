@@ -87,7 +87,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency);
+	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 
@@ -119,6 +119,7 @@ public:
 	VkDescriptorPool			 descriptorPool;		//!< Opaque handle to a descriptor pool object.
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
+	const uint32_t				 renderPassIndex;		//!< Index of the renderPass used (0 for rendering geometry, 1 for post processing)
 	size_t						 layer;					//!< Layer where this model will be drawn.
 	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 

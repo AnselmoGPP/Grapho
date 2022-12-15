@@ -6,7 +6,7 @@
 std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency)
+ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 	: e(environment),
 	primitiveTopology(primitiveTopology),
 	vertexShader(vertexShader),
@@ -16,6 +16,7 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e.minUniformBufferOffsetAlignment),
 	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e.minUniformBufferOffsetAlignment),
+	renderPassIndex(renderPassIndex),
 	layer(layer),
 	activeRenders(activeRenders),
 	fullyConstructed(false),
@@ -90,7 +91,7 @@ void ModelData::createDescriptorSetLayout()
 		bindings.push_back(fsUboLayoutBinding);
 	}
 
-	//	Combined image sampler descriptor (it lets shaders access an image resource through a sampler object)
+	//	Combined image sampler descriptor (set of textures) (it lets shaders access an image resource through a sampler object)
 	if (textures.size())
 	{
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
@@ -101,6 +102,19 @@ void ModelData::createDescriptorSetLayout()
 		samplerLayoutBinding.pImmutableSamplers = nullptr;
 
 		bindings.push_back(samplerLayoutBinding);
+	}
+
+	// Input attachments
+	if (renderPassIndex)
+	{
+		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
+		inputAttachmentLayoutBinding.binding = bindNumber++;
+		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		inputAttachmentLayoutBinding.descriptorCount = 1;
+		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
+
+		bindings.push_back(inputAttachmentLayoutBinding);
 	}
 
 	// Create a descriptor set layout (combines all of the descriptor bindings)
@@ -206,7 +220,7 @@ void ModelData::createGraphicsPipeline()
 	// Multisampling: One way to perform anti-aliasing. Combines the fragment shader results of multiple polygons that rasterize to the same pixel. Requires enabling a GPU feature.
 	VkPipelineMultisampleStateCreateInfo multisampling{};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.rasterizationSamples = e.msaaSamples;
+	multisampling.rasterizationSamples = (!renderPassIndex ? e.msaaSamples : VK_SAMPLE_COUNT_1_BIT);
 	multisampling.sampleShadingEnable = (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
 	if (e.add_SS)
 		multisampling.minSampleShading = .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
@@ -265,7 +279,7 @@ void ModelData::createGraphicsPipeline()
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;					// VK_FALSE: Blending method of mixing values.  VK_TRUE: Blending method of bitwise values combination (this disables the previous structure, like blendEnable = VK_FALSE).
-	colorBlending.logicOp = VK_LOGIC_OP_COPY;			// Optional
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;				// Optional
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &colorBlendAttachment;
 	colorBlending.blendConstants[0] = 0.0f;						// Optional
@@ -291,15 +305,16 @@ void ModelData::createGraphicsPipeline()
 	pipelineInfo.pInputAssemblyState = &inputAssembly;
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pRasterizationState = &rasterizer;
+	//if(!renderPassIndex) 
 	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pDepthStencilState = &depthStencil;	// [Optional]
+	pipelineInfo.pDepthStencilState = &depthStencil;		// [Optional]
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr;			// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
+	pipelineInfo.pDynamicState = nullptr;					// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = e.renderPass;			// <<< It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
+	pipelineInfo.renderPass = e.renderPass[renderPassIndex];// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;
-	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;	// [Optional] Specify the handle of an existing pipeline.
-	pipelineInfo.basePipelineIndex = -1;				// [Optional] Reference another pipeline that is about to be created by index.
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;		// [Optional] Specify the handle of an existing pipeline.
+	pipelineInfo.basePipelineIndex = -1;					// [Optional] Reference another pipeline that is about to be created by index.
 
 	if (vkCreateGraphicsPipelines(e.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
@@ -464,6 +479,13 @@ void ModelData::createDescriptorPool()
 		poolSizes.push_back(pool);
 	}
 
+	if (renderPassIndex)
+	{
+		pool.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		poolSizes.push_back(pool);
+	}
+
 	// Allocate one of these descriptors for every frame.
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -514,6 +536,11 @@ void ModelData::createDescriptorSets()
 			imageInfo[i].imageView = textures[i]->textureImageView;
 			imageInfo[i].sampler = textures[i]->textureSampler;
 		}
+
+		VkDescriptorImageInfo inputAttachInfo{};
+		inputAttachInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		inputAttachInfo.imageView = e.resolveColorImageView;
+		inputAttachInfo.sampler = e.resolveColorSampler;
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;
@@ -567,6 +594,22 @@ void ModelData::createDescriptorSets()
 			descriptorWrites.push_back(descriptor);
 		}
 		
+		if (renderPassIndex)
+		{
+			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptor.dstSet = descriptorSets[i];
+			descriptor.dstBinding = binding++;
+			descriptor.dstArrayElement = 0;
+			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+			descriptor.descriptorCount = 1;
+			descriptor.pBufferInfo = nullptr;
+			descriptor.pImageInfo = &inputAttachInfo;
+			descriptor.pTexelBufferView = nullptr;
+			descriptor.pNext = nullptr;
+
+			descriptorWrites.push_back(descriptor);
+		}
+
 		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 	}
 }

@@ -355,3 +355,4 @@ bool isBigEndian()
 	if (*(char*)&n == 1) return false;
 	else return true;
 }
+

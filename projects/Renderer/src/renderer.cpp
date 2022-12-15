@@ -74,38 +74,40 @@ void Renderer::createCommandBuffers()
 	{
 		// Start command buffer recording
 		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags				= 0;			// [Optional] VK_COMMAND_BUFFER_USAGE_ ... ONE_TIME_SUBMIT_BIT (the command buffer will be rerecorded right after executing it once), RENDER_PASS_CONTINUE_BIT (secondary command buffer that will be entirely within a single render pass), SIMULTANEOUS_USE_BIT (the command buffer can be resubmitted while it is also already pending execution).
-		beginInfo.pInheritanceInfo	= nullptr;		// [Optional] Only relevant for secondary command buffers. It specifies which state to inherit from the calling primary command buffers.
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0;			// [Optional] VK_COMMAND_BUFFER_USAGE_ ... ONE_TIME_SUBMIT_BIT (the command buffer will be rerecorded right after executing it once), RENDER_PASS_CONTINUE_BIT (secondary command buffer that will be entirely within a single render pass), SIMULTANEOUS_USE_BIT (the command buffer can be resubmitted while it is also already pending execution).
+		beginInfo.pInheritanceInfo = nullptr;		// [Optional] Only relevant for secondary command buffers. It specifies which state to inherit from the calling primary command buffers.
 
 		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)		// If a command buffer was already recorded once, this call resets it. It's not possible to append commands to a buffer at a later time.
 			throw std::runtime_error("Failed to begin recording command buffer!");
 
-		// Starting a render pass
+		// Start render pass 1 (main color):
+
 		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass			= e.renderPass;
-		renderPassInfo.framebuffer			= e.swapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset	= { 0, 0 };
-		renderPassInfo.renderArea.extent	= e.swapChainExtent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = e.renderPass[0];
+		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][0];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = e.swapChainExtent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
 		std::array<VkClearValue, 3> clearValues{};										// The order of clearValues should be identical to the order of your attachments.
 		clearValues[0].color = backgroundColor;											// Background color (alpha = 1 means 100% opacity)
-		clearValues[1].depthStencil			= { 1.0f, 0 };								// Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+		clearValues[1].depthStencil = { 1.0f, 0 };								// Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
 		clearValues[2].color = backgroundColor;
-		renderPassInfo.clearValueCount		= static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-		renderPassInfo.pClearValues			= clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+		renderPassInfo.pClearValues = clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 
 		VkClearAttachment attachmentToClear;
-		attachmentToClear.aspectMask				= VK_IMAGE_ASPECT_DEPTH_BIT;
-		attachmentToClear.clearValue.depthStencil	= { 1.0f, 0 };
+		attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
 		VkClearRect rectangleToClear;
-		rectangleToClear.rect.offset				= { 0, 0 };
-		rectangleToClear.rect.extent				= e.swapChainExtent;
-		rectangleToClear.baseArrayLayer				= 0;
-		rectangleToClear.layerCount					= 1;
+		rectangleToClear.rect.offset = { 0, 0 };
+		rectangleToClear.rect.extent = e.swapChainExtent;
+		rectangleToClear.baseArrayLayer = 0;
+		rectangleToClear.layerCount = 1;
 
-		//renderPassInfo.framebuffer = e.swapChainFramebuffers[i];
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+		VkDeviceSize offsets[] = { 0 };
 
 		for (size_t j = 0; j < numLayers; j++)	// for each layer
 		{
@@ -113,10 +115,8 @@ void Renderer::createCommandBuffers()
 
 			for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
 			{
+				if (it->renderPassIndex == 1) continue;
 				if (it->layer != j || !it->activeRenders) continue;
-
-				//VkBuffer vertexBuffers[]	= { it->vertexBuffer };
-				VkDeviceSize offsets[] = { 0 };
 
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
@@ -142,6 +142,29 @@ void Renderer::createCommandBuffers()
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
+		// Starting render pass 2 (post processing):
+
+		renderPassInfo.renderPass = e.renderPass[1];
+		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][1];
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
+		
+		for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
+		{
+			if (it->renderPassIndex == 1)
+			{
+				if (!it->activeRenders) continue;
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[0]);
+				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+			}
+		}
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+		
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
 	}
@@ -402,7 +425,7 @@ void Renderer::cleanup()
 	std::cout << "Cleanup() end" << std::endl;
 }
 
-modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency)
+modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 {
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(), 
@@ -414,7 +437,8 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		textures, 
 		vertexShader, fragmentShader,
-		transparency);
+		transparency,
+		renderPassIndex);
 }
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
@@ -459,23 +483,41 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-ShaderIter Renderer::newShader(const std::string filename, shaderc_shader_kind shaderKind, bool optimize)
+ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind shaderKind, bool optimize, bool isFile)
 {
-	std::cout << __func__ << "(): " << filename << std::endl;
-
 	// Get data from txt file:
 
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
-	if (!file.is_open())
-		throw std::runtime_error("Failed to open file!");
+	size_t fileSize = 0;
+	std::vector<char> glslData;
+	std::string fileName;
 
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> glslData(fileSize);
+	if (isFile)		// shaderFile == shader file name
+	{
+		std::cout << __func__ << "(): " << shaderFile << std::endl;
 
-	file.seekg(0);
-	file.read(glslData.data(), fileSize);
+		fileName = shaderFile;
 
-	file.close();
+		std::ifstream file(shaderFile, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
+		if (!file.is_open())
+			throw std::runtime_error("Failed to open file!");
+
+		fileSize = (size_t)file.tellg();
+		glslData.resize(fileSize);
+
+		file.seekg(0);
+		file.read(glslData.data(), fileSize);
+
+		file.close();
+	}
+	else			// shaderFile == shader content
+	{
+		std::cout << __func__ << "(): Hardcoded shader" << std::endl;
+
+		fileName = "HardcodedShader";
+		fileSize = shaderFile.size();
+		glslData.resize(fileSize);
+		std::copy(shaderFile.begin(), shaderFile.end(), glslData.begin());
+	}
 	
 	// Compile data:
 	
@@ -483,7 +525,7 @@ ShaderIter Renderer::newShader(const std::string filename, shaderc_shader_kind s
 	shaderc::CompileOptions options;
 	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
-	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(glslData.data(), glslData.size(), shaderKind, filename.c_str(), options);
+	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(glslData.data(), glslData.size(), shaderKind, fileName.c_str(), options);
 	if (module.GetCompilationStatus() != shaderc_compilation_status_success)
 		std::cerr << "Error compiling shader module - " << module.GetErrorMessage() << std::endl;
 	
@@ -502,39 +544,6 @@ ShaderIter Renderer::newShader(const std::string filename, shaderc_shader_kind s
 
 	shaders.push_back(shaderModule);
 	return (--shaders.end());
-
-	/*
-	shaderc_compile_options_t options(shaderc_compile_options_initialize());
-	shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level::shaderc_optimization_level_zero);
-	if (optimize) shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_performance);
-	else          shaderc_compile_options_set_optimization_level(options, shaderc_optimization_level_zero);
-
-	shaderc_compiler_t compiler = shaderc_compiler_initialize();
-	
-	shaderc_compilation_result_t result = shaderc_compile_into_spv(compiler, buffer.data(), buffer.size(), shaderc_glsl_vertex_shader, "main.vert", "main", nullptr);
-	if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success)
-		std::cerr << "Error compiling module (" << shaderc_result_get_num_warnings(result) << '/' << shaderc_result_get_num_errors(result) << "): " << shaderc_result_get_error_message(result) << std::endl;
-	
-	std::vector<uint8_t> spirv;
-	spirv.insert(spirv.begin(), shaderc_result_get_bytes(result), shaderc_result_get_bytes(result) + shaderc_result_get_length(result));
-	
-	shaderc_result_release(result);
-	shaderc_compiler_release(compiler);
-
-	 Create shader module:
-
-	VkShaderModuleCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = spirv.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
-	
-	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(e.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create shader module!");
-	
-	shaders.push_back(shaderModule);
-	return (--shaders.end());
-	*/
 }
 
 void Renderer::deleteShader(ShaderIter shader)

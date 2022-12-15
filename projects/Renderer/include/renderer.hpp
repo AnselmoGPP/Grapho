@@ -177,13 +177,13 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency);
+	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(const char* path);		//!< Insert a partially initialized texture object in texturesToLoad list.
 	void			deleteTexture(texIterator texture);
 
-	ShaderIter		newShader(const std::string filename, shaderc_shader_kind kind, bool optimize);
+	ShaderIter		newShader(const std::string shaderFile, shaderc_shader_kind kind, bool optimize, bool isFile = true);
 	void			deleteShader(ShaderIter shader);
 
 	/**

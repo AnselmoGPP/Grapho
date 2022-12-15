@@ -9,21 +9,31 @@
 		- Z map
 		- camPos
 */
-layout(set = 0, binding  = 1) uniform sampler2D texSampler;
+layout(set = 0, binding = 1) uniform sampler2D texSampler;
+layout(set = 0, binding = 2) uniform sampler2D inputColor;
 
 layout(location = 0) in vec2 inUVcoord;
-layout(location = 1) in float inAspRatio;
-layout(location = 2) in vec3 inCamPos;
-layout(location = 3) in vec3 inCamDir;
+layout(location = 1) flat in float inAspRatio;
+layout(location = 2) flat in vec3 inCamPos;
+layout(location = 3) flat in vec3 inCamDir;
+layout(location = 4) in vec2 inNDC;
 
 layout(location = 0) out vec4 outColor;
 
 void main()
-{	
-    outColor = texture(texSampler, inUVcoord);
+{
+	//vec2 NDCs = { gl_FragCoord.x / 960, gl_FragCoord.y / 540 };	// Get fragment Normalize Device Coordinates (NDC) [0,1] from its Window Coordinates (pixels)
 	
-	gl_FragCoord;	// Window coordinates of fragment
+	// https://www.reddit.com/r/vulkan/comments/mf1rb5/input_attachment_not_accessible_from_fragment/
+	// https://stackoverflow.com/questions/45154213/is-there-a-way-to-address-subpassinput-in-vulkan
+	// ChatGPT: The inputAttachment function is only available in GLSL shaders if the "GL_NV_shader_framebuffer_fetch" extension is enabled. This extension is not part of the core Vulkan specification and may not be available on all devices.
+	//inputAttachment(0, vec2(NDCs.x, NDCs.y));
+	//subpassLoad(inputAttachment, vec2(NDCs.x, NDCs.y));
+	
+	outColor = texture(inputColor, inUVcoord);
 }
+
+
 /*
 float densityAtPoint(vec3 densitySamplePoint)
 {
