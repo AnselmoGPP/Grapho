@@ -40,7 +40,7 @@ class Renderer
 	VulkanEnvironment			e;
 	Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
-	std::list<ModelData>		models;						//!< Set of fully initialized models.
+	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass) [0] used to render the main colors or [1] for post processing.
 	std::list<Texture>			textures;					//!< Set of textures
 	std::list<VkShaderModule>	shaders;					//!< Set of shaders
 	size_t						numLayers;					//!< Number of layers (Painter's algorithm)

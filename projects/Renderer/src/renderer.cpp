@@ -113,7 +113,7 @@ void Renderer::createCommandBuffers()
 		{
 			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);
 
-			for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
+			for (modelIterator it = models[0].begin(); it != models[0].end(); it++)	// for each model (color)
 			{
 				if (it->renderPassIndex == 1) continue;
 				if (it->layer != j || !it->activeRenders) continue;
@@ -142,7 +142,7 @@ void Renderer::createCommandBuffers()
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
-		// Starting render pass 2 (post processing):
+		// Start render pass 2 (post processing):
 
 		renderPassInfo.renderPass = e.renderPass[1];
 		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][1];
@@ -152,20 +152,17 @@ void Renderer::createCommandBuffers()
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues_2.size());
 		renderPassInfo.pClearValues = clearValues_2.data();
 
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
+		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start subpass
 		
-		for (modelIterator it = models.begin(); it != models.end(); it++)	// for each model
+		for (modelIterator it = models[1].begin(); it != models[1].end(); it++)	// for each model (post processing)
 		{
-			if (it->renderPassIndex == 1)
-			{
-				if (!it->activeRenders) continue;
-				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
-				vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[0]);
-				vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
-			}
+			if (!it->activeRenders) continue;
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[0]);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -359,11 +356,12 @@ void Renderer::recreateSwapChain()
 
 	// Recreate swapChain:
 	//    - Environment
-	e.recreateSwapChain();
+	e.recreate_Images_RenderPass_SwapChain();
 
 	//    - Each model
-	for (modelIterator it = models.begin(); it != models.end(); it++)
-		it->recreateSwapChain();
+	for (uint32_t i = 0; i < 2; i++)
+		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
+			it->recreate_Pipeline_Descriptors();
 
 	//    - Renderer
 	createCommandBuffers();				// Command buffers directly depend on the swap chain images.
@@ -381,11 +379,12 @@ void Renderer::cleanupSwapChain()
 	}
 
 	// Models
-	for (modelIterator it = models.begin(); it != models.end(); it++)
-		it->cleanupSwapChain();
+	for(uint32_t i = 0; i < 2; i++)
+		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
+			it->cleanup_Pipeline_Descriptors();
 
 	// Environment
-	e.cleanupSwapChain();
+	e.cleanup_Images_RenderPass_SwapChain();
 }
 
 void Renderer::cleanup()
@@ -411,7 +410,8 @@ void Renderer::cleanup()
 	std::cout << __func__ << "() 2" << std::endl;
 
 	// Cleanup each model
-	models.clear();
+	models[0].clear();
+	models[1].clear();
 	modelsToLoad.clear();
 	
 	// Cleanup textures
@@ -423,8 +423,8 @@ void Renderer::cleanup()
 	shaders.clear();
 
 	// Cleanup environment
-	std::cout << "   >>> Buffers size: " << models.size() << "(m), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
-	e.cleanupSwapChain();
+	std::cout << "   >>> Buffers size: " << models[0].size() << "(m1), " << models[1].size() << "(m2), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
+	e.cleanup_Images_RenderPass_SwapChain();
 	e.cleanup(); 
 
 	std::cout << "Cleanup() end" << std::endl;
@@ -448,27 +448,23 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
-	/*
-	bool notLoadedYet = false;
-	for(modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
-		if (it == model) { notLoadedYet = true; break; }
+	for(uint32_t i = 0; i < 2; i++)
+		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
+			if (it == model)
+			{
+				model->inModels = false;
+				modelsToDelete.splice(modelsToDelete.cend(), models[i], model);
+				updateCommandBuffer = true;
+				return;
+			}
 
-	if(notLoadedYet)
-		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);	// <<< MAY PRODUCE BUGS
-	else
-	{
-		modelsToDelete.splice(modelsToDelete.cend(), models, model);
-		updateCommandBuffer = true;
-	}
-	*/
-	if (model->inModels)
-	{
-		model->inModels = false;
-		modelsToDelete.splice(modelsToDelete.cend(), models, model);
-		updateCommandBuffer = true;
-	}
-	else
-		modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);	// <<< MAY PRODUCE BUGS
+	for (modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
+		if (it == model)
+		{
+			model->inModels = false;
+			modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);
+			return;
+		}
 }
 
 texIterator Renderer::newTexture(const char* path)
@@ -686,6 +682,8 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	// - MOVE MODELS AND TEXTURES
 
+	uint32_t i;
+
 	if (texturesToLoad.size() && texturesToLoad.begin()->fullyConstructed)
 	{
 		texIterator begin, end;
@@ -696,21 +694,27 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	if (modelsToLoad.size() && modelsToLoad.begin()->fullyConstructed)
 	{
-		modelIterator begin, end;
-		begin = end = modelsToLoad.begin();
-		while (end->fullyConstructed && end != modelsToLoad.end()) {
-			end->inModels = true;
-			++end;
+		modelIterator begin, it, prev;
+		begin = it = modelsToLoad.begin();
+		while (it->fullyConstructed && it != modelsToLoad.end()) 
+		{
+			it->inModels = true;
+			prev = it;
+			++it;
+
+			i = prev->renderPassIndex;
+			models[i].splice(models[i].cend(), modelsToLoad, prev);
+			updateCommandBuffer = true;
 		}
-		models.splice(models.cend(), modelsToLoad, begin, end);
-		updateCommandBuffer = true;
 	}
 
 	while (lastModelsToDraw.size())
 	{
 		if (lastModelsToDraw[0]->inModels)
-			models.splice(models.end(), models, lastModelsToDraw[0]);
-
+		{
+			i = lastModelsToDraw[0]->renderPassIndex;
+			models[i].splice(models[i].end(), models[i], lastModelsToDraw[0]);
+		}
 		lastModelsToDraw.erase(lastModelsToDraw.begin());
 	}
 	
@@ -718,24 +722,25 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
-	for (modelIterator it = models.begin(); it != models.end(); it++)
-	{
-		if (it->vsDynUBO.totalBytes)
+	for(i = 0; i < 2; i++)
+		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 		{
-			void* data;
-			vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-			memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-			vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
-		}
+			if (it->vsDynUBO.totalBytes)
+			{
+				void* data;
+				vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+				memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+				vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+			}
 
-		if (it->fsUBO.totalBytes)
-		{
-			void* data;
-			vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
-			memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
-			vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
+			if (it->fsUBO.totalBytes)
+			{
+				void* data;
+				vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
+				memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
+				vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
+			}
 		}
-	}
 
 	// - UPDATE COMMAND BUFFER
 	if (updateCommandBuffer)
@@ -765,7 +770,7 @@ void Renderer::toLastDraw(modelIterator model)
 
 size_t Renderer::getFrameCount() { return frameCount; }
 
-size_t Renderer::getModelsCount() { return models.size(); }
+size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); }
 
 size_t Renderer::getCommandsCount() { return commandsCount; }
 

@@ -837,23 +837,23 @@ void VulkanEnvironment::createRenderPass()
 	VkAttachmentDescription colorResolveAttachment{};
 	colorResolveAttachment.format = swapChainImageFormat;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorResolveAttachment.loadOp = (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorResolveAttachment.loadOp = (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
+	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
 	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;													// Attachment's layout state when render pass begins
+	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment's layout state it has to transition to when render pass is complete
 
 	VkAttachmentReference colorResolveAttachmentRef{};
 	colorResolveAttachmentRef.attachment = 0;
-	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment layout state when the render pass begins.
 
 	// Depth attachment
 	VkAttachmentDescription depthAttachment{};
 	depthAttachment.format = findDepthFormat();							// Should be same format as the depth image
 	depthAttachment.samples = msaaSamples;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;			// Here, we don't care because it will not be used after drawing has finished
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			// We don't care about previous depth contents
@@ -1450,7 +1450,7 @@ void VulkanEnvironment::createFramebuffers()
 	}
 }
 
-void VulkanEnvironment::recreateSwapChain()
+void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 {
 	createSwapChain();					// Recreate the swap chain.
 	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
@@ -1464,7 +1464,7 @@ void VulkanEnvironment::recreateSwapChain()
 	createFramebuffers();				// Framebuffers directly depend on the swap chain images.
 }
 
-void VulkanEnvironment::cleanupSwapChain()
+void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
 	// Destroy attachments (images)
 
@@ -1538,21 +1538,15 @@ void VulkanEnvironment::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDeb
 
 void VulkanEnvironment::cleanup()
 {
-	std::cout << "   >>> " << 'A' << std::endl;
 	vkDestroyCommandPool(device, commandPool, nullptr);						// Command pool
 	vkDestroyDevice(device, nullptr);										// Logical device & device queues
 
-	std::cout << "   >>> " << 'B' << std::endl;
 	if (enableValidationLayers)												// Debug messenger
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 
-	std::cout << "   >>> " << 'C' << std::endl;
 	vkDestroySurfaceKHR(instance, surface, nullptr);						// Surface KHR
-	std::cout << "   >>> " << 'D' << std::endl;
 	vkDestroyInstance(instance, nullptr);									// Instance
-	std::cout << "   >>> " << 'E' << std::endl;
 	glfwDestroyWindow(window);												// GLFW window
-	std::cout << "   >>> " << 'F' << std::endl;
 	glfwTerminate();														// GLFW
 }
 

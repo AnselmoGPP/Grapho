@@ -24,17 +24,12 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 {
 	this->vertexLoader = vertexLoader;
 	this->vertexLoader->setDestination(vertices, indices);
-
-	//if (fsUBO.range) fsUBO.resize(1);
-	//resizeUBOset(numRenderings);
 }
 
 ModelData::~ModelData()
 {
-	//std::cout << __func__ << "() (" << FSpath << ')' << std::endl;
-
 	if (fullyConstructed) {
-		cleanupSwapChain();
+		cleanup_Pipeline_Descriptors();
 		cleanup();
 	}
 
@@ -614,7 +609,7 @@ void ModelData::createDescriptorSets()
 	}
 }
 
-void ModelData::recreateSwapChain()
+void ModelData::recreate_Pipeline_Descriptors()
 {
 	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
@@ -624,7 +619,7 @@ void ModelData::recreateSwapChain()
 	createDescriptorSets();				// Descriptor sets
 }
 
-void ModelData::cleanupSwapChain()
+void ModelData::cleanup_Pipeline_Descriptors()
 {
 	// Graphics pipeline
 	vkDestroyPipeline(e.device, graphicsPipeline, nullptr);

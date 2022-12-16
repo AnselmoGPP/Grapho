@@ -1,5 +1,6 @@
 TODO:
-	Red background
+	Depth attachment as input
+	Optimize layers rendering (command buffer)
 	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
 	Review command buffer creation
 	Review anisotropic filtering
@@ -11,7 +12,7 @@ TODO:
 	Increment snow scale / Scale up textures
 	Conmplete getBillboard()
 	Fix plane camera (and possibly other cameras)
-	Adjust radio of expensive rendering
+	Adjust radio of expensive rendering (planet)
 	Color filters for textures depending on height
 	Black stains due to bad normals
 	Don't render non-visible Chunks

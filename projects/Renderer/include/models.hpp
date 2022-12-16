@@ -95,10 +95,10 @@ public:
 	ModelData& fullConstruction();
 
 	/// Destroys graphic pipeline and descriptor sets. Called by destructor, and for window resizing (by Renderer::recreateSwapChain()::cleanupSwapChain()).
-	void cleanupSwapChain();
+	void cleanup_Pipeline_Descriptors();
 
 	/// Creates graphic pipeline and descriptor sets. Called for window resizing (by Renderer::recreateSwapChain()).
-	void recreateSwapChain();
+	void recreate_Pipeline_Descriptors();
 
 	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.

@@ -103,8 +103,8 @@ public:
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
 	void			DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
-	void			recreateSwapChain();
-	void			cleanupSwapChain();
+	void			recreate_Images_RenderPass_SwapChain();
+	void			cleanup_Images_RenderPass_SwapChain();
 	void			cleanup();
 
 	// Main member variables:
