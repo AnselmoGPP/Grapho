@@ -105,7 +105,7 @@ void ModelData::createDescriptorSetLayout()
 		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
 		inputAttachmentLayoutBinding.binding = bindNumber++;
 		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		inputAttachmentLayoutBinding.descriptorCount = 1;
+		inputAttachmentLayoutBinding.descriptorCount = 2;
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -289,6 +289,8 @@ void ModelData::createGraphicsPipeline()
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamicState.dynamicStateCount = 2;
 	dynamicState.pDynamicStates = dynamicStates;
+
+	std::cout << "Pipeline " << renderPassIndex << std::endl;
 
 	// Create graphics pipeline
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -514,17 +516,19 @@ void ModelData::createDescriptorSets()
 	// Populate each descriptor set.
 	for (size_t i = 0; i < e.swapChainImages.size(); i++)
 	{
+		// UBO vertex shader
 		VkDescriptorBufferInfo bufferInfo_vs{};
 		if (vsDynUBO.range) bufferInfo_vs.buffer = vsDynUBO.uniformBuffers[i];
 		bufferInfo_vs.offset = 0;
 		bufferInfo_vs.range = vsDynUBO.range;
 
+		// UBO fragment shader
 		VkDescriptorBufferInfo bufferInfo_fs{};
 		if(fsUBO.range) bufferInfo_fs.buffer = fsUBO.uniformBuffers[i];
 		bufferInfo_fs.offset = 0;
 		bufferInfo_fs.range = fsUBO.range;
 
-		//VkDescriptorImageInfo* imageInfo = new VkDescriptorImageInfo[textures.size()];
+		// Textures
 		std::vector<VkDescriptorImageInfo> imageInfo(textures.size());
 		for (size_t i = 0; i < textures.size(); i++) {
 			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -532,10 +536,14 @@ void ModelData::createDescriptorSets()
 			imageInfo[i].sampler = textures[i]->textureSampler;
 		}
 
-		VkDescriptorImageInfo inputAttachInfo{};
-		inputAttachInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo.imageView = e.resolveColorImageView;
-		inputAttachInfo.sampler = e.resolveColorSampler;
+		// Input attachments
+		std::vector<VkDescriptorImageInfo> inputAttachInfo(2);
+		inputAttachInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		inputAttachInfo[0].imageView = e.resolveColorImageView;
+		inputAttachInfo[0].sampler = e.resolveColorSampler;
+		inputAttachInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		inputAttachInfo[1].imageView = e.depthImageView;
+		inputAttachInfo[1].sampler = e.depthSampler;
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;
@@ -596,9 +604,9 @@ void ModelData::createDescriptorSets()
 			descriptor.dstBinding = binding++;
 			descriptor.dstArrayElement = 0;
 			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-			descriptor.descriptorCount = 1;
+			descriptor.descriptorCount = inputAttachInfo.size();
 			descriptor.pBufferInfo = nullptr;
-			descriptor.pImageInfo = &inputAttachInfo;
+			descriptor.pImageInfo = inputAttachInfo.data();
 			descriptor.pTexelBufferView = nullptr;
 			descriptor.pNext = nullptr;
 

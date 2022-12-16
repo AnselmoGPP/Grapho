@@ -88,8 +88,9 @@ public:
 	uint32_t width      = 1920 / 2;		// <<< Does this change when recreating swap chain?
 	uint32_t height     = 1080 / 2;
 
-	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing) <<<<<
-	const bool add_SS   = true;		//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_MSAA = false;		//!< Shader MSAA (MultiSample AntiAliasing). 
+	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
 	VulkanEnvironment(size_t layers);
 
@@ -109,42 +110,43 @@ public:
 
 	// Main member variables:
 
-	GLFWwindow*					window;								///< Opaque window object.
-	VkInstance					instance;							///< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
-	VkDebugUtilsMessengerEXT	debugMessenger;						///< Opaque handle to a debug messenger object (the debug callback is part of it).
-	VkSurfaceKHR				surface;							///< Opaque handle to a surface object (abstract type of surface to present rendered images to)
+	GLFWwindow*					window;								//!< Opaque window object.
+	VkInstance					instance;							//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
+	VkDebugUtilsMessengerEXT	debugMessenger;						//!< Opaque handle to a debug messenger object (the debug callback is part of it).
+	VkSurfaceKHR				surface;							//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
 
-	VkPhysicalDevice			physicalDevice;						///< Opaque handle to a physical device object.
-	VkSampleCountFlagBits		msaaSamples;						///< Number of samples for MSAA (MultiSampling AntiAliasing)
-	VkDevice					device;								///< Opaque handle to a device object.
+	VkPhysicalDevice			physicalDevice;						//!< Opaque handle to a physical device object.
+	VkSampleCountFlagBits		msaaSamples;						//!< Number of samples for MSAA (MultiSampling AntiAliasing)
+	VkDevice					device;								//!< Opaque handle to a device object.
 
-	VkQueue						graphicsQueue;						///< Opaque handle to a queue object (computer graphics).
-	VkQueue						presentQueue;						///< Opaque handle to a queue object (presentation to window surface).
+	VkQueue						graphicsQueue;						//!< Opaque handle to a queue object (computer graphics).
+	VkQueue						presentQueue;						//!< Opaque handle to a queue object (presentation to window surface).
 
-	VkFormat					swapChainImageFormat;				///< Swap chain format.
-	VkExtent2D					swapChainExtent;					///< Swap chain extent.
+	VkFormat					swapChainImageFormat;				//!< Swap chain format.
+	VkExtent2D					swapChainExtent;					//!< Swap chain extent.
 	
-	VkCommandPool				commandPool;						///< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
+	VkCommandPool				commandPool;						//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
-	VkRenderPass				renderPass[2];						///< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	std::vector<std::array<VkFramebuffer, 2>> swapChainFramebuffers;///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	VkRenderPass				renderPass[2];						//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	std::vector<std::array<VkFramebuffer, 2>> swapChainFramebuffers;//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 
-	VkSwapchainKHR				swapChain;							///< Swap chain object.
-	std::vector<VkImage>		swapChainImages;					///< List. Opaque handle to an image object.
-	std::vector<VkImageView>	swapChainImageViews;				///< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
+	VkSwapchainKHR				swapChain;							//!< Swap chain object.
+	std::vector<VkImage>		swapChainImages;					//!< List. Opaque handle to an image object.
+	std::vector<VkImageView>	swapChainImageViews;				//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkImage						resolveColorImage;					///< For resolving MSAA. One per render pass
-	VkDeviceMemory				resolveColorImageMemory;			///< For resolving MSAA. One per render pass
-	VkImageView					resolveColorImageView;				///< For resolving MSAA. RenderPass attachment. One per render pass
-	VkSampler					resolveColorSampler;				///< For using this image as input attachment
+	VkImage						resolveColorImage;					//!< For resolving MSAA. One per render pass
+	VkDeviceMemory				resolveColorImageMemory;			//!< For resolving MSAA. One per render pass
+	VkImageView					resolveColorImageView;				//!< For resolving MSAA. RenderPass attachment. One per render pass
+	VkSampler					resolveColorSampler;				//!< For using this image as input attachment
 
-	VkImage						msaaColorImage;						///< For MSAA. One per render pass
-	VkDeviceMemory				msaaColorImageMemory;				///< For MSAA. One per render pass
-	VkImageView					msaaColorImageView;					///< For MSAA. RenderPass attachment. One per render pass
+	VkImage						msaaColorImage;						//!< For MSAA. One per render pass
+	VkDeviceMemory				msaaColorImageMemory;				//!< For MSAA. One per render pass
+	VkImageView					msaaColorImageView;					//!< For MSAA. RenderPass attachment. One per render pass
 
-	VkImage						depthImage;							///< Depth buffer (image object). One per render pass
-	VkDeviceMemory				depthImageMemory;					///< Depth buffer memory (memory object). One per render pass
-	VkImageView					depthImageView;						///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
+	VkImage						depthImage;							//!< Depth buffer (image object). One per render pass
+	VkDeviceMemory				depthImageMemory;					//!< Depth buffer memory (memory object). One per render pass
+	VkImageView					depthImageView;						//!< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
+	VkSampler					depthSampler;						//!< For using this image as input attachment
 
 	// Additional variables
 

@@ -28,7 +28,7 @@ FreePolarCam camera_1(
 SphereCam camera_2(
 	100.f, 0.002f, 5.f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
-	0.1f, 5000.f,					// near & far view planes
+	100, 5000,						// near & far view planes
 	glm::vec3(0.f, 0.f, 1.f),		// world up
 	glm::vec3(0.f, 0.f, 0.f),		// nucleus
 	4000.f,							// radius

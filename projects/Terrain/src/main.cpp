@@ -39,7 +39,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 3);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 	loadTextures(app);
 	
 	//setPoints(app);
-	setAxis(app);
+	//setAxis(app);
 	//setGrid(app);
 	//setSea(app);
 	setSkybox(app);
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	setSun(app);
 	setPostProcessing(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
-	setReticule(app);
+	//setReticule(app);
 
 	app.run();		// Start rendering
 

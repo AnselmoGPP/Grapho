@@ -71,9 +71,9 @@ void VulkanEnvironment::createInstance()
 	VkApplicationInfo appInfo{};
 
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
+	appInfo.pApplicationName = "Renderer";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
+	appInfo.pEngineName = "Graphox";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 	appInfo.pNext = nullptr;					// pointer to extension information
@@ -124,13 +124,13 @@ bool VulkanEnvironment::checkValidationLayerSupport(const std::vector<const char
 	// Print "requiredLayers" and "availableLayers"
 	if (printInfo)
 	{
-		std::cout << "Required validation layers: \n";
+		std::cout << "   Required validation layers: \n";
 		for (size_t i = 0; i < requiredLayers.size(); ++i)
-			std::cout << '\t' << requiredLayers[i] << '\n';
+			std::cout << "      " << requiredLayers[i] << '\n';
 
-		std::cout << "Available validation layers: \n";
+		std::cout << "   Available validation layers: \n";
 		for (size_t i = 0; i < layerCount; ++i)
-			std::cout << '\t' << availableLayers[i].layerName << '\n';
+			std::cout << "      " << availableLayers[i].layerName << '\n';
 	}
 
 	// Check if all the "requiredLayers" exist in "availableLayers"
@@ -246,13 +246,13 @@ bool VulkanEnvironment::checkExtensionSupport(const char* const* requiredExtensi
 	// Print "requiredExtensions" and "availableExtensions"
 	if (printInfo)
 	{
-		std::cout << "Required extensions: \n";
+		std::cout << "   Required extensions: \n";
 		for (size_t i = 0; i < reqExtCount; ++i)
-			std::cout << '\t' << requiredExtensions[i] << '\n';
+			std::cout << "      " << requiredExtensions[i] << '\n';
 
-		std::cout << "Available extensions: \n";
+		std::cout << "   Available extensions: \n";
 		for (size_t i = 0; i < extensionCount; ++i)
-			std::cout << '\t' << availableExtensions[i].extensionName << '\n';
+			std::cout << "      " << availableExtensions[i].extensionName << '\n';
 	}
 
 	// Check if all the "requiredExtensions" exist in "availableExtensions"
@@ -346,7 +346,7 @@ void VulkanEnvironment::pickPhysicalDevice()
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 	if (deviceCount == 0) throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-	else if (printInfo) std::cout << "Devices with Vulkan support: " << deviceCount << std::endl;
+	else if (printInfo) std::cout << "   Devices with Vulkan support: " << deviceCount << std::endl;
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
@@ -371,12 +371,12 @@ void VulkanEnvironment::pickPhysicalDevice()
 
 	if (printInfo)
 	{
-		std::cout << "Device features: " << std::endl;
-		std::cout << "   MSAA samples: " << msaaSamples << std::endl;
-		std::cout << "   Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
-		std::cout << "   Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
-		std::cout << "   Large points supported: " << largePointsSupported() << std::endl;
-		std::cout << "   Wide lines supported: " << wideLinesSupported() << std::endl;
+		std::cout << "   Device features: " << std::endl;
+		std::cout << "      MSAA samples: " << msaaSamples << std::endl;
+		std::cout << "      Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
+		std::cout << "      Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
+		std::cout << "      Large points supported: " << largePointsSupported() << std::endl;
+		std::cout << "      Wide lines supported: " << wideLinesSupported() << std::endl;
 	}
 }
 
@@ -427,7 +427,7 @@ int VulkanEnvironment::evaluateDevice(VkPhysicalDevice device)
 	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete GPUs have better performance (and integrated GPUs, worse).
 	score += deviceProperties.limits.maxImageDimension2D;									// Maximum size of textures.
 	
-	if (printInfo) std::cout << "    (" << score << ") " << deviceProperties.deviceName << std::endl;
+	if (printInfo) std::cout << "      (" << score << ") " << deviceProperties.deviceName << std::endl;
 
 	return score;
 }
@@ -651,7 +651,7 @@ void VulkanEnvironment::createSwapChain()
 	swapChainImages.resize(imageCount);
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
-	if(printInfo) std::cout << "Swap chain images: " << swapChainImages.size() << std::endl;
+	if(printInfo) std::cout << "   Swap chain images: " << swapChainImages.size() << std::endl;
 
 	// Save format and extent for future use
 	swapChainImageFormat = surfaceFormat.format;
@@ -837,7 +837,7 @@ void VulkanEnvironment::createRenderPass()
 	VkAttachmentDescription colorResolveAttachment{};
 	colorResolveAttachment.format = swapChainImageFormat;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorResolveAttachment.loadOp = (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
+	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
 	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
 	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -852,7 +852,7 @@ void VulkanEnvironment::createRenderPass()
 	VkAttachmentDescription depthAttachment{};
 	depthAttachment.format = findDepthFormat();							// Should be same format as the depth image
 	depthAttachment.samples = msaaSamples;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; // VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -920,7 +920,6 @@ void VulkanEnvironment::createRenderPass()
 
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass[0]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create render pass!");
-	else std::cout << "   First render pass (color) created" << std::endl;
 
 	// Second render pass (Post processing) -------------------------
 	
@@ -931,6 +930,12 @@ void VulkanEnvironment::createRenderPass()
 
 	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	colorResolveAttachmentRef.attachment = 0;
+
+	// Depth attachment (from previous render pass)
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	depthAttachmentRef.attachment = 1;
 
 	// Final color Post-Processed attachment
 	VkAttachmentDescription colorAttachmentPP{};
@@ -944,7 +949,7 @@ void VulkanEnvironment::createRenderPass()
 	colorAttachmentPP.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference colorAttachmentPPRef{};
-	colorAttachmentPPRef.attachment = 1;
+	colorAttachmentPPRef.attachment = 2;
 	colorAttachmentPPRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// Subpass 2
@@ -955,10 +960,9 @@ void VulkanEnvironment::createRenderPass()
 	subpass2.pColorAttachments = &colorAttachmentPPRef;
 	subpass2.pDepthStencilAttachment = nullptr;
 	subpass2.pResolveAttachments = nullptr;
-	//VkAttachmentReference inputAttachmentRefs[2] = { colorAttachmentResolveRef, depthAttachmentRef };
-	VkAttachmentReference inputAttachments[1] = { colorResolveAttachmentRef };
-	subpass2.inputAttachmentCount = 1;
-	subpass2.pInputAttachments = inputAttachments;
+	std::vector<VkAttachmentReference> inputAttachments = { colorResolveAttachmentRef, depthAttachmentRef };
+	subpass2.inputAttachmentCount = inputAttachments.size();
+	subpass2.pInputAttachments = inputAttachments.data();
 	subpass2.preserveAttachmentCount;
 	subpass2.pPreserveAttachments;
 
@@ -972,7 +976,7 @@ void VulkanEnvironment::createRenderPass()
 
 	// Render Pass 2:
 
-	std::vector<VkAttachmentDescription> attachments2 = std::vector<VkAttachmentDescription>{ colorResolveAttachment, colorAttachmentPP };
+	std::vector<VkAttachmentDescription> attachments2 = std::vector<VkAttachmentDescription>{ colorResolveAttachment, depthAttachment, colorAttachmentPP };
 
 	VkRenderPassCreateInfo renderPassInfo2{};
 	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -985,7 +989,6 @@ void VulkanEnvironment::createRenderPass()
 
 	if (vkCreateRenderPass(device, &renderPassInfo2, nullptr, &renderPass[1]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create render pass!");
-	else std::cout << "   Second render pass (post processing) created" << std::endl;
 }
 
 void VulkanEnvironment::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
@@ -1171,7 +1174,7 @@ void VulkanEnvironment::createResolveColorResources()
 	samplerInfo.mipLodBias = 0.0f;
 
 	if (vkCreateSampler(device, &samplerInfo, nullptr, &resolveColorSampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create texture sampler!");
+		throw std::runtime_error("Failed to create resolve color sampler!");
 }
 
 // (12)<<<
@@ -1215,6 +1218,7 @@ void VulkanEnvironment::createDepthResources()
 	//depthImageMemory.resize(framebuffersCount);
 	//depthImageView.resize(framebuffersCount);
 
+	// Create image
 	VkFormat depthFormat = findDepthFormat();
 
 	createImage(swapChainExtent.width,
@@ -1223,7 +1227,7 @@ void VulkanEnvironment::createDepthResources()
 		msaaSamples,
 		depthFormat,
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		depthImage,
 		depthImageMemory);
@@ -1232,6 +1236,31 @@ void VulkanEnvironment::createDepthResources()
 
 	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
 	transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+
+	// Create sampler
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 1.0f;
+
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	samplerInfo.minLod = 0.f;
+	samplerInfo.maxLod = 0.f;
+	samplerInfo.mipLodBias = 0.0f;
+
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &depthSampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create depth sampler!");
 }
 
 /**
@@ -1414,7 +1443,7 @@ void VulkanEnvironment::createFramebuffers()
 	{
 		// Framebuffers for main color.
 		if (msaaSamples > 1) attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView, msaaColorImageView };
-		else attachments = std::vector<VkImageView>{ swapChainImageViews[i], depthImageView};
+		else attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView};
 		//attachments.push_back(colorImageView[j]);	// Multisampled color buffer
 		//attachments.push_back(depthImageView[j]);
 		//if (add_MSAA) attachments.push_back(swapChainImageViews[i]);			// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
@@ -1430,10 +1459,9 @@ void VulkanEnvironment::createFramebuffers()
 		
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i][0]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 1!");
-		else std::cout << "Framebuffer 1 created" << std::endl;
 
 		// Framebuffers for post-processing.
-		attachments = std::vector<VkImageView>{ resolveColorImageView, swapChainImageViews[i] };
+		attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView, swapChainImageViews[i] };
 		
 		VkFramebufferCreateInfo framebufferInfo2{};
 		framebufferInfo2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1446,7 +1474,6 @@ void VulkanEnvironment::createFramebuffers()
 
 		if (vkCreateFramebuffer(device, &framebufferInfo2, nullptr, &swapChainFramebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
-		else std::cout << "Framebuffer 2 created" << std::endl;
 	}
 }
 
@@ -1480,6 +1507,7 @@ void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 	vkDestroyImageView(device, depthImageView, nullptr);			// Depth buffer		(VkImageView)
 	vkDestroyImage(device, depthImage, nullptr);					// Depth buffer		(VkImage)
 	vkFreeMemory(device, depthImageMemory, nullptr);				// Depth buffer		(VkDeviceMemory)
+	vkDestroySampler(device, depthSampler, nullptr);
 
 	// resolveColorImage
 	vkDestroyImageView(device, resolveColorImageView, nullptr);		// Resolve buffer	(VkImageView)

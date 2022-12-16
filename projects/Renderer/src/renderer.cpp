@@ -146,11 +146,11 @@ void Renderer::createCommandBuffers()
 
 		renderPassInfo.renderPass = e.renderPass[1];
 		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][1];
-		std::array<VkClearValue, 2> clearValues_2{};
-		clearValues_2[0].color = backgroundColor;
-		clearValues_2[1].color = backgroundColor;
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues_2.size());
-		renderPassInfo.pClearValues = clearValues_2.data();
+		clearValues[0].color = backgroundColor;
+		clearValues[1].depthStencil = { 1.0f, 0 };
+		clearValues[2].color = backgroundColor;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start subpass
@@ -359,7 +359,7 @@ void Renderer::recreateSwapChain()
 	e.recreate_Images_RenderPass_SwapChain();
 
 	//    - Each model
-	for (uint32_t i = 0; i < 2; i++)
+	for (uint32_t i = 0; i < e.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			it->recreate_Pipeline_Descriptors();
 
@@ -379,7 +379,7 @@ void Renderer::cleanupSwapChain()
 	}
 
 	// Models
-	for(uint32_t i = 0; i < 2; i++)
+	for(uint32_t i = 0; i < e.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			it->cleanup_Pipeline_Descriptors();
 
@@ -448,7 +448,7 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
-	for(uint32_t i = 0; i < 2; i++)
+	for(uint32_t i = 0; i < e.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			if (it == model)
 			{
@@ -722,7 +722,7 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
-	for(i = 0; i < 2; i++)
+	for(i = 0; i < e.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 		{
 			if (it->vsDynUBO.totalBytes)

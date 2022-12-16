@@ -10,7 +10,7 @@
 		- camPos
 */
 layout(set = 0, binding = 1) uniform sampler2D texSampler;
-layout(set = 0, binding = 2) uniform sampler2D inputColor;
+layout(set = 0, binding = 2) uniform sampler2D inputAttachments[2];
 
 layout(location = 0) in vec2 inUVcoord;
 layout(location = 1) flat in float inAspRatio;
@@ -30,8 +30,8 @@ void main()
 	//inputAttachment(0, vec2(NDCs.x, NDCs.y));
 	//subpassLoad(inputAttachment, vec2(NDCs.x, NDCs.y));
 	
-	outColor = texture(inputColor, inUVcoord);
-	outColor.xyz = outColor.xyz;
+	outColor = 1 - texture(inputAttachments[1], inUVcoord);
+	outColor.yz = vec2(outColor.x, outColor.x);
 }
 
 

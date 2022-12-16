@@ -1,4 +1,6 @@
 TODO:
+	Adjust view planes (more precision for depth map)
+	Try render with no msaa
 	Depth attachment as input
 	Optimize layers rendering (command buffer)
 	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
