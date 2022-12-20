@@ -314,4 +314,44 @@ void Texture::createTextureSampler()
 	*		color = readTexture(uv, minFilter);
 	*/
 }
+/*
+float densityAtPoint(glm::vec2)
+{
+	float heightAboveSurface = length(point - PLANET_CENTER) - PLANET_RADIUS;
+	float height01 = heightAboveSurface / (ATM_RADIUS - PLANET_RADIUS);
 
+	//return exp(-height01 * DENSITY_FALLOFF);					// There is always some density
+	return exp(-height01 * DENSITY_FALLOFF) * (1 - height01);	// Density ends at some distance
+}
+
+void getOpticalDepthTable(std::vector<glm::vec3>& result, unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep)
+{
+	std::cout << __func__ << "() ... " << std::flush;
+
+	double pi = 3.141592653589793238462;
+	size_t heightSteps = 1 + (atmosphereRadius - planetRadius) / heightStep;
+	size_t angleSteps = 1 + pi / angleStep;
+	result.resize(heightSteps * angleSteps);
+
+	float opticalDepth;
+	
+	for(size_t i = 0; i < heightSteps; i++)
+		for (size_t j = 0; j < angleSteps; j++)
+		{
+			glm::vec2 point = { 0, planetRadius + i * heightStep };
+			glm::vec2 rayDir = ;
+			float rayLength = ;
+			float rayStep = rayLength / (numOptDepthPoints - 1);
+			opticalDepth = 0;
+			
+			for (int i = 0; i < numOptDepthPoints; i++)
+			{
+				opticalDepth += densityAtPoint(point) * rayStep;
+				point += rayDir * rayStep;
+			}
+
+			result[i * j + j][0] = opticalDepth;
+		}
+	std::cout << "Finished" << std::endl;
+}
+*/

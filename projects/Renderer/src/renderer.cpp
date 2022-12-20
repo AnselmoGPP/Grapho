@@ -115,7 +115,6 @@ void Renderer::createCommandBuffers()
 
 			for (modelIterator it = models[0].begin(); it != models[0].end(); it++)	// for each model (color)
 			{
-				if (it->renderPassIndex == 1) continue;
 				if (it->layer != j || !it->activeRenders) continue;
 
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.

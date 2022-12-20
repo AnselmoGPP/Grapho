@@ -1,4 +1,8 @@
 TODO:
+	getOpticalDepthTable()
+	Generate optical depth lookup table
+	Unify getQuad()
+	Clear vertex/indices in model objects when already uploaded to GPU
 	Adjust view planes (more precision for depth map)
 	Try render with no msaa
 	Depth attachment as input

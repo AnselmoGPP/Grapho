@@ -89,15 +89,21 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 	return numVertex;
 }
 
-size_t getPlane(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize, float height)
+size_t getQuad(std::vector<VertexPT>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue)
 {
-	vertexDestination = std::vector<VertexPT>{
-	VertexPT(glm::vec3(-horSize/2,  vertSize/2, height), glm::vec2(0, 0)),		// top left
-	VertexPT(glm::vec3(-horSize/2, -vertSize/2, height), glm::vec2(0, 1)),		// low left
-	VertexPT(glm::vec3( horSize/2, -vertSize/2, height), glm::vec2(1, 1)),		// low right
-	VertexPT(glm::vec3( horSize/2,  vertSize/2, height), glm::vec2(1, 0)) };	// top right
+	//destVertex = std::vector<float>{
+	//-horSize / 2,  vertSize / 2, zValue, 0, 0,		// top left
+	//-horSize / 2, -vertSize / 2, zValue, 0, 1,		// low left
+	// horSize / 2, -vertSize / 2, zValue, 1, 1,		// low right
+	// horSize / 2,  vertSize / 2, zValue, 1, 0 };	// top right
 
-	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
+	destVertex = std::vector<VertexPT>{
+		VertexPT(glm::vec3(-horSize/2,  vertSize/2, zValue), glm::vec2(0, 0)),		// top left
+		VertexPT(glm::vec3(-horSize/2, -vertSize/2, zValue), glm::vec2(0, 1)),		// low left
+		VertexPT(glm::vec3( horSize/2, -vertSize/2, zValue), glm::vec2(1, 1)),		// low right
+		VertexPT(glm::vec3( horSize/2,  vertSize/2, zValue), glm::vec2(1, 0)) };	// top right
+
+	destIndices = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
 	return 4;
 }
@@ -129,11 +135,6 @@ void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vecto
 		vertices[i] = temp[i];
 
 	indices = std::vector<uint16_t>{ 0,1,3, 1,2,3 };
-}
-
-void getBillboard()
-{
-
 }
 
 // Skybox

@@ -837,7 +837,7 @@ void VulkanEnvironment::createRenderPass()
 	VkAttachmentDescription colorResolveAttachment{};
 	colorResolveAttachment.format = swapChainImageFormat;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
+	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
 	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
 	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -926,12 +926,14 @@ void VulkanEnvironment::createRenderPass()
 	// Attachments 2:
 	
 	// Final color attachment (from previous render pass)
+	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	colorResolveAttachmentRef.attachment = 0;
 
 	// Depth attachment (from previous render pass)
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -941,7 +943,7 @@ void VulkanEnvironment::createRenderPass()
 	VkAttachmentDescription colorAttachmentPP{};
 	colorAttachmentPP.format = swapChainImageFormat;
 	colorAttachmentPP.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentPP.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // add_MSAA ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentPP.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentPP.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachmentPP.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentPP.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

@@ -3,6 +3,8 @@
 
 #include <list>
 
+#include <glm/glm.hpp>
+
 #include "environment.hpp"
 
 
@@ -56,5 +58,8 @@ struct PBRmaterial
 {
 	std::vector<texIterator> texMaps;
 };
+
+/// Precompute all optical depth values through the atmosphere. Useful for creating a lookup table for atmosphere rendering.
+void getOpticalDepthTable(std::vector<glm::vec3>& result, unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep);
 
 #endif

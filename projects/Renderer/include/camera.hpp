@@ -31,7 +31,7 @@ public:
     float roll;         //!< camera roll (deg)       |/____P
 
     // View
-    float fov, minFov, maxFov;  //!< FOV (deg)
+    float fov, minFov, maxFov;  //!< FOV (rad)
     float nearViewPlane;        //!< Near view plane
     float farViewPlane;         //!< Near view plane
 
@@ -49,8 +49,10 @@ public:
 
     void setYScrollOffset(double yScrollOffset) { this->yScrollOffset = yScrollOffset; }
 
-    glm::vec3 getDirection() { return front; }
- 
+    glm::vec3 getFront() { return front; }
+    glm::vec3 getRight() { return right; }
+    glm::vec3 getCamUp() { return camUp; }
+
 protected:
     // Camera vectors
     glm::vec3 front;        //!< camera front vector

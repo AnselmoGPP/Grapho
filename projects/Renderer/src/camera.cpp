@@ -30,7 +30,7 @@ Camera::Camera(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scroll
     : camPos(camPos),
     yaw(glm::radians(yawPitchRoll.x)), pitch(glm::radians(yawPitchRoll.y)), roll(glm::radians(yawPitchRoll.z)),
     front(1, 0, 0), right(0, -1, 0), camUp(0, 0, 1),
-    fov(fov), minFov(minFov), maxFov(maxFov),
+    fov(glm::radians(fov)), minFov(glm::radians(minFov)), maxFov(glm::radians(maxFov)),
     nearViewPlane(nearViewPlane), farViewPlane(farViewPlane),
     keysSpeed(keysSpeed), mouseSpeed(mouseSpeed), scrollSpeed(scrollSpeed),
     yScrollOffset(0),
@@ -44,7 +44,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix(const float& aspectRatio)
 {
-    glm::mat4 proj = glm::perspective(glm::radians(fov), aspectRatio, nearViewPlane, farViewPlane);   // Params: FOV, aspect ratio, near and far view planes.
+    glm::mat4 proj = glm::perspective(fov, aspectRatio, nearViewPlane, farViewPlane);   // Params: FOV, aspect ratio, near and far view planes.
     proj[1][1] *= -1;       // GLM returns the Y clip coordinate inverted.
 
     return proj;
