@@ -4,13 +4,18 @@
 #define PLANET_CENTER vec3(0,0,0)
 #define PLANET_RADIUS 1400
 #define OCEAN_RADIUS 1			
-#define ATM_RADIUS 2500
+#define ATM_RADIUS 2450
 #define NUM_SCATT_POINTS 10			// number of scattering points
 #define NUM_OPT_DEPTH_POINTS 10		// number of optical depth points
 #define DENSITY_FALLOFF 10
 #define SCATT_STRENGTH 10			// scattering strength
 #define WAVELENGTHS vec3(700, 530, 440)
 #define SCATT_COEFFICIENTS vec3(pow(400/WAVELENGTHS.x, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.y, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.z, 4)*SCATT_STRENGTH)
+
+#define FLT_MAX 3.402823466e+38
+#define FLT_MIN 1.175494351e-38
+#define DBL_MAX 1.7976931348623158e+308
+#define DBL_MIN 2.2250738585072014e-308
 
 layout(set = 0, binding = 1) uniform sampler2D texSampler;
 layout(set = 0, binding = 2) uniform sampler2D inputAttachments[2];
@@ -20,6 +25,7 @@ layout(location = 1) in vec3 inPixPos;
 layout(location = 2) flat in vec3 inCamPos;
 layout(location = 3) flat in float inDotLimit;
 layout(location = 4) flat in vec3 inLightDir;
+layout(location = 5) flat in vec2 inClipPlanes;
 
 layout(location = 0) out vec4 outColor;
 
@@ -52,6 +58,7 @@ void main()
 
 // No post processing. Get the original color.
 vec4 originalColor() { return texture(inputAttachments[0], inUVs); }
+//vec4 originalColor() { return vec4(1,1,1,1); }
 
 // Get non linear depth. Range: [0, 1]
 float depth() {	return texture(inputAttachments[1], inUVs).x; }
@@ -59,8 +66,8 @@ float depth() {	return texture(inputAttachments[1], inUVs).x; }
 // Get linear depth. Range: [0, 1]. Link: https://stackoverflow.com/questions/51108596/linearize-depth
 float linearDepth()
 {
-	float zNear = 100;
-	float zFar = 5000;
+	float zNear = inClipPlanes[0];
+	float zFar = inClipPlanes[1];
 	
 	return (zNear * zFar / (zFar + depth() * (zNear - zFar))) / (zFar - zNear);
 }
@@ -68,8 +75,8 @@ float linearDepth()
 // Get dist from near plane to fragment.
 float depthDist()
 {
-	float zNear = 100;
-	float zFar = 5000;
+	float zNear = inClipPlanes[0];
+	float zFar = inClipPlanes[1];
 	
 	return zNear * zFar / (zFar + depth() * (zNear - zFar));
 }
@@ -107,15 +114,14 @@ vec4 sea()
 //		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.
 vec2 raySphere(vec3 centre, float radius, vec3 rayOrigin, vec3 rayDir)
 {
+	// Number of intersections
 	vec3 offset = rayOrigin - centre;
 	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
 	float b = 2 * dot(offset, rayDir);
 	float c = dot(offset, offset) - radius * radius;
-	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula
+	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
 	
-	// Number of intersections: (0 when d < 0) (1 when d = 0) (2 when d > 0)
-	
-	// Two intersections.
+	// Two intersections (d > 0).
 	if(d > 0)	
 	{
 		float s = sqrt(d);
@@ -126,9 +132,8 @@ vec2 raySphere(vec3 centre, float radius, vec3 rayOrigin, vec3 rayDir)
 			return vec2(distToSphereNear, distToSphereFar - distToSphereNear);
 	}
 	
-	// No intersection
-	float maxFloat = intBitsToFloat(2139095039);	// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
-	return vec2(maxFloat, 0);	
+	// No intersection (d < 0) or one (d = 0)
+	return vec2(FLT_MAX, 0);			// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
 }
 
 // Atmosphere: 
@@ -163,110 +168,58 @@ float opticalDepth(vec3 rayOrigin, vec3 rayDir, float rayLength)
 }
 
 // Describe the view ray of the camera through the atmosphere for the current pixel.
-vec3 calculateLight(vec3 rayOrigin, vec3 rayDir, float rayLength, vec3 originalCol)
+vec3 calculateLight(vec3 firstPoint, vec3 rayDir, float rayLength, vec3 originalCol)
 {
-	vec3 inScatterPoint = rayOrigin;
+	vec3 inScatterPoint = firstPoint;					// point to study
+	vec3 inScatteredLight = vec3(0,0,0);				// light gathered
 	float stepSize = rayLength / (NUM_SCATT_POINTS - 1);
-	vec3 inScatteredLight = vec3(0,0,0);
-	float viewRayOpticalDepth = 0;
+	float viewRayOpticalDepth = 0;						// <<<
 	
 	for(int i = 0; i < NUM_SCATT_POINTS; i++)
 	{
 		vec3 dirToSun = -inLightDir;
-		float sunRayLength = raySphere(PLANET_CENTER, ATM_RADIUS, inScatterPoint, dirToSun).y;
-		float sunRayOpticalDepth = opticalDepth(inScatterPoint, dirToSun, sunRayLength);
-		viewRayOpticalDepth = opticalDepth(inScatterPoint, -rayDir, stepSize * i);
-		vec3 transmittance = exp(-(sunRayOpticalDepth + viewRayOpticalDepth) * SCATT_COEFFICIENTS);
-		float localDensity = densityAtPoint(inScatterPoint);
+		float sunRayLength = raySphere(PLANET_CENTER, ATM_RADIUS, inScatterPoint, dirToSun).y;		// length point-sunHit
+		float sunRayOpticalDepth = opticalDepth(inScatterPoint, dirToSun, sunRayLength);			// OD: point-sunHit
+		viewRayOpticalDepth = opticalDepth(inScatterPoint, -rayDir, stepSize * i);					// OD: point-backHit
+		vec3 transmittance = exp(-(sunRayOpticalDepth + viewRayOpticalDepth) * SCATT_COEFFICIENTS);	// Inversely proportional to optical depths
+		float localDensity = densityAtPoint(inScatterPoint);										// atmosphere density at point
 		
-		inScatteredLight += localDensity * transmittance * SCATT_COEFFICIENTS * stepSize;
-		inScatterPoint   += rayDir * stepSize;
+		inScatteredLight += localDensity * transmittance * SCATT_COEFFICIENTS * stepSize;			// light gathered for now <<< local density ?
+		inScatterPoint   += rayDir * stepSize;														// next point
 	}
-	float originalColTransmittance = exp(-viewRayOpticalDepth);
-	return originalColor().xyz * originalColTransmittance + inScatteredLight;
+	
+	float originalColTransmittance = exp(-viewRayOpticalDepth);			// <<<
+	return originalCol * originalColTransmittance + inScatteredLight;	// Final light color
 }
 
-// Final fragment color (atmosphere)
+// Final pixel color (atmosphere)
 vec4 atmosphere()
 {	
-	vec4 originalCol = originalColor();
+	// Camera ray
 	vec3 rayOrigin = inCamPos;
 	vec3 rayDir = normalize(inPixPos - inCamPos);	// normalize(inCamDir);
 	
-	float distToOcean = raySphere(PLANET_CENTER, OCEAN_RADIUS, rayOrigin, rayDir).x;	// <<< .x ?
+	// Distance to surface
+	float distToOcean = raySphere(PLANET_CENTER, OCEAN_RADIUS, rayOrigin, rayDir).x;
 	float distToSurface = min(depthDist(), distToOcean);
 	
+	// Distance to atmosphere and through it
 	vec2 hitInfo = raySphere(PLANET_CENTER, ATM_RADIUS, rayOrigin, rayDir);
 	float distToAtmosphere = hitInfo.x;
 	float distThroughAtmosphere = min(hitInfo.y, distToSurface - distToAtmosphere);
 	
+	// Get fragment light
+	vec4 originalCol = originalColor();
 	if(distThroughAtmosphere > 0)
 	{
-		const float epsilon = 0.0001;
-		vec3 point = rayOrigin + rayDir * (distToAtmosphere + epsilon);
-		vec3 light = calculateLight(point, rayDir, distThroughAtmosphere - epsilon * 2, originalCol.xyz);
+		const float epsilon = 0.001;
+		vec3 firstPoint = rayOrigin + rayDir * (distToAtmosphere + epsilon);
+		vec3 light = calculateLight(firstPoint, rayDir, distThroughAtmosphere - epsilon * 2, originalCol.xyz);
 		return vec4(light, 1);
 	}
 	
 	return originalCol;
 }
-
-
-
-
-/*
-// Atmosphere have different density at each point depending upon height.
-float densityAtPoint(vec3 densitySamplePoint)
-{
-	float heightAboveSurface = length(densitySamplePoint - planetCentre) - planetRadius;
-	float height01 = heightAboveSurface / (atmosphereRadius - planetRadius);
-	float localDensity = exp(-height01 * densityFalloff) * (1 - height01);
-	return localDensity;
-}
-
-// Average atmosphere density along a ray
-float opticalDepth(vec3 rayOrigin, vec3 rayDir, float rayLength)
-{
-	vec3 densitySamplePoint = rayOrigin;
-	float setpSize = rayLength / (numOpticalDepthPoints - 1);
-	float opticalDepth = 0;
-	
-	for(int i = 0; i < numOpticalDepthPoints; i++)
-	{
-		float localDensity = densityAtPoint(densitySamplePoint);
-		opticalDepth += localDensity * stepSize;
-		densitySamplePoint += rayDir * stepSize;
-	}
-	return opticalDepth;
-}
-
-
-
-// Final fragment color
-vec4 frag()	// v2f i
-{
-	vec4 originalCol = vec4(0,0,0,1);
-	//vec4 originalCol = texture(_MainTex, uvCoords);
-	//float sceneDepthNonLinear = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uvCoords);
-	//float sceneDepth = LinearEyeDepth(sceneDepthNonLinear) * length(viewVec);
-	
-	vec3 rayOrigin = inCamPos;
-	vec3 rayDir = normalize(viewVec);
-	
-		//float dstToOcean = raySphere(planetCentre, oceanRadius, rayOrigin, rayDir);
-		//float dstToSurface = min(sceneDepth, dstToOcean);
-	//float dstToSurface = sceneDepth;
-	
-	vec2 hitInfo = raySphere(planetCentre, atmosphereRadius, rayOrigin, rayDir);
-	float dstToAtmosphere = hitInfo.x;
-	//float dstThroughAtmosphere = min(hitInfo.y, dstToSurface - dstToAtmosphere);
-	float dstThroughAtmosphere = hitInfo.y;
-	
-	return dstThroughAtmosphere / (2 * atmosphereRadius);
-}
-
-
-*/
 
 /*
 	Sean O'Neil (2005) Accurate atmospheric scattering. GPU gems 2

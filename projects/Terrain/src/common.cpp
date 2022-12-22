@@ -22,29 +22,29 @@ FreePolarCam camera_1(
 	50.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(90.f, 0.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)
-	0.1f, 5000.f,					// near & far view planes
+	0.2f, 4000.f,					// near & far view planes
 	glm::vec3(0.0f, 0.0f, 1.0f) );	// world up
 
 SphereCam camera_2(
 	100.f, 0.002f, 0.1f,			// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
-	100, 5000,						// near & far view planes
+	0.2f, 4000,						// near & far view planes
 	glm::vec3(0.f, 0.f, 1.f),		// world up
 	glm::vec3(0.f, 0.f, 0.f),		// nucleus
 	4000.f,							// radius
 	45.f, 45.f );					// latitude & longitude
 
 PlaneCam2 camera_3(
-	glm::vec3(2100.f, 0.f, 0.f),	// camera position
+	glm::vec3(2200.f, 0.f, 0.f),	// camera position
 	50.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(0.f, -90.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)
-	0.1f, 5000.f );					// near & far view planes
+	0.2f, 4000.f );					// near & far view planes
 
 PlanetFPcam camera_4(
 	10.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
-	0.2f, 5000.f,					// near & far view planes
+	0.2f, 4000,						// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
 	1000,							// radius
-	45.f, 0.f );					// latitude & longitude
+	89.f, 0.f );					// latitude & longitude

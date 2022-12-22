@@ -39,7 +39,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -81,6 +81,7 @@ long double frameTimeLD;
 size_t fps, maxfps;
 glm::vec3 camPos, camDir, camUp, camRight;
 float aspectRatio, fov;
+glm::vec2 clipPlanes;
 
 
 // main ---------------------------------------------------------------------
@@ -123,21 +124,21 @@ int main(int argc, char* argv[])
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
 	// Parameters
-	//fps		= rend.getTimer().getFPS();
-	//maxfps	= rend.getTimer().getMaxPossibleFPS();
-	frameTimeLD = rend.getTimer().getTime();
-	frameTime	= (float)frameTimeLD;
-
-	camPos		= rend.getCamera().camPos;
-	camDir		= rend.getCamera().getFront();
-	camUp		= rend.getCamera().getCamUp();
-	camRight	= rend.getCamera().getRight();
-	aspectRatio = rend.getAspectRatio();
-	fov			= rend.getCamera().fov;
+	//fps		  = rend.getTimer().getFPS();
+	//maxfps	  = rend.getTimer().getMaxPossibleFPS();
+	frameTimeLD   = rend.getTimer().getTime();
+	frameTime	  = (float)frameTimeLD;
+	camPos		  = rend.getCamera().camPos;
+	camDir		  = rend.getCamera().getFront();
+	camUp		  = rend.getCamera().getCamUp();
+	camRight	  = rend.getCamera().getRight();
+	aspectRatio	  = rend.getAspectRatio();
+	fov			  = rend.getCamera().fov;
+	clipPlanes[0] = rend.getCamera().nearViewPlane;
+	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
 	std::cout << rend.getFrameCount() << ") \n";
-	//std::cout << "camPos: " << camPos.x << ", " << camPos.y << ", " << camPos.z << " (" << sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z) << ")" << std::endl;
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
 	// Time
@@ -221,8 +222,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 4 * vec4size, &camUp, sizeof(camUp));
 			memcpy(dest + 5 * vec4size, &camRight, sizeof(camRight));
 			memcpy(dest + 6 * vec4size, &lights.posDir[0].direction, sizeof(glm::vec3));
-			memcpy(dest + 7 * vec4size, &view, sizeof(view));
-			memcpy(dest + 7 * vec4size + 1 * mat4size, &proj, sizeof(proj));
+			memcpy(dest + 7 * vec4size, &clipPlanes, sizeof(glm::vec2));
+			memcpy(dest + 8 * vec4size, &view, sizeof(view));
+			memcpy(dest + 8 * vec4size + 1 * mat4size, &proj, sizeof(proj));
 		}	
 
 	if (assets.find("points") != assets.end())
@@ -685,7 +687,7 @@ void setPostProcessing(Renderer& app)
 	assets["postProc"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
-		1, 2 * mat4size + 6 * vec4size,
+		1, 2 * mat4size + 7 * vec4size,
 		0,
 		usedTextures,
 		shaders["v_postProc"], shaders["f_postProc"],
