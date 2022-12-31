@@ -471,6 +471,11 @@ texIterator Renderer::newTexture(const char* path)
 	return texturesToLoad.emplace(texturesToLoad.cend(), path);
 }
 
+texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight)
+{
+	return texturesToLoad.emplace(texturesToLoad.cend(), pixels, texWidth, texHeight);
+}
+
 void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
 	bool notLoadedYet = false;

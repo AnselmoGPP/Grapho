@@ -39,7 +39,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -48,7 +48,7 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
 LightSet lights(2);
-std::vector<texIterator> usedTextures;		// Package of textures from std::map<> textures
+std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
 Noiser noiser_1(	// Desert
@@ -124,8 +124,8 @@ int main(int argc, char* argv[])
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
 	// Parameters
-	//fps		  = rend.getTimer().getFPS();
-	//maxfps	  = rend.getTimer().getMaxPossibleFPS();
+	fps			  = rend.getTimer().getFPS();
+	maxfps		  = rend.getTimer().getMaxPossibleFPS();
 	frameTimeLD   = rend.getTimer().getTime();
 	frameTime	  = (float)frameTimeLD;
 	camPos		  = rend.getCamera().camPos;
@@ -138,12 +138,11 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
-	std::cout << rend.getFrameCount() << ") \n";
+	std::cout << rend.getFrameCount() << ") " << fps << '\n';
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
 	// Time
 	sun.updateTime(frameTime);
-	//dayTime = 6.00 + frameTime * 0.5;	// 0.5
 
 	// Light
 	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
@@ -677,10 +676,14 @@ void setPostProcessing(Renderer& app)
 	std::vector<uint16_t> i_ret;
 	getScreenQuad(1.f, 0.5, v_ret, i_ret);
 
-	std::vector<glm::vec3> opticalDepthTable;
-	//getOpticalDepthTable(opticalDepthTable, 10, 1400, 2500, 0.1, pi/500);	// <<<
-	// ...
-	std::vector<texIterator> usedTextures = { textures["sun"] };
+	std::vector<unsigned char> opticalDepthTable;
+	getOpticalDepthTable optDepth(10, 0, 2450, 1, pi / 500, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	opticalDepthTable.resize(optDepth.bytes);
+	optDepth(opticalDepthTable);	// Functor
+	textures["optDepth"] = app.newTexture((unsigned char*)opticalDepthTable.data(), optDepth.angleSteps, optDepth.heightSteps);
+	std::vector<texIterator> usedTextures = { textures["optDepth"] };
+	
+	//std::vector<texIterator> usedTextures = { textures["sun"] };
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
 
@@ -693,9 +696,4 @@ void setPostProcessing(Renderer& app)
 		shaders["v_postProc"], shaders["f_postProc"],
 		false,
 		1);
-
-	// TODO:
-	//		newPostProc()
-	//		createCommandBuffer()
-	//		attachment properties (loadOp...)
 }

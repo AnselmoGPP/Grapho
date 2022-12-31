@@ -1,13 +1,13 @@
 TODO:
-	Plane
+	newPostProc()
+	createCommandBuffer()
+	attachment properties (loadOp...)
 	ImGui
-	getOpticalDepthTable()
-	Generate optical depth lookup table
+	getOpticalDepthTable() -> Generate optical depth lookup table (also, High-Dynamic-Range Rendering)
+	Get depth buffer for PP from msaa (multiple attachments)
 	Unify getQuad()
-	Clear vertex/indices in model objects when already uploaded to GPU
-	Adjust view planes (more precision for depth map)
+	Clear vertex/indices in model objects when already uploaded to GPU (maybe std::move vertex data, so data is not required to exist outside the object until model is loaded)
 	Try render with no msaa
-	Depth attachment as input
 	Optimize layers rendering (command buffer)
 	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
 	Review command buffer creation
@@ -18,7 +18,6 @@ TODO:
 	Review ModelData::vertex & ModelData::indices. Maybe, not required once VkBuffer is created.
 	Review UBO::ubo. Maybe not required if we can copy data into VkBuffer directly 
 	Increment snow scale / Scale up textures
-	Conmplete getBillboard()
 	Fix plane camera (and possibly other cameras)
 	Adjust radio of expensive rendering (planet)
 	Color filters for textures depending on height

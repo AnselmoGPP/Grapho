@@ -110,7 +110,7 @@ public:
 /// Get angle (radians) between 2 vectors from arbitrary origin
 float angleBetween(glm::vec3 a, glm::vec3 b, glm::vec3 origin);
 
-/// Get rotation quaternion. Quaternions are a 4 dimensional extension of complex numbers. Useful for rotations and more efficient than Rotation matrices (Euler angles) (https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html).
+/// Get rotation quaternion. Quaternions are a 4 dimensional extension of complex numbers. Useful for rotations, and more efficient than Rotation matrices (Euler angles) (https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html).
 glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle);
 
 /// Use a rotation quaternion for rotating a 3D point. Active rotation (point rotated with respect to coordinate system). 

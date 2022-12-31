@@ -147,7 +147,7 @@ void FreePolarCam::ProcessMouseScroll(float deltaTime)
 }
 
 
-// PlaneCam ---------------------------------------------
+// PlaneCam2 ---------------------------------------------
 
 PlaneCam::PlaneCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane)
     : Camera(camPos, keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, yawPitchRoll, nearViewPlane, farViewPlane)
@@ -160,6 +160,22 @@ PlaneCam::PlaneCam(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float sc
 
 void PlaneCam::updateCameraVectors()
 {
+    glm::vec4 rotQuat = productQuat(
+        getRotQuat(front, roll),
+        getRotQuat(camUp, yaw),
+        getRotQuat(right, pitch)
+    );
+    front = rotatePoint(rotQuat, front);
+    right = rotatePoint(rotQuat, right);
+    camUp = rotatePoint(rotQuat, camUp);
+
+    roll = yaw = pitch = 0;
+
+    right = glm::normalize(glm::cross(front, camUp));
+    camUp = glm::normalize(glm::cross(right, front));
+    front = glm::normalize(front);    
+
+    /*
     // Yaw changes
     right = cos(yaw) * right + sin(yaw) * front;
     front = glm::cross(camUp, right);
@@ -176,87 +192,40 @@ void PlaneCam::updateCameraVectors()
     right = glm::normalize(right);
     front = glm::normalize(front);
     camUp = glm::normalize(camUp);
+    */
 }
 
 void PlaneCam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
 {
     float velocity = keysSpeed * deltaTime;
-    roll = yaw = pitch = 0;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP)    == GLFW_PRESS) camPos += front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN)  == GLFW_PRESS) camPos -= front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT)  == GLFW_PRESS) roll    =  0.05 * velocity;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) roll    = -0.05 * velocity;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)                                                     yaw     =  0.05 * velocity;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)                                                     yaw     = -0.05 * velocity;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        camPos += front * velocity;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        camPos -= front * velocity;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        roll = -0.05 * velocity;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        roll =  0.05 * velocity;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    {
+        yaw =  0.05 * velocity;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    {
+        yaw = -0.05 * velocity;
+    }
 }
 
 void PlaneCam::ProcessMouseMovement(GLFWwindow* window, float deltaTime)
-{
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-    {
-        if (leftMousePressed == false)
-        {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            glfwGetCursorPos(window, &lastX, &lastY);
-            leftMousePressed = true;
-        }
-
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-        double xoffset = xpos - lastX;
-        double yoffset = ypos - lastY;
-        lastX = xpos;
-        lastY = ypos;
-
-        yaw   -= xoffset * mouseSpeed;
-        pitch -= yoffset * mouseSpeed;
-    }
-    else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        leftMousePressed = false;
-    }
-}
-
-void PlaneCam::ProcessMouseScroll(float deltaTime)
-{
-    if (yScrollOffset != 0)
-    {
-        fov -= (float)yScrollOffset * scrollSpeed;
-        if (fov < minFov) fov = minFov;
-        if (fov > maxFov) fov = maxFov;
-
-        yScrollOffset = 0;
-    }
-}
-
-
-// PlaneCam2 ---------------------------------------------
-
-PlaneCam2::PlaneCam2(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane)
-    : Camera(camPos, keysSpeed, mouseSpeed, scrollSpeed, fov, minFov, maxFov, yawPitchRoll, nearViewPlane, farViewPlane)
-{
-    front = { 1, 0, 0 };
-    right = { 0,-1, 0 };
-    camUp = { 0, 0, 1 };
-    updateCameraVectors();
-}
-
-void PlaneCam2::ProcessKeyboard(GLFWwindow* window, float deltaTime)
-{
-    float velocity = keysSpeed * deltaTime;
-    //roll = yaw = pitch = 0;
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP)    == GLFW_PRESS) camPos +=  front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN)  == GLFW_PRESS) camPos -=  front * velocity;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT)  == GLFW_PRESS) roll   +=  0.05  * velocity;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) roll   += -0.05  * velocity;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)                                                     yaw    +=  0.05  * velocity;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)                                                     yaw    += -0.05  * velocity;
-}
-
-void PlaneCam2::ProcessMouseMovement(GLFWwindow* window, float deltaTime)
 {
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
@@ -284,7 +253,7 @@ void PlaneCam2::ProcessMouseMovement(GLFWwindow* window, float deltaTime)
     }
 }
 
-void PlaneCam2::ProcessMouseScroll(float deltaTime)
+void PlaneCam::ProcessMouseScroll(float deltaTime)
 {
     if (yScrollOffset != 0)
     {
@@ -339,14 +308,12 @@ void SphereCam::ProcessKeyboard(GLFWwindow* window, float deltaTime)
             radius = temp[3];
         }
     }
-
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
         camPos -= front * velocity;
         glm::vec3 radiusVec(camPos - nucleus);
         radius = std::sqrt(std::pow(radiusVec.x, 2) + std::pow(radiusVec.y, 2) + std::pow(radiusVec.z, 2));
     }
-
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
         camPos -= right * velocity;

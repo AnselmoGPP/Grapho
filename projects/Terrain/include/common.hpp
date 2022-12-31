@@ -15,7 +15,7 @@ extern const std::string texDir;
 // Camera
 extern FreePolarCam camera_1;
 extern SphereCam camera_2;
-extern PlaneCam2 camera_3;
+extern PlaneCam camera_3;
 extern PlanetFPcam camera_4;
 
 #endif

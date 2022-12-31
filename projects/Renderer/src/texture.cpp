@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <algorithm>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -8,11 +9,19 @@
 #include "commons.hpp"
 
 
-Texture::Texture(const char* path) : path(nullptr), e(nullptr), fullyConstructed(false)
+Texture::Texture(const char* path) 
+	: path(nullptr), e(nullptr), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
 	copyCString(this->path, path);
 }
 
+Texture::Texture(unsigned char* pixels, int texWidth, int texHeight)
+	: path(nullptr), e(nullptr), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
+{
+	this->pixels = new unsigned char[4 * texHeight * texWidth];
+	memcpy(this->pixels, pixels, 4 * texHeight * texWidth);
+}
+/*
 Texture::Texture(const Texture& obj)
 {
 	if (this == &obj) return;
@@ -33,10 +42,11 @@ Texture::Texture(const Texture& obj)
 		this->textureSampler = obj.textureSampler;
 	}
 }
-
+*/
 Texture::~Texture() 
 { 
-	delete[] path; 
+	if(path) delete[] path;
+
 	if (e)
 	{
 		vkDestroySampler(e->device, textureSampler, nullptr);
@@ -48,7 +58,10 @@ Texture::~Texture()
 
 void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 {
-	std::cout << __func__ << "(): " << path << std::endl;
+	if(path)
+		std::cout << __func__ << "(): " << path << std::endl;
+	else
+		std::cout << __func__ << "(): " << "In-code generated texture" << std::endl;
 
 	this->e = &e;
 	
@@ -63,14 +76,16 @@ void Texture::loadAndCreateTexture(VulkanEnvironment& e)
 void Texture::createTextureImage()
 {
 	// Load an image (usually, the most expensive process)
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
-	if (!pixels)
-		throw std::runtime_error("Failed to load texture image!");
+	if (path)	// data from file
+	{
+		pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
+		if (!pixels) throw std::runtime_error("Failed to load texture image!");
+	}
+	else { }	// data from code
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)
-
+	std::cout << __func__ << std::endl;
 	// Create a staging buffer (temporary buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it)
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -92,8 +107,8 @@ void Texture::createTextureImage()
 	stbi_image_free(pixels);	// Clean up the original pixel array
 
 	// Create the texture image
-	e->createImage(texWidth,
-		texHeight,
+	e->createImage(
+		texWidth, texHeight,
 		mipLevels,
 		VK_SAMPLE_COUNT_1_BIT,
 		VK_FORMAT_R8G8B8A8_SRGB,
@@ -113,6 +128,7 @@ void Texture::createTextureImage()
 	// Cleanup the staging buffer and its memory
 	vkDestroyBuffer(e->device, stagingBuffer, nullptr);
 	vkFreeMemory(e->device, stagingBufferMemory, nullptr);
+	std::cout << __func__ << std::endl;
 }
 
 void Texture::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
@@ -315,59 +331,163 @@ void Texture::createTextureSampler()
 	*/
 }
 
-class getOpticalDepthTable
+getOpticalDepthTable::getOpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff)
+		: planetRadius(planetRadius), atmosphereRadius(atmosphereRadius), numOptDepthPoints(numOptDepthPoints), heightStep(heightStep), angleStep(angleStep), densityFallOff(densityFallOff)
+{ 
+	heightSteps = std::ceil(1 + (atmosphereRadius - planetRadius) / heightStep);
+	angleSteps = std::ceil(1 + pi / angleStep);
+	
+	bytes = 4 * heightSteps * angleSteps * sizeof(char);
+
+	maxOptDepth = opticalDepth(planetCenter, glm::vec2(0, 1), atmosphereRadius);	// Computed from the planet nucleus
+	
+	std::cout << "maxOptDepth: " << maxOptDepth << std::endl;
+	std::cout << "Optical depth table: " << heightSteps << " x " << angleSteps << std::endl;
+}
+
+void getOpticalDepthTable::operator () (std::vector<unsigned char>& table) const
 {
-	glm::vec2 planetCenter = glm::vec2(0, 0);
-	double pi = 3.141592653589793238462;
-
-	unsigned numOptDepthPoints;
-	unsigned planetRadius;
-	unsigned atmosphereRadius;
-	float heightStep;
-	float angleStep;
-	float densityFallOff;
-
-	float densityAtPoint(glm::vec2 point) const
+	table.resize(heightSteps * angleSteps);
+	
+	float optDepth, rayLength, rayStep, angle;
+	glm::vec2 point, rayDir;
+	
+	for (size_t i = 0; i < heightSteps; i++)
 	{
-		float heightAboveSurface = glm::length(point - planetCenter) - planetRadius;
-		float height01 = heightAboveSurface / (atmosphereRadius - planetRadius);
+		point = { 0, planetRadius + i * heightStep };	// rayOrigin
+		//std::cout << "------- " << point.x << ", " << point.y << std::endl;
+		//std::cout << "------- " << i << std::endl;
+		
+		for (size_t j = 0; j < angleSteps; j++)
+		{
+			angle = j * angleStep;
+			rayDir = glm::vec2(sin(angle), cos(angle));
+			rayLength = raySphere(point, rayDir).y;
 
-		//return exp(-height01 * densityFallOff);					// There is always some density
-		return exp(-height01 * densityFallOff) * (1 - height01);	// Density ends at some distance
+			//std::cout << ">>> " << point.x << ", " << point.y << " / " << rayDir.x << ", " << rayDir.y << " / " << rayStep << std::endl;
+			//std::cout << rayLength << std::endl;
+
+			optDepth = opticalDepth(point, rayDir, rayLength);
+			optDepth = glm::clamp(255.f * optDepth / maxOptDepth, 0.f, 255.f);
+			
+			//table[4 * (i * j + j) + 0] = opticalDepth;
+			
+			// Test
+			table[4 * (i * angleSteps + j) + 0] = optDepth;
+			table[4 * (i * angleSteps + j) + 1] = optDepth;
+			table[4 * (i * angleSteps + j) + 2] = optDepth;
+			table[4 * (i * angleSteps + j) + 3] = 255.f;
+
+			//std::cout << angle  << ", " << optDepth << " / " << rayDir.x << ", " << rayDir.y << " / " << rayLength << std::endl;
+		}
+	}
+}
+
+float getOpticalDepthTable::opticalDepth(glm::vec2 rayOrigin, glm::vec2 rayDir, float rayLength) const
+{
+	glm::vec2 point = rayOrigin;
+	float stepSize = rayLength / (numOptDepthPoints - 1);
+	float opticalDepth = 0;
+	//std::cout << stepSize << " , (" << point.x << ", " << point.y << "), ";
+	for (int i = 0; i < numOptDepthPoints; i++)
+	{
+		//std::cout << densityAtPoint(point) * stepSize << " + ";
+		opticalDepth += densityAtPoint(point) * stepSize;
+		point += rayDir * stepSize;
 	}
 
-public:
-	getOpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff)
-		: numOptDepthPoints(numOptDepthPoints), planetRadius(planetRadius), atmosphereRadius(atmosphereRadius), heightStep(heightStep), angleStep(angleStep), densityFallOff(densityFallOff){ }
+	//std::cout << " = " << opticalDepth << std::endl;
+	//std::cout << opticalDepth << ", " << FLT_MAX << std::endl;
+	return opticalDepth;
+}
 
-	void operator () (std::vector<glm::vec3>& table) const
+float getOpticalDepthTable::densityAtPoint(glm::vec2 point) const
+{
+	float heightAboveSurface = glm::length(point - planetCenter) - planetRadius;
+	float height01 = heightAboveSurface / (atmosphereRadius - planetRadius);
+
+	//return exp(-height01 * densityFallOff);					// There is always some density
+	return exp(-height01 * densityFallOff) * (1 - height01);	// Density ends at some distance
+}
+
+// Returns distance to sphere surface. If it's not, return maximum floating point.
+// Returns vector(distToSphere, distThroughSphere). 
+//		If rayOrigin is inside sphere, distToSphere = 0. 
+//		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.
+glm::vec2 getOpticalDepthTable::raySphere(glm::vec2 rayOrigin, glm::vec2 rayDir) const
+{
+	//std::cout << ">>> " << rayOrigin.x << ", " << rayOrigin.y << " / " << rayDir.x << ", " << rayDir.y << std::endl;
+
+	// Number of intersections
+	glm::vec3 offset = glm::vec3(rayOrigin - planetCenter, 0.f);
+	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
+	float b = 2 * dot(offset, glm::vec3(rayDir, 0.f));
+	float c = glm::dot(offset, offset) - atmosphereRadius * atmosphereRadius;
+	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
+
+	// Two intersections (d > 0)
+	if (d > 0)
 	{
-	//	std::cout << __func__ << "() ... " << std::flush;
-	//
-	//	size_t heightSteps = 1 + (atmosphereRadius - planetRadius) / heightStep;
-	//	size_t angleSteps = 1 + pi / angleStep;
-	//	table.resize(heightSteps * angleSteps);
-	//
-	//	float opticalDepth;
-	//
-	//	for (size_t i = 0; i < heightSteps; i++)
-	//		for (size_t j = 0; j < angleSteps; j++)
-	//		{
-	//			glm::vec2 point = { 0, planetRadius + i * heightStep };
-	//			glm::vec2 rayDir = ;
-	//			float rayLength = ;
-	//			float rayStep = rayLength / (numOptDepthPoints - 1);
-	//			opticalDepth = 0;
-	//
-	//			for (int i = 0; i < numOptDepthPoints; i++)
-	//			{
-	//				opticalDepth += densityAtPoint(point) * rayStep;
-	//				point += rayDir * rayStep;
-	//			}
-	//
-	//			table[i * j + j][0] = opticalDepth;
-	//		}
-	//	std::cout << "Finished" << std::endl;
+		float s = sqrt(d);
+		float distToSphereNear = std::max(0.f, (-b - s) / (2 * a));
+		float distToSphereFar = (-b + s) / (2 * a);
+
+		//std::cout << (distToSphereFar - distToSphereNear) << std::endl;
+
+		if (distToSphereFar >= 0)		// Ignore intersections that occur behind the ray
+			return glm::vec2(distToSphereNear, distToSphereFar - distToSphereNear);
 	}
-};
+
+	// No intersection (d < 0) or one (d = 0)
+	return glm::vec2(FLT_MAX, 0);			// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
+
+
+
+	/*
+		/ Line:     y = mx + b
+		\ Circle:   r^2 = x^2 + y^2;	y = sqrt(r^2 - x^2)
+					r^2 = (x - h)^2 + (y - k)^2;	r^2 = X^2 + x^2 + 2Xx + Y^2 + y^2 + 2Yy
+
+		mx + b = sqrt(r^2 - x^2)
+		mmx^2 + b^2 + 2mbx = r^2 - x^2
+		mmx^2 + b^2 + 2mbx - r^2 + x^2  = 0
+		(mm + 1)x^2 + 2mbx + (b^2 - r^2) = 0 
+	*/
+
+	//float m = rayDir.y / rayDir.x;	// line's slope
+	//float B = rayOrigin.y;			// line's Y-intercept 
+	//float a = m * m + 1;
+	//float b = 2 * m * B;
+	//float c = B * B - atmosphereRadius * atmosphereRadius;
+	//float d = b * b - 4 * a * c;
+	//
+	//std::cout << a << ", " << b << ", " << c << ", " << d << std::endl;
+
+
+
+	/*
+	// Number of intersections
+	glm::vec2 offset = rayOrigin - planetCenter;
+	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
+	float b = 2 * dot(offset, rayDir);
+	float c = dot(offset, offset) - planetRadius * planetRadius;
+	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
+	//std::cout << a << ", " << b << ", " << c << ", " << d << std::endl;
+	//std::cout << rayOrigin.x << ", " << rayOrigin.y << ", " << planetCenter.x << ", " << planetCenter.y << std::endl;
+
+	// Two intersections (d > 0)
+	if (d > 0)
+	{
+		float s = sqrt(d);
+		float distToSphereNear = std::max(0.f, (-b - s) / (2 * a));
+		float distToSphereFar = (-b + s) / (2 * a);
+
+		if (distToSphereFar >= 0)		// Get only intersections in the direction of the ray. Ignore those behind the ray.
+			return distToSphereNear;
+	}
+
+	// No intersection (d < 0) or one (d = 0)
+	return FLT_MAX;			// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
+	*/
+}
 

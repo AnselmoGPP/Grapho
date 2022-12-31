@@ -120,18 +120,6 @@ private:
 };
 
 
-class PlaneCam2 : public Camera
-{
-public:
-    PlaneCam2(glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed, float fov, float minFov, float maxFov, glm::vec3 yawPitchRoll, float nearViewPlane, float farViewPlane);
-
-private:
-    void ProcessKeyboard(GLFWwindow* window, float deltaTime) override;
-    void ProcessMouseMovement(GLFWwindow* window, float deltaTime) override;
-    void ProcessMouseScroll(float deltaTime) override;
-};
-
-
 class SphereCam : public Camera
 {
 public:

@@ -17,6 +17,8 @@
 #define DBL_MAX 1.7976931348623158e+308
 #define DBL_MIN 2.2250738585072014e-308
 
+#define MAXOPTDEPTH 383.6863
+
 layout(set = 0, binding = 1) uniform sampler2D texSampler;
 layout(set = 0, binding = 2) uniform sampler2D inputAttachments[2];
 
@@ -50,8 +52,9 @@ void main()
 	//outColor = originalColor();
 	//outColor = vec4(depth(), depth(), depth(), 1.f);
 	//outColor = vec4(linearDepth(), linearDepth(), linearDepth(), 1.f);
+	//outColor = texture(texSampler, inUVs * vec2(1, -1));
 	//outColor = sphere();
-	//outColor = sea();
+	//outColor = sea();			// <<< do it
 	outColor = atmosphere();	// <<< to optimize (less lookups)
 	//if(depth() == 1) outColor = vec4(0,1,0,1);
 }
@@ -109,19 +112,35 @@ vec4 sea()
 	return originalColor();
 }
 
+vec3 toSRGB(vec3 vec)
+{
+	vec3 nonLinear;
+	
+	if (vec.x <= 0.0031308) nonLinear.x = vec.x * 12.92;
+	else nonLinear.x = 1.055 * pow(vec.x, 1.0/2.4) - 0.055;
+	
+	if (vec.y <= 0.0031308) nonLinear.y = vec.y * 12.92;
+	else nonLinear.y = 1.055 * pow(vec.y, 1.0/2.4) - 0.055;
+	
+	if (vec.z <= 0.0031308) nonLinear.z = vec.z * 12.92;
+	else nonLinear.z = 1.055 * pow(vec.z, 1.0/2.4) - 0.055;
+	
+	return nonLinear;
+}
+
 // Returns vector(distToSphere, distThroughSphere). 
 //		If rayOrigin is inside sphere, distToSphere = 0. 
 //		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.
-vec2 raySphere(vec3 centre, float radius, vec3 rayOrigin, vec3 rayDir)
+vec2 raySphere(vec3 planetCentre, float atmRadius, vec3 rayOrigin, vec3 rayDir)
 {
 	// Number of intersections
-	vec3 offset = rayOrigin - centre;
+	vec3 offset = rayOrigin - planetCentre;
 	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
 	float b = 2 * dot(offset, rayDir);
-	float c = dot(offset, offset) - radius * radius;
+	float c = dot(offset, offset) - atmRadius * atmRadius;
 	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
 	
-	// Two intersections (d > 0).
+	// Two intersections (d > 0)
 	if(d > 0)	
 	{
 		float s = sqrt(d);
@@ -137,9 +156,9 @@ vec2 raySphere(vec3 centre, float radius, vec3 rayOrigin, vec3 rayDir)
 }
 
 // Atmosphere: 
+//		https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-16-accurate-atmospheric-scattering
 //		https://github.com/SebLague/Solar-System/blob/Development/Assets/Scripts/Celestial/Shaders/PostProcessing/Atmosphere.shader
 //		https://www.youtube.com/watch?v=DxfEbulyFcY
-//		https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-16-accurate-atmospheric-scattering
 
 // Atmosphere's density at one point. The closer to the surface, the denser it is.
 float densityAtPoint(vec3 point)
@@ -167,6 +186,15 @@ float opticalDepth(vec3 rayOrigin, vec3 rayDir, float rayLength)
 	return opticalDepth;
 }
 
+float opticalDepthBaked(vec3 rayOrigin, vec3 rayDir)
+{
+	vec2 UVs;
+	UVs.x = 1 - (dot(normalize(rayOrigin - PLANET_CENTER), rayDir) * 0.5 + 0.5);
+	UVs.y = ATM_RADIUS / length(rayOrigin - PLANET_CENTER);
+	
+	return MAXOPTDEPTH * toSRGB(texture(texSampler, UVs * vec2(1, -1)).xyz).x;
+}
+
 // Describe the view ray of the camera through the atmosphere for the current pixel.
 vec3 calculateLight(vec3 firstPoint, vec3 rayDir, float rayLength, vec3 originalCol)
 {
@@ -179,8 +207,10 @@ vec3 calculateLight(vec3 firstPoint, vec3 rayDir, float rayLength, vec3 original
 	{
 		vec3 dirToSun = -inLightDir;
 		float sunRayLength = raySphere(PLANET_CENTER, ATM_RADIUS, inScatterPoint, dirToSun).y;		// length point-sunHit
-		float sunRayOpticalDepth = opticalDepth(inScatterPoint, dirToSun, sunRayLength);			// OD: point-sunHit
-		viewRayOpticalDepth = opticalDepth(inScatterPoint, -rayDir, stepSize * i);					// OD: point-backHit
+		//float sunRayOpticalDepth = opticalDepth(inScatterPoint, dirToSun, sunRayLength);			// OD: point-sunHit
+		//viewRayOpticalDepth = opticalDepth(inScatterPoint, -rayDir, stepSize * i);				// OD: point-backHit
+		float sunRayOpticalDepth = opticalDepthBaked(inScatterPoint, dirToSun);
+		viewRayOpticalDepth = opticalDepthBaked(inScatterPoint, -rayDir);		
 		vec3 transmittance = exp(-(sunRayOpticalDepth + viewRayOpticalDepth) * SCATT_COEFFICIENTS);	// Inversely proportional to optical depths
 		float localDensity = densityAtPoint(inScatterPoint);										// atmosphere density at point
 		
@@ -188,8 +218,21 @@ vec3 calculateLight(vec3 firstPoint, vec3 rayDir, float rayLength, vec3 original
 		inScatterPoint   += rayDir * stepSize;														// next point
 	}
 	
-	float originalColTransmittance = exp(-viewRayOpticalDepth);			// <<<
-	return originalCol * originalColTransmittance + inScatteredLight;	// Final light color
+	float originalColTransmittance = exp(-viewRayOpticalDepth);
+	
+	vec3 finalColor;
+	if(depth() == 1.f)	// Obscure skybox during day
+	{
+		float range[2] = { 0.30, 0.90 };	// When transmittance < range[0], skybox is obscured. When transmittance > range[1], skybox is clear. Intermediate values are linearly mixed
+		float ratio = clamp(originalColTransmittance, range[0], range[1]);
+		ratio = (ratio - range[0]) / (range[1] - range[0]);
+		originalCol = ratio * originalCol + (1-ratio) * vec3(0.005, 0.005, 0.005);
+		finalColor =  originalCol * originalColTransmittance + inScatteredLight;
+	}
+	else
+		finalColor = originalCol * originalColTransmittance + inScatteredLight;
+
+	return finalColor;
 }
 
 // Final pixel color (atmosphere)
@@ -214,7 +257,7 @@ vec4 atmosphere()
 	{
 		const float epsilon = 0.001;
 		vec3 firstPoint = rayOrigin + rayDir * (distToAtmosphere + epsilon);
-		vec3 light = calculateLight(firstPoint, rayDir, distThroughAtmosphere - epsilon * 2, originalCol.xyz);
+		vec3 light = calculateLight(firstPoint, rayDir, distThroughAtmosphere - 2 * epsilon, originalCol.xyz);
 		return vec4(light, 1);
 	}
 	
