@@ -75,7 +75,7 @@ void VulkanEnvironment::createInstance()
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "Graphox";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_3;
 	appInfo.pNext = nullptr;					// pointer to extension information
 
 	// Not optional. Tell the compiler the global extensions and validation layers we will use (applicable to the entire program, not a specific device)
@@ -668,7 +668,7 @@ VkSurfaceFormatKHR VulkanEnvironment::chooseSwapSurfaceFormat(const std::vector<
 			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)	// Color space: Indicates if the sRGB color space is supported or not (https://stackoverflow.com/questions/12524623/what-are-the-practical-differences-when-working-with-colors-in-a-linear-vs-a-no).
 			return availableFormat;
 	}
-
+	
 	// Otherwise, return the first format founded (other ways: rank the available formats on how "good" they are)
 	return availableFormats[0];
 }

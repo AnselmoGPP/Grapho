@@ -26,24 +26,26 @@ layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
 layout(location = 2)  		out vec3	outNormal;		// Ground normal
 layout(location = 3)  		out float	outSlope;		// Ground slope
 layout(location = 4)  		out float	outDist;		// Distace vertex-camera
-layout(location = 5)  flat	out float	outSqrHeight;	// Camera square height over nucleus
-layout(location = 6)  		out vec3	outTanX;		// Tangents & Bitangents
-layout(location = 7)  		out vec3	outBTanX;
-layout(location = 8)  		out vec3	outTanY;
-layout(location = 9)  		out vec3	outBTanY;
-layout(location = 10) 		out vec3	outTanZ;
-layout(location = 11) 		out vec3	outBTanZ;
-layout(location = 12) flat	out LightPD outLight[NUMLIGHTS];
+layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
+layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
+layout(location = 7)  		out vec3	outTanX;		// Tangents & Bitangents
+layout(location = 8)  		out vec3	outBTanX;
+layout(location = 9)  		out vec3	outTanY;
+layout(location = 10)  		out vec3	outBTanY;
+layout(location = 11) 		out vec3	outTanZ;
+layout(location = 12) 		out vec3	outBTanZ;
+layout(location = 13) flat	out LightPD outLight[NUMLIGHTS];
 
 void main()
 {
-	gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
-				 
-	outPos       = inPos;
-	outNormal    = mat3(ubo.normalMatrix) * inNormal;
-	vec3 diff    = inPos - ubo.camPos.xyz;
-	outDist      = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-	outSqrHeight = ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z;	// Assuming vec3(0,0,0) == planetCenter
+	gl_Position     = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
+				    
+	outPos          = inPos;
+	outNormal       = mat3(ubo.normalMatrix) * inNormal;
+	vec3 diff       = inPos - ubo.camPos.xyz;
+	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+	outCamSqrHeight = ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z;	// Assuming vec3(0,0,0) == planetCenter
+	outGroundHeight = sqrt(inPos.x * inPos.x + inPos.y * inPos.y + inPos.z * inPos.z);
 	outSlope     = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
 	outCamPos    = ubo.camPos.xyz;
 	for(int i = 0; i < NUMLIGHTS; i++) 

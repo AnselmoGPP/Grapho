@@ -12,6 +12,9 @@ class Texture
 {
 	const char* path;									///< Path to the texture file.
 	VulkanEnvironment* e;								///< Pointer, instead of a reference, because it is not defined at object creation but when calling loadAndCreateTexture().
+	VkFormat imageFormat;								//!< VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_R32_SFLOAT, ...
+	VkSamplerAddressMode addressMode;					//!< VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT, ...
+	//VkFilter magMinFilter;							//!< VK_FILTER_LINEAR, VK_FILTER_NEAREST, ...
 
 	void createTextureImage();							///< Load an image and upload it into a Vulkan object. Process: Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer.
 	void createTextureImageView();						///< Create an image view for the texture (images are accessed through image views rather than directly).
@@ -25,9 +28,9 @@ class Texture
 	unsigned char* pixels;					//!< stbi_uc* pixels
 
 public:
-	Texture(const char* path);										//!< Construction from a texture file
-	Texture(unsigned char* pixels, int texWidth, int texHeight);	//!< Construction from in-code data
-	//Texture(const Texture& obj);									//!< Copy constructor.
+	Texture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
+	Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode);	//!< Construction from in-code data
+	//Texture(const Texture& obj);			//!< Copy constructor.
 	~Texture();
 
 	void loadAndCreateTexture(VulkanEnvironment& e);	///< Load image and create the VkImage, VkImageView and VkSampler.
@@ -64,32 +67,40 @@ struct PBRmaterial
 };
 
 
-/// Functor. Precompute all optical depth values through the atmosphere. Useful for creating a lookup table for atmosphere rendering.
-class getOpticalDepthTable
+/// Precompute all optical depth values through the atmosphere. Useful for creating a lookup table for atmosphere rendering.
+class OpticalDepthTable
 {
-	glm::vec2 planetCenter = glm::vec2(0, 0);
-	double pi = 3.141592653589793238462;
-
+	glm::vec3 planetCenter{ 0.f, 0.f, 0.f };
 	unsigned planetRadius;
 	unsigned atmosphereRadius;
 	unsigned numOptDepthPoints;
 	float heightStep;
 	float angleStep;
 	float densityFallOff;
-	float maxOptDepth;
 
-	float opticalDepth(glm::vec2 rayOrigin, glm::vec2 rayDir, float rayLength) const;
-	float densityAtPoint(glm::vec2 point) const;
-	glm::vec2 raySphere(glm::vec2 rayOrigin, glm::vec2 rayDir) const;
+	float opticalDepth(glm::vec3 rayOrigin, glm::vec3 rayDir, float rayLength) const;
+	float densityAtPoint(glm::vec3 point) const;
+	glm::vec2 raySphere(glm::vec3 rayOrigin, glm::vec3 rayDir) const;
 
 public:
-	getOpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff);
+	OpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff);
 
-	void operator () (std::vector<unsigned char>& table) const;
-
+	std::vector<unsigned char> table;
 	size_t heightSteps;
 	size_t angleSteps;
 	size_t bytes;
 };
+
+/// Precompute all density values through the atmosphere. Useful for creating a lookup table for atmosphere rendering.
+class DensityVector
+{
+public:
+	DensityVector(float planetRadius, float atmosphereRadius, float stepSize, float densityFallOff);
+
+	std::vector<unsigned char> table;
+	size_t heightSteps;
+	size_t bytes;
+};
+
 
 #endif

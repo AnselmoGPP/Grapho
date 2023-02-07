@@ -4,14 +4,26 @@
 #include <glm/glm.hpp>
 
 
-#if defined(__unix__)
-const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
-const std::string vertexDir("../../../models/");
-const std::string texDir("../../../textures/");
-#elif _WIN64 || _WIN32
-const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
-const std::string vertexDir("../../../models/");
-const std::string texDir("../../../textures/");
+#if STANDALONE_EXECUTABLE
+	#if defined(__unix__)
+		const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+		const std::string vertexDir("../../../../models/");
+		const std::string texDir("../../../../textures/");
+	#elif _WIN64 || _WIN32
+		const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+		const std::string vertexDir("../../../../models/");
+		const std::string texDir("../../../../textures/");
+	#endif
+#else
+	#if defined(__unix__)
+		const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+		const std::string vertexDir("../../../models/");
+		const std::string texDir("../../../textures/");
+	#elif _WIN64 || _WIN32
+		const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+		const std::string vertexDir("../../../models/");
+		const std::string texDir("../../../textures/");
+	#endif
 #endif
 
 
@@ -35,7 +47,7 @@ SphereCam camera_2(
 	45.f, 45.f );					// latitude & longitude
 
 PlaneCam camera_3(
-	glm::vec3(2500.f, 0.f, 0.f),	// camera position
+	glm::vec3(0.f, 0.f, 2500.f),	// camera position
 	50.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(0.f, -90.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)
@@ -47,4 +59,4 @@ PlanetFPcam camera_4(
 	0.2f, 4000,						// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
 	1000,							// radius
-	0.f, 0.f );					// latitude & longitude
+	0.f, 5.f );						// latitude & longitude

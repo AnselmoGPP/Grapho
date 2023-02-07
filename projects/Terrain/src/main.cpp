@@ -6,6 +6,7 @@
 								< Input			< Camera
 */
 
+#include <filesystem>
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
 #include <iomanip>
@@ -25,7 +26,7 @@ void loadTextures(Renderer& app);
 void loadShaders(Renderer& app);
 float getFloorHeight(const glm::vec3& pos);
 
-void setPostProcessing(Renderer& app);
+void setAtmosphere(Renderer& app);
 void setReticule(Renderer& app);
 void setPoints(Renderer& app);
 void setAxis(Renderer& app);
@@ -47,7 +48,7 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
-LightSet lights(2);
+LightSet lights(2); 
 std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
@@ -61,7 +62,7 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	5, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	4, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
@@ -81,16 +82,18 @@ long double frameTimeLD;
 size_t fps, maxfps;
 glm::vec3 camPos, camDir, camUp, camRight;
 float aspectRatio, fov;
-glm::vec2 clipPlanes;
+glm::vec2 clipPlanes, screenSize;
 
 
 // main ---------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
-	std::cout << std::setprecision(7);
-	camera_4.camParticle.setCallback(getFloorHeight);
+	//std::cout << std::setprecision(7);
+	std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
 	std::cout << "PlanetGrid area: " << planetGrid.area << std::endl;
+
+	camera_4.camParticle.setCallback(getFloorHeight);
 	
 	TimerSet time;
 	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
@@ -111,12 +114,13 @@ int main(int argc, char* argv[])
 	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	setSun(app);
-	setPostProcessing(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 	//setReticule(app);
 
 	app.run();		// Start rendering
 
 	std::cout << "main() end" << std::endl;
+	if(STANDALONE_EXECUTABLE) system("pause");
 	return EXIT_SUCCESS;
 }
 
@@ -128,11 +132,15 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	maxfps		  = rend.getTimer().getMaxPossibleFPS();
 	frameTimeLD   = rend.getTimer().getTime();
 	frameTime	  = (float)frameTimeLD;
+
 	camPos		  = rend.getCamera().camPos;
 	camDir		  = rend.getCamera().getFront();
 	camUp		  = rend.getCamera().getCamUp();
 	camRight	  = rend.getCamera().getRight();
+
 	aspectRatio	  = rend.getAspectRatio();
+	screenSize	  = rend.getScreenSize();
+
 	fov			  = rend.getCamera().fov;
 	clipPlanes[0] = rend.getCamera().nearViewPlane;
 	clipPlanes[1] = rend.getCamera().farViewPlane;
@@ -210,10 +218,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["reticule"]->vsDynUBO.numDynUBOs; i++)
 			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
 
-	if (assets.find("postProc") != assets.end())
-		for (i = 0; i < assets["postProc"]->vsDynUBO.numDynUBOs; i++)
+	if (assets.find("atmosphere") != assets.end())
+		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
 		{
-			dest = assets["postProc"]->vsDynUBO.getUBOptr(i);
+			dest = assets["atmosphere"]->vsDynUBO.getUBOptr(i);
 			memcpy(dest + 0 * vec4size, &fov, sizeof(fov));
 			memcpy(dest + 1 * vec4size, &aspectRatio, sizeof(aspectRatio));
 			memcpy(dest + 2 * vec4size, &camPos, sizeof(camPos));
@@ -222,8 +230,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 5 * vec4size, &camRight, sizeof(camRight));
 			memcpy(dest + 6 * vec4size, &lights.posDir[0].direction, sizeof(glm::vec3));
 			memcpy(dest + 7 * vec4size, &clipPlanes, sizeof(glm::vec2));
-			memcpy(dest + 8 * vec4size, &view, sizeof(view));
-			memcpy(dest + 8 * vec4size + 1 * mat4size, &proj, sizeof(proj));
+			memcpy(dest + 8 * vec4size, &screenSize, sizeof(glm::vec2));
+			memcpy(dest + 9 * vec4size, &view, sizeof(view));
+			memcpy(dest + 9 * vec4size + 1 * mat4size, &proj, sizeof(proj));
 		}	
 
 	if (assets.find("points") != assets.end())
@@ -326,7 +335,7 @@ void setLights()
 void loadShaders(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
-
+	
 	shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
 
@@ -354,8 +363,8 @@ void loadShaders(Renderer& app)
 	shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_postProc"] = app.newShader((shadersDir + "v_postProc.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_postProc"] = app.newShader((shadersDir + "f_postProc.frag").c_str(), shaderc_fragment_shader, true);
+	shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
 }
 
 void loadTextures(Renderer& app)
@@ -668,32 +677,32 @@ void setReticule(Renderer& app)
 		true);
 }
 
-void setPostProcessing(Renderer& app)
+void setAtmosphere(Renderer& app)
 {
 	std::cout << "> " << __func__ << "()" << std::endl;
 
-	float v_ret[4 * 5];
-	std::vector<uint16_t> i_ret;
-	getScreenQuad(1.f, 0.5, v_ret, i_ret);
+	float v_quad[4 * 5];
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(1.f, 0.5, v_quad, i_quad);
 
-	std::vector<unsigned char> opticalDepthTable;
-	getOpticalDepthTable optDepth(10, 0, 2450, 1, pi / 500, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
-	opticalDepthTable.resize(optDepth.bytes);
-	optDepth(opticalDepthTable);	// Functor
-	textures["optDepth"] = app.newTexture((unsigned char*)opticalDepthTable.data(), optDepth.angleSteps, optDepth.heightSteps);
-	std::vector<texIterator> usedTextures = { textures["optDepth"] };
-	
-	//std::vector<texIterator> usedTextures = { textures["sun"] };
+	// Fill table buffers (optical depth & density)
+	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi/100, 10);		// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	textures["optDepth"] = app.newTexture(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
+	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	assets["postProc"] = app.newModel(
+	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };
+
+	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_quad, i_quad, true);
+
+	assets["atmosphere"] = app.newModel(
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
-		1, 2 * mat4size + 7 * vec4size,
+		1, 2 * mat4size + 8 * vec4size,
 		0,
 		usedTextures,
-		shaders["v_postProc"], shaders["f_postProc"],
+		shaders["v_atmosphere"], shaders["f_atmosphere"],
 		false,
 		1);
 }

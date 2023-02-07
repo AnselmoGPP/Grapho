@@ -1,10 +1,19 @@
 TODO:
+	Efficiency: Non-diffuse borders, grass-height dist., maps effects vs literal effects, 
+	Python script
+	Snowed peaks
+	Improve distance texture change
+	MSAA
+	No blurr between textures starting from X distance
+	Sun with high-dynamic-rendering
+	High-Dynamic-Range Rendering (sun)
+	Get depth buffer for PP from msaa (multiple attachments)
 	newPostProc()
 	createCommandBuffer()
 	attachment properties (loadOp...)
+	Loading thread class
+	ModelObjects created directly in main() and passed to Renderer object
 	ImGui
-	getOpticalDepthTable() -> Generate optical depth lookup table (also, High-Dynamic-Range Rendering)
-	Get depth buffer for PP from msaa (multiple attachments)
 	Unify getQuad()
 	Clear vertex/indices in model objects when already uploaded to GPU (maybe std::move vertex data, so data is not required to exist outside the object until model is loaded)
 	Try render with no msaa
@@ -17,6 +26,7 @@ TODO:
 	Review ModelData::fullConstruction() (i.e., union of vertexLoader->loadVertex() & createVertexBuffer())
 	Review ModelData::vertex & ModelData::indices. Maybe, not required once VkBuffer is created.
 	Review UBO::ubo. Maybe not required if we can copy data into VkBuffer directly 
+	Delete chunks that are in modelsToLoad but that aren't needed now because we have moved too far away from them
 	Increment snow scale / Scale up textures
 	Fix plane camera (and possibly other cameras)
 	Adjust radio of expensive rendering (planet)
@@ -78,6 +88,7 @@ BUGS:
 	BUG: PRESS ESCAPE JUST BEFORE RENDERING
 	Bug when resizing window (crashes) (and maybe not everything is loaded yet) (Out-of-date/Suboptimal KHR or window resized)
 	Make terrain too big makes chunks not to update (maybe because chunk's center is too far)
+	Baked optical depth: Weird pixels in borders
 
 ----------------------------------------
 

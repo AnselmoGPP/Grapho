@@ -9,14 +9,14 @@
 #include "commons.hpp"
 
 
-Texture::Texture(const char* path) 
-	: path(nullptr), e(nullptr), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
+Texture::Texture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
+	: path(nullptr), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
 	copyCString(this->path, path);
 }
 
-Texture::Texture(unsigned char* pixels, int texWidth, int texHeight)
-	: path(nullptr), e(nullptr), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
+Texture::Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
+	: path(nullptr), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
 	this->pixels = new unsigned char[4 * texHeight * texWidth];
 	memcpy(this->pixels, pixels, 4 * texHeight * texWidth);
@@ -111,7 +111,7 @@ void Texture::createTextureImage()
 		texWidth, texHeight,
 		mipLevels,
 		VK_SAMPLE_COUNT_1_BIT,
-		VK_FORMAT_R8G8B8A8_SRGB,
+		imageFormat,			// VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_R64_SFLOAT
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -119,11 +119,11 @@ void Texture::createTextureImage()
 		textureImageMemory);
 	
 	// Copy the staging buffer to the texture image
-	e->transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);					// Transition the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	e->transitionImageLayout(textureImage, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);					// Transition the texture image to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));											// Execute the buffer to image copy operation
 	// Transitioned to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL while generating mipmaps
-	// transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);	// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
-	generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+	// transitionImageLayout(textureImage, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);	// To be able to start sampling from the texture image in the shader, we need one last transition to prepare it for shader access
+	generateMipmaps(textureImage, imageFormat, texWidth, texHeight, mipLevels);
 
 	// Cleanup the staging buffer and its memory
 	vkDestroyBuffer(e->device, stagingBuffer, nullptr);
@@ -271,7 +271,7 @@ void Texture::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWi
 // (16)
 void Texture::createTextureImageView()
 {
-	textureImageView = e->createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+	textureImageView = e->createImageView(textureImage, imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 }
 
 // (17)
@@ -281,9 +281,9 @@ void Texture::createTextureSampler()
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;					// How to interpolate texels that are magnified (oversampling) or ...
 	samplerInfo.minFilter = VK_FILTER_LINEAR;					// ... minified (undersampling). Choices: VK_FILTER_NEAREST, VK_FILTER_LINEAR
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;	// Addressing mode per axis (what happens when going beyond the image dimensions). In texture space coordinates, XYZ are UVW. Available values: VK_SAMPLER_ADDRESS_MODE_ ... REPEAT (repeat the texture), MIRRORED_REPEAT (like repeat, but inverts coordinates to mirror the image), CLAMP_TO_EDGE (take the color of the closest edge), MIRROR_CLAMP_TO_EDGE (like clamp to edge, but taking the opposite edge), CLAMP_TO_BORDER (return solid color).
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeU = addressMode;						// Addressing mode per axis (what happens when going beyond the image dimensions). In texture space coordinates, XYZ are UVW. Available values: VK_SAMPLER_ADDRESS_MODE_ ... REPEAT (repeat the texture), MIRRORED_REPEAT (like repeat, but inverts coordinates to mirror the image), CLAMP_TO_EDGE (take the color of the closest edge), MIRROR_CLAMP_TO_EDGE (like clamp to edge, but taking the opposite edge), CLAMP_TO_BORDER (return solid color).
+	samplerInfo.addressModeV = addressMode;
+	samplerInfo.addressModeW = addressMode;
 
 	if (e->supportsAF)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
 	{
@@ -331,77 +331,82 @@ void Texture::createTextureSampler()
 	*/
 }
 
-getOpticalDepthTable::getOpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff)
+// getOpticalDepthTable -----------------------------------------------------------
+
+/*
+	getOpticalDepthTable
+		operator ()
+			raySphere()
+			opticalDepth()
+				densityAtPoint()
+*/
+
+OpticalDepthTable::OpticalDepthTable(unsigned numOptDepthPoints, unsigned planetRadius, unsigned atmosphereRadius, float heightStep, float angleStep, float densityFallOff)
 		: planetRadius(planetRadius), atmosphereRadius(atmosphereRadius), numOptDepthPoints(numOptDepthPoints), heightStep(heightStep), angleStep(angleStep), densityFallOff(densityFallOff)
-{ 
-	heightSteps = std::ceil(1 + (atmosphereRadius - planetRadius) / heightStep);
-	angleSteps = std::ceil(1 + pi / angleStep);
-	
-	bytes = 4 * heightSteps * angleSteps * sizeof(char);
-
-	maxOptDepth = opticalDepth(planetCenter, glm::vec2(0, 1), atmosphereRadius);	// Computed from the planet nucleus
-	
-	std::cout << "maxOptDepth: " << maxOptDepth << std::endl;
-	std::cout << "Optical depth table: " << heightSteps << " x " << angleSteps << std::endl;
-}
-
-void getOpticalDepthTable::operator () (std::vector<unsigned char>& table) const
 {
-	table.resize(heightSteps * angleSteps);
+	// Compute useful variables	
+	heightSteps = std::ceil(1 + (atmosphereRadius - planetRadius) / heightStep);	// <<<
+	angleSteps = std::ceil(1 + 3.141592653589793238462 / angleStep);
+	bytes = 4 * heightSteps * angleSteps;	// sizeof(float) = 4
 	
-	float optDepth, rayLength, rayStep, angle;
-	glm::vec2 point, rayDir;
-	
+	// Get table
+	table.resize(bytes);
+
+	float rayLength, angle;
+	glm::vec3 point, rayDir;
+	float* optDepth = (float*)table.data();
+
 	for (size_t i = 0; i < heightSteps; i++)
 	{
-		point = { 0, planetRadius + i * heightStep };	// rayOrigin
-		//std::cout << "------- " << point.x << ", " << point.y << std::endl;
-		//std::cout << "------- " << i << std::endl;
-		
+		point = { 0, planetRadius + i * heightStep, 0 };	// rayOrigin
+
 		for (size_t j = 0; j < angleSteps; j++)
 		{
 			angle = j * angleStep;
-			rayDir = glm::vec2(sin(angle), cos(angle));
+			rayDir = glm::vec3(sin(angle), cos(angle), 0);
 			rayLength = raySphere(point, rayDir).y;
 
-			//std::cout << ">>> " << point.x << ", " << point.y << " / " << rayDir.x << ", " << rayDir.y << " / " << rayStep << std::endl;
-			//std::cout << rayLength << std::endl;
-
-			optDepth = opticalDepth(point, rayDir, rayLength);
-			optDepth = glm::clamp(255.f * optDepth / maxOptDepth, 0.f, 255.f);
+			optDepth[i * angleSteps + j] = opticalDepth(point, rayDir, rayLength);
 			
-			//table[4 * (i * j + j) + 0] = opticalDepth;
-			
-			// Test
-			table[4 * (i * angleSteps + j) + 0] = optDepth;
-			table[4 * (i * angleSteps + j) + 1] = optDepth;
-			table[4 * (i * angleSteps + j) + 2] = optDepth;
-			table[4 * (i * angleSteps + j) + 3] = 255.f;
-
-			//std::cout << angle  << ", " << optDepth << " / " << rayDir.x << ", " << rayDir.y << " / " << rayLength << std::endl;
+			//if (point.y > 2399 && point.y < 2401 && angle > 1.84 && angle < 1.86)
+			//	std::cout << "(" << i << ", " << j << ") / " << point.y << " / " << optDepth[i * angleSteps + j] << " / " << rayLength << " / " << angle << " / (" << rayDir.x << ", " << rayDir.y << ", " << rayDir.z << ")" << std::endl;
 		}
 	}
+
+	// Compute
+	float angleRange = 3.141592653589793238462;
+	point = glm::vec3(2400, 0, 0);
+	angle = angleRange / 1.7;
+	rayDir = glm::vec3(cos(angle), 0, sin(angle));
+	rayLength = raySphere(point, rayDir).y;
+	std::cout << ">>> " << opticalDepth(point, rayDir, rayLength) << std::endl;
+	std::cout << angle << std::endl;
+
+	// Look up
+	float heightRatio = (2400.f - planetRadius) / (atmosphereRadius - planetRadius);
+	float angleRatio = angle / angleRange;
+	unsigned i = (heightSteps - 1) * heightRatio;
+	unsigned j = (angleSteps - 1) * angleRatio;
+	//std::cout << planetRadius << ", " << atmosphereRadius << std::endl;
+	//std::cout << ">>> (" << i << ", " << j << ") / " << optDepth[i * angleSteps + j] << std::endl;
 }
 
-float getOpticalDepthTable::opticalDepth(glm::vec2 rayOrigin, glm::vec2 rayDir, float rayLength) const
+float OpticalDepthTable::opticalDepth(glm::vec3 rayOrigin, glm::vec3 rayDir, float rayLength) const
 {
-	glm::vec2 point = rayOrigin;
+	glm::vec3 point = rayOrigin;
 	float stepSize = rayLength / (numOptDepthPoints - 1);
 	float opticalDepth = 0;
-	//std::cout << stepSize << " , (" << point.x << ", " << point.y << "), ";
+
 	for (int i = 0; i < numOptDepthPoints; i++)
 	{
-		//std::cout << densityAtPoint(point) * stepSize << " + ";
 		opticalDepth += densityAtPoint(point) * stepSize;
 		point += rayDir * stepSize;
 	}
 
-	//std::cout << " = " << opticalDepth << std::endl;
-	//std::cout << opticalDepth << ", " << FLT_MAX << std::endl;
 	return opticalDepth;
 }
 
-float getOpticalDepthTable::densityAtPoint(glm::vec2 point) const
+float OpticalDepthTable::densityAtPoint(glm::vec3 point) const
 {
 	float heightAboveSurface = glm::length(point - planetCenter) - planetRadius;
 	float height01 = heightAboveSurface / (atmosphereRadius - planetRadius);
@@ -414,14 +419,14 @@ float getOpticalDepthTable::densityAtPoint(glm::vec2 point) const
 // Returns vector(distToSphere, distThroughSphere). 
 //		If rayOrigin is inside sphere, distToSphere = 0. 
 //		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.
-glm::vec2 getOpticalDepthTable::raySphere(glm::vec2 rayOrigin, glm::vec2 rayDir) const
+glm::vec2 OpticalDepthTable::raySphere(glm::vec3 rayOrigin, glm::vec3 rayDir) const
 {
 	//std::cout << ">>> " << rayOrigin.x << ", " << rayOrigin.y << " / " << rayDir.x << ", " << rayDir.y << std::endl;
 
 	// Number of intersections
-	glm::vec3 offset = glm::vec3(rayOrigin - planetCenter, 0.f);
+	glm::vec3 offset = rayOrigin - planetCenter;
 	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
-	float b = 2 * dot(offset, glm::vec3(rayDir, 0.f));
+	float b = 2 * dot(offset, rayDir);
 	float c = glm::dot(offset, offset) - atmosphereRadius * atmosphereRadius;
 	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
 
@@ -432,16 +437,12 @@ glm::vec2 getOpticalDepthTable::raySphere(glm::vec2 rayOrigin, glm::vec2 rayDir)
 		float distToSphereNear = std::max(0.f, (-b - s) / (2 * a));
 		float distToSphereFar = (-b + s) / (2 * a);
 
-		//std::cout << (distToSphereFar - distToSphereNear) << std::endl;
-
 		if (distToSphereFar >= 0)		// Ignore intersections that occur behind the ray
 			return glm::vec2(distToSphereNear, distToSphereFar - distToSphereNear);
 	}
 
 	// No intersection (d < 0) or one (d = 0)
 	return glm::vec2(FLT_MAX, 0);			// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
-
-
 
 	/*
 		/ Line:     y = mx + b
@@ -460,34 +461,28 @@ glm::vec2 getOpticalDepthTable::raySphere(glm::vec2 rayOrigin, glm::vec2 rayDir)
 	//float b = 2 * m * B;
 	//float c = B * B - atmosphereRadius * atmosphereRadius;
 	//float d = b * b - 4 * a * c;
-	//
-	//std::cout << a << ", " << b << ", " << c << ", " << d << std::endl;
-
-
-
-	/*
-	// Number of intersections
-	glm::vec2 offset = rayOrigin - planetCenter;
-	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized
-	float b = 2 * dot(offset, rayDir);
-	float c = dot(offset, offset) - planetRadius * planetRadius;
-	float d = b * b - 4 * a * c;		// Discriminant of quadratic formula (sqrt has 2 solutions/intersections when positive)
-	//std::cout << a << ", " << b << ", " << c << ", " << d << std::endl;
-	//std::cout << rayOrigin.x << ", " << rayOrigin.y << ", " << planetCenter.x << ", " << planetCenter.y << std::endl;
-
-	// Two intersections (d > 0)
-	if (d > 0)
-	{
-		float s = sqrt(d);
-		float distToSphereNear = std::max(0.f, (-b - s) / (2 * a));
-		float distToSphereFar = (-b + s) / (2 * a);
-
-		if (distToSphereFar >= 0)		// Get only intersections in the direction of the ray. Ignore those behind the ray.
-			return distToSphereNear;
-	}
-
-	// No intersection (d < 0) or one (d = 0)
-	return FLT_MAX;			// https://stackoverflow.com/questions/16069959/glsl-how-to-ensure-largest-possible-float-value-without-overflow
-	*/
 }
 
+DensityVector::DensityVector(float planetRadius, float atmosphereRadius, float stepSize, float densityFallOff)
+{
+	heightSteps = std::ceil((atmosphereRadius - planetRadius) / stepSize);
+	bytes = 4 * heightSteps;
+	table.resize(bytes);
+
+	glm::vec2 point = { 0.f, planetRadius };
+	glm::vec2 planetCenter = { 0.f, 0.f };
+	float heightAboveSurface;
+	float height01;
+	float* density = (float*)table.data();
+
+	for (size_t i = 0; i < heightSteps; i++)
+	{
+		heightAboveSurface = glm::length(point - planetCenter) - planetRadius;
+		height01 = heightAboveSurface / (atmosphereRadius - planetRadius);
+
+		//density[i] = std::exp(-height01 * densityFallOff);					// There is always some density
+		density[i] = std::exp(-height01 * densityFallOff) * (1 - height01);	// Density ends at some distance
+
+		point.y += stepSize;
+	}
+}

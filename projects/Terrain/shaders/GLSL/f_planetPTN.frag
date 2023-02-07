@@ -1,6 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+#define PI 3.141592653589793238462
 #define NUMLIGHTS 2
 #define RADIUS 2000
 
@@ -39,19 +40,20 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[27];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0)  		in vec3    inPos;
-layout(location = 1)  flat	in vec3    inCamPos;
-layout(location = 2)  		in vec3    inNormal;
-layout(location = 3)  		in float   inSlope;
-layout(location = 4)  		in float   inDist;
-layout(location = 5)  flat	in float   inSqrHeight;
-layout(location = 6)  		in vec3	 inTanX;
-layout(location = 7)  		in vec3	 inBTanX;
-layout(location = 8)  		in vec3	 inTanY;
-layout(location = 9)  		in vec3	 inBTanY;
-layout(location = 10) 		in vec3	 inTanZ;
-layout(location = 11) 		in vec3	 inBTanZ;
-layout(location = 12) flat	in LightPD inLight[NUMLIGHTS];
+layout(location = 0)  		in vec3 	inPos;
+layout(location = 1)  flat	in vec3 	inCamPos;
+layout(location = 2)  		in vec3 	inNormal;
+layout(location = 3)  		in float	inSlope;
+layout(location = 4)  		in float	inDist;
+layout(location = 5)  flat	in float	inSqrHeight;
+layout(location = 6)		in float	inGroundHeight;
+layout(location = 7)  		in vec3	 	inTanX;
+layout(location = 8)  		in vec3	 	inBTanX;
+layout(location = 9)  		in vec3	 	inTanY;
+layout(location = 10)  		in vec3	 	inBTanY;
+layout(location = 11) 		in vec3	 	inTanZ;
+layout(location = 12) 		in vec3	 	inBTanZ;
+layout(location = 13) flat	in LightPD	inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -128,7 +130,7 @@ void getTexture_GrassRock(inout vec3 result)
 	float rockHeight  = 0;	float rock2Height  = 0;
 	float snowHeight  = 0;	float snow2Height  = 0;
 
-	float lowResDist = inSqrHeight * inSqrHeight * 0.000000000018;	// Distance from where low resolution starts
+	float lowResDist = inSqrHeight * inSqrHeight * 0.000000000018;	// (h^4 + b) Distance from where low resolution starts
 	
 	if(inDist > lowResDist * 1.2)
 	{
@@ -316,14 +318,32 @@ void getTexture_GrassRock(inout vec3 result)
 	
 	// Snow:
 
+	mixRange = 0.1;	// slope threshold mixing range
+
+	//		as function of slope
+	float lat    = atan(abs(inPos.z) / sqrt(inPos.x * inPos.x + inPos.y * inPos.y));
+	float minLat   = PI/3;	// Minimum latitude where snow appears
+	slopeThreshold = (lat - minLat) / ((PI/2) - minLat);	// Latitude ratio == Slope threshold
+	float ratio_1 = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
+
+	//		as function of height
+	float heightRange[2] = { 70, 120 };						// height range at equator
+	float height = inGroundHeight - RADIUS;
+	float decrement = heightRange[1] * (lat / (PI/2.f));	// height range decreases with latitude
+	heightRange[0] -= decrement;
+	heightRange[1] -= decrement;
+	slopeThreshold = 1 - clamp((height - heightRange[0]) / (heightRange[1] - heightRange[0]), 0, 1);	// [1,0]
+	float ratio_2 = 1 - clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
+	
 	//float levels[2] = {1010, 1100};								// min/max snow height (Min: zero snow down from here. Max: Up from here, there's only snow within the maxSnowSlopw)
 	//slopeThreshold  = (inHeight-levels[0])/(levels[1]-levels[0]);	// maximum slope where snow can rest
-	float lat[2]      = {0.7 * RADIUS, 2.2 * RADIUS};
-	slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);	// Latitude ratio == Slope threshold
-	mixRange          = 0.015;										// slope threshold mixing range
+	
+	//float lat[2]      = {0.7 * RADIUS, 2.2 * RADIUS};
+	//slopeThreshold    = (abs(inPos.z)-lat[0]) / (lat[1]-lat[0]);	// Latitude ratio == Slope threshold
+	//mixRange          = 0.015;										// slope threshold mixing range
 
-	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
-	result = result * (ratio) + snow * (1-ratio);
+	ratio = min(ratio_1, ratio_2);
+	result = result * (ratio) + snow * (1 - ratio);
 }
 
 

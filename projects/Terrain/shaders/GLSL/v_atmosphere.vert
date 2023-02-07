@@ -3,13 +3,14 @@
 
 layout(set = 0, binding = 0) uniform ubobject {
 	vec4 fov;			// float
-	vec4 aspRatio;		// float
+	vec4 aspRatio;		// float (height/width)
 	vec4 camPos;		// vec3
 	vec4 camDir;		// vec3
 	vec4 camUp;			// vec3
 	vec4 camRight;		// vec3
 	vec4 lightDir;		// vec3
 	vec4 clipPlanes;	// vec2
+	vec4 screenSize;	// vec2
 	mat4 view;			// mat4
 	mat4 proj;			// mat4
 } ubo;
@@ -23,6 +24,7 @@ layout(location = 2) flat out vec3 outCamPos;
 layout(location = 3) flat out float outDotLimit;	// Used for rendering spheres
 layout(location = 4) flat out vec3 outLightDir;
 layout(location = 5) flat out vec2 outClipPlanes;
+layout(location = 6) flat out vec2 outScreenSize;
 
 vec4 ndc2world();
 float getDotLimit();
@@ -36,8 +38,9 @@ void main()
 	outPixPos = ndc2world().xyz;
 	outCamPos = ubo.camPos.xyz;
 	outDotLimit = getDotLimit();
-	outLightDir = ubo.lightDir.xyz;	
+	outLightDir = normalize(ubo.lightDir.xyz);	
 	outClipPlanes = ubo.clipPlanes.xy;
+	outScreenSize = ubo.screenSize.xy;
 }
 
 //vec4 world2clip() { return ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0); }

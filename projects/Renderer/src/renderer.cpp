@@ -1,5 +1,4 @@
 
-
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -21,7 +20,10 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	currentFrame(0), 
 	runThread(false),
 	frameCount(0),
-	commandsCount(0) { }
+	commandsCount(0) 
+{ 
+	std::cout << "Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
+}
 
 Renderer::~Renderer() { std::cout << __func__ << std::endl; }
 
@@ -466,14 +468,14 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 		}
 }
 
-texIterator Renderer::newTexture(const char* path)
+texIterator Renderer::newTexture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
-	return texturesToLoad.emplace(texturesToLoad.cend(), path);
+	return texturesToLoad.emplace(texturesToLoad.cend(), path, imageFormat, addressMode);
 }
 
-texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight)
+texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
-	return texturesToLoad.emplace(texturesToLoad.cend(), pixels, texWidth, texHeight);
+	return texturesToLoad.emplace(texturesToLoad.cend(), pixels, texWidth, texHeight, imageFormat, addressMode);
 }
 
 void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only knowing the iterator (no need to check lists)?
@@ -779,3 +781,6 @@ size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); 
 size_t Renderer::getCommandsCount() { return commandsCount; }
 
 float Renderer::getAspectRatio() { return (float)e.height / e.width; }
+
+glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.width, e.height); }
+
