@@ -62,7 +62,7 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	4, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	3, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets

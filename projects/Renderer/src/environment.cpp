@@ -828,6 +828,24 @@ void VulkanEnvironment::createRenderPass()
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create render pass!");
 	*/
+	 
+	/*
+		Render pass 1:
+			Subpass A attachments:
+				colorResolveAttachment: Final color (sampler)
+				depthAttachment[n]: Depth (sampler)
+				msaaColorAttachment[n]: Color attachment for multisampling (not used: only 1 sample)
+		Render pass 2:
+			Subpass B attachments:
+				colorResolveAttachment: Final color from RP 1 (input attachment).
+				depthAttachment: Depth from RP 1 (input attachment).
+				colorAttachmentPP: Final color (swapChainImageView).
+
+		VkSubpassDescription:
+			pDepthStencilAttachment: Depth images
+			pColorAttachments: Msaa images / Final color
+			pResolveAttachments: Final color / ---
+	*/
 
 	// First render pass -------------------------
 
@@ -1450,31 +1468,31 @@ void VulkanEnvironment::createFramebuffers()
 		//attachments.push_back(depthImageView[j]);
 		//if (add_MSAA) attachments.push_back(swapChainImageViews[i]);			// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
 
-		VkFramebufferCreateInfo framebufferInfo{};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass[0];								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-		framebufferInfo.attachmentCount = attachments.size();
-		framebufferInfo.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo.width = swapChainExtent.width;
-		framebufferInfo.height = swapChainExtent.height;
-		framebufferInfo.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+		VkFramebufferCreateInfo framebufferInfo_1{};
+		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_1.renderPass = renderPass[0];								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+		framebufferInfo_1.attachmentCount = attachments.size();
+		framebufferInfo_1.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+		framebufferInfo_1.width = swapChainExtent.width;
+		framebufferInfo_1.height = swapChainExtent.height;
+		framebufferInfo_1.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
 		
-		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i][0]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(device, &framebufferInfo_1, nullptr, &swapChainFramebuffers[i][0]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 1!");
 
 		// Framebuffers for post-processing.
 		attachments = std::vector<VkImageView>{ resolveColorImageView, depthImageView, swapChainImageViews[i] };
 		
-		VkFramebufferCreateInfo framebufferInfo2{};
-		framebufferInfo2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo2.renderPass = renderPass[1];
-		framebufferInfo2.attachmentCount = attachments.size();
-		framebufferInfo2.pAttachments = attachments.data();
-		framebufferInfo2.width = swapChainExtent.width;
-		framebufferInfo2.height = swapChainExtent.height;
-		framebufferInfo2.layers = 1;
+		VkFramebufferCreateInfo framebufferInfo_2{};
+		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_2.renderPass = renderPass[1];
+		framebufferInfo_2.attachmentCount = attachments.size();
+		framebufferInfo_2.pAttachments = attachments.data();
+		framebufferInfo_2.width = swapChainExtent.width;
+		framebufferInfo_2.height = swapChainExtent.height;
+		framebufferInfo_2.layers = 1;
 
-		if (vkCreateFramebuffer(device, &framebufferInfo2, nullptr, &swapChainFramebuffers[i][1]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(device, &framebufferInfo_2, nullptr, &swapChainFramebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
 }

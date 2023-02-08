@@ -1,12 +1,10 @@
 TODO:
+	Postprocessing with MSAA
 	Efficiency: Non-diffuse borders, grass-height dist., maps effects vs literal effects, 
 	Python script
-	Snowed peaks
-	Improve distance texture change
-	MSAA
+	Improve distance texture change & texture scaling
 	No blurr between textures starting from X distance
-	Sun with high-dynamic-rendering
-	High-Dynamic-Range Rendering (sun)
+	Sun with high-dynamic-range rendering
 	Get depth buffer for PP from msaa (multiple attachments)
 	newPostProc()
 	createCommandBuffer()

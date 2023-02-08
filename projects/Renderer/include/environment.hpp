@@ -134,14 +134,14 @@ public:
 	std::vector<VkImage>		swapChainImages;					//!< List. Opaque handle to an image object.
 	std::vector<VkImageView>	swapChainImageViews;				//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkImage						resolveColorImage;					//!< For resolving MSAA. One per render pass
-	VkDeviceMemory				resolveColorImageMemory;			//!< For resolving MSAA. One per render pass
-	VkImageView					resolveColorImageView;				//!< For resolving MSAA. RenderPass attachment. One per render pass
-	VkSampler					resolveColorSampler;				//!< For using this image as input attachment
+	VkImage						resolveColorImage;					//!< Final color after resolving MSAA. One per render pass
+	VkDeviceMemory				resolveColorImageMemory;			//!< Final color after resolving MSAA. One per render pass
+	VkImageView					resolveColorImageView;				//!< Final color after resolving MSAA. RenderPass attachment. One per render pass
+	VkSampler					resolveColorSampler;				//!< Final color after using this image as input attachment
 
-	VkImage						msaaColorImage;						//!< For MSAA. One per render pass
-	VkDeviceMemory				msaaColorImageMemory;				//!< For MSAA. One per render pass
-	VkImageView					msaaColorImageView;					//!< For MSAA. RenderPass attachment. One per render pass
+	VkImage						msaaColorImage;						//!< For MSAA or final color. One per render pass
+	VkDeviceMemory				msaaColorImageMemory;				//!< For MSAA or final color. One per render pass
+	VkImageView					msaaColorImageView;					//!< For MSAA or final color. RenderPass attachment. One per render pass
 
 	VkImage						depthImage;							//!< Depth buffer (image object). One per render pass
 	VkDeviceMemory				depthImageMemory;					//!< Depth buffer memory (memory object). One per render pass
