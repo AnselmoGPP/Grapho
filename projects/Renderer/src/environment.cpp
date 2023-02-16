@@ -982,7 +982,7 @@ void VulkanEnvironment::createRenderPass()
 	subpass2.pResolveAttachments = nullptr;
 	std::vector<VkAttachmentReference> inputAttachments = { colorResolveAttachmentRef, depthAttachmentRef };
 	subpass2.inputAttachmentCount = inputAttachments.size();
-	subpass2.pInputAttachments = inputAttachments.data();
+	subpass2.pInputAttachments = inputAttachments.data();	// <<< Can't input attachments read per-sample? Only per-pixel?
 	subpass2.preserveAttachmentCount;
 	subpass2.pPreserveAttachments;
 

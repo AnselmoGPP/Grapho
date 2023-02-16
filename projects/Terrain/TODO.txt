@@ -1,7 +1,7 @@
 TODO:
 	Postprocessing with MSAA
-	Efficiency: Non-diffuse borders, grass-height dist., maps effects vs literal effects, 
 	Python script
+	mipmaps
 	Improve distance texture change & texture scaling
 	No blurr between textures starting from X distance
 	Sun with high-dynamic-range rendering
