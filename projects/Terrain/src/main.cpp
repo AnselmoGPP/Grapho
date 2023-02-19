@@ -40,7 +40,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -62,7 +62,7 @@ Noiser noiser_1(	// Desert
 
 Noiser noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	3, 8.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	3, 7.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
@@ -419,18 +419,23 @@ void loadTextures(Renderer& app)
 	textures["snow_r"]  = app.newTexture((texDir + "snow_r.png").c_str());
 	textures["snow_h"]	= app.newTexture((texDir + "snow_h.png").c_str());
 
+	textures["snow2_a"] = app.newTexture((texDir + "snow2_a.png").c_str());
+	textures["snow2_n"] = app.newTexture((texDir + "snow2_n.png").c_str());
+	textures["snow2_s"] = app.newTexture((texDir + "snow2_s.png").c_str());
+
 	// Package textures
 	usedTextures =
 	{
 		/*0 - 4*/textures["grassDry_a"], textures["grassDry_n"], textures["grassDry_s"], textures["grassDry_r"], textures["grassDry_h"],
 		/*5 - 9*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"], textures["bumpRock_h"],
 		/*10-14*/textures["snow_a"],textures["snow_n"], textures["snow_s"], textures["snow_r"], textures["snow_h"],
+		/*15-19*/textures["snow2_a"],textures["snow2_n"], textures["snow2_s"], textures["snow_r"], textures["snow_h"],
 
-		/*15-19*/textures["sandDunes_a"], textures["sandDunes_n"], textures["sandDunes_s"], textures["sandDunes_r"], textures["sandDunes_h"],
-		/*20-24*/textures["sandWavy_a"], textures["sandWavy_n"], textures["sandWavy_s"], textures["sandWavy_r"], textures["sandWavy_h"],
+		/*20-24*/textures["sandDunes_a"], textures["sandDunes_n"], textures["sandDunes_s"], textures["sandDunes_r"], textures["sandDunes_h"],
+		/*25-29*/textures["sandWavy_a"], textures["sandWavy_n"], textures["sandWavy_s"], textures["sandWavy_r"], textures["sandWavy_h"],
 
-		/* 25 */ textures["squares"],
-		/* 26 */ textures["sea_n"]
+		/* 30 */ textures["squares"],
+		/* 31 */ textures["sea_n"]
 	};
 
 

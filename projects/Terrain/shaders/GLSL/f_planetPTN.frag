@@ -84,6 +84,7 @@ float applyLinearFog  (float value, float fogValue, float minDist, float maxDist
 vec3  applyFog		  (vec3 fragColor, vec3 fogColor);
 float applyFog		  (float value,   float fogValue);
 float getTexScaling	  (float initialTexFactor, float baseDist, float mixRange, inout float texFactor1, inout float texFactor2);
+vec3  getDryColor	  (vec3 color, float minHeight, float maxHeight);
 float modulus		  (float dividend, float divider);		// modulus(%) = a - (b * floor(a/b))
 
 void getTexture_Sand(inout vec3 result);
@@ -158,7 +159,8 @@ vec3 getTexture_GrassRock()
 	// Get textures
 	vec3 grassPar[2];
 	vec3 rockPar [2];
-	vec3 snowPar [2];
+	vec3 snow1Par[2];
+	vec3 snow2Par[2];
 	
 	bool getGrass = (ratioRock < 1.f || ratioSnow < 1.f);
 	bool getRock  = (ratioRock > 0.f);
@@ -166,6 +168,8 @@ vec3 getTexture_GrassRock()
 
 	float lowResDist = sqrt(inCamSqrHeight - RADIUS * RADIUS);	// Distance from where low resolution starts
 	if(lowResDist < 700) lowResDist = 700;						// Minimum low res. distance
+	
+	vec3 dryColor = getDryColor(vec3(0.9, 0.6, 0), RADIUS + 15, RADIUS + 70);
 
 	int i;
 	if(inDist > lowResDist * 1.0)
@@ -173,7 +177,7 @@ vec3 getTexture_GrassRock()
 		for(i = 0; i < 2; i++)
 		{
 			grassPar[i]  = getFragColor( 
-				triplanarTexture(texSampler[0], tf[i]).rgb,
+				triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
 				inNormal,
 				vec3(0.06, 0.06, 0.06),
 				200 );
@@ -184,7 +188,13 @@ vec3 getTexture_GrassRock()
 				vec3(0.1, 0.1, 0.1),
 				125 );
 		
-			snowPar[i] = getFragColor(
+			snow1Par[i] = getFragColor(
+				triplanarTexture(texSampler[15], tf[i]).rgb,
+				inNormal,
+				vec3(0.2, 0.2, 0.2),
+				125 );
+			
+			snow2Par[i] = getFragColor(
 				triplanarTexture(texSampler[10], tf[i]).rgb,
 				inNormal,
 				vec3(0.2, 0.2, 0.2),
@@ -194,7 +204,8 @@ vec3 getTexture_GrassRock()
 			{
 				grassPar[1] = grassPar[0];
 				rockPar [1] = rockPar [0];
-				snowPar [1] = snowPar [0];
+				snow1Par [1] = snow1Par [0];
+				snow2Par [1] = snow2Par [0];
 				break;
 			}
 		}
@@ -204,7 +215,7 @@ vec3 getTexture_GrassRock()
 		for(i = 0; i < 2; i++)
 		{
 				grassPar[i]  = getFragColor(
-					triplanarTexture(texSampler[0], tf[i]).rgb,
+					triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
 					triplanarNormal (texSampler[1], tf[i]),
 					triplanarTexture(texSampler[2], tf[i]).rgb,
 					triplanarTexture(texSampler[3], tf[i]).r * 255 );
@@ -215,7 +226,13 @@ vec3 getTexture_GrassRock()
 					triplanarTexture(texSampler[7], tf[i]).rgb,
 					triplanarTexture(texSampler[8], tf[i]).r * 255 );
 
-				snowPar[i] = getFragColor(
+				snow1Par[i] = getFragColor(
+					triplanarTexture(texSampler[15], tf[i]).rgb,
+					triplanarNormal (texSampler[16], tf[i]),
+					triplanarTexture(texSampler[17], tf[i]).rgb,
+					triplanarTexture(texSampler[18], tf[i]).r * 255 );
+					
+				snow2Par[i] = getFragColor(
 					triplanarTexture(texSampler[10], tf[i]).rgb,
 					triplanarNormal (texSampler[11], tf[i]),
 					triplanarTexture(texSampler[12], tf[i]).rgb,
@@ -225,7 +242,8 @@ vec3 getTexture_GrassRock()
 			{
 				grassPar[1] = grassPar[0];
 				rockPar [1] = rockPar [0];
-				snowPar [1] = snowPar [0];
+				snow1Par [1] = snow1Par [0];
+				snow2Par [1] = snow2Par [0];
 				break;
 			}
 		}
@@ -234,13 +252,14 @@ vec3 getTexture_GrassRock()
 	// Get material colors depending upon distance mixing resolution.
 	vec3 grass = grassPar[0] * ratioMix + grassPar[1] * (1 - ratioMix);
 	vec3 rock  = rockPar [0] * ratioMix + rockPar [1] * (1 - ratioMix);
-	vec3 snow  = snowPar [0] * ratioMix + snowPar [1] * (1 - ratioMix);
+	vec3 snowP = snow1Par [0] * ratioMix + snow1Par [1] * (1 - ratioMix);	// plain snow
+	vec3 snowR = snow2Par [0] * ratioMix + snow2Par [1] * (1 - ratioMix);	// rough snow
 
 	// Grass + Rock:
 
 	vec3 result;
 
-	if(inDist < 4) 
+	if(inDist < 5) 
 	{
 		float grassHeight  = triplanarTexture(texSampler[ 4], tf[0]).r;
 		//float grass2Height = triplanarTexture(texSampler[ 4], tf[1]).r;
@@ -257,7 +276,11 @@ vec3 getTexture_GrassRock()
 	else result = rock * (ratioRock) + grass * (1-ratioRock);
 	
 	// Snow:
+	
+	vec3 snow = snowR * (ratioRock) + snowP * (1-ratioRock);
 	return result * (1 - ratioSnow) + snow * (ratioSnow);
+	
+	//return result * (1 - ratioSnow) + snowP * (ratioSnow);
 }
 
 vec3 getTexture_GrassRock2()
@@ -949,6 +972,13 @@ float getTexScaling(float initialTexFactor, float baseDist, float mixRange, inou
 	float maxDist = baseDist * step[0];
 	mixRange = mixRange * maxDist;						// mixRange is now an absolute value (not percentage)
 	return clamp((maxDist - inDist) / mixRange, 0.f, 1.f);
+}
+
+vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
+{
+	vec3 increment = vec3(1-color.x, 1-color.y, 1-color.z);
+	float ratio = 1 - clamp((inGroundHeight - minHeight) / (maxHeight - minHeight), 0, 1);
+	return color + increment * ratio;
 }
 
 float modulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }

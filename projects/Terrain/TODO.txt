@@ -1,4 +1,5 @@
 TODO:
+	add 2 types of snow
 	Postprocessing with MSAA
 	Python script
 	mipmaps
