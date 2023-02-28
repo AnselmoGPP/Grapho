@@ -11,7 +11,7 @@
 #define SCATT_STRENGTH 10			// scattering strength
 #define WAVELENGTHS vec3(700, 530, 440)
 #define SCATT_COEFFICIENTS vec3(pow(400/WAVELENGTHS.x, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.y, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.z, 4)*SCATT_STRENGTH)
-#define USE_LOOKUP_TABLE 1			// <<< Using lookup table is slower (~52fps > ~50fps)
+#define USE_LOOKUP_TABLE 0			// <<< Using lookup table is slower (~52fps > ~50fps)
 
 // Print distance to atmosphere for some view ray
 
@@ -22,7 +22,7 @@
 #define PI 3.141592653589793238462
 
 layout(set = 0, binding = 1) uniform sampler2D texSampler[2];			// Opt. depth, Density
-layout(set = 0, binding = 2) uniform sampler2D inputAttachments[2];		// Color, Depth
+layout(set = 0, binding = 2) uniform sampler2DMS inputAttachments[2];	// Color, Depth
 
 layout(location = 0) in vec2 inUVs;
 layout(location = 1) in vec3 inPixPos;
@@ -35,6 +35,7 @@ layout(location = 6) flat in vec2 inScreenSize;
 layout(location = 0) out vec4 outColor;
 
 vec4 originalColor();
+vec4 originalColorMSAA();
 float depth();				// Non-linear depth
 float linearDepth();		// Linear depth
 float depthDist();			// World depth (distance)
@@ -54,6 +55,7 @@ void main()
 	//subpassLoad(inputAttachment, vec2(NDCs.x, NDCs.y));
 	
 	//outColor = originalColor();
+	//outColor = originalColorMSAA();
 	//outColor = vec4(depth(), depth(), depth(), 1.f);
 	//outColor = vec4(linearDepth(), linearDepth(), linearDepth(), 1.f);
 	//outColor = texture(texSampler, inUVs * vec2(1, -1));
@@ -64,12 +66,16 @@ void main()
 	//if(depth() == 1) outColor = vec4(0,1,0,1);
 }
 
+vec4 getTexture(sampler2D   tex, vec2  uv) { return texture(tex, uv); }
+vec4 getTexture(sampler2DMS tex, vec2  uv) { return texelFetch(tex, ivec2(uv * textureSize(tex)), gl_SampleID); }
+
 // No post processing. Get the original color.
-vec4 originalColor() { return texture(inputAttachments[0], inUVs); }
-//vec4 originalColor() { return vec4(1,1,1,1); }
+vec4 originalColor() { return getTexture(inputAttachments[0], inUVs); }
+
+vec4 originalColorMSAA() { return getTexture(inputAttachments[0], inUVs); }
 
 // Get non linear depth. Range: [0, 1]
-float depth() {	return texture(inputAttachments[1], inUVs).x; }
+float depth() {	return getTexture(inputAttachments[1], inUVs).x; }
 
 // Get linear depth. Range: [0, 1]. Link: https://stackoverflow.com/questions/51108596/linearize-depth
 float linearDepth()

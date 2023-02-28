@@ -1,5 +1,5 @@
 TODO:
-	add 2 types of snow
+	Ocean, sand, trees/bush, rocks
 	Postprocessing with MSAA
 	Python script
 	mipmaps

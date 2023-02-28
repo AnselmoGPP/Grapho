@@ -215,7 +215,7 @@ void ModelData::createGraphicsPipeline()
 	// Multisampling: One way to perform anti-aliasing. Combines the fragment shader results of multiple polygons that rasterize to the same pixel. Requires enabling a GPU feature.
 	VkPipelineMultisampleStateCreateInfo multisampling{};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.rasterizationSamples = (!renderPassIndex ? e.msaaSamples : VK_SAMPLE_COUNT_1_BIT);
+	multisampling.rasterizationSamples = e.msaaSamples;	// VK_SAMPLE_COUNT_1_BIT);	// <<<
 	multisampling.sampleShadingEnable = (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
 	if (e.add_SS)
 		multisampling.minSampleShading = .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
@@ -537,11 +537,11 @@ void ModelData::createDescriptorSets()
 		// Input attachments
 		std::vector<VkDescriptorImageInfo> inputAttachInfo(2);
 		inputAttachInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[0].imageView = e.resolveColorImageView;
-		inputAttachInfo[0].sampler = e.resolveColorSampler;
+		inputAttachInfo[0].imageView = e.color_1.view;
+		inputAttachInfo[0].sampler = e.color_1.sampler;
 		inputAttachInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[1].imageView = e.depthImageView;
-		inputAttachInfo[1].sampler = e.depthSampler;
+		inputAttachInfo[1].imageView = e.depth.view;
+		inputAttachInfo[1].sampler = e.depth.sampler;
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;

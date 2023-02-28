@@ -56,6 +56,17 @@ struct Framebuffer
 	//std::vector<VkImageView>	swapChainImageViews;
 };
 
+class Image
+{
+public:
+	Image();
+
+	VkImage image;
+	VkDeviceMemory memory;
+	VkImageView view;
+	VkSampler sampler;
+};
+
 
 /**
 	@class VulkanEnvironment
@@ -88,7 +99,7 @@ public:
 	uint32_t width      = 1920 / 2;		// <<< Does this change when recreating swap chain?
 	uint32_t height     = 1080 / 2;
 
-	const bool add_MSAA = false;		//!< Shader MSAA (MultiSample AntiAliasing). 
+	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
@@ -148,6 +159,11 @@ public:
 	VkImageView					depthImageView;						//!< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
 	VkSampler					depthSampler;						//!< For using this image as input attachment
 
+	Image color_1;
+	Image depth;
+	Image color_2;
+	//Image resolveColor;
+
 	// Additional variables
 
 	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
@@ -168,11 +184,14 @@ private:
 
 	void createCommandPool();
 
-	void createRenderPass();
+	void createRenderPass_1sample();
+	void createRenderPass_msaa();
 	void createResolveColorResources();
 	void createMsaaColorResources();
 	void createDepthResources();
+	void createImageResources();
 	void createFramebuffers();
+	void createFramebuffers_msaa();
 
 	// Helper methods:
 
