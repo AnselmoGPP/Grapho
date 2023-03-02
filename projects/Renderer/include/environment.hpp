@@ -70,11 +70,11 @@ class VulkanCore
 public:
 	VulkanCore();
 
-	uint32_t width = 1920 / 2;		// <<< Does this change when recreating swap chain?
+	uint32_t width = 1920 / 2;			// <<< Does this change when recreating swap chain?
 	uint32_t height = 1080 / 2;
 
 	bool printInfo = true;
-	const bool add_MSAA = true;		//!< Shader MSAA (MultiSample AntiAliasing). 
+	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
@@ -125,27 +125,12 @@ private:
 	SwapChainSupportDetails	querySwapChainSupport(VkPhysicalDevice device);
 };
 
-/**
-	@class VulkanEnvironment
-	@brief Stores the (global) state of a Vulkan application.
 
-	Manages different objects:
-	<ul>
-		<li>Window</li>
-		<li>Vulkan instance</li>
-		<li>surface
-		<li>physical device</li>
-		<li>logical device (+ queues, swap chain)
-		<li>render pass</li>
-		<li>framebuffer</li>
-		<li>command pool</li>
-	</ul>
-*/
 class VulkanEnvironment
 {
 public:
 	VulkanEnvironment();
-	virtual ~VulkanEnvironment();
+	~VulkanEnvironment();
 
 	VulkanCore c;
 
@@ -155,6 +140,7 @@ public:
 	VkCommandBuffer	beginSingleTimeCommands();
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+	VkFormat		findDepthFormat();
 
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();
@@ -182,56 +168,24 @@ private:
 
 	void createCommandPool();
 
-	virtual void createRenderPass() = 0;
-	virtual void createImageResources() = 0;
-	virtual void createFramebuffers() = 0;
+	void createRenderPass();
+	void createImageResources();
+	void createFramebuffers();
 
 	// Helper methods:
-	VkSurfaceFormatKHR		chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-	VkPresentModeKHR		chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-	VkExtent2D				chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-	VkFormat				findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-	bool					hasStencilComponent(VkFormat format);
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+	bool hasStencilComponent(VkFormat format);
 
-protected:
-	VkFormat				findDepthFormat();
-};
+	void createRenderPass_PP();
+	void createImageResources_PP();
+	void createFramebuffers_PP();
 
-
-class modularCreator
-{
-public:
-	virtual void createRenderPass() = 0;
-	virtual void createImageResources() = 0;
-	virtual void createFramebuffers() = 0;
-};
-
-/// Creation of render pass & framebuffer (MSAA + postprocessing)
-class VulkanEnv_MS_PP : public VulkanEnvironment
-{
-public:
-	VulkanEnv_MS_PP();
-	~VulkanEnv_MS_PP();
-
-
-
-private:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
-};
-
-/// Creation of render pass & framebuffer (postprocessing)
-class VulkanEnv_PP : public VulkanEnvironment
-{
-public:
-	VulkanEnv_PP();
-	~VulkanEnv_PP();
-
-private:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
+	void createRenderPass_MS_PP();
+	void createImageResources_MS_PP();
+	void createFramebuffers_MS_PP();
 };
 
 

@@ -58,7 +58,7 @@ void Renderer::createCommandBuffers()
 
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChain.images.size());
-
+	
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool			= e.commandPool;
@@ -69,7 +69,7 @@ void Renderer::createCommandBuffers()
 
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-
+	
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -81,7 +81,7 @@ void Renderer::createCommandBuffers()
 
 		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)		// If a command buffer was already recorded once, this call resets it. It's not possible to append commands to a buffer at a later time.
 			throw std::runtime_error("Failed to begin recording command buffer!");
-
+		
 		// Start render pass 1 (main color):
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -95,9 +95,9 @@ void Renderer::createCommandBuffers()
 		clearValues[2].color = backgroundColor;									// MSAA color buffer.
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
 		renderPassInfo.pClearValues = clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
-
+		
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
-
+		
 		VkClearAttachment attachmentToClear;
 		attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
@@ -109,11 +109,11 @@ void Renderer::createCommandBuffers()
 		rectangleToClear.layerCount = 1;
 
 		VkDeviceSize offsets[] = { 0 };
-
+		
 		for (size_t j = 0; j < numLayers; j++)	// for each layer
 		{
 			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);
-
+			
 			for (modelIterator it = models[0].begin(); it != models[0].end(); it++)	// for each model (color)
 			{
 				if (it->layer != j || !it->activeRenders) continue;

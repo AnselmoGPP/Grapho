@@ -68,9 +68,9 @@ VulkanEnvironment::VulkanEnvironment()
 
 	createCommandPool();
 
-	//createRenderPass();
-	//createImageResources();
-	//createFramebuffers();
+	createRenderPass();
+	createImageResources();
+	createFramebuffers();
 }
 
 VulkanEnvironment::~VulkanEnvironment() { }
@@ -782,289 +782,379 @@ void VulkanEnvironment::createSwapChainImageViews()
 		swapChain.views[i] = createImageView(swapChain.images[i], swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
-VulkanEnv_MS_PP::VulkanEnv_MS_PP() 
-	: VulkanEnvironment() 
-{ 
-	createRenderPass();
-	createImageResources();
-	createFramebuffers();
-}
-
-VulkanEnv_MS_PP::~VulkanEnv_MS_PP() { }
-
-VulkanEnv_PP::VulkanEnv_PP()
-	: VulkanEnvironment()
+void VulkanEnvironment::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
-	createRenderPass();
-	createImageResources();
-	createFramebuffers();
+	// Create image objects for letting the shader access the pixel values (better option than setting up the shader to access the pixel values in the buffer). Pixels within an image object are known as texels.
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;				// Kind of coordinate system the texels in the image are going to be addressed: 1D (to store an array of data or gradient...), 2D (textures...), 3D (to store voxel volumes...).
+	imageInfo.extent.width = width;						// Number of texels in X									
+	imageInfo.extent.height = height;					// Number of texels in Y
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = mipLevels;					// Number of levels (mipmaps)
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = format;							// Same format for the texels as the pixels in the buffer. This format is widespread, but if it is not supported by the graphics hardware, you should go with the best supported alternative.
+	imageInfo.tiling = tiling;							// This cannot be changed later. VK_IMAGE_TILING_ ... LINEAR (texels are laid out in row-major order like our pixels array), OPTIMAL (texels are laid out in an implementation defined order for optimal access).
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;// VK_IMAGE_LAYOUT_ ... UNDEFINED (not usable by the GPU and the very first transition will discard the texels), PREINITIALIZED (not usable by the GPU, but the first transition will preserve the texels). We choose UNDEFINED because we're first going to transition the image to be a transfer destination and then copy texel data to it from a buffer object. There are few situations where PREINITIALIZED is necessary (example: when we want to use an image as a staging image in combination with the VK_IMAGE_TILING_LINEAR layout). 
+	imageInfo.usage = usage;							// The image is going to be used as destination for the buffer copy, so it should be set up as a transfer destination; and we also want to be able to access the image from the shader to color our mesh.
+	imageInfo.samples = numSamples;						// For multisampling. Only relevant for images that will be used as attachments.
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;	// The image will only be used by one queue family: the one that supports graphics (and therefore also) transfer operations.
+	imageInfo.flags = 0;								// [Optional]  There are some optional flags for images that are related to sparse images (images where only certain regions are actually backed by memory). Example: If you were using a 3D texture for a voxel terrain, then you could use this to avoid allocating memory to store large volumes of "air" values.
+
+	if (vkCreateImage(c.device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create image!");
+
+	// Allocate memory for the image
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(c.device, image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+	if (vkAllocateMemory(c.device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate image memory!");
+
+	vkBindImageMemory(c.device, image, imageMemory, 0);
 }
 
-VulkanEnv_PP::~VulkanEnv_PP() { };
+VkImageView VulkanEnvironment::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels)
+{
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;			// 1D, 2D, 3D, or cube map
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;						// Image's purpose and which part of it should be accessed. Here, our images will be used as color targets without any mipmapping levels or multiple layers. 
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = mipLevels;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;	// Default color mapping
+	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-void VulkanEnv_PP::createRenderPass()
+	// Note about stereographic 3D applications: For them, you would create a swap chain with multiple layers, and then create multiple image views for each image (one for left eye and another for right eye).
+
+	VkImageView imageView;
+	if (vkCreateImageView(c.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create texture image view!");
+
+	return imageView;
+}
+
+/// Find the right format for a depth image.
+/** Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil). */
+VkFormat VulkanEnvironment::findDepthFormat()
+{
+	return findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+/**
+* 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.
+*	
+*	Graphic cards can offer different types of memory to allocate from. Each type of memory varies in terms of allowed operations and performance characteristics.
+*	@param typeFilter Specifies the bit field of memory types that are suitable.
+*	@param properties Specifies the bit field of the desired properties of such memory types.
+*	@return Index of a memory type suitable for the buffer that also has all of the properties we need.
+*/
+uint32_t VulkanEnvironment::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+	// Query info about the available types of memory.
+	VkPhysicalDeviceMemoryProperties memProperties;				// This struct has 2 arrays memoryTypes and memoryHeaps (this one are distinct memory resources, like dedicated VRAM and swap space in RAM for when VRAM runs out). Right now we'll concern with the type of memory and not the heap it comes from.
+	vkGetPhysicalDeviceMemoryProperties(c.physicalDevice, &memProperties);
+
+	// Find a memory type suitable for the buffer, and to .
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+	{
+		if (typeFilter & (1 << i) &&													// Find the index of a suitable memory type for our buffer by iterating over the memory types and checking if the corresponding bit is set to 1.
+			(memProperties.memoryTypes[i].propertyFlags & properties) == properties)	// Check that the memory type has some properties.
+			return i;
+	}
+
+	throw std::runtime_error("Failed to find suitable memory type!");
+}
+
+/**
+*	@brief Take a list of candidate formats in order from most desirable to least desirable, and checks which is the first one that is supported.
+* 
+*	@param candidates
+*	@param tiling The support of a format depends on the tiling mode.
+*	@param features The support of a format depends on the usage.
+*	@return
+*/
+VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props;												// Contains 3 fields: linearTilingFeatures (linear tiling), optimalTilingFeatures (optimal tiling), bufferFeatures (buffers).
+		vkGetPhysicalDeviceFormatProperties(c.physicalDevice, format, &props);	// Query the support of a format
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+			return format;
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+			return format;
+	}
+
+	throw std::runtime_error("Failed to find supported format!");
+}
+
+// (11) <<<
+/// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
+void VulkanEnvironment::createCommandPool()
 {
 	std::cout << __func__ << "()" << std::endl;
+
+	QueueFamilyIndices queueFamilyIndices = c.findQueueFamilies();	// <<< wrapped method
+
+	// Command buffers are executed by submitting them on one of the device queues we retrieved (graphics queue, presentation queue, etc.). Each command pool can only allocate command buffers that are submitted on a single type of queue.
+	VkCommandPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	poolInfo.flags = 0;	// [Optional]  VK_COMMAND_POOL_CREATE_ ... TRANSIENT_BIT (command buffers are rerecorded with new commands very often - may change memory allocation behavior), RESET_COMMAND_BUFFER_BIT (command buffers can be rerecorded individually, instead of reseting all of them together). Not necessary if we just record the command buffers at the beginning of the program and then execute them many times in the main loop.
+
+	if (vkCreateCommandPool(c.device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create command pool!");
+}
+
+void VulkanEnvironment::createRenderPass()
+{
+	if (c.msaaSamples > 1) createRenderPass_MS_PP();
+	else createRenderPass_PP();
+}
+
+void VulkanEnvironment::createImageResources()
+{
+	if (c.msaaSamples > 1) createImageResources_MS_PP();
+	else createImageResources_PP();
+}
+
+void VulkanEnvironment::createFramebuffers()
+{
+	if (c.msaaSamples > 1) createFramebuffers_MS_PP();
+	else createFramebuffers_PP();
+}
+
+/**
+*	Submit a pipeline barrier. It specifies when a transition happens: when the pipeline finishes (source) and the next one starts (destination). No command may start before it finishes transitioning. Commands come at the top of the pipeline (first stage), shaders are executed in order, and commands retire at the bottom of the pipeline (last stage), when execution finishes. This barrier will wait for everything to finish and block any work from starting.
+*/
+void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
+{
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+	VkImageMemoryBarrier barrier{};			// One of the most common way to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources, like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership when VK_SHARING_MODE_EXCLUSIVE is used. There is an equivalent buffer memory barrier to do this for buffers.
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.oldLayout = oldLayout;								// Specify layout transition (it's possible to use VK_IMAGE_LAYOUTR_UNDEFINED if you don't care about the existing contents of the image).
+	barrier.newLayout = newLayout;								// Specify layout transition
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// If you are using the barrier to transfer queue family ownership, then these two fields ...
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// ... should be the indices of the queue families; otherwise, set this to VK_QUEUE_FAMILY_IGNORED.
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;				// subresourceRange specifies the part of the image that is affected.
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = mipLevels;								// If the image has no mipmapping levels, then levelCount = 1
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;										// If the image is not an array, then layerCount = 1
+
+	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	{
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		if (hasStencilComponent(format))
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+	}
+	else
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	// Set the access masks and pipeline stages based on the layouts in the transition. There are 2 transitions we need to handle:
+	//		- From somewhere (undefined) to transfer destination: Transfer writes that don't need to wait on anything.
+	//		- From transfer destinations to shader reading: Shader reads should wait on transfer writes (specifically the shader reads in the fragment shader, because that's where we're going to use the texture).
+	VkPipelineStageFlags sourceStage;
+	VkPipelineStageFlags destinationStage;
+
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;					// The depth buffer is read from  in the VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT stage to perform depth tests 
+		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;		// The depth buffer is written to in the VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT  stage when a new fragment is drawn
+	}
+	else
+		throw std::invalid_argument("Unsupported layout transition!");
+
+	// Submit a pipeline barrier
+	{
+		const std::lock_guard<std::mutex> lock(mutCommandPool);
+		vkCmdPipelineBarrier(
+			commandBuffer,
+			sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
+			destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
+			0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
+			0, nullptr,			// Array of pipeline barriers of type memory barriers
+			0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
+			1, &barrier);		// Array of pipeline barriers of type image memory barriers
+	}
+
+	endSingleTimeCommands(commandBuffer);
 
 	/*
-		Process for SingleSample + PostProcessing:
+		Note:
+		The pipeline stages that you are allowed to specify before and after the barrier depend on how you use the resource before and after the barrier.
+		Allowed values: https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#synchronization-access-types-supported
+		Example: If you're going to read from a uniform after the barrier, you would specify a usage of VK_ACCESS_UNIFORM_READ_BIT and the earliest shader
+		that will read from the uniform as pipeline stage (for example, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT).
+		----------
+		Transfer writes must occur in the pipeline transfer stage. Since the writes don't have to wait on anything, you may specify an empty access mask and the
+		earliest possible pipeline stage VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT for the pre-barrier operations. Note that VK_PIPELINE_STAGE_TRANSFER_BIT is not a real
+		stage within the graphics and compute pipelines, but a pseudo-stage where transfers happen (more about pseudo-stages:
+		https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPipelineStageFlagBits.html).
 
-		Render pass 1:
-			Subpass A attachments:
-				shader -> colorResolveAttachment: Final color (sampler)
-				shader -> depthAttachment[n]: Depth (sampler)
-				X - msaaColorAttachment[n]: Color attachment for multisampling (not used: only 1 sample)
-		Render pass 2:
-			Subpass B attachments:
-				shader -> colorAttachmentPP: Final color (swapChainImageView)
-					attachment - colorResolveAttachment: Final color from RP 1 (input attachment)
-					attachment - depthAttachment: Depth from RP 1 (input attachment)
+		The image will be written in the same pipeline stage and subsequently read by the fragment shader, which is why we specify shader reading access in the
+		fragment shader pipeline stage.
+
+		If we need to do more transitions in the future, then we'll extend the function.
+		Note that command buffer submission results in implicit VK_ACCESS_HOST_WRITE_BIT synchronization at the beginning. Since this function (transitionImageLayout)
+		executes a command buffer with only a single command, you could use this implicit synchronization and set srcAccessMask to 0 if you ever needed a
+		VK_ACCESS_HOST_WRITE_BIT dependency in a layout transition. It's up to you if you want to be explicit about it or not, but I prefer not to rely on these
+		OpenGL-like "hidden" operations.
+
+		VK_IMAGE_LAYOUT_GENERAL: Special type of image layout that supports all operations, although it doesn't necessarily offer the best performance for any
+		operation. It is required for some special cases (using an image as both input and output, reading an image after it has left the preinitialized layout, etc.).
+
+		All of the helper functions that submit commands so far have been set up to execute synchronously by waiting for the queue to become idle. For practical
+		applications it is recommended to combine these operations in a single command buffer and execute them asynchronously for higher throughput (especially the
+		transitions and copy in the createTextureImage function). Exercise: Try to experiment with this by creating a setupCommandBuffer that the helper functions
+		record commands into, and add a flushSetupCommands to execute the commands that have been recorded so far. It's best to do this after the texture mapping works
+		to check if the texture resources are still set up correctly.
 	*/
-
-	// Attachments: -------------------------
-	
-	// First color attachment (basic rendering) (RP 1)
-	VkAttachmentDescription colorAttachment_1{};
-	colorAttachment_1.format = swapChain.imageFormat;
-	colorAttachment_1.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
-	colorAttachment_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
-	colorAttachment_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;													// Attachment's layout state when render pass begins
-	colorAttachment_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment's layout state it has to transition to when render pass is complete
-	
-	VkAttachmentReference colorAttachmentRef_1{};
-	colorAttachmentRef_1.attachment = 0;
-	colorAttachmentRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment layout state when the render pass begins.
-	
-	// Depth attachment (RP 1)
-	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = findDepthFormat();							// Should be same format as the depth image
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
-	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			// We don't care about previous depth contents
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	
-	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
-	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	// Input attachment (color) (from previous render pass) (RP 2)
-	VkAttachmentDescription colorInputAtt_1 = colorAttachment_1;
-	colorInputAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorInputAtt_1.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkAttachmentReference colorInputAttRef_1 = colorAttachmentRef_1;
-	colorInputAttRef_1.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	colorInputAttRef_1.attachment = 0;
-
-	// Input attachment (depth) (from previous render pass) (RP 2)
-	VkAttachmentDescription depthInputAtt = depthAttachment;
-	depthInputAtt.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthInputAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-
-	VkAttachmentReference depthInputAttRef = depthAttachmentRef;
-	depthInputAttRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-	depthInputAttRef.attachment = 1;
-
-	// Final color (Post-Processing) (RP 2)
-	VkAttachmentDescription colorAttachment_2{};
-	colorAttachment_2.format = swapChain.imageFormat;
-	colorAttachment_2.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment_2.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment_2.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment_2.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment_2.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentReference colorAttachmentRef_2{};
-	colorAttachmentRef_2.attachment = 2;
-	colorAttachmentRef_2.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	// Render pass 1 (basic rendering) -------------------------
-
-	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
-	subpass.colorAttachmentCount = 1;
-	subpass.pResolveAttachments = nullptr;
-	subpass.pColorAttachments = &colorAttachmentRef_1;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;			// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
-	subpass.inputAttachmentCount;
-	subpass.pInputAttachments;										// Attachments read from a shader.
-	subpass.preserveAttachmentCount;
-	subpass.pPreserveAttachments;									// Attachment not used by this subpass, but for which the data must be preserved.
-
-	VkSubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;																			// VK_SUBPASS_EXTERNAL: Refers to the implicit subpass before or after the render pass depending on whether it is specified in srcSubpass or dstSubpass.
-	dependency.dstSubpass = 0;																							// Index of our subpass. The dstSubpass must always be higher than srcSubpass to prevent cycles in the dependency graph (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait (for the swap chain to finish reading from the image).
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait. 
-	dependency.srcAccessMask = 0;																							// Operations that wait.
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;			// Operations that wait (they involve the writing of the color attachment).
-
-	VkRenderPassCreateInfo renderPassInfo{};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	std::vector<VkAttachmentDescription> attachments = { colorAttachment_1, depthAttachment };		// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;				// Array of subpasses
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;			// Array of dependencies.
-
-	if (vkCreateRenderPass(c.device, &renderPassInfo, nullptr, &renderPass[0]) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create render pass!");
-
-	// Render pass 2 (Post processing) -------------------------
-
-	VkSubpassDescription subpass2{};
-	subpass2.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass2.colorAttachmentCount = 1;
-	subpass2.pColorAttachments = &colorAttachmentRef_2;
-	subpass2.pDepthStencilAttachment = nullptr;
-	subpass2.pResolveAttachments = nullptr;
-	std::vector<VkAttachmentReference> inputAttachments = { colorInputAttRef_1, depthInputAttRef };
-	subpass2.inputAttachmentCount = inputAttachments.size();
-	subpass2.pInputAttachments = inputAttachments.data();	// <<< Can't input attachments read per-sample? Only per-pixel?
-	subpass2.preserveAttachmentCount;
-	subpass2.pPreserveAttachments;
-
-	VkSubpassDependency dependency2{};
-	dependency2.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency2.dstSubpass = 0;
-	dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency2.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency2.srcAccessMask = 0;
-	dependency2.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkRenderPassCreateInfo renderPassInfo2{};
-	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	std::vector<VkAttachmentDescription> attachments2 = { colorInputAtt_1, depthInputAtt, colorAttachment_2 };
-	renderPassInfo2.attachmentCount = static_cast<uint32_t>(attachments2.size());
-	renderPassInfo2.pAttachments = attachments2.data();
-	renderPassInfo2.subpassCount = 1;
-	renderPassInfo2.pSubpasses = &subpass2;				// Array of subpasses
-	renderPassInfo2.dependencyCount = 1;
-	renderPassInfo2.pDependencies = &dependency2;		// Array of dependencies.
-
-	if (vkCreateRenderPass(c.device, &renderPassInfo2, nullptr, &renderPass[1]) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create render pass!");
 }
 
-void VulkanEnv_PP::createImageResources()
+/// Tells if the chosen depth format contains a stencil component.
+bool VulkanEnvironment::hasStencilComponent(VkFormat format)
 {
-	std::cout << __func__ << "()" << std::endl;
-
-	VkFormat colorFormat = swapChain.imageFormat;
-	VkFormat depthFormat = findDepthFormat();
-	
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_NEAREST;
-	samplerInfo.minFilter = VK_FILTER_NEAREST;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.maxAnisotropy = 1.0f;
-
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	samplerInfo.minLod = 0.f;
-	samplerInfo.maxLod = 0.f;
-	samplerInfo.mipLodBias = 0.0f;
-	
-	// Color_1 -------------------------------------
-
-	createImage(
-		swapChain.extent.width,
-		swapChain.extent.height,
-		1,
-		VK_SAMPLE_COUNT_1_BIT,	//msaaSamples,
-		colorFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		color_1.image,
-		color_1.memory);
-
-	color_1.view = createImageView(color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-	if (vkCreateSampler(c.device, &samplerInfo, nullptr, &color_1.sampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create resolve color sampler!");
-	
-	// Depth -------------------------------------
-
-	createImage(swapChain.extent.width,
-		swapChain.extent.height,
-		1,
-		c.msaaSamples,
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		depth.image,
-		depth.memory);
-	
-	depth.view = createImageView(depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-	
-	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
-	transitionImageLayout(depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
-	
-	if (vkCreateSampler(c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create depth sampler!");
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-// (14)
-/// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
-void VulkanEnv_PP::createFramebuffers()
+/**
+*	Allocate the command buffer and start recording it. Used for a command buffer that will be used only once.
+*	Command buffers generated using beginSingleTimeCommands (allocation, start recording) and endSingleTimeCommands (end recording, submit) are freed once its execution completes.
+*	@return Returns a Vulkan command buffer object.
+*/
+VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 {
-	std::cout << __func__ << "()" << std::endl;
+	const std::lock_guard<std::mutex> lock(mutCommandPool);
 
-	framebuffers.resize(swapChain.views.size());
-	std::vector<VkImageView> attachments;
+	// Allocate the command buffer.
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = 1;
 
-	// Framebuffers (2) for each swapChainImage
-	for (size_t i = 0; i < swapChain.views.size(); i++)
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(c.device, &allocInfo, &commandBuffer);
+
+	// Start recording the command buffer.
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;		// Good practice to tell the driver about our intent <<< (see createCommandBuffers > beginInfo.flags)
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+/**
+*	Stop recording a command buffer and submit it to the queue. Used together with beginSingleTimeCommands().
+*/
+void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+	const std::lock_guard<std::mutex> lock(mutCommandPool);
+
+	vkEndCommandBuffer(commandBuffer);		// Stop recording (this command buffer only contains the copy command, so we can stop recording now).
+
+	// Execute the command buffer (only contains the copy command) to complete the transfer of buffers.
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
 	{
-		// Framebuffer 1 (basic color)
-		VkFramebufferCreateInfo framebufferInfo_1{};
-		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_1.renderPass = renderPass[0];								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-		attachments = std::vector<VkImageView>{ color_1.view, depth.view };
-		framebufferInfo_1.attachmentCount = attachments.size();
-		framebufferInfo_1.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo_1.width = swapChain.extent.width;
-		framebufferInfo_1.height = swapChain.extent.height;
-		framebufferInfo_1.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
-
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 1!");
-
-		// Framebuffer 2 (post-processing)
-		VkFramebufferCreateInfo framebufferInfo_2{};
-		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_2.renderPass = renderPass[1];
-		attachments = std::vector<VkImageView>{ color_1.view, depth.view, swapChain.views[i] };
-		framebufferInfo_2.attachmentCount = attachments.size();
-		framebufferInfo_2.pAttachments = attachments.data();
-		framebufferInfo_2.width = swapChain.extent.width;
-		framebufferInfo_2.height = swapChain.extent.height;
-		framebufferInfo_2.layers = 1;
-
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 2!");
+		const std::lock_guard<std::mutex> lock(queueMutex);
+		vkQueueSubmit(c.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(c.graphicsQueue);			// Wait to this transfer to complete. Two ways to do this: vkQueueWaitIdle (Wait for the transfer queue to become idle. Execute one transfer at a time) or vkWaitForFences (Use a fence. Allows to schedule multiple transfers simultaneously and wait for all of them complete. It may give the driver more opportunities to optimize).
 	}
+
+	// Clean up the command buffer used.
+	vkFreeCommandBuffers(c.device, commandPool, 1, &commandBuffer);
+}
+
+void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
+{
+	createSwapChain();					// Recreate the swap chain.
+	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
+	
+	createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
+	createImageResources();
+	createFramebuffers();				// Framebuffers directly depend on the swap chain images.
+}
+
+void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
+{
+	// Destroy attachments (images)
+	color_1.destroy(c.device);
+	depth.destroy(c.device);
+	color_2.destroy(c.device);
+
+	// Framebuffers
+	for (auto framebuffer : framebuffers)
+	{
+		vkDestroyFramebuffer(c.device, framebuffer[0], nullptr);
+		vkDestroyFramebuffer(c.device, framebuffer[1], nullptr);
+	}
+
+	// Render pass
+	vkDestroyRenderPass(c.device, renderPass[0], nullptr);
+	vkDestroyRenderPass(c.device, renderPass[1], nullptr);
+
+	swapChain.destroy(c.device);
+}
+
+/**
+ * Cleans up the VkDebugUtilsMessengerEXT object.
+ * @param instance Vulkan instance (the debug messenger is specific to our Vulkan instance and its layers)
+ * @param debugMessenger Debug messenger object
+ * @param pAllocator Optional allocator callback
+ */
+void VulkanCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
+	// Similarly to vkCreateDebugUtilsMessengerEXT, the extension function needs to be explicitly loaded.
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func != nullptr)
+		func(instance, debugMessenger, pAllocator);
+}
+
+void VulkanEnvironment::cleanup()
+{
+	vkDestroyCommandPool(c.device, commandPool, nullptr);
+
+	c.destroy();
 }
 
 // (8)
@@ -1075,7 +1165,7 @@ void VulkanEnv_PP::createFramebuffers()
 		- Subpasses: A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example: a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance.
 		- Attachment references: Every subpass references one or more of the attachments that we've described.
 */
-void VulkanEnv_MS_PP::createRenderPass()
+void VulkanEnvironment::createRenderPass_MS_PP()
 {
 	std::cout << __func__ << "()" << std::endl;
 
@@ -1245,146 +1335,7 @@ void VulkanEnv_MS_PP::createRenderPass()
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void VulkanEnvironment::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
-{
-	// Create image objects for letting the shader access the pixel values (better option than setting up the shader to access the pixel values in the buffer). Pixels within an image object are known as texels.
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;				// Kind of coordinate system the texels in the image are going to be addressed: 1D (to store an array of data or gradient...), 2D (textures...), 3D (to store voxel volumes...).
-	imageInfo.extent.width = width;						// Number of texels in X									
-	imageInfo.extent.height = height;					// Number of texels in Y
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = mipLevels;					// Number of levels (mipmaps)
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;							// Same format for the texels as the pixels in the buffer. This format is widespread, but if it is not supported by the graphics hardware, you should go with the best supported alternative.
-	imageInfo.tiling = tiling;							// This cannot be changed later. VK_IMAGE_TILING_ ... LINEAR (texels are laid out in row-major order like our pixels array), OPTIMAL (texels are laid out in an implementation defined order for optimal access).
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;// VK_IMAGE_LAYOUT_ ... UNDEFINED (not usable by the GPU and the very first transition will discard the texels), PREINITIALIZED (not usable by the GPU, but the first transition will preserve the texels). We choose UNDEFINED because we're first going to transition the image to be a transfer destination and then copy texel data to it from a buffer object. There are few situations where PREINITIALIZED is necessary (example: when we want to use an image as a staging image in combination with the VK_IMAGE_TILING_LINEAR layout). 
-	imageInfo.usage = usage;							// The image is going to be used as destination for the buffer copy, so it should be set up as a transfer destination; and we also want to be able to access the image from the shader to color our mesh.
-	imageInfo.samples = numSamples;						// For multisampling. Only relevant for images that will be used as attachments.
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;	// The image will only be used by one queue family: the one that supports graphics (and therefore also) transfer operations.
-	imageInfo.flags = 0;								// [Optional]  There are some optional flags for images that are related to sparse images (images where only certain regions are actually backed by memory). Example: If you were using a 3D texture for a voxel terrain, then you could use this to avoid allocating memory to store large volumes of "air" values.
-
-	if (vkCreateImage(c.device, &imageInfo, nullptr, &image) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create image!");
-
-	// Allocate memory for the image
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(c.device, image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(c.device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
-		throw std::runtime_error("Failed to allocate image memory!");
-
-	vkBindImageMemory(c.device, image, imageMemory, 0);
-}
-
-VkImageView VulkanEnvironment::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels)
-{
-	VkImageViewCreateInfo viewInfo{};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = image;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;			// 1D, 2D, 3D, or cube map
-	viewInfo.format = format;
-	viewInfo.subresourceRange.aspectMask = aspectFlags;						// Image's purpose and which part of it should be accessed. Here, our images will be used as color targets without any mipmapping levels or multiple layers. 
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = mipLevels;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
-	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;	// Default color mapping
-	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-	// Note about stereographic 3D applications: For them, you would create a swap chain with multiple layers, and then create multiple image views for each image (one for left eye and another for right eye).
-
-	VkImageView imageView;
-	if (vkCreateImageView(c.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create texture image view!");
-
-	return imageView;
-}
-
-/// Find the right format for a depth image.
-/** Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil). */
-VkFormat VulkanEnvironment::findDepthFormat()
-{
-	return findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
-/**
-* 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.
-*	
-*	Graphic cards can offer different types of memory to allocate from. Each type of memory varies in terms of allowed operations and performance characteristics.
-*	@param typeFilter Specifies the bit field of memory types that are suitable.
-*	@param properties Specifies the bit field of the desired properties of such memory types.
-*	@return Index of a memory type suitable for the buffer that also has all of the properties we need.
-*/
-uint32_t VulkanEnvironment::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-{
-	// Query info about the available types of memory.
-	VkPhysicalDeviceMemoryProperties memProperties;				// This struct has 2 arrays memoryTypes and memoryHeaps (this one are distinct memory resources, like dedicated VRAM and swap space in RAM for when VRAM runs out). Right now we'll concern with the type of memory and not the heap it comes from.
-	vkGetPhysicalDeviceMemoryProperties(c.physicalDevice, &memProperties);
-
-	// Find a memory type suitable for the buffer, and to .
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-	{
-		if (typeFilter & (1 << i) &&													// Find the index of a suitable memory type for our buffer by iterating over the memory types and checking if the corresponding bit is set to 1.
-			(memProperties.memoryTypes[i].propertyFlags & properties) == properties)	// Check that the memory type has some properties.
-			return i;
-	}
-
-	throw std::runtime_error("Failed to find suitable memory type!");
-}
-
-/**
-*	@brief Take a list of candidate formats in order from most desirable to least desirable, and checks which is the first one that is supported.
-* 
-*	@param candidates
-*	@param tiling The support of a format depends on the tiling mode.
-*	@param features The support of a format depends on the usage.
-*	@return
-*/
-VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat format : candidates)
-	{
-		VkFormatProperties props;												// Contains 3 fields: linearTilingFeatures (linear tiling), optimalTilingFeatures (optimal tiling), bufferFeatures (buffers).
-		vkGetPhysicalDeviceFormatProperties(c.physicalDevice, format, &props);	// Query the support of a format
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-			return format;
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-			return format;
-	}
-
-	throw std::runtime_error("Failed to find supported format!");
-}
-
-// (11) <<<
-/// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
-void VulkanEnvironment::createCommandPool()
-{
-	std::cout << __func__ << "()" << std::endl;
-
-	QueueFamilyIndices queueFamilyIndices = c.findQueueFamilies();	// <<< wrapped method
-
-	// Command buffers are executed by submitting them on one of the device queues we retrieved (graphics queue, presentation queue, etc.). Each command pool can only allocate command buffers that are submitted on a single type of queue.
-	VkCommandPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	poolInfo.flags = 0;	// [Optional]  VK_COMMAND_POOL_CREATE_ ... TRANSIENT_BIT (command buffers are rerecorded with new commands very often - may change memory allocation behavior), RESET_COMMAND_BUFFER_BIT (command buffers can be rerecorded individually, instead of reseting all of them together). Not necessary if we just record the command buffers at the beginning of the program and then execute them many times in the main loop.
-
-	if (vkCreateCommandPool(c.device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create command pool!");
-}
-
-void VulkanEnv_MS_PP::createImageResources()
+void VulkanEnvironment::createImageResources_MS_PP()
 {
 	std::cout << __func__ << "()" << std::endl;
 
@@ -1473,175 +1424,9 @@ void VulkanEnv_MS_PP::createImageResources()
 	color_2.view = createImageView(color_2.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
-/**
-*	Submit a pipeline barrier. It specifies when a transition happens: when the pipeline finishes (source) and the next one starts (destination). No command may start before it finishes transitioning. Commands come at the top of the pipeline (first stage), shaders are executed in order, and commands retire at the bottom of the pipeline (last stage), when execution finishes. This barrier will wait for everything to finish and block any work from starting.
-*/
-void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
-{
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-	VkImageMemoryBarrier barrier{};			// One of the most common way to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources, like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership when VK_SHARING_MODE_EXCLUSIVE is used. There is an equivalent buffer memory barrier to do this for buffers.
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = oldLayout;								// Specify layout transition (it's possible to use VK_IMAGE_LAYOUTR_UNDEFINED if you don't care about the existing contents of the image).
-	barrier.newLayout = newLayout;								// Specify layout transition
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// If you are using the barrier to transfer queue family ownership, then these two fields ...
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// ... should be the indices of the queue families; otherwise, set this to VK_QUEUE_FAMILY_IGNORED.
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;				// subresourceRange specifies the part of the image that is affected.
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = mipLevels;								// If the image has no mipmapping levels, then levelCount = 1
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;										// If the image is not an array, then layerCount = 1
-
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-	{
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		if (hasStencilComponent(format))
-			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
-	else
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-	// Set the access masks and pipeline stages based on the layouts in the transition. There are 2 transitions we need to handle:
-	//		- From somewhere (undefined) to transfer destination: Transfer writes that don't need to wait on anything.
-	//		- From transfer destinations to shader reading: Shader reads should wait on transfer writes (specifically the shader reads in the fragment shader, because that's where we're going to use the texture).
-	VkPipelineStageFlags sourceStage;
-	VkPipelineStageFlags destinationStage;
-
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-	{
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;					// The depth buffer is read from  in the VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT stage to perform depth tests 
-		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;		// The depth buffer is written to in the VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT  stage when a new fragment is drawn
-	}
-	else
-		throw std::invalid_argument("Unsupported layout transition!");
-
-	// Submit a pipeline barrier
-	{
-		const std::lock_guard<std::mutex> lock(mutCommandPool);
-		vkCmdPipelineBarrier(
-			commandBuffer,
-			sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
-			destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
-			0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
-			0, nullptr,			// Array of pipeline barriers of type memory barriers
-			0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
-			1, &barrier);		// Array of pipeline barriers of type image memory barriers
-	}
-
-	endSingleTimeCommands(commandBuffer);
-
-	/*
-		Note:
-		The pipeline stages that you are allowed to specify before and after the barrier depend on how you use the resource before and after the barrier.
-		Allowed values: https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#synchronization-access-types-supported
-		Example: If you're going to read from a uniform after the barrier, you would specify a usage of VK_ACCESS_UNIFORM_READ_BIT and the earliest shader
-		that will read from the uniform as pipeline stage (for example, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT).
-		----------
-		Transfer writes must occur in the pipeline transfer stage. Since the writes don't have to wait on anything, you may specify an empty access mask and the
-		earliest possible pipeline stage VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT for the pre-barrier operations. Note that VK_PIPELINE_STAGE_TRANSFER_BIT is not a real
-		stage within the graphics and compute pipelines, but a pseudo-stage where transfers happen (more about pseudo-stages:
-		https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPipelineStageFlagBits.html).
-
-		The image will be written in the same pipeline stage and subsequently read by the fragment shader, which is why we specify shader reading access in the
-		fragment shader pipeline stage.
-
-		If we need to do more transitions in the future, then we'll extend the function.
-		Note that command buffer submission results in implicit VK_ACCESS_HOST_WRITE_BIT synchronization at the beginning. Since this function (transitionImageLayout)
-		executes a command buffer with only a single command, you could use this implicit synchronization and set srcAccessMask to 0 if you ever needed a
-		VK_ACCESS_HOST_WRITE_BIT dependency in a layout transition. It's up to you if you want to be explicit about it or not, but I prefer not to rely on these
-		OpenGL-like "hidden" operations.
-
-		VK_IMAGE_LAYOUT_GENERAL: Special type of image layout that supports all operations, although it doesn't necessarily offer the best performance for any
-		operation. It is required for some special cases (using an image as both input and output, reading an image after it has left the preinitialized layout, etc.).
-
-		All of the helper functions that submit commands so far have been set up to execute synchronously by waiting for the queue to become idle. For practical
-		applications it is recommended to combine these operations in a single command buffer and execute them asynchronously for higher throughput (especially the
-		transitions and copy in the createTextureImage function). Exercise: Try to experiment with this by creating a setupCommandBuffer that the helper functions
-		record commands into, and add a flushSetupCommands to execute the commands that have been recorded so far. It's best to do this after the texture mapping works
-		to check if the texture resources are still set up correctly.
-	*/
-}
-
-/// Tells if the chosen depth format contains a stencil component.
-bool VulkanEnvironment::hasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
-
-/**
-*	Allocate the command buffer and start recording it. Used for a command buffer that will be used only once.
-*	Command buffers generated using beginSingleTimeCommands (allocation, start recording) and endSingleTimeCommands (end recording, submit) are freed once its execution completes.
-*	@return Returns a Vulkan command buffer object.
-*/
-VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
-{
-	const std::lock_guard<std::mutex> lock(mutCommandPool);
-
-	// Allocate the command buffer.
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = commandPool;
-	allocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(c.device, &allocInfo, &commandBuffer);
-
-	// Start recording the command buffer.
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;		// Good practice to tell the driver about our intent <<< (see createCommandBuffers > beginInfo.flags)
-
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-	return commandBuffer;
-}
-
-/**
-*	Stop recording a command buffer and submit it to the queue. Used together with beginSingleTimeCommands().
-*/
-void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
-{
-	const std::lock_guard<std::mutex> lock(mutCommandPool);
-
-	vkEndCommandBuffer(commandBuffer);		// Stop recording (this command buffer only contains the copy command, so we can stop recording now).
-
-	// Execute the command buffer (only contains the copy command) to complete the transfer of buffers.
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	{
-		const std::lock_guard<std::mutex> lock(queueMutex);
-		vkQueueSubmit(c.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(c.graphicsQueue);			// Wait to this transfer to complete. Two ways to do this: vkQueueWaitIdle (Wait for the transfer queue to become idle. Execute one transfer at a time) or vkWaitForFences (Use a fence. Allows to schedule multiple transfers simultaneously and wait for all of them complete. It may give the driver more opportunities to optimize).
-	}
-
-	// Clean up the command buffer used.
-	vkFreeCommandBuffers(c.device, commandPool, 1, &commandBuffer);
-}
-
 // (14)
 /// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
-void VulkanEnv_MS_PP::createFramebuffers()
+void VulkanEnvironment::createFramebuffers_MS_PP()
 {
 	std::cout << __func__ << "()" << std::endl;
 
@@ -1683,57 +1468,271 @@ void VulkanEnv_MS_PP::createFramebuffers()
 	}
 }
 
-void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
+void VulkanEnvironment::createRenderPass_PP()
 {
-	createSwapChain();					// Recreate the swap chain.
-	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
+	std::cout << __func__ << "()" << std::endl;
 
-	createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
-	createImageResources();
-	createFramebuffers();				// Framebuffers directly depend on the swap chain images.
+	/*
+		Process for SingleSample + PostProcessing:
+
+		Render pass 1:
+			Subpass A attachments:
+				shader -> colorResolveAttachment: Final color (sampler)
+				shader -> depthAttachment[n]: Depth (sampler)
+				X - msaaColorAttachment[n]: Color attachment for multisampling (not used: only 1 sample)
+		Render pass 2:
+			Subpass B attachments:
+				shader -> colorAttachmentPP: Final color (swapChainImageView)
+					attachment - colorResolveAttachment: Final color from RP 1 (input attachment)
+					attachment - depthAttachment: Depth from RP 1 (input attachment)
+	*/
+
+	// Attachments: -------------------------
+
+	// First color attachment (basic rendering) (RP 1)
+	VkAttachmentDescription colorAttachment_1{};
+	colorAttachment_1.format = swapChain.imageFormat;
+	colorAttachment_1.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
+	colorAttachment_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
+	colorAttachment_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;													// Attachment's layout state when render pass begins
+	colorAttachment_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment's layout state it has to transition to when render pass is complete
+
+	VkAttachmentReference colorAttachmentRef_1{};
+	colorAttachmentRef_1.attachment = 0;
+	colorAttachmentRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;										// Attachment layout state when the render pass begins.
+
+	// Depth attachment (RP 1)
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = findDepthFormat();							// Should be same format as the depth image
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			// We don't care about previous depth contents
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef{};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	// Input attachment (color) (from previous render pass) (RP 2)
+	VkAttachmentDescription colorInputAtt_1 = colorAttachment_1;
+	colorInputAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorInputAtt_1.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkAttachmentReference colorInputAttRef_1 = colorAttachmentRef_1;
+	colorInputAttRef_1.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	colorInputAttRef_1.attachment = 0;
+
+	// Input attachment (depth) (from previous render pass) (RP 2)
+	VkAttachmentDescription depthInputAtt = depthAttachment;
+	depthInputAtt.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthInputAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+
+	VkAttachmentReference depthInputAttRef = depthAttachmentRef;
+	depthInputAttRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+	depthInputAttRef.attachment = 1;
+
+	// Final color (Post-Processing) (RP 2)
+	VkAttachmentDescription colorAttachment_2{};
+	colorAttachment_2.format = swapChain.imageFormat;
+	colorAttachment_2.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment_2.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment_2.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment_2.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment_2.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference colorAttachmentRef_2{};
+	colorAttachmentRef_2.attachment = 2;
+	colorAttachmentRef_2.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Render pass 1 (basic rendering) -------------------------
+
+	VkSubpassDescription subpass{};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
+	subpass.colorAttachmentCount = 1;
+	subpass.pResolveAttachments = nullptr;
+	subpass.pColorAttachments = &colorAttachmentRef_1;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;			// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
+	subpass.inputAttachmentCount;
+	subpass.pInputAttachments;										// Attachments read from a shader.
+	subpass.preserveAttachmentCount;
+	subpass.pPreserveAttachments;									// Attachment not used by this subpass, but for which the data must be preserved.
+
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;																			// VK_SUBPASS_EXTERNAL: Refers to the implicit subpass before or after the render pass depending on whether it is specified in srcSubpass or dstSubpass.
+	dependency.dstSubpass = 0;																							// Index of our subpass. The dstSubpass must always be higher than srcSubpass to prevent cycles in the dependency graph (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait (for the swap chain to finish reading from the image).
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait. 
+	dependency.srcAccessMask = 0;																							// Operations that wait.
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;			// Operations that wait (they involve the writing of the color attachment).
+
+	VkRenderPassCreateInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments = { colorAttachment_1, depthAttachment };		// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;				// Array of subpasses
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;			// Array of dependencies.
+
+	if (vkCreateRenderPass(c.device, &renderPassInfo, nullptr, &renderPass[0]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+
+	// Render pass 2 (Post processing) -------------------------
+
+	VkSubpassDescription subpass2{};
+	subpass2.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass2.colorAttachmentCount = 1;
+	subpass2.pColorAttachments = &colorAttachmentRef_2;
+	subpass2.pDepthStencilAttachment = nullptr;
+	subpass2.pResolveAttachments = nullptr;
+	std::vector<VkAttachmentReference> inputAttachments = { colorInputAttRef_1, depthInputAttRef };
+	subpass2.inputAttachmentCount = inputAttachments.size();
+	subpass2.pInputAttachments = inputAttachments.data();	// <<< Can't input attachments read per-sample? Only per-pixel?
+	subpass2.preserveAttachmentCount;
+	subpass2.pPreserveAttachments;
+
+	VkSubpassDependency dependency2{};
+	dependency2.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency2.dstSubpass = 0;
+	dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency2.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency2.srcAccessMask = 0;
+	dependency2.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo renderPassInfo2{};
+	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments2 = { colorInputAtt_1, depthInputAtt, colorAttachment_2 };
+	renderPassInfo2.attachmentCount = static_cast<uint32_t>(attachments2.size());
+	renderPassInfo2.pAttachments = attachments2.data();
+	renderPassInfo2.subpassCount = 1;
+	renderPassInfo2.pSubpasses = &subpass2;				// Array of subpasses
+	renderPassInfo2.dependencyCount = 1;
+	renderPassInfo2.pDependencies = &dependency2;		// Array of dependencies.
+
+	if (vkCreateRenderPass(c.device, &renderPassInfo2, nullptr, &renderPass[1]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
 }
 
-void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
+void VulkanEnvironment::createImageResources_PP()
 {
-	// Destroy attachments (images)
-	color_1.destroy(c.device);
-	depth.destroy(c.device);
-	color_2.destroy(c.device);
+	std::cout << __func__ << "()" << std::endl;
 
-	// Framebuffers
-	for (auto framebuffer : framebuffers)
+	VkFormat colorFormat = swapChain.imageFormat;
+	VkFormat depthFormat = findDepthFormat();
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 1.0f;
+
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	samplerInfo.minLod = 0.f;
+	samplerInfo.maxLod = 0.f;
+	samplerInfo.mipLodBias = 0.0f;
+
+	// Color_1 -------------------------------------
+
+	createImage(
+		swapChain.extent.width,
+		swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,	//msaaSamples,
+		colorFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		color_1.image,
+		color_1.memory);
+
+	color_1.view = createImageView(color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(c.device, &samplerInfo, nullptr, &color_1.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// Depth -------------------------------------
+
+	createImage(swapChain.extent.width,
+		swapChain.extent.height,
+		1,
+		c.msaaSamples,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depth.image,
+		depth.memory);
+
+	depth.view = createImageView(depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+
+	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
+	transitionImageLayout(depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+
+	if (vkCreateSampler(c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create depth sampler!");
+}
+
+// (14)
+/// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
+void VulkanEnvironment::createFramebuffers_PP()
+{
+	std::cout << __func__ << "()" << std::endl;
+
+	framebuffers.resize(swapChain.views.size());
+	std::vector<VkImageView> attachments;
+
+	// Framebuffers (2) for each swapChainImage
+	for (size_t i = 0; i < swapChain.views.size(); i++)
 	{
-		vkDestroyFramebuffer(c.device, framebuffer[0], nullptr);
-		vkDestroyFramebuffer(c.device, framebuffer[1], nullptr);
+		// Framebuffer 1 (basic color)
+		VkFramebufferCreateInfo framebufferInfo_1{};
+		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_1.renderPass = renderPass[0];								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view };
+		framebufferInfo_1.attachmentCount = attachments.size();
+		framebufferInfo_1.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+		framebufferInfo_1.width = swapChain.extent.width;
+		framebufferInfo_1.height = swapChain.extent.height;
+		framebufferInfo_1.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 1!");
+
+		// Framebuffer 2 (post-processing)
+		VkFramebufferCreateInfo framebufferInfo_2{};
+		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_2.renderPass = renderPass[1];
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, swapChain.views[i] };
+		framebufferInfo_2.attachmentCount = attachments.size();
+		framebufferInfo_2.pAttachments = attachments.data();
+		framebufferInfo_2.width = swapChain.extent.width;
+		framebufferInfo_2.height = swapChain.extent.height;
+		framebufferInfo_2.layers = 1;
+
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
-
-	// Render pass
-	vkDestroyRenderPass(c.device, renderPass[0], nullptr);
-	vkDestroyRenderPass(c.device, renderPass[1], nullptr);
-
-	swapChain.destroy(c.device);
 }
 
-/**
- * Cleans up the VkDebugUtilsMessengerEXT object.
- * @param instance Vulkan instance (the debug messenger is specific to our Vulkan instance and its layers)
- * @param debugMessenger Debug messenger object
- * @param pAllocator Optional allocator callback
- */
-void VulkanCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-{
-	// Similarly to vkCreateDebugUtilsMessengerEXT, the extension function needs to be explicitly loaded.
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr)
-		func(instance, debugMessenger, pAllocator);
-}
-
-void VulkanEnvironment::cleanup()
-{
-	vkDestroyCommandPool(c.device, commandPool, nullptr);						// Command pool
-
-	c.destroy();
-}
 
 // Independent methods ----------------------------------------------
 
@@ -1764,4 +1763,5 @@ VkBool32 VulkanCore::wideLinesSupported()
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 	return deviceFeatures.wideLines;
 }
+
 

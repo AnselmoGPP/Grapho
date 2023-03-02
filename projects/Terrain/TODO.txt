@@ -1,12 +1,10 @@
 TODO:
 	Ocean, sand, trees/bush, rocks
-	Postprocessing with MSAA
 	Python script
 	mipmaps
 	Improve distance texture change & texture scaling
 	No blurr between textures starting from X distance
 	Sun with high-dynamic-range rendering
-	Get depth buffer for PP from msaa (multiple attachments)
 	newPostProc()
 	createCommandBuffer()
 	attachment properties (loadOp...)
