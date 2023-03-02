@@ -32,7 +32,7 @@ extern std::vector<uint16_t> noIndices;		// Vector with 0 indices
 */
 class ModelData
 {
-	VulkanEnvironment& e;
+	VulkanEnvironment* e;
 	VertexLoader* vertexLoader;
 	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 	ShaderIter vertexShader;

@@ -49,21 +49,21 @@ Texture::~Texture()
 
 	if (e)
 	{
-		vkDestroySampler(e->device, textureSampler, nullptr);
-		vkDestroyImage(e->device, textureImage, nullptr);
-		vkDestroyImageView(e->device, textureImageView, nullptr);
-		vkFreeMemory(e->device, textureImageMemory, nullptr);
+		vkDestroySampler(e->c.device, textureSampler, nullptr);
+		vkDestroyImage(e->c.device, textureImage, nullptr);
+		vkDestroyImageView(e->c.device, textureImageView, nullptr);
+		vkFreeMemory(e->c.device, textureImageMemory, nullptr);
 	}
 }
 
-void Texture::loadAndCreateTexture(VulkanEnvironment& e)
+void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 {
 	if(path)
 		std::cout << __func__ << "(): " << path << std::endl;
 	else
 		std::cout << __func__ << "(): " << "In-code generated texture" << std::endl;
 
-	this->e = &e;
+	this->e = e;
 	
 	createTextureImage();
 	createTextureImageView();
@@ -91,7 +91,7 @@ void Texture::createTextureImage()
 	VkDeviceMemory stagingBufferMemory;
 
 	createBuffer(
-		*e,
+		e,
 		imageSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -100,9 +100,9 @@ void Texture::createTextureImage()
 
 	// Copy directly the pixel values from the image we loaded to the staging-buffer.
 	void* data;
-	vkMapMemory(e->device, stagingBufferMemory, 0, imageSize, 0, &data);	// vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (stagingBufferMemory). We have to provide the logical device that owns the memory (e.device).
+	vkMapMemory(e->c.device, stagingBufferMemory, 0, imageSize, 0, &data);	// vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (stagingBufferMemory). We have to provide the logical device that owns the memory (e.device).
 	memcpy(data, pixels, static_cast<size_t>(imageSize));					// Copies a number of bytes (imageSize) from a source (pixels) to a destination (data).
-	vkUnmapMemory(e->device, stagingBufferMemory);							// Unmap a previously mapped memory object (stagingBufferMemory).
+	vkUnmapMemory(e->c.device, stagingBufferMemory);							// Unmap a previously mapped memory object (stagingBufferMemory).
 	
 	stbi_image_free(pixels);	// Clean up the original pixel array
 
@@ -126,8 +126,8 @@ void Texture::createTextureImage()
 	generateMipmaps(textureImage, imageFormat, texWidth, texHeight, mipLevels);
 
 	// Cleanup the staging buffer and its memory
-	vkDestroyBuffer(e->device, stagingBuffer, nullptr);
-	vkFreeMemory(e->device, stagingBufferMemory, nullptr);
+	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
+	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
 	std::cout << __func__ << std::endl;
 }
 
@@ -167,7 +167,7 @@ void Texture::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWi
 {
 	// Check if the image format supports linear blitting. We are using vkCmdBlitImage, but it's not guaranteed to be supported on all platforms bacause it requires our texture image format to support linear filtering, so we check it with vkGetPhysicalDeviceFormatProperties.
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(e->physicalDevice, imageFormat, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(e->c.physicalDevice, imageFormat, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
 	{
 		throw std::runtime_error("Texture image format does not support linear blitting!");
@@ -285,11 +285,11 @@ void Texture::createTextureSampler()
 	samplerInfo.addressModeV = addressMode;
 	samplerInfo.addressModeW = addressMode;
 
-	if (e->supportsAF)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
+	if (e->c.supportsAF)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
 	{
 		samplerInfo.anisotropyEnable = VK_TRUE;							// Specify if anisotropic filtering should be used
 		VkPhysicalDeviceProperties properties{};
-		vkGetPhysicalDeviceProperties(e->physicalDevice, &properties);
+		vkGetPhysicalDeviceProperties(e->c.physicalDevice, &properties);
 		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;		// another option:  samplerInfo.maxAnisotropy = 1.0f;
 	}
 	else
@@ -308,7 +308,7 @@ void Texture::createTextureSampler()
 	samplerInfo.maxLod = static_cast<float>(mipLevels);	// lod: Level Of Detail
 	samplerInfo.mipLodBias = 0.0f;								// Used for changing the lod value. It forces to use lower "lod" and "level" than it would normally use
 
-	if (vkCreateSampler(e->device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+	if (vkCreateSampler(e->c.device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create texture sampler!");
 	/*
 	* VkImage holds the mipmap data. VkSampler controls how that data is read while rendering.

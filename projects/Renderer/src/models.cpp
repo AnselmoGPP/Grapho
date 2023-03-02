@@ -7,15 +7,15 @@ std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
 
 ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
-	: e(environment),
+	: e(&environment),
 	primitiveTopology(primitiveTopology),
 	vertexShader(vertexShader),
 	fragmentShader(fragmentShader),
 	hasTransparencies(transparency),
 	textures(textures),
 	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
-	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e.minUniformBufferOffsetAlignment),
-	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e.minUniformBufferOffsetAlignment),
+	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
+	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
 	renderPassIndex(renderPassIndex),
 	layer(layer),
 	activeRenders(activeRenders),
@@ -105,7 +105,7 @@ void ModelData::createDescriptorSetLayout()
 		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
 		inputAttachmentLayoutBinding.binding = bindNumber++;
 		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		inputAttachmentLayoutBinding.descriptorCount = 2;
+		inputAttachmentLayoutBinding.descriptorCount = e->inputAttachmentCount;
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -118,7 +118,7 @@ void ModelData::createDescriptorSetLayout()
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
 
-	if (vkCreateDescriptorSetLayout(e.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(e->c.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor set layout!");
 }
 
@@ -133,7 +133,7 @@ void ModelData::createGraphicsPipeline()
 	pipelineLayoutInfo.pushConstantRangeCount = 0;				// Optional. <<< Push constants are another way of passing dynamic values to shaders.
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;			// Optional
 
-	if (vkCreatePipelineLayout(e.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(e->c.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
 
 	// Read shader files
@@ -180,15 +180,15 @@ void ModelData::createGraphicsPipeline()
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)e.swapChainExtent.width;
-	viewport.height = (float)e.swapChainExtent.height;
+	viewport.width = (float)e->swapChainExtent.width;
+	viewport.height = (float)e->swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	// Scissor rectangle: Defines in which region pixels will actually be stored. Pixels outside the scissor rectangles will be discarded by the rasterizer. It works like a filter rather than a transformation.
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
-	scissor.extent = e.swapChainExtent;
+	scissor.extent = e->swapChainExtent;
 
 	// Viewport state: Combines the viewport and scissor rectangle into a viewport state. Multiple viewports and scissors require enabling a GPU feature.
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -215,9 +215,9 @@ void ModelData::createGraphicsPipeline()
 	// Multisampling: One way to perform anti-aliasing. Combines the fragment shader results of multiple polygons that rasterize to the same pixel. Requires enabling a GPU feature.
 	VkPipelineMultisampleStateCreateInfo multisampling{};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.rasterizationSamples = e.msaaSamples;	// VK_SAMPLE_COUNT_1_BIT);	// <<<
-	multisampling.sampleShadingEnable = (e.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
-	if (e.add_SS)
+	multisampling.rasterizationSamples = e->c.msaaSamples;	// VK_SAMPLE_COUNT_1_BIT);	// <<<
+	multisampling.sampleShadingEnable = (e->c.add_SS ? VK_TRUE : VK_FALSE);	// Enable sample shading in the pipeline
+	if (e->c.add_SS)
 		multisampling.minSampleShading = .2f;								// [Optional] Min fraction for sample shading; closer to one is smoother
 	multisampling.pSampleMask = nullptr;									// [Optional]
 	multisampling.alphaToCoverageEnable = VK_FALSE;							// [Optional]
@@ -306,12 +306,12 @@ void ModelData::createGraphicsPipeline()
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = nullptr;					// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = e.renderPass[renderPassIndex];// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
+	pipelineInfo.renderPass = e->renderPass[renderPassIndex];// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;		// [Optional] Specify the handle of an existing pipeline.
 	pipelineInfo.basePipelineIndex = -1;					// [Optional] Reference another pipeline that is about to be created by index.
 
-	if (vkCreateGraphicsPipelines(e.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(e->c.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 	
 	// Cleanup
@@ -327,7 +327,7 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
 
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(e.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule(e->c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create shader module!");
 
 	return shaderModule;
@@ -351,9 +351,9 @@ void ModelData::createVertexBuffer()
 
 	// Fill the staging buffer (by mapping the buffer memory into CPU accessible memory: https://en.wikipedia.org/wiki/Memory-mapped_I/O)
 	void* data;
-	vkMapMemory(e.device, stagingBufferMemory, 0, bufferSize, 0, &data);	// Access a memory region. Use VK_WHOLE_SIZE to map all of the memory.
+	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);	// Access a memory region. Use VK_WHOLE_SIZE to map all of the memory.
 	memcpy(data, vertices.data(), (size_t)bufferSize);						// Copy the vertex data to the mapped memory.
-	vkUnmapMemory(e.device, stagingBufferMemory);							// Unmap memory.
+	vkUnmapMemory(e->c.device, stagingBufferMemory);							// Unmap memory.
 
 	/*
 		Note:
@@ -379,8 +379,8 @@ void ModelData::createVertexBuffer()
 	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
 	// Clean up
-	vkDestroyBuffer(e.device, stagingBuffer, nullptr);
-	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
+	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
+	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
 
 	//std::cout << "Vertex count: " << bufferSize/32 << std::endl;
 	//for (size_t i = 0; i < bufferSize/32; i++)
@@ -394,7 +394,7 @@ void ModelData::createVertexBuffer()
 */
 void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
-	VkCommandBuffer commandBuffer = e.beginSingleTimeCommands();
+	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
 	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).
 	VkBufferCopy copyRegion{};
@@ -404,7 +404,7 @@ void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize 
 
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-	e.endSingleTimeCommands(commandBuffer);
+	e->endSingleTimeCommands(commandBuffer);
 }
 
 // (20)
@@ -425,9 +425,9 @@ void ModelData::createIndexBuffer()
 
 	// Fill the staging buffer
 	void* data;
-	vkMapMemory(e.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);
 	memcpy(data, indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(e.device, stagingBufferMemory);
+	vkUnmapMemory(e->c.device, stagingBufferMemory);
 
 	// Create the vertex buffer
 	createBuffer(
@@ -442,8 +442,8 @@ void ModelData::createIndexBuffer()
 	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
 	// Clean up
-	vkDestroyBuffer(e.device, stagingBuffer, nullptr);
-	vkFreeMemory(e.device, stagingBufferMemory, nullptr);
+	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
+	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
 }
 
 // (22)
@@ -456,28 +456,28 @@ void ModelData::createDescriptorPool()
 	if (vsDynUBO.range)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;					// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptors of this type to allocate
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());	// Number of descriptors of this type to allocate
 		poolSizes.push_back(pool);
 	}
 
 	if (fsUBO.range)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
 		poolSizes.push_back(pool);
 	}
 
 	for (size_t i = 0; i < textures.size(); ++i)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
 		poolSizes.push_back(pool);
 	}
 
 	if (renderPassIndex)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		pool.descriptorCount = static_cast<uint32_t>(e.swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
 		poolSizes.push_back(pool);
 	}
 
@@ -486,33 +486,33 @@ void ModelData::createDescriptorPool()
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = static_cast<uint32_t>(e.swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
+	poolInfo.maxSets = static_cast<uint32_t>(e->swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
 	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
 
-	if (vkCreateDescriptorPool(e.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+	if (vkCreateDescriptorPool(e->c.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create descriptor pool!");
 }
 
 // (23)
 void ModelData::createDescriptorSets()
 {
-	descriptorSets.resize(e.swapChainImages.size());
+	descriptorSets.resize(e->swapChainImages.size());
 
-	std::vector<VkDescriptorSetLayout> layouts(e.swapChainImages.size(), descriptorSetLayout);
+	std::vector<VkDescriptorSetLayout> layouts(e->swapChainImages.size(), descriptorSetLayout);
 
 	// Describe the descriptor set. Here, we will create one descriptor set for each swap chain image, all with the same layout
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;										// Descriptor pool to allocate from
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(e.swapChainImages.size());	// Number of descriptor sets to allocate
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(e->swapChainImages.size());	// Number of descriptor sets to allocate
 	allocInfo.pSetLayouts = layouts.data();											// Descriptor layout to base them on
 
 	// Allocate the descriptor set handles
-	if (vkAllocateDescriptorSets(e.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(e->c.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate descriptor sets!");
 
 	// Populate each descriptor set.
-	for (size_t i = 0; i < e.swapChainImages.size(); i++)
+	for (size_t i = 0; i < e->swapChainImages.size(); i++)
 	{
 		// UBO vertex shader
 		VkDescriptorBufferInfo bufferInfo_vs{};
@@ -537,11 +537,11 @@ void ModelData::createDescriptorSets()
 		// Input attachments
 		std::vector<VkDescriptorImageInfo> inputAttachInfo(2);
 		inputAttachInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[0].imageView = e.color_1.view;
-		inputAttachInfo[0].sampler = e.color_1.sampler;
+		inputAttachInfo[0].imageView = e->color_1.view;
+		inputAttachInfo[0].sampler = e->color_1.sampler;
 		inputAttachInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[1].imageView = e.depth.view;
-		inputAttachInfo[1].sampler = e.depth.sampler;
+		inputAttachInfo[1].imageView = e->depth.view;
+		inputAttachInfo[1].sampler = e->depth.sampler;
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;
@@ -611,7 +611,7 @@ void ModelData::createDescriptorSets()
 			descriptorWrites.push_back(descriptor);
 		}
 
-		vkUpdateDescriptorSets(e.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
+		vkUpdateDescriptorSets(e->c.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);	// Accepts 2 kinds of arrays as parameters: VkWriteDescriptorSet, VkCopyDescriptorSet.
 	}
 }
 
@@ -628,32 +628,32 @@ void ModelData::recreate_Pipeline_Descriptors()
 void ModelData::cleanup_Pipeline_Descriptors()
 {
 	// Graphics pipeline
-	vkDestroyPipeline(e.device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(e.device, pipelineLayout, nullptr);
+	vkDestroyPipeline(e->c.device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(e->c.device, pipelineLayout, nullptr);
 
 	// Uniform buffers & memory
 	vsDynUBO.destroyUniformBuffers();
 	fsUBO.destroyUniformBuffers();
 
 	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
-	vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);
+	vkDestroyDescriptorPool(e->c.device, descriptorPool, nullptr);
 }
 
 void ModelData::cleanup()
 {
 	// Descriptor set layout
-	vkDestroyDescriptorSetLayout(e.device, descriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(e->c.device, descriptorSetLayout, nullptr);
 	
 	// Index
 	if (indices.size())
 	{
-		vkDestroyBuffer(e.device, indexBuffer, nullptr);
-		vkFreeMemory(e.device, indexBufferMemory, nullptr);
+		vkDestroyBuffer(e->c.device, indexBuffer, nullptr);
+		vkFreeMemory(e->c.device, indexBufferMemory, nullptr);
 	}
 
 	// Vertex
-	vkDestroyBuffer(e.device, vertexBuffer, nullptr);
-	vkFreeMemory(e.device, vertexBufferMemory, nullptr);
+	vkDestroyBuffer(e->c.device, vertexBuffer, nullptr);
+	vkFreeMemory(e->c.device, vertexBufferMemory, nullptr);
 
 }
 
@@ -668,7 +668,7 @@ void ModelData::setRenderCount(size_t numRenders)
 		if (fullyConstructed)
 		{
 			vsDynUBO.destroyUniformBuffers();
-			vkDestroyDescriptorPool(e.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
+			vkDestroyDescriptorPool(e->c.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
 
 			vsDynUBO.createUniformBuffers();	// Create a UBO with the new size
 			createDescriptorPool();				// Required for creating descriptor sets

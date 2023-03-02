@@ -56,17 +56,117 @@ struct Framebuffer
 	//std::vector<VkImageView>	swapChainImageViews;
 };
 
-class Image
+// Image used as attachment in a render pass. One per render pass.
+struct Image
 {
-public:
 	Image();
+	void destroyImage(VkDevice device);
 
-	VkImage image;
-	VkDeviceMemory memory;
-	VkImageView view;
-	VkSampler sampler;
+	VkImage			image;
+	VkDeviceMemory	memory;
+	VkImageView		view;
+	VkSampler		sampler;	//!< Images are accessed through image views rather than directly
 };
 
+struct swapChain
+{
+	VkSwapchainKHR								swapChain;				//!< Swap chain object.
+	std::vector<VkImage>						swapChainImages;		//!< List. Opaque handle to an image object.
+	std::vector<VkImageView>					swapChainImageViews;	//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
+	std::vector<std::array<VkFramebuffer, 2>>	swapChainFramebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+
+	VkFormat									swapChainImageFormat;
+	VkExtent2D									swapChainExtent;
+};
+
+// Render pass abstract data type. Contains the attachments (except the swapchain images)
+//struct renderPass
+//{
+//	std::vector<VkRenderPass> renderPass;
+//
+//	Image color_1;
+//	Image depth;
+//	Image color_2;
+//
+//	virtual void createRenderPass();
+//	virtual void createImageResources();
+//	virtual void createFramebuffers();
+//};
+//
+//// Render pass using multisample (MS) and Postprocessing (PP)
+//struct renderPass_MS_PP : renderPass
+//{
+//	std::vector<VkRenderPass> renderPass;
+//
+//	void createRenderPass() override;
+//	void createImageResources() override;
+//	void createFramebuffers() override;
+//
+//	Image color_1;
+//	Image depth;
+//	Image color_2;
+//};
+
+class VulkanCore
+{
+	const std::vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+	const std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };	//!< Swap chain: Queue of images that are waiting to be presented to the screen. Our application will acquire such an image to draw to it, and then return it to the queue. Its general purpose is to synchronize the presentation of images with the refresh rate of the screen.
+
+public:
+	VulkanCore();
+
+	uint32_t width = 1920 / 2;		// <<< Does this change when recreating swap chain?
+	uint32_t height = 1080 / 2;
+
+	bool printInfo = true;
+	const bool add_MSAA = true;		//!< Shader MSAA (MultiSample AntiAliasing). 
+	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const unsigned numRenderPasses = 2;	//!< Number of render passes
+
+	GLFWwindow*					window;				//!< Opaque window object.
+	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
+	VkDebugUtilsMessengerEXT	debugMessenger;		//!< Opaque handle to a debug messenger object (the debug callback is part of it).
+	VkSurfaceKHR				surface;			//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
+
+	VkPhysicalDevice			physicalDevice;		//!< Opaque handle to a physical device object.
+	VkSampleCountFlagBits		msaaSamples;		//!< Number of samples for MSAA (MultiSampling AntiAliasing)
+	VkDevice					device;				//!< Opaque handle to a device object.
+
+	VkQueue						graphicsQueue;		//!< Opaque handle to a queue object (computer graphics).
+	VkQueue						presentQueue;		//!< Opaque handle to a queue object (presentation to window surface).
+
+	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
+	VkDeviceSize minUniformBufferOffsetAlignment;	//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
+
+	SwapChainSupportDetails	querySwapChainSupport();
+	QueueFamilyIndices findQueueFamilies();
+
+private:
+
+	void initWindow();
+	void createInstance();
+	void setupDebugMessenger();
+	void createSurface();
+	void pickPhysicalDevice();
+	void createLogicalDevice();
+
+	bool checkValidationLayerSupport(const std::vector<const char*>& requiredLayers);
+	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+	std::vector<const char*> getRequiredExtensions();
+	bool checkExtensionSupport(const char* const* requiredExtensions, uint32_t reqExtCount);
+	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
+	int evaluateDevice(VkPhysicalDevice device);
+	VkSampleCountFlagBits getMaxUsableSampleCount(bool getMinimum);
+	VkDeviceSize getMinUniformBufferOffsetAlignment();
+	bool supportsAnisotropicFiltering();
+	VkBool32 largePointsSupported();
+	VkBool32 wideLinesSupported();
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+	SwapChainSupportDetails	querySwapChainSupport(VkPhysicalDevice device);
+};
 
 /**
 	@class VulkanEnvironment
@@ -86,26 +186,11 @@ public:
 */
 class VulkanEnvironment
 {
-	// Private parameters:
-
-	bool printInfo = true;
-
-	const std::vector<const char*> requiredValidationLayers = {	"VK_LAYER_KHRONOS_validation" };
-	const std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };	//!< Swap chain: Queue of images that are waiting to be presented to the screen. Our application will acquire such an image to draw to it, and then return it to the queue. Its general purpose is to synchronize the presentation of images with the refresh rate of the screen.
-
 public:
-	// Public parameters:
+	VulkanEnvironment();
+	virtual ~VulkanEnvironment();
 
-	uint32_t width      = 1920 / 2;		// <<< Does this change when recreating swap chain?
-	uint32_t height     = 1080 / 2;
-
-	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
-	const bool add_SS   = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
-	const unsigned numRenderPasses = 2;	//!< Number of render passes
-
-	VulkanEnvironment(size_t layers);
-
-	// Public methods:
+	VulkanCore c;
 
 	void			createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 	uint32_t		findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -120,19 +205,6 @@ public:
 	void			cleanup();
 
 	// Main member variables:
-
-	GLFWwindow*					window;								//!< Opaque window object.
-	VkInstance					instance;							//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
-	VkDebugUtilsMessengerEXT	debugMessenger;						//!< Opaque handle to a debug messenger object (the debug callback is part of it).
-	VkSurfaceKHR				surface;							//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
-
-	VkPhysicalDevice			physicalDevice;						//!< Opaque handle to a physical device object.
-	VkSampleCountFlagBits		msaaSamples;						//!< Number of samples for MSAA (MultiSampling AntiAliasing)
-	VkDevice					device;								//!< Opaque handle to a device object.
-
-	VkQueue						graphicsQueue;						//!< Opaque handle to a queue object (computer graphics).
-	VkQueue						presentQueue;						//!< Opaque handle to a queue object (presentation to window surface).
-
 	VkFormat					swapChainImageFormat;				//!< Swap chain format.
 	VkExtent2D					swapChainExtent;					//!< Swap chain extent.
 	
@@ -145,78 +217,63 @@ public:
 	std::vector<VkImage>		swapChainImages;					//!< List. Opaque handle to an image object.
 	std::vector<VkImageView>	swapChainImageViews;				//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkImage						resolveColorImage;					//!< Final color after resolving MSAA. One per render pass
-	VkDeviceMemory				resolveColorImageMemory;			//!< Final color after resolving MSAA. One per render pass
-	VkImageView					resolveColorImageView;				//!< Final color after resolving MSAA. RenderPass attachment. One per render pass
-	VkSampler					resolveColorSampler;				//!< Final color after using this image as input attachment
+	Image color_1;		// Basic color (one or more samples)
+	Image depth;		// Depth buffer (one or more samples)
+	Image color_2;		// for postprocessing multiple samples (if used)
 
-	VkImage						msaaColorImage;						//!< For MSAA or final color. One per render pass
-	VkDeviceMemory				msaaColorImageMemory;				//!< For MSAA or final color. One per render pass
-	VkImageView					msaaColorImageView;					//!< For MSAA or final color. RenderPass attachment. One per render pass
-
-	VkImage						depthImage;							//!< Depth buffer (image object). One per render pass
-	VkDeviceMemory				depthImageMemory;					//!< Depth buffer memory (memory object). One per render pass
-	VkImageView					depthImageView;						//!< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
-	VkSampler					depthSampler;						//!< For using this image as input attachment
-
-	Image color_1;
-	Image depth;
-	Image color_2;
-	//Image resolveColor;
-
+	const uint32_t inputAttachmentCount;
 	// Additional variables
 
-	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
-	VkDeviceSize minUniformBufferOffsetAlignment;	//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
 	std::mutex queueMutex;							//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
 	std::mutex mutCommandPool;						//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
 
 private:
-	void initWindow();
-	void createInstance();
-	void setupDebugMessenger();
-	void createSurface();
-	void pickPhysicalDevice();
-	void createLogicalDevice();
-
 	void createSwapChain();
 	void createSwapChainImageViews();
 
 	void createCommandPool();
 
-	void createRenderPass_1sample();
-	void createRenderPass_msaa();
-	void createResolveColorResources();
-	void createMsaaColorResources();
-	void createDepthResources();
-	void createImageResources();
-	void createFramebuffers();
-	void createFramebuffers_msaa();
+	virtual void createRenderPass() = 0;
+	virtual void createImageResources() = 0;
+	virtual void createFramebuffers() = 0;
 
 	// Helper methods:
-
-	bool					checkValidationLayerSupport(const std::vector<const char*>& requiredLayers);
-	void					populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-	VkResult				CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
-	std::vector<const char*> getRequiredExtensions();
-	bool					checkExtensionSupport(const char* const* requiredExtensions, uint32_t reqExtCount);
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-	int						evaluateDevice(VkPhysicalDevice device);
-	int						isDeviceSuitable_2(VkPhysicalDevice device, const int mode);
-	VkSampleCountFlagBits	getMaxUsableSampleCount(bool getMinimum);
-	QueueFamilyIndices		findQueueFamilies(VkPhysicalDevice device);
-	bool					checkDeviceExtensionSupport(VkPhysicalDevice device);
-	SwapChainSupportDetails	querySwapChainSupport(VkPhysicalDevice device);
 	VkSurfaceFormatKHR		chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR		chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D				chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-	VkFormat				findDepthFormat();
 	VkFormat				findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	bool					hasStencilComponent(VkFormat format);
-	VkDeviceSize			getMinUniformBufferOffsetAlignment();
-	bool					supportsAnisotropicFiltering();
-	VkBool32				largePointsSupported();
-	VkBool32				wideLinesSupported();
+
+protected:
+	VkFormat				findDepthFormat();
+};
+
+/// Creation of render pass & framebuffer (MSAA + postprocessing)
+class VulkanEnv_MS_PP : public VulkanEnvironment
+{
+public:
+	VulkanEnv_MS_PP();
+	~VulkanEnv_MS_PP();
+
+
+
+private:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
+};
+
+/// Creation of render pass & framebuffer (postprocessing)
+class VulkanEnv_PP : public VulkanEnvironment
+{
+public:
+	VulkanEnv_PP();
+	~VulkanEnv_PP();
+
+private:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
 };
 
 

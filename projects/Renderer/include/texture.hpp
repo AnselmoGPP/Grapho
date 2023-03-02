@@ -33,7 +33,7 @@ public:
 	//Texture(const Texture& obj);			//!< Copy constructor.
 	~Texture();
 
-	void loadAndCreateTexture(VulkanEnvironment& e);	///< Load image and create the VkImage, VkImageView and VkSampler.
+	void loadAndCreateTexture(VulkanEnvironment* e);	///< Load image and create the VkImage, VkImageView and VkSampler.
 
 	bool			fullyConstructed;		//!< Flags if this object has been fully constructed (i.e. has a texture loaded into Vulkan).
 	uint32_t		mipLevels;				///< Number of levels (mipmaps)

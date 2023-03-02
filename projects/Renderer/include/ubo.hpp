@@ -121,7 +121,7 @@ struct Material
 */
 struct UBO
 {
-	UBO(VulkanEnvironment& e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each dynamic UBO required by the GPU).
+	UBO(VulkanEnvironment* e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each dynamic UBO required by the GPU).
 	~UBO() = default;
 
 	uint8_t* getUBOptr(size_t dynUBO);
@@ -140,7 +140,7 @@ struct UBO
 	std::vector<VkDeviceMemory>	uniformBuffersMemory;	//!< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
 private:
-	VulkanEnvironment& e;
+	VulkanEnvironment* e;
 };
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)

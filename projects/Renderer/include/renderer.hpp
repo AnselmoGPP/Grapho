@@ -37,7 +37,7 @@ class Renderer
 	int waitTime = 500;		//!< Time the loading-thread wait till next check.
 
 	// Main parameters
-	VulkanEnvironment			e;
+	VulkanEnv_MS_PP				e;
 	Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
 	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass) [0] used to render the main colors or [1] for post processing.

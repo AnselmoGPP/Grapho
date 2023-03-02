@@ -12,8 +12,8 @@
 
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers)
-	: e(layers), 
-	input(e.window, camera), 
+	:
+	input(e.c.window, camera), 
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
@@ -35,7 +35,6 @@ int Renderer::run()
 	{
 		createCommandBuffers();
 		createSyncObjects();
-
 		runThread = true;
 		thread_loadModels = std::thread(&Renderer::loadingThread, this);
 
@@ -68,7 +67,7 @@ void Renderer::createCommandBuffers()
 
 	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
 
-	if (vkAllocateCommandBuffers(e.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
 
 	// Start command buffer recording (one per swapChainImage) and a render pass
@@ -84,7 +83,6 @@ void Renderer::createCommandBuffers()
 			throw std::runtime_error("Failed to begin recording command buffer!");
 
 		// Start render pass 1 (main color):
-
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = e.renderPass[0];
@@ -103,6 +101,7 @@ void Renderer::createCommandBuffers()
 		VkClearAttachment attachmentToClear;
 		attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
+
 		VkClearRect rectangleToClear;
 		rectangleToClear.rect.offset = { 0, 0 };
 		rectangleToClear.rect.extent = e.swapChainExtent;
@@ -193,9 +192,9 @@ void Renderer::createSyncObjects()
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(e.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(e.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-			vkCreateFence(e.device, &fenceInfo, nullptr, &framesInFlight[i]) != VK_SUCCESS)
+		if (vkCreateSemaphore(e.c.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(e.c.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+			vkCreateFence(e.c.device, &fenceInfo, nullptr, &framesInFlight[i]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("Failed to create synchronization objects for a frame!");
 		}
@@ -210,20 +209,20 @@ void Renderer::renderLoop()
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
 
-	while (!glfwWindowShouldClose(e.window))
+	while (!glfwWindowShouldClose(e.c.window))
 	{
 		++frameCount;
 
 		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
 		drawFrame();
 
-		if (glfwGetKey(e.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-			glfwSetWindowShouldClose(e.window, true);
+		if (glfwGetKey(e.c.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			glfwSetWindowShouldClose(e.c.window, true);
 	}
 
 	stopThread();
 
-	vkDeviceWaitIdle(e.device);	// Waits for the logical device to finish operations. Needed for cleaning up once drawing and presentation operations (drawFrame) have finished. Use vkQueueWaitIdle for waiting for operations in a specific command queue to be finished.
+	vkDeviceWaitIdle(e.c.device);	// Waits for the logical device to finish operations. Needed for cleaning up once drawing and presentation operations (drawFrame) have finished. Use vkQueueWaitIdle for waiting for operations in a specific command queue to be finished.
 }
 
 void Renderer::stopThread()
@@ -255,11 +254,11 @@ void Renderer::stopThread()
 void Renderer::drawFrame()
 {
 	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
-	vkWaitForFences(e.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
+	vkWaitForFences(e.c.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;		// Swap chain image index (0, 1, 2)
-	VkResult result = vkAcquireNextImageKHR(e.device, e.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
+	VkResult result = vkAcquireNextImageKHR(e.c.device, e.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) 					// VK_ERROR_OUT_OF_DATE_KHR: The swap chain became incompatible with the surface and can no longer be used for rendering. Usually happens after window resize.
 	{ 
 		std::cout << "VK_ERROR_OUT_OF_DATE_KHR" << std::endl;
@@ -271,7 +270,7 @@ void Renderer::drawFrame()
 
 	// Check if this image is being used. If used, wait. Then, mark it as used by this frame.
 	if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)									// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-		vkWaitForFences(e.device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		vkWaitForFences(e.c.device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 	imagesInFlight[imageIndex] = framesInFlight[currentFrame];							// Mark the image as now being in use by this frame
 
 	updateStates(imageIndex);
@@ -290,11 +289,11 @@ void Renderer::drawFrame()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];		// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
 
-	vkResetFences(e.device, 1, &framesInFlight[currentFrame]);		// Reset the fence to the unsignaled state.
+	vkResetFences(e.c.device, 1, &framesInFlight[currentFrame]);		// Reset the fence to the unsignaled state.
 
 	{
 		const std::lock_guard<std::mutex> lock(e.queueMutex);
-		if (vkQueueSubmit(e.graphicsQueue, 1, &submitInfo, framesInFlight[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
+		if (vkQueueSubmit(e.c.graphicsQueue, 1, &submitInfo, framesInFlight[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
 			throw std::runtime_error("Failed to submit draw command buffer!");
 	}
 
@@ -318,7 +317,7 @@ void Renderer::drawFrame()
 
 	{
 		const std::lock_guard<std::mutex> lock(e.queueMutex);
-		result = vkQueuePresentKHR(e.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
+		result = vkQueuePresentKHR(e.c.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
 	}
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || input.framebufferResized) 
@@ -341,16 +340,16 @@ void Renderer::recreateSwapChain()
 
 	// Get window size
 	int width = 0, height = 0;
-	glfwGetFramebufferSize(e.window, &width, &height);
+	glfwGetFramebufferSize(e.c.window, &width, &height);
 	while (width == 0 || height == 0) 
 	{
-		glfwGetFramebufferSize(e.window, &width, &height);
+		glfwGetFramebufferSize(e.c.window, &width, &height);
 		glfwWaitEvents();
 	}
-	e.width = width;
-	e.height = height;
+	e.c.width = width;
+	e.c.height = height;
 
-	vkDeviceWaitIdle(e.device);			// We shouldn't touch resources that may be in use.
+	vkDeviceWaitIdle(e.c.device);			// We shouldn't touch resources that may be in use.
 
 	// Cleanup swapChain:
 	cleanupSwapChain();
@@ -360,7 +359,7 @@ void Renderer::recreateSwapChain()
 	e.recreate_Images_RenderPass_SwapChain();
 
 	//    - Each model
-	for (uint32_t i = 0; i < e.numRenderPasses; i++)
+	for (uint32_t i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			it->recreate_Pipeline_Descriptors();
 
@@ -375,12 +374,12 @@ void Renderer::cleanupSwapChain()
 
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-		vkQueueWaitIdle(e.graphicsQueue);
-		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		vkQueueWaitIdle(e.c.graphicsQueue);
+		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 	}
 
 	// Models
-	for(uint32_t i = 0; i < e.numRenderPasses; i++)
+	for(uint32_t i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			it->cleanup_Pipeline_Descriptors();
 
@@ -398,14 +397,14 @@ void Renderer::cleanup()
 	// Renderer
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-		vkQueueWaitIdle(e.graphicsQueue);
-		vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
+		vkQueueWaitIdle(e.c.graphicsQueue);
+		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {							// Semaphores (render & image available) & fences (in flight)
-		vkDestroySemaphore(e.device, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore(e.device, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(e.device, framesInFlight[i], nullptr);
+		vkDestroySemaphore(e.c.device, renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore(e.c.device, imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence(e.c.device, framesInFlight[i], nullptr);
 	}
 
 	std::cout << __func__ << "() 2" << std::endl;
@@ -420,7 +419,7 @@ void Renderer::cleanup()
 
 	// Cleanup shaders
 	for (ShaderIter it = shaders.begin(); it != shaders.end(); it++)
-		vkDestroyShaderModule(e.device, *it, nullptr);
+		vkDestroyShaderModule(e.c.device, *it, nullptr);
 	shaders.clear();
 
 	// Cleanup environment
@@ -449,7 +448,7 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
-	for(uint32_t i = 0; i < e.numRenderPasses; i++)
+	for(uint32_t i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			if (it == model)
 			{
@@ -546,7 +545,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
 
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(e.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create shader module!");
 
 	shaders.push_back(shaderModule);
@@ -555,7 +554,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 
 void Renderer::deleteShader(ShaderIter shader)
 {
-	vkDestroyShaderModule(e.device, *shader, nullptr);
+	vkDestroyShaderModule(e.c.device, *shader, nullptr);
 	shaders.erase(shader);
 }
 
@@ -623,7 +622,7 @@ void Renderer::loadingThread()
 			{
 				while (countTexLoad)
 				{
-					beginTexLoad->loadAndCreateTexture(e);
+					beginTexLoad->loadAndCreateTexture(&e);
 					++beginTexLoad;
 					--countTexLoad;
 				}
@@ -728,23 +727,23 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	// Copy the data in the uniform buffer object to the current uniform buffer
 	// <<< Using a UBO this way is not the most efficient way to pass frequently changing values to the shader. Push constants are more efficient for passing a small buffer of data to shaders.
-	for(i = 0; i < e.numRenderPasses; i++)
+	for(i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 		{
 			if (it->vsDynUBO.totalBytes)
 			{
 				void* data;
-				vkMapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+				vkMapMemory(e.c.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 				memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);														// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-				vkUnmapMemory(e.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+				vkUnmapMemory(e.c.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);								// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 			}
 
 			if (it->fsUBO.totalBytes)
 			{
 				void* data;
-				vkMapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
+				vkMapMemory(e.c.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
 				memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
-				vkUnmapMemory(e.device, it->fsUBO.uniformBuffersMemory[currentImage]);
+				vkUnmapMemory(e.c.device, it->fsUBO.uniformBuffersMemory[currentImage]);
 			}
 		}
 
@@ -753,8 +752,8 @@ void Renderer::updateStates(uint32_t currentImage)
 	{
 		{
 			const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-			vkQueueWaitIdle(e.graphicsQueue);
-			vkFreeCommandBuffers(e.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
+			vkQueueWaitIdle(e.c.graphicsQueue);
+			vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
 		}
 
 		createCommandBuffers();
@@ -780,7 +779,7 @@ size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); 
 
 size_t Renderer::getCommandsCount() { return commandsCount; }
 
-float Renderer::getAspectRatio() { return (float)e.height / e.width; }
+float Renderer::getAspectRatio() { return (float)e.c.height / e.c.width; }
 
-glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.width, e.height); }
+glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.c.width, e.c.height); }
 
