@@ -37,30 +37,11 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR>	presentModes;		// Available presentation modes
 };
 
-/// Structure for storing all the attachments of a set of VkFramebuffer.
-/** Each framebuffer has a number of attachments. Each swapChainImage has one or more framebuffers associated (framebufferSet). Each framebufferSet have the same attachments the other sets have (i.e. they share a common group of attachments)  */
-struct Framebuffer
-{
-	VkRenderPass	renderPass;
-
-	std::vector<framebufferSet> swapChainFramebuffer;	///< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][numRenderPasses].
-
-	VkImage			colorImage;			///< For MSAA. One per render pass
-	VkDeviceMemory	colorImageMemory;	///< For MSAA. One per render pass
-	VkImageView		colorImageView;		///< For MSAA. RenderPass attachment. One per render pass
-
-	VkImage			depthImage;			///< Depth buffer (image object). One per render pass
-	VkDeviceMemory	depthImageMemory;	///< Depth buffer memory (memory object). One per render pass
-	VkImageView		depthImageView;		///< Depth buffer image view (images are accessed through image views rather than directly). RenderPass attachment. One per render pass
-
-	//std::vector<VkImageView>	swapChainImageViews;
-};
-
 // Image used as attachment in a render pass. One per render pass.
 struct Image
 {
 	Image();
-	void destroyImage(VkDevice device);
+	void destroy(VkDevice device);
 
 	VkImage			image;
 	VkDeviceMemory	memory;
@@ -68,44 +49,18 @@ struct Image
 	VkSampler		sampler;	//!< Images are accessed through image views rather than directly
 };
 
-struct swapChain
+struct SwapChain
 {
-	VkSwapchainKHR								swapChain;				//!< Swap chain object.
-	std::vector<VkImage>						swapChainImages;		//!< List. Opaque handle to an image object.
-	std::vector<VkImageView>					swapChainImageViews;	//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
-	std::vector<std::array<VkFramebuffer, 2>>	swapChainFramebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	SwapChain();
+	void destroy(VkDevice device);
 
-	VkFormat									swapChainImageFormat;
-	VkExtent2D									swapChainExtent;
+	VkSwapchainKHR								swapChain;		//!< Swap chain object.
+	std::vector<VkImage>						images;			//!< List. Opaque handle to an image object.
+	std::vector<VkImageView>					views;			//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
+
+	VkFormat									imageFormat;
+	VkExtent2D									extent;
 };
-
-// Render pass abstract data type. Contains the attachments (except the swapchain images)
-//struct renderPass
-//{
-//	std::vector<VkRenderPass> renderPass;
-//
-//	Image color_1;
-//	Image depth;
-//	Image color_2;
-//
-//	virtual void createRenderPass();
-//	virtual void createImageResources();
-//	virtual void createFramebuffers();
-//};
-//
-//// Render pass using multisample (MS) and Postprocessing (PP)
-//struct renderPass_MS_PP : renderPass
-//{
-//	std::vector<VkRenderPass> renderPass;
-//
-//	void createRenderPass() override;
-//	void createImageResources() override;
-//	void createFramebuffers() override;
-//
-//	Image color_1;
-//	Image depth;
-//	Image color_2;
-//};
 
 class VulkanCore
 {
@@ -140,6 +95,7 @@ public:
 
 	SwapChainSupportDetails	querySwapChainSupport();
 	QueueFamilyIndices findQueueFamilies();
+	void destroy();
 
 private:
 
@@ -162,6 +118,7 @@ private:
 	VkBool32 largePointsSupported();
 	VkBool32 wideLinesSupported();
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
@@ -199,33 +156,25 @@ public:
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
-	void			DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();
 	void			cleanup();
 
 	// Main member variables:
-	VkFormat					swapChainImageFormat;				//!< Swap chain format.
-	VkExtent2D					swapChainExtent;					//!< Swap chain extent.
-	
-	VkCommandPool				commandPool;						//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
+	VkCommandPool commandPool;				//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
-	VkRenderPass				renderPass[2];						//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	std::vector<std::array<VkFramebuffer, 2>> swapChainFramebuffers;//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	VkRenderPass renderPass[2];				//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	Image color_1;							// Basic color (one or more samples)
+	Image depth;							// Depth buffer (one or more samples)
+	Image color_2;							// For postprocessing multiple samples (if used)
+	SwapChain swapChain;					// Final color. Swapchain elements.
 
-	VkSwapchainKHR				swapChain;							//!< Swap chain object.
-	std::vector<VkImage>		swapChainImages;					//!< List. Opaque handle to an image object.
-	std::vector<VkImageView>	swapChainImageViews;				//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
-
-	Image color_1;		// Basic color (one or more samples)
-	Image depth;		// Depth buffer (one or more samples)
-	Image color_2;		// for postprocessing multiple samples (if used)
+	std::vector<std::array<VkFramebuffer, 2>> framebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 
 	const uint32_t inputAttachmentCount;
-	// Additional variables
 
-	std::mutex queueMutex;							//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
-	std::mutex mutCommandPool;						//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
+	std::mutex queueMutex;					//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
+	std::mutex mutCommandPool;				//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
 
 private:
 	void createSwapChain();
@@ -246,6 +195,15 @@ private:
 
 protected:
 	VkFormat				findDepthFormat();
+};
+
+
+class modularCreator
+{
+public:
+	virtual void createRenderPass() = 0;
+	virtual void createImageResources() = 0;
+	virtual void createFramebuffers() = 0;
 };
 
 /// Creation of render pass & framebuffer (MSAA + postprocessing)

@@ -180,15 +180,15 @@ void ModelData::createGraphicsPipeline()
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)e->swapChainExtent.width;
-	viewport.height = (float)e->swapChainExtent.height;
+	viewport.width = (float)e->swapChain.extent.width;
+	viewport.height = (float)e->swapChain.extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	// Scissor rectangle: Defines in which region pixels will actually be stored. Pixels outside the scissor rectangles will be discarded by the rasterizer. It works like a filter rather than a transformation.
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
-	scissor.extent = e->swapChainExtent;
+	scissor.extent = e->swapChain.extent;
 
 	// Viewport state: Combines the viewport and scissor rectangle into a viewport state. Multiple viewports and scissors require enabling a GPU feature.
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -456,28 +456,28 @@ void ModelData::createDescriptorPool()
 	if (vsDynUBO.range)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;					// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());	// Number of descriptors of this type to allocate
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());	// Number of descriptors of this type to allocate
 		poolSizes.push_back(pool);
 	}
 
 	if (fsUBO.range)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());
 		poolSizes.push_back(pool);
 	}
 
 	for (size_t i = 0; i < textures.size(); ++i)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());
 		poolSizes.push_back(pool);
 	}
 
 	if (renderPassIndex)
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		pool.descriptorCount = static_cast<uint32_t>(e->swapChainImages.size());
+		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());
 		poolSizes.push_back(pool);
 	}
 
@@ -486,7 +486,7 @@ void ModelData::createDescriptorPool()
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = static_cast<uint32_t>(e->swapChainImages.size());	// Max. number of individual descriptor sets that may be allocated
+	poolInfo.maxSets = static_cast<uint32_t>(e->swapChain.images.size());	// Max. number of individual descriptor sets that may be allocated
 	poolInfo.flags = 0;													// Determine if individual descriptor sets can be freed (VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or not (0). Since we aren't touching the descriptor set after its creation, we put 0 (default).
 
 	if (vkCreateDescriptorPool(e->c.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
@@ -496,15 +496,15 @@ void ModelData::createDescriptorPool()
 // (23)
 void ModelData::createDescriptorSets()
 {
-	descriptorSets.resize(e->swapChainImages.size());
+	descriptorSets.resize(e->swapChain.images.size());
 
-	std::vector<VkDescriptorSetLayout> layouts(e->swapChainImages.size(), descriptorSetLayout);
+	std::vector<VkDescriptorSetLayout> layouts(e->swapChain.images.size(), descriptorSetLayout);
 
 	// Describe the descriptor set. Here, we will create one descriptor set for each swap chain image, all with the same layout
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;										// Descriptor pool to allocate from
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(e->swapChainImages.size());	// Number of descriptor sets to allocate
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(e->swapChain.images.size());	// Number of descriptor sets to allocate
 	allocInfo.pSetLayouts = layouts.data();											// Descriptor layout to base them on
 
 	// Allocate the descriptor set handles
@@ -512,7 +512,7 @@ void ModelData::createDescriptorSets()
 		throw std::runtime_error("Failed to allocate descriptor sets!");
 
 	// Populate each descriptor set.
-	for (size_t i = 0; i < e->swapChainImages.size(); i++)
+	for (size_t i = 0; i < e->swapChain.images.size(); i++)
 	{
 		// UBO vertex shader
 		VkDescriptorBufferInfo bufferInfo_vs{};

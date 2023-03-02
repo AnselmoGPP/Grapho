@@ -57,7 +57,7 @@ void Renderer::createCommandBuffers()
 	commandsCount = 0;
 
 	// Commmand buffer allocation
-	commandBuffers.resize(e.swapChainImages.size());
+	commandBuffers.resize(e.swapChain.images.size());
 
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -86,9 +86,9 @@ void Renderer::createCommandBuffers()
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = e.renderPass[0];
-		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][0];
+		renderPassInfo.framebuffer = e.framebuffers[i][0];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = e.swapChainExtent;					// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+		renderPassInfo.renderArea.extent = e.swapChain.extent;					// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
 		std::array<VkClearValue, 3> clearValues{};								// The order of clearValues should be identical to the order of your attachments.
 		clearValues[0].color = backgroundColor;									// Resolve color buffer. Background color (alpha = 1 means 100% opacity)
 		clearValues[1].depthStencil = { 1.0f, 0 };								// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
@@ -104,7 +104,7 @@ void Renderer::createCommandBuffers()
 
 		VkClearRect rectangleToClear;
 		rectangleToClear.rect.offset = { 0, 0 };
-		rectangleToClear.rect.extent = e.swapChainExtent;
+		rectangleToClear.rect.extent = e.swapChain.extent;
 		rectangleToClear.baseArrayLayer = 0;
 		rectangleToClear.layerCount = 1;
 
@@ -145,7 +145,7 @@ void Renderer::createCommandBuffers()
 		// Start render pass 2 (post processing):
 
 		renderPassInfo.renderPass = e.renderPass[1];
-		renderPassInfo.framebuffer = e.swapChainFramebuffers[i][1];
+		renderPassInfo.framebuffer = e.framebuffers[i][1];
 		clearValues[0].color = backgroundColor;
 		clearValues[1].depthStencil = { 1.0f, 0 };
 		clearValues[2].color = backgroundColor;
@@ -182,7 +182,7 @@ void Renderer::createSyncObjects()
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	framesInFlight.resize(MAX_FRAMES_IN_FLIGHT);
-	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
+	imagesInFlight.resize(e.swapChain.images.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -258,7 +258,7 @@ void Renderer::drawFrame()
 
 	// Acquire an image from the swap chain
 	uint32_t imageIndex;		// Swap chain image index (0, 1, 2)
-	VkResult result = vkAcquireNextImageKHR(e.c.device, e.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
+	VkResult result = vkAcquireNextImageKHR(e.c.device, e.swapChain.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);		// Swap chain is an extension feature. imageIndex: index to the VkImage in our swapChainImages.
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) 					// VK_ERROR_OUT_OF_DATE_KHR: The swap chain became incompatible with the surface and can no longer be used for rendering. Usually happens after window resize.
 	{ 
 		std::cout << "VK_ERROR_OUT_OF_DATE_KHR" << std::endl;
@@ -309,7 +309,7 @@ void Renderer::drawFrame()
 	presentInfo.waitSemaphoreCount	= 1;
 	presentInfo.pWaitSemaphores		= signalSemaphores;
 
-	VkSwapchainKHR swapChains[]		= { e.swapChain };
+	VkSwapchainKHR swapChains[]		= { e.swapChain.swapChain };
 	presentInfo.swapchainCount		= 1;
 	presentInfo.pSwapchains			= swapChains;
 	presentInfo.pImageIndices		= &imageIndex;
@@ -365,7 +365,7 @@ void Renderer::recreateSwapChain()
 
 	//    - Renderer
 	createCommandBuffers();				// Command buffers directly depend on the swap chain images.
-	imagesInFlight.resize(e.swapChainImages.size(), VK_NULL_HANDLE);
+	imagesInFlight.resize(e.swapChain.images.size(), VK_NULL_HANDLE);
 }
 
 void Renderer::cleanupSwapChain()
@@ -676,7 +676,7 @@ void Renderer::updateStates(uint32_t currentImage)
 	// Compute transformation matrix
 	input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
 	glm::mat4 view = input.cam->GetViewMatrix();
-	glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
+	glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChain.extent.width / (float)e.swapChain.extent.height);
 
 	//UniformBufferObject ubo{};
 	//ubo.view = input.cam.GetViewMatrix();

@@ -49,13 +49,13 @@ void UBO::resizeUBO(size_t newNumDynUBOs)// <<< what to do in modelData if uboTy
 // (21)
 void UBO::createUniformBuffers()
 {
-	uniformBuffers.resize(e->swapChainImages.size());
-	uniformBuffersMemory.resize(e->swapChainImages.size());
+	uniformBuffers.resize(e->swapChain.images.size());
+	uniformBuffersMemory.resize(e->swapChain.images.size());
 	
 	//destroyUniformBuffers();		// Not required since Renderer calls this first
 
 	if (range)
-		for (size_t i = 0; i < e->swapChainImages.size(); i++)
+		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 			createBuffer(
 				e,
 				numDynUBOs == 0 ? range : totalBytes,
@@ -69,7 +69,7 @@ void UBO::destroyUniformBuffers()
 {
 	if (range)
 	{
-		for (size_t i = 0; i < e->swapChainImages.size(); i++)
+		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 		{
 			vkDestroyBuffer(e->c.device, uniformBuffers[i], nullptr);
 			vkFreeMemory(e->c.device, uniformBuffersMemory[i], nullptr);

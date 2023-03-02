@@ -17,13 +17,34 @@ bool QueueFamilyIndices::isComplete()
 
 Image::Image() : image(nullptr), memory(nullptr), view(nullptr), sampler(nullptr) { }
 
-void Image::destroyImage(VkDevice device)
+void Image::destroy(VkDevice device)
 {
 	if(view)    vkDestroyImageView(device, view, nullptr);		// Resolve buffer	(VkImageView)
 	if(image)   vkDestroyImage(device, image, nullptr);			// Resolve buffer	(VkImage)
 	if(memory)  vkFreeMemory(device, memory, nullptr);			// Resolve buffer	(VkDeviceMemory)
 	if(sampler) vkDestroySampler(device, sampler, nullptr);
 }
+
+SwapChain::SwapChain()
+	: swapChain(nullptr), imageFormat(VK_FORMAT_UNDEFINED), extent(VkExtent2D{0,0}) { }
+
+void SwapChain::destroy(VkDevice device)
+{
+	// Swap chain image views
+	for (auto imageView : views)
+		vkDestroyImageView(device, imageView, nullptr);
+
+	// Swap chain
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+//VkSwapchainKHR								swapChain;				//!< Swap chain object.
+//std::vector<VkImage>						swapChainImages;		//!< List. Opaque handle to an image object.
+//std::vector<VkImageView>					swapChainImageViews;	//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
+//std::vector<std::array<VkFramebuffer, 2>>	swapChainFramebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+//
+//VkFormat									swapChainImageFormat;
+//VkExtent2D									swapChainExtent;
 
 VulkanCore::VulkanCore()
 	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT)
@@ -483,6 +504,19 @@ QueueFamilyIndices VulkanCore::findQueueFamilies(VkPhysicalDevice device)
 
 QueueFamilyIndices VulkanCore::findQueueFamilies() { return findQueueFamilies(physicalDevice); }
 
+void VulkanCore::destroy()
+{
+	vkDestroyDevice(device, nullptr);										// Logical device & device queues
+
+	if (enableValidationLayers)												// Debug messenger
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+
+	vkDestroySurfaceKHR(instance, surface, nullptr);						// Surface KHR
+	vkDestroyInstance(instance, nullptr);									// Instance
+	glfwDestroyWindow(window);												// GLFW window
+	glfwTerminate();														// GLFW
+}
+
 /**
 	Check whether all the required device extensions are supported.
 	@param device Device to evaluate
@@ -660,19 +694,19 @@ void VulkanEnvironment::createSwapChain()
 	createInfo.oldSwapchain = VK_NULL_HANDLE;									// It's possible that your swap chain becomes invalid/unoptimized while the application is running (example: window resize), so your swap chain will need to be recreated from scratch and a reference to the old one must be specified in this field.
 
 	// Create swap chain
-	if (vkCreateSwapchainKHR(c.device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR(c.device, &createInfo, nullptr, &swapChain.swapChain) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create swap chain!");
 
 	// Retrieve the handles
-	vkGetSwapchainImagesKHR(c.device, swapChain, &imageCount, nullptr);
-	swapChainImages.resize(imageCount);
-	vkGetSwapchainImagesKHR(c.device, swapChain, &imageCount, swapChainImages.data());
+	vkGetSwapchainImagesKHR(c.device, swapChain.swapChain, &imageCount, nullptr);
+	swapChain.images.resize(imageCount);
+	vkGetSwapchainImagesKHR(c.device, swapChain.swapChain, &imageCount, swapChain.images.data());
 
-	if(c.printInfo) std::cout << "   Swap chain images: " << swapChainImages.size() << std::endl;
+	if(c.printInfo) std::cout << "   Swap chain images: " << swapChain.images.size() << std::endl;
 
 	// Save format and extent for future use
-	swapChainImageFormat = surfaceFormat.format;
-	swapChainExtent = extent;
+	swapChain.imageFormat = surfaceFormat.format;
+	swapChain.extent = extent;
 }
 
 /// Chooses the surface format (color depth) for the swap chain.
@@ -742,10 +776,10 @@ void VulkanEnvironment::createSwapChainImageViews()
 {
 	std::cout << __func__ << "()" << std::endl;
 
-	swapChainImageViews.resize(swapChainImages.size());
+	swapChain.views.resize(swapChain.images.size());
 
-	for (uint32_t i = 0; i < swapChainImages.size(); i++)
-		swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	for (uint32_t i = 0; i < swapChain.images.size(); i++)
+		swapChain.views[i] = createImageView(swapChain.images[i], swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 VulkanEnv_MS_PP::VulkanEnv_MS_PP() 
@@ -791,7 +825,7 @@ void VulkanEnv_PP::createRenderPass()
 	
 	// First color attachment (basic rendering) (RP 1)
 	VkAttachmentDescription colorAttachment_1{};
-	colorAttachment_1.format = swapChainImageFormat;
+	colorAttachment_1.format = swapChain.imageFormat;
 	colorAttachment_1.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;	// (msaaSamples > 1) ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;	// To do before rendering begins
 	colorAttachment_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;														// To do after rendering is complete
@@ -839,7 +873,7 @@ void VulkanEnv_PP::createRenderPass()
 
 	// Final color (Post-Processing) (RP 2)
 	VkAttachmentDescription colorAttachment_2{};
-	colorAttachment_2.format = swapChainImageFormat;
+	colorAttachment_2.format = swapChain.imageFormat;
 	colorAttachment_2.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -926,7 +960,7 @@ void VulkanEnv_PP::createImageResources()
 {
 	std::cout << __func__ << "()" << std::endl;
 
-	VkFormat colorFormat = swapChainImageFormat;
+	VkFormat colorFormat = swapChain.imageFormat;
 	VkFormat depthFormat = findDepthFormat();
 	
 	VkSamplerCreateInfo samplerInfo{};
@@ -953,8 +987,8 @@ void VulkanEnv_PP::createImageResources()
 	// Color_1 -------------------------------------
 
 	createImage(
-		swapChainExtent.width,
-		swapChainExtent.height,
+		swapChain.extent.width,
+		swapChain.extent.height,
 		1,
 		VK_SAMPLE_COUNT_1_BIT,	//msaaSamples,
 		colorFormat,
@@ -971,8 +1005,8 @@ void VulkanEnv_PP::createImageResources()
 	
 	// Depth -------------------------------------
 
-	createImage(swapChainExtent.width,
-		swapChainExtent.height,
+	createImage(swapChain.extent.width,
+		swapChain.extent.height,
 		1,
 		c.msaaSamples,
 		depthFormat,
@@ -997,11 +1031,11 @@ void VulkanEnv_PP::createFramebuffers()
 {
 	std::cout << __func__ << "()" << std::endl;
 
-	swapChainFramebuffers.resize(swapChainImageViews.size());
+	framebuffers.resize(swapChain.views.size());
 	std::vector<VkImageView> attachments;
 
 	// Framebuffers (2) for each swapChainImage
-	for (size_t i = 0; i < swapChainImageViews.size(); i++)
+	for (size_t i = 0; i < swapChain.views.size(); i++)
 	{
 		// Framebuffer 1 (basic color)
 		VkFramebufferCreateInfo framebufferInfo_1{};
@@ -1010,25 +1044,25 @@ void VulkanEnv_PP::createFramebuffers()
 		attachments = std::vector<VkImageView>{ color_1.view, depth.view };
 		framebufferInfo_1.attachmentCount = attachments.size();
 		framebufferInfo_1.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo_1.width = swapChainExtent.width;
-		framebufferInfo_1.height = swapChainExtent.height;
+		framebufferInfo_1.width = swapChain.extent.width;
+		framebufferInfo_1.height = swapChain.extent.height;
 		framebufferInfo_1.layers = 1;												// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
 
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &swapChainFramebuffers[i][0]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 1!");
 
 		// Framebuffer 2 (post-processing)
 		VkFramebufferCreateInfo framebufferInfo_2{};
 		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo_2.renderPass = renderPass[1];
-		attachments = std::vector<VkImageView>{ color_1.view, depth.view, swapChainImageViews[i] };
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, swapChain.views[i] };
 		framebufferInfo_2.attachmentCount = attachments.size();
 		framebufferInfo_2.pAttachments = attachments.data();
-		framebufferInfo_2.width = swapChainExtent.width;
-		framebufferInfo_2.height = swapChainExtent.height;
+		framebufferInfo_2.width = swapChain.extent.width;
+		framebufferInfo_2.height = swapChain.extent.height;
 		framebufferInfo_2.layers = 1;
 
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &swapChainFramebuffers[i][1]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
 }
@@ -1065,7 +1099,7 @@ void VulkanEnv_MS_PP::createRenderPass()
 
 	// Color attachment 1 (basic multisampling rendering) (RP 1)
 	VkAttachmentDescription colorAttachment_1{};
-	colorAttachment_1.format = swapChainImageFormat;
+	colorAttachment_1.format = swapChain.imageFormat;
 	colorAttachment_1.samples = c.msaaSamples;									// Single color buffer attachment, or many (multisampling).
 	colorAttachment_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;						// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
 	colorAttachment_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
@@ -1113,7 +1147,7 @@ void VulkanEnv_MS_PP::createRenderPass()
 
 	// Color attachment 2 (Multisample postprocessing) (RP 2)
 	VkAttachmentDescription colorAttachment_2{};
-	colorAttachment_2.format = swapChainImageFormat;
+	colorAttachment_2.format = swapChain.imageFormat;
 	colorAttachment_2.samples = c.msaaSamples;
 	colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;// VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1128,7 +1162,7 @@ void VulkanEnv_MS_PP::createRenderPass()
 
 	// Final resolved color attachment (RP 2)
 	VkAttachmentDescription colorResolveAttachment{};
-	colorResolveAttachment.format = swapChainImageFormat;
+	colorResolveAttachment.format = swapChain.imageFormat;
 	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1354,7 +1388,7 @@ void VulkanEnv_MS_PP::createImageResources()
 {
 	std::cout << __func__ << "()" << std::endl;
 
-	VkFormat colorFormat = swapChainImageFormat;
+	VkFormat colorFormat = swapChain.imageFormat;
 	VkFormat depthFormat = findDepthFormat();
 
 	VkSamplerCreateInfo samplerInfo{};
@@ -1381,8 +1415,8 @@ void VulkanEnv_MS_PP::createImageResources()
 	// Color_1 -------------------------------------
 
 	createImage(
-		swapChainExtent.width,
-		swapChainExtent.height,
+		swapChain.extent.width,
+		swapChain.extent.height,
 		1,
 		c.msaaSamples,
 		colorFormat,
@@ -1401,8 +1435,8 @@ void VulkanEnv_MS_PP::createImageResources()
 
 	// Depth -------------------------------------
 
-	createImage(swapChainExtent.width,
-		swapChainExtent.height,
+	createImage(swapChain.extent.width,
+		swapChain.extent.height,
 		1,
 		c.msaaSamples,
 		depthFormat,
@@ -1425,8 +1459,8 @@ void VulkanEnv_MS_PP::createImageResources()
 	// Color_2 -------------------------------------
 
 	createImage(
-		swapChainExtent.width,
-		swapChainExtent.height,
+		swapChain.extent.width,
+		swapChain.extent.height,
 		1,
 		c.msaaSamples,
 		colorFormat,
@@ -1611,11 +1645,11 @@ void VulkanEnv_MS_PP::createFramebuffers()
 {
 	std::cout << __func__ << "()" << std::endl;
 
-	swapChainFramebuffers.resize(swapChainImageViews.size());
+	framebuffers.resize(swapChain.views.size());
 	std::vector<VkImageView> attachments;
 
 	// Framebuffers (2) for each swapChainImage
-	for (size_t i = 0; i < swapChainImageViews.size(); i++)
+	for (size_t i = 0; i < swapChain.views.size(); i++)
 	{
 		// Framebuffers 1 (multisampled basic color)
 		attachments = std::vector<VkImageView>{ color_1.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
@@ -1625,26 +1659,26 @@ void VulkanEnv_MS_PP::createFramebuffers()
 		framebufferInfo_1.renderPass = renderPass[0];							// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
 		framebufferInfo_1.attachmentCount = attachments.size();
 		framebufferInfo_1.pAttachments = attachments.data();					// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo_1.width = swapChainExtent.width;
-		framebufferInfo_1.height = swapChainExtent.height;
+		framebufferInfo_1.width = swapChain.extent.width;
+		framebufferInfo_1.height = swapChain.extent.height;
 		framebufferInfo_1.layers = 1;											// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
 
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &swapChainFramebuffers[i][0]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 1!");
 
 		// Framebuffers 2 (multisampled postprocessing)
-		attachments = std::vector<VkImageView>{ color_1.view, depth.view, color_2.view, swapChainImageViews[i] };
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, color_2.view, swapChain.views[i] };
 
 		VkFramebufferCreateInfo framebufferInfo_2{};
 		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo_2.renderPass = renderPass[1];
 		framebufferInfo_2.attachmentCount = attachments.size();
 		framebufferInfo_2.pAttachments = attachments.data();
-		framebufferInfo_2.width = swapChainExtent.width;
-		framebufferInfo_2.height = swapChainExtent.height;
+		framebufferInfo_2.width = swapChain.extent.width;
+		framebufferInfo_2.height = swapChain.extent.height;
 		framebufferInfo_2.layers = 1;
 
-		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &swapChainFramebuffers[i][1]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
 }
@@ -1662,64 +1696,22 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
 	// Destroy attachments (images)
-
-	// MSAA buffer
-	//if (c.msaaSamples > 1)
-	//{
-	//	vkDestroyImageView(c.device, msaaColorImageView, nullptr);		// MSAA buffer		(VkImageView)
-	//	vkDestroyImage(c.device, msaaColorImage, nullptr);				// MSAA buffer		(VkImage)
-	//	vkFreeMemory(device, msaaColorImageMemory, nullptr);			// MSAA buffer		(VkDeviceMemory)
-	//}
-	//
-	//// Depth buffer
-	//vkDestroyImageView(device, depthImageView, nullptr);			// Depth buffer		(VkImageView)
-	//vkDestroyImage(device, depthImage, nullptr);					// Depth buffer		(VkImage)
-	//vkFreeMemory(device, depthImageMemory, nullptr);				// Depth buffer		(VkDeviceMemory)
-	//vkDestroySampler(device, depthSampler, nullptr);
-	//
-	//// resolveColorImage
-	//vkDestroyImageView(device, resolveColorImageView, nullptr);		// Resolve buffer	(VkImageView)
-	//vkDestroyImage(device, resolveColorImage, nullptr);				// Resolve buffer	(VkImage)
-	//vkFreeMemory(device, resolveColorImageMemory, nullptr);			// Resolve buffer	(VkDeviceMemory)
-	//vkDestroySampler(device, resolveColorSampler, nullptr);
-
-	color_1.destroyImage(c.device);
-	depth.destroyImage(c.device);
-	color_2.destroyImage(c.device);
+	color_1.destroy(c.device);
+	depth.destroy(c.device);
+	color_2.destroy(c.device);
 
 	// Framebuffers
-	for (auto framebuffer : swapChainFramebuffers)
+	for (auto framebuffer : framebuffers)
 	{
 		vkDestroyFramebuffer(c.device, framebuffer[0], nullptr);
 		vkDestroyFramebuffer(c.device, framebuffer[1], nullptr);
 	}
 
-	// Command buffers 
-	//vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-
-	// Graphics pipeline
-	//vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	//vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-
 	// Render pass
 	vkDestroyRenderPass(c.device, renderPass[0], nullptr);
 	vkDestroyRenderPass(c.device, renderPass[1], nullptr);
 
-	// Swap chain image views
-	for (auto imageView : swapChainImageViews)
-		vkDestroyImageView(c.device, imageView, nullptr);
-
-	// Swap chain
-	vkDestroySwapchainKHR(c.device, swapChain, nullptr);
-
-	// Uniform buffers & memory
-	//for (size_t i = 0; i < swapChainImages.size(); i++) {
-	//	vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-	//	vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-	//}
-
-	// Descriptor pool
-	//vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+	swapChain.destroy(c.device);
 }
 
 /**
@@ -1728,7 +1720,7 @@ void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
  * @param debugMessenger Debug messenger object
  * @param pAllocator Optional allocator callback
  */
-void VulkanEnvironment::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+void VulkanCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
 {
 	// Similarly to vkCreateDebugUtilsMessengerEXT, the extension function needs to be explicitly loaded.
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -1739,15 +1731,8 @@ void VulkanEnvironment::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDeb
 void VulkanEnvironment::cleanup()
 {
 	vkDestroyCommandPool(c.device, commandPool, nullptr);						// Command pool
-	vkDestroyDevice(c.device, nullptr);										// Logical device & device queues
 
-	if (enableValidationLayers)												// Debug messenger
-		DestroyDebugUtilsMessengerEXT(c.instance, c.debugMessenger, nullptr);
-
-	vkDestroySurfaceKHR(c.instance, c.surface, nullptr);						// Surface KHR
-	vkDestroyInstance(c.instance, nullptr);									// Instance
-	glfwDestroyWindow(c.window);												// GLFW window
-	glfwTerminate();														// GLFW
+	c.destroy();
 }
 
 // Independent methods ----------------------------------------------
