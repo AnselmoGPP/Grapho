@@ -22,14 +22,27 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	frameCount(0),
 	commandsCount(0) 
 { 
+	#ifdef DEBUG_RENDERER
+		std::cout << typeid(*this).name() << ": " << __func__ << " constructor" << std::endl;
+	#endif
+
 	std::cout << "Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
 }
 
-Renderer::~Renderer() { std::cout << __func__ << std::endl; }
+Renderer::~Renderer() 
+{ 
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
+	std::cout << __func__ << std::endl; 
+}
 
 int Renderer::run()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
 
 	try 
 	{
@@ -53,6 +66,10 @@ int Renderer::run()
 // (24)
 void Renderer::createCommandBuffers()
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	//std::cout << __func__ << "()" << std::endl;
 	commandsCount = 0;
 
@@ -177,7 +194,9 @@ void Renderer::createCommandBuffers()
 // (25)
 void Renderer::createSyncObjects()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
 
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -203,7 +222,9 @@ void Renderer::createSyncObjects()
 
 void Renderer::renderLoop()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
 
 	frameCount = 0;
 	timer.setMaxFPS(maxFPS);
@@ -227,6 +248,10 @@ void Renderer::renderLoop()
 
 void Renderer::stopThread()
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	runThread = false;
 	if (thread_loadModels.joinable()) thread_loadModels.join();
 }
@@ -253,6 +278,10 @@ void Renderer::stopThread()
 */
 void Renderer::drawFrame()
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
 	vkWaitForFences(e.c.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -336,7 +365,9 @@ void Renderer::drawFrame()
 
 void Renderer::recreateSwapChain()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
 
 	// Get window size
 	int width = 0, height = 0;
@@ -370,7 +401,9 @@ void Renderer::recreateSwapChain()
 
 void Renderer::cleanupSwapChain()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
 
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
@@ -389,7 +422,9 @@ void Renderer::cleanupSwapChain()
 
 void Renderer::cleanup()
 {
-	std::cout << __func__ << "() 1" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << " (begin)" << std::endl;
+	#endif
 
 	// Cleanup renderer
 	//cleanupSwapChain();
@@ -424,16 +459,22 @@ void Renderer::cleanup()
 
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: " << models[0].size() << "(m1), " << models[1].size() << "(m2), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
-	e.cleanup_Images_RenderPass_SwapChain();
 	e.cleanup(); 
 
-	std::cout << "Cleanup() end" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << " (end)" << std::endl;
+	#endif
 }
 
-modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
+modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	return modelsToLoad.emplace(
-		modelsToLoad.cend(), 
+		modelsToLoad.cend(),
+		modelName,
 		e, 
 		layer,
 		numRenderings, 
@@ -448,6 +489,10 @@ modelIterator Renderer::newModel(size_t layer, size_t numRenderings, primitiveTo
 
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	for(uint32_t i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
 			if (it == model)
@@ -469,16 +514,28 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 
 texIterator Renderer::newTexture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	return texturesToLoad.emplace(texturesToLoad.cend(), path, imageFormat, addressMode);
 }
 
 texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	return texturesToLoad.emplace(texturesToLoad.cend(), pixels, texWidth, texHeight, imageFormat, addressMode);
 }
 
 void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	bool notLoadedYet = false;
 	for (texIterator it = texturesToLoad.begin(); it != texturesToLoad.end(); it++)
 		if (it == texture) { notLoadedYet = true; break; }
@@ -491,6 +548,10 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 
 ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind shaderKind, bool optimize, bool isFile)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	// Get data from txt file:
 
 	size_t fileSize = 0;
@@ -499,7 +560,9 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 
 	if (isFile)		// shaderFile == shader file name
 	{
-		std::cout << __func__ << "(): " << shaderFile << std::endl;
+		#ifdef DEBUG_RENDERER
+				std::cout << "    " << shaderFile << std::endl;
+		#endif
 
 		fileName = shaderFile;
 
@@ -517,7 +580,9 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	}
 	else			// shaderFile == shader content
 	{
-		std::cout << __func__ << "(): Hardcoded shader" << std::endl;
+		#ifdef DEBUG_RENDERER
+				std::cout << "    Hardcoded shader" << std::endl;
+		#endif
 
 		fileName = "HardcodedShader";
 		fileSize = shaderFile.size();
@@ -554,12 +619,20 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 
 void Renderer::deleteShader(ShaderIter shader)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	vkDestroyShaderModule(e.c.device, *shader, nullptr);
 	shaders.erase(shader);
 }
 
 void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	if (numberOfRenders != model->activeRenders)
 	{
 		model->setRenderCount(numberOfRenders);
@@ -570,6 +643,10 @@ void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 
 void Renderer::loadingThread()
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << " (begin)" << std::endl;
+	#endif
+
 	std::cout << __func__ << "()" << std::endl;
 
 	texIterator beginTexLoad;
@@ -662,11 +739,17 @@ void Renderer::loadingThread()
 			std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 	}
 	
-	std::cout << __func__ << "() end" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << " (end)" << std::endl;
+	#endif
 }
 
 void Renderer::updateStates(uint32_t currentImage)
 {
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
 	const std::lock_guard<std::mutex> lock(mutSnapshot);
 
 	// - USER UPDATES
@@ -760,6 +843,15 @@ void Renderer::updateStates(uint32_t currentImage)
 	}
 }
 
+void Renderer::toLastDraw(modelIterator model)
+{
+	#ifdef DEBUG_RENDERER
+		std::cout << "Renderer: " << __func__ << std::endl;
+	#endif
+
+	lastModelsToDraw.push_back(model);
+}
+
 TimerSet& Renderer::getTimer() { return timer; }
 
 Camera& Renderer::getCamera() { return *input.cam; }
@@ -767,11 +859,6 @@ Camera& Renderer::getCamera() { return *input.cam; }
 Input& Renderer::getInput() { return input; }
 
 size_t Renderer::getRendersCount(modelIterator model) { return model->activeRenders; }
-
-void Renderer::toLastDraw(modelIterator model)
-{
-	lastModelsToDraw.push_back(model);
-}
 
 size_t Renderer::getFrameCount() { return frameCount; }
 

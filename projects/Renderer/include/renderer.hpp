@@ -14,6 +14,7 @@
 #include "timer.hpp"
 #include "commons.hpp"
 
+#define DEBUG_RENDERER
 
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {
@@ -145,22 +146,14 @@ class Renderer
 	void stopThread();
 
 public:
-
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
 	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers);
 	~Renderer();
-
-	/// Create command buffer and start render loop.
-	int				run();
-
-	/// Returns the timer object (provides access to time data).
-	TimerSet&		getTimer();
-
-	/// Returns the camera object (provides access to camera data).
-	Camera&			getCamera();
-
-
+	
+	int				run();			//!< Create command buffer and start render loop.
+	TimerSet&		getTimer();		//!< Returns the timer object (provides access to time data).
+	Camera&			getCamera();	//!< Returns the camera object (provides access to camera data).
 	Input&			getInput();
 
 	/**
@@ -177,7 +170,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
+	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(const char* path, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);												//!< Insert a partially initialized texture object in texturesToLoad list. Later, data from file will be loaded.
@@ -187,14 +180,8 @@ public:
 	ShaderIter		newShader(const std::string shaderFile, shaderc_shader_kind kind, bool optimize, bool isFile = true);
 	void			deleteShader(ShaderIter shader);
 
-	/**
-	*	@brief 
-	*/
 	void			setRenders(modelIterator model, size_t numberOfRenders);
 
-	/**
-	*	@brief Not used
-	*/
 	size_t			getRendersCount(modelIterator model);
 
 	/// Make a model the last to be drawn within its own layer. Useful for transparent objects.

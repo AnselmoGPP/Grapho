@@ -91,6 +91,21 @@ void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vecto
 extern std::vector<VertexPT> v_cube;
 extern std::vector<uint16_t> i_inCube;
 
+/// Get a set of vertex representing a grid square plane centered at the origin at the XY plane. 
+class SqrMesh
+{
+public:
+    SqrMesh(size_t sideCount, float sideLength);
+
+    std::vector<float> vertices;
+    std::vector<uint16_t> indices;
+    size_t sideCount;               //!< Number of vertex per side
+    float sideLength;               //!< Lenght of a square side
+    size_t vertexCount;             //!< Total number of vertices
+
+    static float sideFromRadius(float radius);  //!< Get the side of a square fitting inside a circle
+};
+
 // Others -----------------------------------------------------------------
 
 extern double pi;

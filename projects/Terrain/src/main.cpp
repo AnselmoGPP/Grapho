@@ -18,6 +18,14 @@
 #include "terrain.hpp"
 #include "common.hpp"
 
+/*
+	Load model X:
+		- Create setX() and call it in main()
+		- Load required texture in loadTextures()
+		- Load required shader in loadShaders()
+		- Create required lights in setLights()
+		- Update model each frame in update()
+*/
 
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
@@ -40,7 +48,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_4, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -74,6 +82,8 @@ TerrainGrid terrGrid(app, noiser_1, lights, 6400, 21, 8, 2, 1.2);
 BasicPlanet planetChunks(app, noiser_2, 1, 101, 101, 1000, { 0.f, 0.f, 0.f });
 Planet planetGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
+Planet planetSeaGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+
 bool updateChunk = false, updateChunkGrid = false;
 
 // Data to update
@@ -101,21 +111,22 @@ int main(int argc, char* argv[])
 	setLights();
 	loadShaders(app);
 	loadTextures(app);
-	
+
 	//setPoints(app);
 	//setAxis(app);
 	//setGrid(app);
 	//setSea(app);
 	setSkybox(app);
-	  //setCottage(app);
-	  //setRoom(app);
+		//setCottage(app);
+		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
 	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	 //planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	planetSeaGrid.add_tex_shad(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
-	//setReticule(app);
+	 //setReticule(app);
 
 	app.run();		// Start rendering
 
@@ -182,6 +193,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	planetGrid.update_tree_ubo(camPos, view, proj, lights, frameTime);
 
+	planetSeaGrid.update_tree_ubo(camPos, view, proj, lights, frameTime);
+
 /*
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
@@ -211,7 +224,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		memcpy(assets["points"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 180.f), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 	}
 */
-	// Update UBOs
+
+// Update UBOs
 	uint8_t* dest;
 
 	if (assets.find("reticule") != assets.end())
@@ -306,26 +320,13 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 1 * vec4size, lights.props, lights.propsBytes);
 		}
 	}
-	
-	//glm::vec3 viewDir = glm::normalize(camPos - glm::vec3(2000, 0, 0));
-	//glm::vec3 reflectDir = glm::normalize(reflect(sunLight.direction, glm::vec3(0, 0, 1)));
-	//std::cout << "> " << glm::dot(viewDir, reflectDir);
-
-	//std::cout << '>' << sunLight.direction.z << " / " << std::endl;
-
-	//glm::vec3 tangent = glm::normalize(vec3(ubo.model * glm::vec4(glm::cross(glm::vec3(0, 1, 0), inNormal), 0.f)));	// x
-	//glm::vec3 bitangent = glm::normalize(glm::vec3(ubo.model * glm::vec4(cross(inNormal, tangent), 0.f)));	// y
-	//glm::mat3 TBN = glm::transpose(glm::mat3(tangent, bitangent, inNormal));							// Transpose of an orthogonal matrix == its inverse (transpose is cheaper than inverse)
-	//
-	//outTangVertPos = TBN * vec3(ubo.model * vec4(inVertPos, 1.f));		// inverted TBN transforms vectors to tangent space
-	//outTangCampPos = TBN * ubo.camPos.xyz;
-	//outTangLightPos = TBN * ubo.lightPos.xyz;		// for point & spot light
-	//outTangLightDir = TBN * ubo.lightDir.xyz;		// for directional light
 }
 
 
 void setLights()
 {
+	std::cout << "> " << __func__ << "()" << std::endl;
+
 	//lightss.turnOff(0);
 	lights.setDirectional(0, sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
@@ -352,6 +353,9 @@ void loadShaders(Renderer& app)
 
 	shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
+
+	shaders["v_planetSea"] = app.newShader((shadersDir + "v_planetSea.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_planetSea"] = app.newShader((shadersDir + "f_planetSea.frag").c_str(), shaderc_fragment_shader, true);
 
 	shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
@@ -458,6 +462,7 @@ void setPoints(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
 
 	assets["points"] = app.newModel(
+		"points",
 		1, 1, primitiveTopology::point,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -480,6 +485,7 @@ void setAxis(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 
 	assets["axis"] = app.newModel(
+		"axis",
 		2, 1, primitiveTopology::line,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -502,6 +508,7 @@ void setGrid(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_grid.data(), i_grid, true);
 
 	assets["grid"] = app.newModel(
+		"grid",
 		1, 1, primitiveTopology::line,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -520,6 +527,7 @@ void setSkybox(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 14, v_cube.data(), i_inCube, false);
 
 	assets["skyBox"] = app.newModel(
+		"skyBox",
 		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -539,6 +547,7 @@ void setCottage(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
+		"cottage",
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -553,6 +562,7 @@ void setCottage(Renderer& app)
 	vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
+		"cottage",
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -571,6 +581,7 @@ void setRoom(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromFile(VertexType(1, 1, 1, 0), (vertexDir + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
+		"room",
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		2, 3 * mat4size,	// M, V, P
@@ -608,6 +619,7 @@ void setSea(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 0, 1), 4, v_sea, i_sea, true);
 
 	assets["sea"] = app.newModel(
+		"plainSea",
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
@@ -651,6 +663,7 @@ void setSun(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), numVertex, v_sun.data(), i_sun, true);
 
 	assets["sun"] = app.newModel(
+		"sun",
 		0, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P
@@ -675,6 +688,7 @@ void setReticule(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_ret, i_ret, true);
 
 	assets["reticule"] = app.newModel(
+		"reticule",
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, vec4size,				// aspect ratio (float)
@@ -704,6 +718,7 @@ void setAtmosphere(Renderer& app)
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 0, 1, 0), 4, v_quad, i_quad, true);
 
 	assets["atmosphere"] = app.newModel(
+		"atmosphere",
 		2, 1, primitiveTopology::triangle,
 		vertexLoader,
 		1, 2 * mat4size + 8 * vec4size,

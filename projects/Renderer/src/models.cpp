@@ -6,8 +6,9 @@
 std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
 
-ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
-	: e(&environment),
+ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
+	: modelName(modelName),
+	e(&environment),
 	primitiveTopology(primitiveTopology),
 	vertexShader(vertexShader),
 	fragmentShader(fragmentShader),
@@ -22,12 +23,20 @@ ModelData::ModelData(VulkanEnvironment& environment, size_t layer, size_t active
 	fullyConstructed(false),
 	inModels(false)
 {
+	#ifdef DEBUG_MODELS
+		std::cout << typeid(*this).name() << ": " << __func__ << " constructor" << std::endl;
+	#endif
+
 	this->vertexLoader = vertexLoader;
 	this->vertexLoader->setDestination(vertices, indices);
 }
 
 ModelData::~ModelData()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	if (fullyConstructed) {
 		cleanup_Pipeline_Descriptors();
 		cleanup();
@@ -38,6 +47,10 @@ ModelData::~ModelData()
 
 ModelData& ModelData::fullConstruction()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
 
@@ -57,6 +70,10 @@ ModelData& ModelData::fullConstruction()
 // (9)
 void ModelData::createDescriptorSetLayout()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 	uint32_t bindNumber = 0;
 
@@ -125,6 +142,10 @@ void ModelData::createDescriptorSetLayout()
 // (10)
 void ModelData::createGraphicsPipeline()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Create pipeline layout   <<< sameMod
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -135,7 +156,7 @@ void ModelData::createGraphicsPipeline()
 
 	if (vkCreatePipelineLayout(e->c.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create pipeline layout!");
-
+	
 	// Read shader files
 	//std::vector<char> vertShaderCode = readFile(VSpath);
 	//std::vector<char> fragShaderCode = readFile(FSpath);
@@ -149,7 +170,7 @@ void ModelData::createGraphicsPipeline()
 	vertShaderStageInfo.module = *vertexShader;
 	vertShaderStageInfo.pName = "main";						// Function to invoke (entrypoint). You may combine multiple fragment shaders into a single shader module and use different entry points (different behaviors).  
 	vertShaderStageInfo.pSpecializationInfo = nullptr;		// Optional. Specifies values for shader constants.
-
+	
 	// Configure Fragment shader
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -159,7 +180,7 @@ void ModelData::createGraphicsPipeline()
 	fragShaderStageInfo.pSpecializationInfo = nullptr;
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
+	
 	// Vertex input: Describes format of the vertex data that will be passed to the vertex shader.
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -321,6 +342,10 @@ void ModelData::createGraphicsPipeline()
 
 VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = code.size();
@@ -336,6 +361,10 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 // (19)
 void ModelData::createVertexBuffer()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
 	VkDeviceSize   bufferSize = vertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
 	VkBuffer	   stagingBuffer;
@@ -394,6 +423,10 @@ void ModelData::createVertexBuffer()
 */
 void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
 	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).
@@ -410,6 +443,10 @@ void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize 
 // (20)
 void ModelData::createIndexBuffer()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Create a staging buffer
 	VkDeviceSize   bufferSize = sizeof(indices[0]) * indices.size();
 	VkBuffer	   stagingBuffer;
@@ -449,6 +486,10 @@ void ModelData::createIndexBuffer()
 // (22)
 void ModelData::createDescriptorPool()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Describe our descriptor sets.
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	VkDescriptorPoolSize pool;
@@ -496,6 +537,10 @@ void ModelData::createDescriptorPool()
 // (23)
 void ModelData::createDescriptorSets()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	descriptorSets.resize(e->swapChain.images.size());
 
 	std::vector<VkDescriptorSetLayout> layouts(e->swapChain.images.size(), descriptorSetLayout);
@@ -617,6 +662,10 @@ void ModelData::createDescriptorSets()
 
 void ModelData::recreate_Pipeline_Descriptors()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
 	vsDynUBO.createUniformBuffers();	// Uniform buffers depend on the number of swap chain images.
@@ -627,6 +676,10 @@ void ModelData::recreate_Pipeline_Descriptors()
 
 void ModelData::cleanup_Pipeline_Descriptors()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Graphics pipeline
 	vkDestroyPipeline(e->c.device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(e->c.device, pipelineLayout, nullptr);
@@ -641,6 +694,10 @@ void ModelData::cleanup_Pipeline_Descriptors()
 
 void ModelData::cleanup()
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e->c.device, descriptorSetLayout, nullptr);
 	
@@ -659,6 +716,10 @@ void ModelData::cleanup()
 
 void ModelData::setRenderCount(size_t numRenders)
 {
+	#ifdef DEBUG_MODELS
+		std::cout << modelName << ": " << __func__ << std::endl;
+	#endif
+
 	this->activeRenders = numRenders;
 
 	if (numRenders > vsDynUBO.numDynUBOs)

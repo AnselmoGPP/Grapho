@@ -44,6 +44,46 @@ glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix)
 
 // Vertex sets -----------------------------------------------------------------
 
+
+SqrMesh::SqrMesh(size_t sideCount, float sideLength) 
+	: sideCount(sideCount), sideLength(sideLength), vertexCount(sideCount * sideCount)
+{
+	float step = sideLength / (sideCount - 1);
+	glm::vec3 origin = { -sideLength / 2, -sideLength / 2, 0 };
+	size_t pos = 0;
+	
+	vertices.resize(3 * sideCount * sideCount);
+	for (size_t y = 0; y < sideCount; y++)
+		for (size_t x = 0; x < sideCount; x++)
+		{
+			pos = y * sideCount * 3 + x * 3;			//  Y
+			vertices[pos + 0] = origin.x + step * x;	//  7 8 9
+			vertices[pos + 1] = origin.y + step * y;	//  4 5 6
+			vertices[pos + 2] = 0.f;					//  1 2 3 X
+		}
+	
+	indices.resize(6 * (sideCount - 1) * (sideCount - 1));
+	size_t sqrPos[4] = { 0,0,0,0 };
+	for (size_t y = 0; y < (sideCount-1); y++)
+		for (size_t x = 0; x < (sideCount - 1); x++)
+		{
+			sqrPos[0] = y * sideCount + x;				//  (3)----(2)
+			sqrPos[1] = y * sideCount + x + 1;			//   |    / |
+			sqrPos[2] = (y+1) * sideCount + x + 1;		//   | /    |
+			sqrPos[3] = (y+1) * sideCount + x;			//  (0)----(1)
+
+			pos = y * (sideCount-1) * 6 + x * 6;
+			indices[pos + 0] = sqrPos[0];
+			indices[pos + 1] = sqrPos[2];
+			indices[pos + 2] = sqrPos[3];
+			indices[pos + 3] = sqrPos[0];
+			indices[pos + 4] = sqrPos[1];
+			indices[pos + 5] = sqrPos[2];
+		}
+}
+
+float SqrMesh::sideFromRadius(float radius) { return std::sqrt(2 * std::pow(radius, 2)); }
+
 size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int lengthFromCenter, float colorIntensity)
 {
 	// Vertex buffer

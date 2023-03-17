@@ -5,7 +5,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
+    : topology(primitiveTopology::triangle), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -27,7 +27,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         true);
 
     model = renderer.newModel(
-        1, 1, primitiveTopology::triangle,
+        "chunck",
+        1, 1, topology,
         vertexLoader,
         1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4)
         vec4size + 2 * sizeof(LightProps),                      // Time (float), n * LightProps (6*vec4)

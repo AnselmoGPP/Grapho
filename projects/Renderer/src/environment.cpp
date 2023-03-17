@@ -1153,7 +1153,7 @@ void VulkanCore::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtils
 void VulkanEnvironment::cleanup()
 {
 	vkDestroyCommandPool(c.device, commandPool, nullptr);
-
+	cleanup_Images_RenderPass_SwapChain();
 	c.destroy();
 }
 

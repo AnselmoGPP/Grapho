@@ -321,45 +321,6 @@ vec3 calculateLight(vec3 rayOrigin, vec3 rayDir, float rayLength, vec3 originalC
 	return finalColor;
 }
 
-/*
-//float3 calculateLight2(float3 rayOrigin, float3 rayDir, float rayLength, float3 originalCol, float2 uv) 
-//{
-//	float3 inScatterPoint = rayOrigin;
-//	float stepSize = rayLength / (numInScatteringPoints - 1);
-//	float3 inScatteredLight = 0;
-//	float viewRayOpticalDepth = 0;
-//
-//	for (int i = 0; i < numInScatteringPoints; i ++) {
-//		float sunRayLength = raySphere(planetCentre, atmosphereRadius, inScatterPoint, dirToSun).y;
-//		float sunRayOpticalDepth = opticalDepthBaked(inScatterPoint + dirToSun * ditherStrength, dirToSun);
-//		float localDensity = densityAtPoint(inScatterPoint);
-//		viewRayOpticalDepth = opticalDepthBaked2(rayOrigin, rayDir, stepSize * i);
-//		float3 transmittance = exp(-(sunRayOpticalDepth + viewRayOpticalDepth) * scatteringCoefficients);
-//		
-//		inScatteredLight += localDensity * transmittance;
-//		inScatterPoint += rayDir * stepSize;
-//	}
-//	inScatteredLight *= scatteringCoefficients * intensity * stepSize / planetRadius;
-//	inScatteredLight += blueNoise * 0.01;
-//
-//	// Attenuate brightness of original col (i.e light reflected from planet surfaces)
-//	// This is a hacky mess, TODO: figure out a proper way to do this
-//	const float brightnessAdaptionStrength = 0.15;
-//	const float reflectedLightOutScatterStrength = 3;
-//	float brightnessAdaption = dot (inScatteredLight,1) * brightnessAdaptionStrength;
-//	float brightnessSum = viewRayOpticalDepth * intensity * reflectedLightOutScatterStrength + brightnessAdaption;
-//	float reflectedLightStrength = exp(-brightnessSum);
-//	float hdrStrength = saturate(dot(originalCol,1)/3-1);
-//	reflectedLightStrength = lerp(reflectedLightStrength, 1, hdrStrength);
-//	float3 reflectedLight = originalCol * reflectedLightStrength;
-//
-//	float3 finalCol = reflectedLight + inScatteredLight;
-//
-//	
-//	return finalCol;
-//}
-*/
-
 // Final pixel color (atmosphere)
 vec4 atmosphere()
 {	

@@ -77,6 +77,7 @@ void inorder(QuadNode<T>* root, V* visitor);
 class Chunk
 {
 protected:
+	primitiveTopology topology;
 	Renderer& renderer;
 	Noiser &noiseGen;
 	glm::vec3 baseCenter;

@@ -5,6 +5,7 @@
 #include <array>
 #include <functional>						// std::function (function wrapper that stores a callable object)
 #include <fstream>
+#include <string>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE			// GLM uses OpenGL depth range [-1.0, 1.0]. This macro forces GLM to use Vulkan range [0.0, 1.0].
@@ -18,6 +19,8 @@
 #include "texture.hpp"
 #include "loaddata.hpp"
 #include "commons.hpp"
+
+//#define DEBUG_MODELS
 
 #define LINE_WIDTH 1.0f
 
@@ -37,7 +40,6 @@ class ModelData
 	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 	ShaderIter vertexShader;
 	ShaderIter fragmentShader;
-	
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
@@ -87,7 +89,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
+	ModelData(std::string modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 
@@ -125,6 +127,7 @@ public:
 
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
+	std::string modelName;								//!< For debugging purposes.
 
 	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
 	void setRenderCount(size_t numRenders);

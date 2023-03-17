@@ -67,7 +67,8 @@ void setPoints(Renderer& app)
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
 
-	assets["points"] = app.newModel(
+	assets["points"] = app.newModel( 
+		"points",
 		1, 1, primitiveTopology::point,
 		vertexLoader,
 		1, 3 * mat4size,	// M, V, P

@@ -1,11 +1,21 @@
 TODO:
+	Simplify borders of chunks generation
+	Fix chuncks gaps
+	No-noise dynamic grid
+	Sea has to know about ground. Thus, sea+ground has to be passed to shader. Thus, both have to be calculated at the same time. Thus, dynamicGrid changes are required.
+	Default PP shader
+	General debugging (VS warnings)
+	Review comments (<<<, LOOK)
 	Ocean, sand, trees/bush, rocks
+	Method for replacing one/some model/s with one/some model/s (only after the new model/s have been loaded)
 	Python script
 	mipmaps
 	Improve distance texture change & texture scaling
 	No blurr between textures starting from X distance
 	Sun with high-dynamic-range rendering
 	newPostProc()
+	Delete models in queue for loading but that aren't required anymore (example: when flying fast over terrain)
+	More than 1 loading threads
 	createCommandBuffer()
 	attachment properties (loadOp...)
 	Loading thread class
