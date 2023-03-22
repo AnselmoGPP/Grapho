@@ -24,7 +24,7 @@ ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, siz
 	inModels(false)
 {
 	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << ": " << __func__ << " constructor" << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	this->vertexLoader = vertexLoader;
@@ -34,7 +34,7 @@ ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, siz
 ModelData::~ModelData()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	if (fullyConstructed) {
@@ -48,7 +48,7 @@ ModelData::~ModelData()
 ModelData& ModelData::fullConstruction()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	createDescriptorSetLayout();
@@ -71,7 +71,7 @@ ModelData& ModelData::fullConstruction()
 void ModelData::createDescriptorSetLayout()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -143,7 +143,7 @@ void ModelData::createDescriptorSetLayout()
 void ModelData::createGraphicsPipeline()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Create pipeline layout   <<< sameMod
@@ -343,7 +343,7 @@ void ModelData::createGraphicsPipeline()
 VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	VkShaderModuleCreateInfo createInfo{};
@@ -362,7 +362,7 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 void ModelData::createVertexBuffer()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
@@ -424,7 +424,7 @@ void ModelData::createVertexBuffer()
 void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
@@ -444,7 +444,7 @@ void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize 
 void ModelData::createIndexBuffer()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Create a staging buffer
@@ -487,7 +487,7 @@ void ModelData::createIndexBuffer()
 void ModelData::createDescriptorPool()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Describe our descriptor sets.
@@ -538,7 +538,7 @@ void ModelData::createDescriptorPool()
 void ModelData::createDescriptorSets()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	descriptorSets.resize(e->swapChain.images.size());
@@ -663,7 +663,7 @@ void ModelData::createDescriptorSets()
 void ModelData::recreate_Pipeline_Descriptors()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
@@ -677,7 +677,7 @@ void ModelData::recreate_Pipeline_Descriptors()
 void ModelData::cleanup_Pipeline_Descriptors()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Graphics pipeline
@@ -695,7 +695,7 @@ void ModelData::cleanup_Pipeline_Descriptors()
 void ModelData::cleanup()
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	// Descriptor set layout
@@ -717,7 +717,7 @@ void ModelData::cleanup()
 void ModelData::setRenderCount(size_t numRenders)
 {
 	#ifdef DEBUG_MODELS
-		std::cout << modelName << ": " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
 	this->activeRenders = numRenders;

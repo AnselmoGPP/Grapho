@@ -110,8 +110,6 @@ public:
 
 extern double pi;
 
-float sphereArea(float radius);
-
 glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal);
 
 /// This class checks if argument X (float) is bigger than argument Y (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);

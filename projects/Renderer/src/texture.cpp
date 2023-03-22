@@ -8,6 +8,7 @@
 #include "texture.hpp"
 #include "commons.hpp"
 
+#define DEBUG_TEXTURE
 
 Texture::Texture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 	: path(nullptr), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
@@ -58,10 +59,12 @@ Texture::~Texture()
 
 void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 {
-	if(path)
-		std::cout << __func__ << "(): " << path << std::endl;
-	else
-		std::cout << __func__ << "(): " << "In-code generated texture" << std::endl;
+	#ifdef DEBUG_TEXTURE
+		if (path)
+			std::cout << typeid(*this).name() << "::" << __func__ << " (begin): " << path << std::endl;
+		else
+			std::cout << typeid(*this).name() << "::" << __func__ << " (begin): " << "In-code generated texture" << std::endl;
+	#endif
 
 	this->e = e;
 	
@@ -70,6 +73,13 @@ void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 	createTextureSampler();
 
 	fullyConstructed = true;
+
+	#ifdef DEBUG_TEXTURE
+		if (path)
+			std::cout << typeid(*this).name() << "::" << __func__ << " (end): " << path << std::endl;
+		else
+			std::cout << typeid(*this).name() << "::" << __func__ << " (end): " << "In-code generated texture" << std::endl;
+	#endif
 }
 
 // (15)
@@ -379,16 +389,12 @@ OpticalDepthTable::OpticalDepthTable(unsigned numOptDepthPoints, unsigned planet
 	angle = angleRange / 1.7;
 	rayDir = glm::vec3(cos(angle), 0, sin(angle));
 	rayLength = raySphere(point, rayDir).y;
-	std::cout << ">>> " << opticalDepth(point, rayDir, rayLength) << std::endl;
-	std::cout << angle << std::endl;
 
 	// Look up
 	float heightRatio = (2400.f - planetRadius) / (atmosphereRadius - planetRadius);
 	float angleRatio = angle / angleRange;
 	unsigned i = (heightSteps - 1) * heightRatio;
 	unsigned j = (angleSteps - 1) * angleRatio;
-	//std::cout << planetRadius << ", " << atmosphereRadius << std::endl;
-	//std::cout << ">>> (" << i << ", " << j << ") / " << optDepth[i * angleSteps + j] << std::endl;
 }
 
 float OpticalDepthTable::opticalDepth(glm::vec3 rayOrigin, glm::vec3 rayDir, float rayLength) const
@@ -421,8 +427,6 @@ float OpticalDepthTable::densityAtPoint(glm::vec3 point) const
 //		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.
 glm::vec2 OpticalDepthTable::raySphere(glm::vec3 rayOrigin, glm::vec3 rayDir) const
 {
-	//std::cout << ">>> " << rayOrigin.x << ", " << rayOrigin.y << " / " << rayDir.x << ", " << rayDir.y << std::endl;
-
 	// Number of intersections
 	glm::vec3 offset = rayOrigin - planetCenter;
 	float a = 1;						// Set to dot(rayDir, rayDir) if rayDir might not be normalized

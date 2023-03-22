@@ -5,7 +5,7 @@
 #include <map>
 #include <thread>
 #include <mutex>
-#include <optional>			// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
+#include <optional>					// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 
 #include "shaderc/shaderc.hpp"		// Compile GLSL code to SPIR-V
 

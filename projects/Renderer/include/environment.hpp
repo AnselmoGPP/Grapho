@@ -9,8 +9,9 @@
 //#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"
 
+#define DEBUG_ENV_CORE				// Standards: NDEBUG, _DEBUG
+#define DEGUB						// FIX MACRO
 
-#define DEGUB						// Standards: NDEBUG, _DEBUG
 #ifdef RELEASE
 const bool enableValidationLayers = false;
 #else
@@ -114,7 +115,7 @@ private:
 	int evaluateDevice(VkPhysicalDevice device);
 	VkSampleCountFlagBits getMaxUsableSampleCount(bool getMinimum);
 	VkDeviceSize getMinUniformBufferOffsetAlignment();
-	bool supportsAnisotropicFiltering();
+	VkBool32 supportsAnisotropicFiltering();
 	VkBool32 largePointsSupported();
 	VkBool32 wideLinesSupported();
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -187,6 +188,5 @@ private:
 	void createImageResources_MS_PP();
 	void createFramebuffers_MS_PP();
 };
-
 
 #endif

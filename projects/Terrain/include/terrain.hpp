@@ -27,7 +27,6 @@
 		TerrainGrid (PlainChunk)
 		PlanetGrid (SphericalChunk)
 
-	BasicPlanet(SphericalChunk)
 	Planet (PlanetGrid)
 */
 
@@ -72,8 +71,18 @@ template<typename T, typename V>
 void inorder(QuadNode<T>* root, V* visitor);
 
 
-// Chunck systems -------------------------------
+// Chunk -------------------------------
 
+/**
+	Class used as the "element" of the QuadNode. Stores everything related to the object to render.
+	Process followed by DynamicGrid:
+	  1. computeIndices()
+	  2. getSubBaseCenters()
+	  3. Constructor()
+	  4. computeTerrain()
+	  5. render()
+	  6. updateUBOs()
+*/
 class Chunk
 {
 protected:
@@ -88,14 +97,13 @@ protected:
 	float horBaseSize, vertBaseSize;		//!< Base surface from which computation starts
 	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied
 
-	std::vector<float> vertex;				//!< VBO[n][8] (vertex position[3], texture coordinates[2], normals[3])
+	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
 	//std::vector<Light*> lights;
 	//LightSet* lights;
 	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
 
-	size_t getPos(size_t x, size_t y) const    { return y * numHorVertex + x; }
 	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 6 + 0], vertex[position * 6 + 1], vertex[position * 6 + 2]); };
 	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 6 + 3], vertex[position * 6 + 4], vertex[position * 6 + 5]); };
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
@@ -122,7 +130,6 @@ public:
 };
 
 
-/// Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 class PlainChunk : public Chunk
 {
 	void computeGridNormals();
@@ -155,7 +162,7 @@ class SphericalChunk : public Chunk
 	float radius;
 	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coordinate system of the cube side plane.
 
-	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis);
+	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV);
 	void computeSizes() override;
 
 public:
@@ -172,8 +179,17 @@ public:
 /**
 	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks in order to present 
 	higher resolution Chunks near the camera. Process:
-		1. Constructor(...)
-		2. Add textures(...)
+		1. Constructor()
+			- Chunk::computeIndices()
+		2. addTextures() (once)
+		3. addShaders() (once)
+		4. updateTree() (each frame)
+			- Chunk::getSubBaseCenters()
+			- Chunk::constructor()
+			- Chunk::computeTerrain()
+			- Chunk::render()
+		5. updateUBOs() (each frame)
+			- Chunk::updateUBOs()
 */
 class DynamicGrid
 {
@@ -187,10 +203,10 @@ public:
 	LightSet* lights;
 	float time;
 
-	void addTextures(const std::vector<texIterator>& textures);
-	void addShaders(ShaderIter vertexShader, ShaderIter fragmentShader);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
+	void addTextures(const std::vector<texIterator>& textures);				//!< Add textures ids of already loaded textures.
+	void addShaders(ShaderIter vertexShader, ShaderIter fragmentShader);	//!< Add shaders ids of already loaded shaders.
 	void updateTree(glm::vec3 newCamPos);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
 	unsigned getTotalNodes() { return chunks.size(); }
 	unsigned getloadedChunks() { return loadedChunks; }
 	unsigned getRenderedChunks() { return renderedChunks; }
@@ -232,7 +248,7 @@ class TerrainGrid : public DynamicGrid
 {
 public:
 	/**
-	*	@brief Constructors
+	*	@brief Constructor
 	*	@param noiseGenerator Used for generating noise
 	*	@param rootCellSize Size of the entire scenario
 	*	@param numSideVertex Number of vertex per side in each chunk
@@ -268,41 +284,27 @@ private:
 
 // Planet ----------------------------------------------------------------
 
-/// Six SphericalChunk objects that make up a planet.
-struct BasicPlanet
-{
-	BasicPlanet(Renderer& renderer, Noiser& noiseGenerator, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus);
-
-	void computeAndRender(std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);
-	void updateUbos(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);
-
-	const float radius;
-	const glm::vec3 nucleus;
-
-private:
-	Noiser noiseGen;
-	SphericalChunk sphereChunk_pX;
-	SphericalChunk sphereChunk_nX;
-	SphericalChunk sphereChunk_pY;
-	SphericalChunk sphereChunk_nY;
-	SphericalChunk sphereChunk_pZ;
-	SphericalChunk sphereChunk_nZ;
-
-	bool readyForUpdate;
-};
-
-// Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
+/**
+	Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
+	1. Constructor
+		- DynamicGrid.constructor()
+	2. addResources() (once)
+		- DynamicGrid.addTextures()
+		- DynamicGrid.addShaders()
+	3. updateState() (each frame)
+		- DynamicGrid.updateTree()
+		- DynamicGrid.updateUBOs()
+*/
 struct Planet
 {
 	Planet(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
 
-	void add_tex_shad(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);
-	void update_tree_ubo(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);
+	void addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);			//!< Add textures and shader
+	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
+	float getSphereArea();																										//!< Given planet radius, get sphere's area
 
 	const float radius;
 	const glm::vec3 nucleus;
-
-	const float area;	// sqr kms
 
 private:
 	Noiser noiseGen;
@@ -315,7 +317,7 @@ private:
 
 	bool readyForUpdate;
 
-	float callBack_getFloorHeight(const glm::vec3& pos);	// Callback example
+	float callBack_getFloorHeight(const glm::vec3& pos);	//!< Callback example
 };
 
 

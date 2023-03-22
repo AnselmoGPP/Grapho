@@ -1,4 +1,6 @@
 TODO:
+	vector.resize instead of .reserve
+	Solve <<<, LOOK, ERROR
 	Simplify borders of chunks generation
 	Fix chuncks gaps
 	No-noise dynamic grid

@@ -8,8 +8,6 @@
 
 double pi = 3.141592653589793238462;
 
-float sphereArea(float radius) { return 4 * pi * radius * radius; }
-
 glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal)
 {
 	//normal = glm::normalize(normal);

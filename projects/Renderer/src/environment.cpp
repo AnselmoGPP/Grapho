@@ -49,6 +49,10 @@ void SwapChain::destroy(VkDevice device)
 VulkanCore::VulkanCore()
 	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT)
 {
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	initWindow();
 	createInstance();
 	setupDebugMessenger();
@@ -63,6 +67,10 @@ VulkanCore::VulkanCore()
 VulkanEnvironment::VulkanEnvironment()
 	: inputAttachmentCount(2)
 {
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	createSwapChain();
 	createSwapChainImageViews();
 
@@ -73,11 +81,18 @@ VulkanEnvironment::VulkanEnvironment()
 	createFramebuffers();
 }
 
-VulkanEnvironment::~VulkanEnvironment() { }
+VulkanEnvironment::~VulkanEnvironment() 
+{ 
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+}
 
 void VulkanCore::initWindow()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	glfwInit();
 
@@ -95,7 +110,9 @@ void VulkanCore::initWindow()
 /// Describe application, select extensions and validation layers, create Vulkan instance (stores application state).
 void VulkanCore::createInstance()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	// Check validation layer support
 	if (enableValidationLayers && !checkValidationLayerSupport(requiredValidationLayers))
@@ -316,7 +333,9 @@ bool VulkanCore::checkExtensionSupport(const char* const* requiredExtensions, ui
  */
 void VulkanCore::setupDebugMessenger()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	if (!enableValidationLayers) return;
 
@@ -358,7 +377,9 @@ VkResult VulkanCore::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkD
  */
 void VulkanCore::createSurface()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
@@ -372,7 +393,9 @@ void VulkanCore::createSurface()
  */
 void VulkanCore::pickPhysicalDevice()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	// Get all devices with Vulkan support.
 
@@ -409,8 +432,8 @@ void VulkanCore::pickPhysicalDevice()
 		std::cout << "      MSAA samples: " << msaaSamples << std::endl;
 		std::cout << "      Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
 		std::cout << "      Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
-		std::cout << "      Large points supported: " << largePointsSupported() << std::endl;
-		std::cout << "      Wide lines supported: " << wideLinesSupported() << std::endl;
+		std::cout << "      Large points supported: " << (largePointsSupported() ? "Yes" : "No") << std::endl;
+		std::cout << "      Wide lines supported: " << (wideLinesSupported() ? "Yes" : "No") << std::endl;
 	}
 }
 
@@ -591,7 +614,9 @@ VkSampleCountFlagBits VulkanCore::getMaxUsableSampleCount(bool getMinimum)
 /// Set up a logical device (describes the features we want to use) to interface with the physical device.
 void VulkanCore::createLogicalDevice()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	// Get the queue families supported by the physical device.
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
@@ -646,7 +671,9 @@ void VulkanCore::createLogicalDevice()
 /// Set up and create the swap chain.
 void VulkanEnvironment::createSwapChain()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	// Get some properties
 	SwapChainSupportDetails swapChainSupport = c.querySwapChainSupport();
@@ -774,7 +801,9 @@ VkPresentModeKHR VulkanEnvironment::chooseSwapPresentMode(const std::vector<VkPr
 /// Creates a basic image view for every image in the swap chain so that we can use them as color targets later on.
 void VulkanEnvironment::createSwapChainImageViews()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	swapChain.views.resize(swapChain.images.size());
 
@@ -907,7 +936,9 @@ VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& can
 /// Commands in Vulkan (drawing, memory transfers, etc.) are not executed directly using function calls, you have to record all of the operations you want to perform in command buffer objects. After setting up the drawing commands, just tell Vulkan to execute them in the main loop.
 void VulkanEnvironment::createCommandPool()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	QueueFamilyIndices queueFamilyIndices = c.findQueueFamilies();	// <<< wrapped method
 
@@ -923,18 +954,30 @@ void VulkanEnvironment::createCommandPool()
 
 void VulkanEnvironment::createRenderPass()
 {
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	if (c.msaaSamples > 1) createRenderPass_MS_PP();
 	else createRenderPass_PP();
 }
 
 void VulkanEnvironment::createImageResources()
 {
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	if (c.msaaSamples > 1) createImageResources_MS_PP();
 	else createImageResources_PP();
 }
 
 void VulkanEnvironment::createFramebuffers()
 {
+	#ifdef DEBUG_ENV_CORE
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	if (c.msaaSamples > 1) createFramebuffers_MS_PP();
 	else createFramebuffers_PP();
 }
@@ -1167,7 +1210,9 @@ void VulkanEnvironment::cleanup()
 */
 void VulkanEnvironment::createRenderPass_MS_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	/*
 		Process for MultiSampling + PostProcessing:
@@ -1337,7 +1382,9 @@ void VulkanEnvironment::createRenderPass_MS_PP()
 
 void VulkanEnvironment::createImageResources_MS_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	VkFormat colorFormat = swapChain.imageFormat;
 	VkFormat depthFormat = findDepthFormat();
@@ -1428,7 +1475,9 @@ void VulkanEnvironment::createImageResources_MS_PP()
 /// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void VulkanEnvironment::createFramebuffers_MS_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	framebuffers.resize(swapChain.views.size());
 	std::vector<VkImageView> attachments;
@@ -1470,7 +1519,9 @@ void VulkanEnvironment::createFramebuffers_MS_PP()
 
 void VulkanEnvironment::createRenderPass_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	/*
 		Process for SingleSample + PostProcessing:
@@ -1624,7 +1675,9 @@ void VulkanEnvironment::createRenderPass_PP()
 
 void VulkanEnvironment::createImageResources_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	VkFormat colorFormat = swapChain.imageFormat;
 	VkFormat depthFormat = findDepthFormat();
@@ -1695,7 +1748,9 @@ void VulkanEnvironment::createImageResources_PP()
 /// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void VulkanEnvironment::createFramebuffers_PP()
 {
-	std::cout << __func__ << "()" << std::endl;
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
 	framebuffers.resize(swapChain.views.size());
 	std::vector<VkImageView> attachments;
@@ -1743,7 +1798,7 @@ VkDeviceSize VulkanCore::getMinUniformBufferOffsetAlignment()
 	return deviceProperties.limits.minUniformBufferOffsetAlignment;
 }
 
-bool VulkanCore::supportsAnisotropicFiltering()
+VkBool32 VulkanCore::supportsAnisotropicFiltering()
 {
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);

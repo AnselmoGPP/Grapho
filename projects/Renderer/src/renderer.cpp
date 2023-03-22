@@ -23,16 +23,15 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	commandsCount(0) 
 { 
 	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << ": " << __func__ << " constructor" << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+		std::cout << "   Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
 	#endif
-
-	std::cout << "Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
 }
 
 Renderer::~Renderer() 
 { 
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	std::cout << __func__ << std::endl; 
@@ -41,7 +40,7 @@ Renderer::~Renderer()
 int Renderer::run()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	try 
@@ -67,7 +66,7 @@ int Renderer::run()
 void Renderer::createCommandBuffers()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	//std::cout << __func__ << "()" << std::endl;
@@ -195,7 +194,7 @@ void Renderer::createCommandBuffers()
 void Renderer::createSyncObjects()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -223,7 +222,7 @@ void Renderer::createSyncObjects()
 void Renderer::renderLoop()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	frameCount = 0;
@@ -249,7 +248,7 @@ void Renderer::renderLoop()
 void Renderer::stopThread()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	runThread = false;
@@ -279,7 +278,7 @@ void Renderer::stopThread()
 void Renderer::drawFrame()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
@@ -366,7 +365,7 @@ void Renderer::drawFrame()
 void Renderer::recreateSwapChain()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	// Get window size
@@ -402,7 +401,7 @@ void Renderer::recreateSwapChain()
 void Renderer::cleanupSwapChain()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	{
@@ -423,7 +422,7 @@ void Renderer::cleanupSwapChain()
 void Renderer::cleanup()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << " (begin)" << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	// Cleanup renderer
@@ -442,8 +441,6 @@ void Renderer::cleanup()
 		vkDestroyFence(e.c.device, framesInFlight[i], nullptr);
 	}
 
-	std::cout << __func__ << "() 2" << std::endl;
-
 	// Cleanup each model
 	models[0].clear();
 	models[1].clear();
@@ -460,16 +457,12 @@ void Renderer::cleanup()
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: " << models[0].size() << "(m1), " << models[1].size() << "(m2), " << modelsToLoad.size() << "(ml), " << modelsToDelete.size() << "(md), " << texturesToLoad.size() << "(tl), " << texturesToDelete.size() << "(td)" << std::endl;
 	e.cleanup(); 
-
-	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << " (end)" << std::endl;
-	#endif
 }
 
 modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
 	#endif
 
 	return modelsToLoad.emplace(
@@ -490,7 +483,7 @@ modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t num
 void Renderer::deleteModel(modelIterator model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	for(uint32_t i = 0; i < e.c.numRenderPasses; i++)
@@ -515,7 +508,7 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 texIterator Renderer::newTexture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << path << std::endl;
 	#endif
 
 	return texturesToLoad.emplace(texturesToLoad.cend(), path, imageFormat, addressMode);
@@ -524,7 +517,7 @@ texIterator Renderer::newTexture(const char* path, VkFormat imageFormat, VkSampl
 texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << ": In-code image" << std::endl;
 	#endif
 
 	return texturesToLoad.emplace(texturesToLoad.cend(), pixels, texWidth, texHeight, imageFormat, addressMode);
@@ -533,7 +526,7 @@ texIterator Renderer::newTexture(unsigned char* pixels, unsigned texWidth, unsig
 void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	bool notLoadedYet = false;
@@ -549,7 +542,7 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind shaderKind, bool optimize, bool isFile)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
 	#endif
 
 	// Get data from txt file:
@@ -561,7 +554,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	if (isFile)		// shaderFile == shader file name
 	{
 		#ifdef DEBUG_RENDERER
-				std::cout << "    " << shaderFile << std::endl;
+				std::cout << shaderFile << std::endl;
 		#endif
 
 		fileName = shaderFile;
@@ -581,7 +574,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	else			// shaderFile == shader content
 	{
 		#ifdef DEBUG_RENDERER
-				std::cout << "    Hardcoded shader" << std::endl;
+				std::cout << "Hardcoded shader" << std::endl;
 		#endif
 
 		fileName = "HardcodedShader";
@@ -620,7 +613,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 void Renderer::deleteShader(ShaderIter shader)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	vkDestroyShaderModule(e.c.device, *shader, nullptr);
@@ -630,7 +623,7 @@ void Renderer::deleteShader(ShaderIter shader)
 void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	if (numberOfRenders != model->activeRenders)
@@ -644,10 +637,8 @@ void Renderer::setRenders(modelIterator model, size_t numberOfRenders)
 void Renderer::loadingThread()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << " (begin)" << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (begin)" << std::endl;
 	#endif
-
-	std::cout << __func__ << "()" << std::endl;
 
 	texIterator beginTexLoad;
 	modelIterator beginModLoad;
@@ -740,14 +731,14 @@ void Renderer::loadingThread()
 	}
 	
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << " (end)" << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (end)" << std::endl;
 	#endif
 }
 
 void Renderer::updateStates(uint32_t currentImage)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	const std::lock_guard<std::mutex> lock(mutSnapshot);
@@ -846,7 +837,7 @@ void Renderer::updateStates(uint32_t currentImage)
 void Renderer::toLastDraw(modelIterator model)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << "Renderer: " << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	lastModelsToDraw.push_back(model);

@@ -48,7 +48,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -79,9 +79,7 @@ Noiser noiser_2(	// Hills
 PlainChunk singleChunk(app, noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
 TerrainGrid terrGrid(app, noiser_1, lights, 6400, 21, 8, 2, 1.2);
 
-BasicPlanet planetChunks(app, noiser_2, 1, 101, 101, 1000, { 0.f, 0.f, 0.f });
 Planet planetGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
-
 Planet planetSeaGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
 bool updateChunk = false, updateChunkGrid = false;
@@ -101,7 +99,7 @@ int main(int argc, char* argv[])
 {
 	//std::cout << std::setprecision(7);
 	std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
-	std::cout << "PlanetGrid area: " << planetGrid.area << std::endl;
+	std::cout << "PlanetGrid area: " << planetGrid.getSphereArea() << std::endl;
 
 	camera_4.camParticle.setCallback(getFloorHeight);
 	
@@ -121,9 +119,8 @@ int main(int argc, char* argv[])
 		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	//planetChunks.computeAndRender(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	 //planetGrid.add_tex_shad(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	planetSeaGrid.add_tex_shad(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
+	 //planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	planetSeaGrid.addResources(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 	 //setReticule(app);
@@ -188,12 +185,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		terrGrid.updateTree(camPos);
 		terrGrid.updateUBOs(view, proj, camPos, lights, frameTime);
 	}
-		
-	planetChunks.updateUbos(camPos, view, proj, lights, frameTime);
+	
+	planetGrid.updateState(camPos, view, proj, lights, frameTime);
 
-	planetGrid.update_tree_ubo(camPos, view, proj, lights, frameTime);
-
-	planetSeaGrid.update_tree_ubo(camPos, view, proj, lights, frameTime);
+	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime);
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -480,7 +475,7 @@ void setAxis(Renderer& app)
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 2000, 0.8);
+	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
 
 	VertexLoader* vertexLoader = new VertexFromUser(VertexType(1, 1, 0, 0), numVertex, v_axis.data(), i_axis, true);
 
