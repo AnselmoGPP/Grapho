@@ -1,8 +1,8 @@
 TODO:
-	vector.resize instead of .reserve
-	Solve <<<, LOOK, ERROR
-	Simplify borders of chunks generation
-	Fix chuncks gaps
+	Fix chunk's gaps
+		Sibling es leaf = Nothing
+		Sibling has children = No level > Pasar level a hijos
+  	Solve <<<, LOOK, ERROR
 	No-noise dynamic grid
 	Sea has to know about ground. Thus, sea+ground has to be passed to shader. Thus, both have to be calculated at the same time. Thus, dynamicGrid changes are required.
 	Default PP shader

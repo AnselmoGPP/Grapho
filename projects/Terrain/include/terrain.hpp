@@ -73,6 +73,8 @@ void inorder(QuadNode<T>* root, V* visitor);
 
 // Chunk -------------------------------
 
+enum side{ right, left, up, down };
+
 /**
 	Class used as the "element" of the QuadNode. Stores everything related to the object to render.
 	Process followed by DynamicGrid:
@@ -100,20 +102,20 @@ protected:
 	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
-	//std::vector<Light*> lights;
-	//LightSet* lights;
-	unsigned layer;					// Used in TerrainGrid for classifying chunks per layer
-
 	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 6 + 0], vertex[position * 6 + 1], vertex[position * 6 + 2]); };
 	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 6 + 3], vertex[position * 6 + 4], vertex[position * 6 + 5]); };
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
-	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer);
+	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID);
 	virtual ~Chunk();
 
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
+
+	const unsigned depth;			//!< Range: [0, x]. Depth of this chunk. Useful in a grid of chunks with different lod.
+	glm::uvec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighbors' chunks.
+	unsigned chunkID;				//!< Range: [1, x]. Unique number per chunk per depth. Useful for computing sideDepths.
 
 	virtual void computeTerrain(bool computeIndices, float textureFactor = 1.f) = 0;
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
@@ -122,7 +124,7 @@ public:
 	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
-	unsigned getLayer()			{ return layer; }
+	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
 	glm::vec3 getGroundCenter()	{ return groundCenter; }
 	unsigned getNumVertex()		{ return numHorVertex * numVertVertex; }
 	float getHorChunkSide()		{ return horChunkSize; };
@@ -136,7 +138,7 @@ class PlainChunk : public Chunk
 	void computeSizes() override;
 
 public:
-	PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer = 0);
+	PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth = 0, unsigned chunkID = 0);
 	~PlainChunk() { };
 
 	/**
@@ -166,7 +168,7 @@ class SphericalChunk : public Chunk
 	void computeSizes() override;
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer = 0);
+	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
 	~SphericalChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
@@ -178,7 +180,9 @@ public:
 
 /**
 	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks in order to present 
-	higher resolution Chunks near the camera. Process:
+	higher resolution Chunks near the camera. To make chunks' vertices fit other chunks of different depth (up to n 
+	depths), then number of side vertices must be = X·2^n + 1
+	Process:
 		1. Constructor()
 			- Chunk::computeIndices()
 		2. addTextures() (once)
@@ -237,9 +241,12 @@ protected:
 	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
+	void updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, unsigned right, unsigned up, unsigned down);	//!< Breath-first search for computing the depth that each side of the chunk must fit.
+	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*> &queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
 	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);	//!< Remove those chunks that are too far from camera
+	glm::vec4 getChunkIDs(unsigned parentID, unsigned depth);
 
-	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer) = 0;
+	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) = 0;
 	virtual std::tuple<float, float, float> closestCenter() = 0;	//!< Find closest center to the camera of the biggest chunk (i.e. lowest level chunk).
 };
 
@@ -259,7 +266,7 @@ public:
 	TerrainGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 
 private:
-	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer) override;
+	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 	std::tuple<float, float, float> closestCenter() override;
 };
 
@@ -277,7 +284,7 @@ private:
 	glm::vec3 cubePlane;
 	glm::vec3 cubeSideCenter;
 
-	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer) override;
+	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 	std::tuple<float, float, float> closestCenter() override;
 };
 
@@ -286,6 +293,7 @@ private:
 
 /**
 	Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
+	The number of side vertices should be odd if you want to make them fit with an equivalent chunk but twice its size.
 	1. Constructor
 		- DynamicGrid.constructor()
 	2. addResources() (once)

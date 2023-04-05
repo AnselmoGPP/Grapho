@@ -2,6 +2,7 @@
 #define AUXILIARY_HPP
 
 #include <vector>
+#include <list>
 
 #include "vertex.hpp"
 

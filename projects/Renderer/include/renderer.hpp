@@ -14,7 +14,7 @@
 #include "timer.hpp"
 #include "commons.hpp"
 
-#define DEBUG_RENDERER
+//#define DEBUG_RENDERER
 
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {

@@ -4,8 +4,8 @@
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : topology(primitiveTopology::triangle), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), layer(layer), modelOrdered(false)
+Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
+    : topology(primitiveTopology::triangle), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -91,7 +91,7 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
 void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)
 {
-    indices.reserve((numHorVertex - 1) * (numVertVertex - 1) * 2 * 3);
+    indices.resize((numHorVertex - 1) * (numVertVertex - 1) * 2 * 3);
 
     for (size_t v = 0; v < numVertVertex - 1; v++)
         for (size_t h = 0; h < numHorVertex - 1; h++)
@@ -108,10 +108,18 @@ void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex
         }
 }
 
+void Chunk::setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d)
+{
+    sideDepths[0] = a;
+    sideDepths[1] = b;
+    sideDepths[2] = c;
+    sideDepths[3] = d;
+}
+
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned layer)
-    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, layer)
+PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
+    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, depth, chunkID)
 {
     groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
 
@@ -125,7 +133,7 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)   // <
     float y0 = baseCenter.y - vertChunkSize / 2;
 
     // Vertex data
-    vertex.reserve(numHorVertex * numVertVertex * 6);
+    vertex.resize(numHorVertex * numVertVertex * 6);
 
     for (size_t y = 0; y < numVertVertex; y++)
         for (size_t x = 0; x < numHorVertex; x++)
@@ -238,8 +246,8 @@ void PlainChunk::computeSizes()
 
 // SphericalChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned layer)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, layer), nucleus(nucleus), radius(radius)
+SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
+    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, depth, chunkID), nucleus(nucleus), radius(radius)
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
@@ -459,15 +467,17 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
         camPos = newCamPos;
 
         std::tuple<float, float, float> center = closestCenter();
-        root[nonActiveTree] = getNode(center, rootCellSize, 0);     // Create root node and chunk
+        root[nonActiveTree] = getNode(center, rootCellSize, 0, 1);
 
         renderedChunks = 0;
         createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
-    if (fullConstChunks(root[nonActiveTree]))
+    if (fullConstChunks(root[nonActiveTree]))   // <<< Can this process be improved by setting a flag when tree is fully constructed?
     {
+        updateChunksSideDepths(root[nonActiveTree], 1, 1, 1, 1);
+
         changeRenders(root[activeTree], false);
         if (root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;
@@ -486,12 +496,13 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     float chunkLength = chunk->getHorChunkSide();
     float sqrSide = chunkLength * chunkLength;
     float sqrDist = (camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z);
+    chunk->setSideDepths(0, 0, 0, 0);
+    
+    //std::cout << node->getElement()->chunkID << std::endl;
 
     // Is leaf node > Compute terrain > Children are nullptr by default
     if (depth >= minLevel && (sqrDist > sqrSide * distMultiplier || depth == numLevels - 1))
     {
-        //std::cout << ' ' << chunk->getLayer();
-        //std::cout << ' ' << std::sqrt(sqrDist) / std::sqrt(sqrSide);
         renderedChunks++;
         if (chunk->modelOrdered == false)
         {
@@ -509,17 +520,18 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         std::tuple<float, float, float> subBaseCenters[4];
         chunk->getSubBaseCenters(subBaseCenters);
         float halfSide = chunk->getHorBaseSide() / 2;
+        glm::vec4 chunkIDs = getChunkIDs(chunk->chunkID, depth);
 
-        node->setA(getNode(subBaseCenters[0], halfSide, depth));
+        node->setA(getNode(subBaseCenters[0], halfSide, depth, chunkIDs[0]));    // - x + y
         createTree(node->getA(), depth);
 
-        node->setB(getNode(subBaseCenters[1], halfSide, depth));
+        node->setB(getNode(subBaseCenters[1], halfSide, depth, chunkIDs[1]));    // + x + y
         createTree(node->getB(), depth);
 
-        node->setC(getNode(subBaseCenters[2], halfSide, depth));
+        node->setC(getNode(subBaseCenters[2], halfSide, depth, chunkIDs[2]));    // - x - y
         createTree(node->getC(), depth);
 
-        node->setD(getNode(subBaseCenters[3], halfSide, depth));
+        node->setD(getNode(subBaseCenters[3], halfSide, depth, chunkIDs[3]));    // + x - y
         createTree(node->getD(), depth);
     }
 }
@@ -592,6 +604,138 @@ void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
     }
 }
 
+void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, unsigned right, unsigned up, unsigned down)
+{
+    node->getElement()->setSideDepths(1000, 1000, 1000, 1000);  // Initialize root side depths to 1000 (flag for grid boundaries). The rest of nodes have side depths of 0 (set previously). 
+
+    QuadNode<Chunk*>* currentNode;
+    std::list<QuadNode<Chunk*>*> queue;
+    queue.push_back(node);
+    
+    //std::cout << "Breath-first traversal -------------------------" << std::endl;
+    
+    // Breadth-first traversal
+    while (queue.size())
+    {
+        // Dequeue firt element
+        currentNode = queue.front();
+        queue.pop_front();
+
+        // Modify data
+        updateChunksSideDepths_help(queue, currentNode);
+
+        //std::cout
+        //    << currentNode->getElement()->chunkID << " / "
+        //    << currentNode->getElement()->depth << " / "
+        //    << currentNode->getElement()->sideDepths[0] << ", "
+        //    << currentNode->getElement()->sideDepths[1] << ", "
+        //    << currentNode->getElement()->sideDepths[2] << ", "
+        //    << currentNode->getElement()->sideDepths[3] << std::endl;
+
+        // Enqueue childs
+        if (!currentNode->isLeaf())
+        {
+            queue.push_back(currentNode->getA());
+            queue.push_back(currentNode->getB());
+            queue.push_back(currentNode->getC());
+            queue.push_back(currentNode->getD());
+        }
+    }
+}
+
+// Use elements
+//    Current chunk or next one is leaf (right & down)? 
+//       - Yes (Apply the depth to both)
+//       - No (Do nothing). 
+//       - Don't overwrite existing side layers.
+
+void DynamicGrid::updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queue, QuadNode<Chunk*>* currentNode)
+{   
+    /*
+        Setting side depths of a chunk requires knowing side depths of neighbor chunks, so we use breath-first search.
+        Each step updates some chunks' side depths: current chunk (right & down), right chunk (left), lower chunk (up).
+        When a depth level starts to be checked, the whole depth level is already in the queue.
+        Due to the way the tree was built, the traversal goes left-right up-down through the grid.
+        Convention: At the beginning, all side depths are 0, but root chunk ones are 1000 (flag for grid boundaries).
+       
+       Process:
+            - Get right and lower node
+            - If any of the 3 nodes is leaf, update corresponding side depths (if they are 0).
+            - Compare adjacent side depths between the 3 of them and update them if required.
+            - Pass side depths from current chunk to its children (if it's not leaf).
+    */
+
+    Chunk * currentChunk = currentNode->getElement(), * rightChunk = nullptr, * lowerChunk = nullptr;
+    QuadNode<Chunk*>* rightNode = nullptr, * lowerNode = nullptr;
+    unsigned sideSize = pow(2, currentChunk->depth);
+
+    // Get right node
+    for (auto iter = queue.begin(); iter != queue.end(); iter++)
+    {
+        if ((*iter)->getElement()->chunkID == currentChunk->chunkID + 1 && (*iter)->getElement()->depth == currentChunk->depth)
+        {
+            rightNode = *iter;
+            rightChunk = rightNode->getElement();
+            break;
+        }
+        else if ((*iter)->getElement()->depth != currentChunk->depth)
+            break;
+    }
+
+    // Get lower node
+    for (auto iter = queue.begin(); iter != queue.end(); iter++)
+        if ((*iter)->getElement()->chunkID == currentChunk->chunkID + sideSize && (*iter)->getElement()->depth == currentChunk->depth)
+        {
+            lowerNode = *iter;
+            lowerChunk = lowerNode->getElement();
+            break;
+        }
+        else if ((*iter)->getElement()->depth != currentChunk->depth)
+            break;
+    
+    // Modify side depths
+    if (currentNode->isLeaf())
+    {
+        if (!currentChunk->sideDepths[side::right]) currentChunk->sideDepths[side::right] = currentChunk->depth;
+        if (!currentChunk->sideDepths[side::down]) currentChunk->sideDepths[side::down] = currentChunk->depth;
+    }
+
+    if (rightNode)
+    {
+        if (rightNode->isLeaf() && !rightChunk->sideDepths[side::left])
+            rightChunk->sideDepths[side::left] = currentChunk->depth;
+
+        if (currentChunk->sideDepths[side::right] && !rightChunk->sideDepths[side::left])
+            rightChunk->sideDepths[side::left] = currentChunk->sideDepths[side::right];
+        if (!currentChunk->sideDepths[side::right] && rightChunk->sideDepths[side::left])
+            currentChunk->sideDepths[side::right] = rightChunk->sideDepths[side::left];
+    }
+
+    if (lowerNode)
+    {
+        if (lowerNode->isLeaf() && !lowerChunk->sideDepths[side::up])
+            lowerChunk->sideDepths[side::up] = currentChunk->depth;
+
+        if (currentChunk->sideDepths[side::down] && !lowerChunk->sideDepths[side::up])
+            lowerChunk->sideDepths[side::up] = currentChunk->sideDepths[side::down];
+        if (!currentChunk->sideDepths[side::down] && lowerChunk->sideDepths[side::up])
+            currentChunk->sideDepths[side::down] = lowerChunk->sideDepths[side::up];
+    }
+    
+    // Pass sides from parent to children
+    if (!currentNode->isLeaf())
+    {
+        currentNode->getA()->getElement()->sideDepths[side::left ] = currentChunk->sideDepths[side::left ];
+        currentNode->getC()->getElement()->sideDepths[side::left ] = currentChunk->sideDepths[side::left ];
+        currentNode->getB()->getElement()->sideDepths[side::right] = currentChunk->sideDepths[side::right];
+        currentNode->getD()->getElement()->sideDepths[side::right] = currentChunk->sideDepths[side::right];
+        currentNode->getA()->getElement()->sideDepths[side::up   ] = currentChunk->sideDepths[side::up   ];
+        currentNode->getB()->getElement()->sideDepths[side::up   ] = currentChunk->sideDepths[side::up   ];
+        currentNode->getC()->getElement()->sideDepths[side::down ] = currentChunk->sideDepths[side::down ];
+        currentNode->getD()->getElement()->sideDepths[side::down ] = currentChunk->sideDepths[side::down ];
+    }
+}
+
 void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 {
     glm::vec3 center;
@@ -627,6 +771,23 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
     }
 }
 
+glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
+{
+    std::cout << __func__ << "(" << parentID << ", " << depth << ")" << std::endl;
+
+    unsigned sideLength = pow(2, depth);
+    unsigned parentSideLength = pow(2, depth - 1);
+    unsigned parentRows = (parentID - 1) / parentSideLength;
+    unsigned basicID = parentID + (parentID - 1);
+
+    glm::vec4 chunksIDs;
+    chunksIDs[0] = basicID + 0 + (parentRows + 0) * sideLength;
+    chunksIDs[1] = basicID + 1 + (parentRows + 0) * sideLength;
+    chunksIDs[2] = basicID + 0 + (parentRows + 1) * sideLength;
+    chunksIDs[3] = basicID + 1 + (parentRows + 1) * sideLength;
+    return chunksIDs;
+}
+
 //void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
 //{
 //    if (node->isLeaf())
@@ -640,10 +801,18 @@ TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& li
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier)
 { }
 
-QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
+QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new PlainChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, layer);
+        chunks[center] = new PlainChunk(
+            renderer, 
+            noiseGenerator, 
+            glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
+            sideLength / (numSideVertex - 1), 
+            numSideVertex, 
+            numSideVertex, 
+            depth,
+            chunkID);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }
@@ -666,10 +835,21 @@ PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& ligh
 
 float PlanetGrid::getRadius() { return radius; }
 
-QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned layer)
+QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new SphericalChunk(renderer, noiseGenerator, glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), sideLength / (numSideVertex - 1), numSideVertex, numSideVertex, radius, nucleus, cubePlane, layer);
+        chunks[center] = new SphericalChunk(
+            renderer, 
+            noiseGenerator, 
+            glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
+            sideLength / (numSideVertex - 1), 
+            numSideVertex, 
+            numSideVertex, 
+            radius, 
+            nucleus, 
+            cubePlane, 
+            depth,
+            chunkID);
 
     return new QuadNode<Chunk*>(chunks[center]);
 }

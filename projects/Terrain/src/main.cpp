@@ -77,10 +77,10 @@ Noiser noiser_2(	// Hills
 	4952);								// Seed
 
 PlainChunk singleChunk(app, noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-TerrainGrid terrGrid(app, noiser_1, lights, 6400, 21, 8, 2, 1.2);
+TerrainGrid terrGrid(app, noiser_1, lights, 6400, 29, 8, 2, 1.2);
 
-Planet planetGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
-Planet planetSeaGrid(app, noiser_2, lights, 100, 31, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetGrid(app, noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetSeaGrid(app, noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -706,6 +706,8 @@ void setAtmosphere(Renderer& app)
 	textures["optDepth"] = app.newTexture(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	std::cout << "Val: " << density.heightSteps << std::endl;
+
 	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };

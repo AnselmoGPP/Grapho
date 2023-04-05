@@ -85,6 +85,10 @@ void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 // (15)
 void Texture::createTextureImage()
 {
+	#ifdef DEBUG_TEXTURE
+		std::cout << "   " << __func__ << std::endl;
+	#endif
+
 	// Load an image (usually, the most expensive process)
 	if (path)	// data from file
 	{
@@ -95,7 +99,7 @@ void Texture::createTextureImage()
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)
-	std::cout << __func__ << std::endl;
+	
 	// Create a staging buffer (temporary buffer in host visible memory so that we can use vkMapMemory and copy the pixels to it)
 	VkBuffer	   stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -281,12 +285,20 @@ void Texture::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWi
 // (16)
 void Texture::createTextureImageView()
 {
+	#ifdef DEBUG_TEXTURE
+		std::cout << "   " << __func__ << std::endl;
+	#endif
+
 	textureImageView = e->createImageView(textureImage, imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 }
 
 // (17)
 void Texture::createTextureSampler()
 {
+	#ifdef DEBUG_TEXTURE
+		std::cout << "   " << __func__ << std::endl;
+	#endif
+
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;					// How to interpolate texels that are magnified (oversampling) or ...
