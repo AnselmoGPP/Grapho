@@ -8,6 +8,7 @@
 // Dynamic Uniform Buffer Objects -----------------------------------------------------------------
 
 size_t UniformAlignment	= 16;
+size_t vec2size			= sizeof(glm::vec2);
 size_t vec3size			= sizeof(glm::vec3);
 size_t vec4size			= sizeof(glm::vec4);
 size_t ivec4size		= sizeof(glm::ivec4);

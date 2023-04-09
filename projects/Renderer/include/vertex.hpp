@@ -24,21 +24,23 @@
 			- VertexPTN
 */
 
-/// Used for configuring VertexSet. Defines a type of vertex that may contain: Position, Color, Texture coordinates, Normal
+/// Used for configuring VertexSet. Defines the size and type of attributes the vertex is made of (Position, Color, Texture coordinates, Normal, other...).
 class VertexType
 {
 public:
-	VertexType(size_t numP, size_t numC, size_t numT, size_t numN);	/// Constructor. Set the following variables: Position, Color, Texture coords, Normal.
-	VertexType(const VertexType& obj);								/// Copy constructor. Not used
+	VertexType(std::initializer_list<size_t> attribsSizes, std::initializer_list<VkFormat> attribsFormats);	//!< Constructor. Set the size (bytes) and type of each vertex attribute (Position, Color, Texture coords, Normal, other...).
+	VertexType();
 	~VertexType();
-	VertexType& operator=(const VertexType& obj);					///< Copy assignment operator overloading. Required for copying a VertexSet object.
+	VertexType& operator=(const VertexType& obj);				//!< Copy assignment operator overloading. Required for copying a VertexSet object.
 
-	VkVertexInputBindingDescription getBindingDescription();					///< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
-	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();	///< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
+	VkVertexInputBindingDescription getBindingDescription();					//!< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
+	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();	//!< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
 
-	static const std::array<size_t, 4> attribsSize;	///< Size of each attribute type.
-	std::array<size_t, 4> numEachAttrib;			///< Amount of each type of attribute
-	size_t vertexSize;								///< Size in bytes of a vertex object (computed in the constructor).
+	//static const std::array<size_t, 4> attribsSize;	//!< Size of each attribute type
+	//std::array<size_t, 4> numEachAttrib;			//!< Amount of each type of attribute
+	std::vector<VkFormat> attribsFormats;			//!< Format (VkFormat) of each vertex attribute. E.g.: VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT...
+	std::vector<size_t> attribsSizes;				//!< Size of each attribute type. E.g.: 3 * sizeof(float)...
+	size_t vertexSize;								//!< Size (bytes) of a vertex object
 };
 
 

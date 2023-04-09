@@ -27,6 +27,7 @@
 */
 
 extern size_t UniformAlignment;	// Alignment required for each uniform in the UBO (usually, 16 bytes).
+extern size_t vec2size;			// glm::vec2
 extern size_t vec3size;			// glm::vec3
 extern size_t vec4size;			// glm::vec4
 extern size_t mat4size;			// glm::mat4

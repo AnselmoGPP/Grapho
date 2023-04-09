@@ -96,8 +96,9 @@ protected:
 
 	float stride;
 	unsigned numHorVertex, numVertVertex;
-	float horBaseSize, vertBaseSize;		//!< Base surface from which computation starts
-	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied
+	float horBaseSize, vertBaseSize;		//!< Base surface from which computation starts (plane)
+	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied (sphere section)
+	int numAttribs;							//!< Number of attributes per vertex (9)
 
 	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])

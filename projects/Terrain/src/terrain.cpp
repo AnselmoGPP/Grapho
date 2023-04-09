@@ -5,7 +5,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : topology(primitiveTopology::line), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), depth(depth), modelOrdered(false), chunkID(chunkID)
+    : topology(primitiveTopology::line), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(6), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -20,14 +20,14 @@ Chunk::~Chunk()
 void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
-        VertexType(1, 0, 0, 1),
+        VertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
         numHorVertex * numVertVertex,
         vertex.data(),
         indices ? *indices : this->indices,
         true);
 
     model = renderer.newModel(
-        "chunck",
+        "chunk",
         1, 1, topology,
         vertexLoader,
         1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4)
@@ -643,12 +643,6 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, 
     }
 }
 
-// Use elements
-//    Current chunk or next one is leaf (right & down)? 
-//       - Yes (Apply the depth to both)
-//       - No (Do nothing). 
-//       - Don't overwrite existing side layers.
-
 void DynamicGrid::updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queue, QuadNode<Chunk*>* currentNode)
 {   
     /*
@@ -657,8 +651,7 @@ void DynamicGrid::updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queu
         When a depth level starts to be checked, the whole depth level is already in the queue.
         Due to the way the tree was built, the traversal goes left-right up-down through the grid.
         Convention: At the beginning, all side depths are 0, but root chunk ones are 1000 (flag for grid boundaries).
-       
-       Process:
+        Process:
             - Get right and lower node
             - If any of the 3 nodes is leaf, update corresponding side depths (if they are 0).
             - Compare adjacent side depths between the 3 of them and update them if required.
@@ -785,6 +778,7 @@ glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
     chunksIDs[1] = basicID + 1 + (parentRows + 0) * sideLength;
     chunksIDs[2] = basicID + 0 + (parentRows + 1) * sideLength;
     chunksIDs[3] = basicID + 1 + (parentRows + 1) * sideLength;
+
     return chunksIDs;
 }
 

@@ -5,31 +5,16 @@
 
 //VertexType -----------------------------------------------------------------
 
-const std::array<size_t, 4> VertexType::attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };
+//const std::array<size_t, 4> VertexType::attribsSize = { sizeof(glm::vec3), sizeof(glm::vec3), sizeof(glm::vec2), sizeof(glm::vec3) };
 
-VertexType::VertexType(size_t numP, size_t numC, size_t numT, size_t numN)
+VertexType::VertexType(std::initializer_list<size_t> attribsSizes, std::initializer_list<VkFormat> attribsFormats)
+	: attribsFormats(attribsFormats), attribsSizes(attribsSizes), vertexSize(0)
 { 
-	vertexSize = numP * attribsSize[0] + numC * attribsSize[1] + numT * attribsSize[2] + numN * attribsSize[3];
-
-	numEachAttrib[0] = numP;
-	numEachAttrib[1] = numC;
-	numEachAttrib[2] = numT;
-	numEachAttrib[3] = numN;
-
-	//std::cout << "Vertex size: " << vertexSize << std::endl;
-	//std::cout << "   Attributes: " << numEachAttrib[0] << ", " << numEachAttrib[1] << ", " << numEachAttrib[2] << std::endl;
-	//std::cout << "   Sizes: " << attribsSize[0] << ", " << attribsSize[1] << ", " << attribsSize[2] << std::endl;
+	for (unsigned i = 0; i < this->attribsSizes.size(); i++)
+		vertexSize += this->attribsSizes[i];
 }
 
-VertexType::VertexType(const VertexType& obj)
-{
-	numEachAttrib[0] = obj.numEachAttrib[0];
-	numEachAttrib[1] = obj.numEachAttrib[1];
-	numEachAttrib[2] = obj.numEachAttrib[2];
-	numEachAttrib[3] = obj.numEachAttrib[3];
-
-	vertexSize = numEachAttrib[0] * attribsSize[0] + numEachAttrib[1] * attribsSize[1] + numEachAttrib[2] * attribsSize[2] + numEachAttrib[3] * attribsSize[3];
-}
+VertexType::VertexType() : vertexSize(0) { }
 
 VertexType::~VertexType() { }
 
@@ -37,8 +22,9 @@ VertexType& VertexType::operator=(const VertexType& obj)
 {
 	if (&obj == this) return *this;
 
+	attribsFormats = obj.attribsFormats;
+	attribsSizes = obj.attribsSizes;
 	vertexSize = obj.vertexSize;
-	numEachAttrib = obj.numEachAttrib;
 
 	return *this;
 }
@@ -61,55 +47,15 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
-	// POSITION
-	for (size_t i = 0; i < numEachAttrib[0]; i++)
+	for (unsigned i = 0; i < attribsSizes.size(); i++)
 	{
 		vertexAttrib.binding = 0;							// From which binding the per-vertex data comes.
 		vertexAttrib.location = location;					// Directive "location" of the input in the vertex shader.
-		vertexAttrib.format = VK_FORMAT_R32G32B32_SFLOAT;	// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
+		vertexAttrib.format = attribsFormats[i];			// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
 		vertexAttrib.offset = offset;						// Number of bytes since the start of the per-vertex data to read from. // offsetof(VertexPCT, pos);	
 
 		location++;
-		offset += attribsSize[0];
-		attributeDescriptions.push_back(vertexAttrib);
-	}
-
-	// COLOR
-	for (size_t i = 0; i < numEachAttrib[1]; i++)
-	{
-		vertexAttrib.binding = 0;
-		vertexAttrib.location = location;
-		vertexAttrib.format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexAttrib.offset = offset;	// offsetof(VertexPCT, color);
-
-		location++;
-		offset += attribsSize[1];
-		attributeDescriptions.push_back(vertexAttrib);
-	}
-
-	// TEXTURE COORDINATES
-	for (size_t i = 0; i < numEachAttrib[2]; i++)
-	{
-		vertexAttrib.binding = 0;
-		vertexAttrib.location = location;
-		vertexAttrib.format = VK_FORMAT_R32G32_SFLOAT;
-		vertexAttrib.offset = offset;	// offsetof(VertexPCT, texCoord);
-
-		location++;
-		offset += attribsSize[2];
-		attributeDescriptions.push_back(vertexAttrib);
-	}
-
-	// NORMALS
-	for (size_t i = 0; i < numEachAttrib[3]; i++)
-	{
-		vertexAttrib.binding = 0;
-		vertexAttrib.location = location;
-		vertexAttrib.format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexAttrib.offset = offset;
-
-		location++;
-		offset += attribsSize[3];
+		offset += attribsSizes[i];
 		attributeDescriptions.push_back(vertexAttrib);
 	}
 

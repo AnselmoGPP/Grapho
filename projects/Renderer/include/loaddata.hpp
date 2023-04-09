@@ -18,7 +18,7 @@ protected:
 	std::vector<uint16_t>* destIndices;
 
 public:
-	VertexLoader() : vertexType(0,0,0,0), destVertices(nullptr), destIndices(nullptr) { };
+	VertexLoader() : vertexType(), destVertices(nullptr), destIndices(nullptr) { };
 	virtual ~VertexLoader() { };
 
 	VertexType& getVertexType() { return vertexType; };
