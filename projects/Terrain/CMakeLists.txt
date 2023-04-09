@@ -61,7 +61,7 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/tinyobjloader
 	../../extern/FastNoiseLite
 	../../extern/FastNoise2/include
-	../../extern/BulletPhysics/bullet3/src/
+	#../../extern/BulletPhysics/bullet3/src/
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
 	#../../extern/imgui/imgui-1.72b
 	#../../extern/eigen-3.3.8
@@ -88,31 +88,31 @@ elseif( WIN32 )
 		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Collision.lib
 		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Dynamics.lib
 		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Common.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletCollision.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletDynamics.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletSoftBody.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletCollision.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletDynamics.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletSoftBody.lib
 
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet2FileLoader.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Geometry.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3OpenCL_clew.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletExampleBrowserLib.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletFileLoader.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletInverseDynamics.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletInverseDynamicsUtils.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletRobotics.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletRoboticsGUI.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletSoftBody.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletWorldImporter.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletXmlWorldImporter.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BussIK.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/clsocket.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/ConvexDecomposition.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/GIMPACTUtils.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/gtest.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/gwen.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/HACD.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/LinearMath.lib
-		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/OpenGLWindow.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet2FileLoader.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Geometry.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3OpenCL_clew.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletExampleBrowserLib.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletFileLoader.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletInverseDynamics.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletInverseDynamicsUtils.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletRobotics.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletRoboticsGUI.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletSoftBody.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletWorldImporter.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BulletXmlWorldImporter.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/BussIK.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/clsocket.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/ConvexDecomposition.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/GIMPACTUtils.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/gtest.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/gwen.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/HACD.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/LinearMath.lib
+		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/OpenGLWindow.lib
 	)
 endif()
 

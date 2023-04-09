@@ -9,7 +9,7 @@ PROJECT (in_source_dependencies)
 # Dependencies
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/glfw/glfw-3.3.2)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/glm/glm-0.9.9.5)
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/BulletPhysics/bullet3)
+#ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/BulletPhysics/bullet3)
 
 # Main project
 #SET(PROJ_NAME "Vk_1")

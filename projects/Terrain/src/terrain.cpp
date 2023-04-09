@@ -5,7 +5,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : topology(primitiveTopology::triangle), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), depth(depth), modelOrdered(false), chunkID(chunkID)
+    : topology(primitiveTopology::line), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;

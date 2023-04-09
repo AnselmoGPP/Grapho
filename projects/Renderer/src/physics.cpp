@@ -1,7 +1,8 @@
 #include <iostream>
 #include "physics.hpp"
 
-
+// BulletPhysics ----------------------------------------------------------
+/*
 PhysicsWorld::PhysicsWorld()
 {
 	// Initiate physics
@@ -22,8 +23,6 @@ PhysicsWorld::~PhysicsWorld()
 	delete dispatcher;
 	delete broadphase;
 }
-
-// BulletPhysics ----------------------------------------------------------
 
 PhysicsObject::PhysicsObject() { }
 
@@ -80,7 +79,7 @@ void PhysicsObject::createBodyWithMass(float mass)
 	//body->setUserPointer((__bridge void*)self);
 	//body->setLinearFactor(btVector3(1, 1, 0));
 }
-
+*/
 
 // Particle ----------------------------------------------------------
 

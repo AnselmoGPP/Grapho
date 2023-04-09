@@ -12,11 +12,11 @@
 //#include <glm/gtx/hash.hpp>
 #include "glm/gtc/type_ptr.hpp"
 
-#include "btBulletDynamicsCommon.h"
+//#include "btBulletDynamicsCommon.h"
 
 
 // BulletPhysics ----------------------------------------------------------
-
+/*
 class PhysicsWorld
 {
     btBroadphaseInterface*                  broadphase;         //!< Broad-phase algorithm: Used during collision detection for filtering those objects that cannot collide. The remaining objects are passed to the Narrow-phase algorithm that checks actual shapes for collision.
@@ -28,7 +28,6 @@ class PhysicsWorld
 public:
     PhysicsWorld();
     ~PhysicsWorld();
-
 };
 
 
@@ -50,7 +49,7 @@ public:
     //GLKBaseEffect* shader;
     //std::vector<float> vertices;
 };
-
+*/
 
 // Particle ----------------------------------------------------------
 

@@ -1,6 +1,4 @@
 TODO:
-	typedef vec3size and co.
-	It's not necessary to update all the uniforms. Some are not modified anymore.
 	Fix chunk's gaps
 		Sibling es leaf = Nothing
 		Sibling has children = No level > Pasar level a hijos
