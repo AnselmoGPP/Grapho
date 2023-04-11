@@ -88,7 +88,6 @@ enum side{ right, left, up, down };
 class Chunk
 {
 protected:
-	primitiveTopology topology;
 	Renderer& renderer;
 	Noiser &noiseGen;
 	glm::vec3 baseCenter;
@@ -103,8 +102,8 @@ protected:
 	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
-	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * 6 + 0], vertex[position * 6 + 1], vertex[position * 6 + 2]); };
-	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * 6 + 3], vertex[position * 6 + 4], vertex[position * 6 + 5]); };
+	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * numAttribs + 0], vertex[position * numAttribs + 1], vertex[position * numAttribs + 2]); };
+	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * numAttribs + 3], vertex[position * numAttribs + 4], vertex[position * numAttribs + 5]); };
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:

@@ -1,10 +1,8 @@
 TODO:
 	typedef vec3size and co.
 	It's not necessary to update all the uniforms. Some are not modified anymore.
-	Fix chunk's gaps
-		Sibling es leaf = Nothing
-		Sibling has children = No level > Pasar level a hijos
-  	Solve <<<, LOOK, ERROR
+	Fix chunk's gaps: two versions, one for current tree, another for new tree
+  	Solve <<<, LOOK, ERROR (and MVS errors)
 	No-noise dynamic grid
 	Sea has to know about ground. Thus, sea+ground has to be passed to shader. Thus, both have to be calculated at the same time. Thus, dynamicGrid changes are required.
 	Default PP shader

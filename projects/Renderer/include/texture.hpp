@@ -7,10 +7,11 @@
 
 #include "environment.hpp"
 
+//#define DEBUG_TEXTURE
 
 class Texture
 {
-	const char* path;									///< Path to the texture file.
+	std::string path;									///< Path to the texture file.
 	VulkanEnvironment* e;								///< Pointer, instead of a reference, because it is not defined at object creation but when calling loadAndCreateTexture().
 	VkFormat imageFormat;								//!< VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_R32_SFLOAT, ...
 	VkSamplerAddressMode addressMode;					//!< VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT, ...
@@ -28,7 +29,7 @@ class Texture
 	unsigned char* pixels;					//!< stbi_uc* pixels
 
 public:
-	Texture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
+	Texture(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
 	Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode);	//!< Construction from in-code data
 	//Texture(const Texture& obj);			//!< Copy constructor.
 	~Texture();

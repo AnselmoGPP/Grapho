@@ -5,7 +5,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : topology(primitiveTopology::line), renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(6), depth(depth), modelOrdered(false), chunkID(chunkID)
+    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -20,7 +20,7 @@ Chunk::~Chunk()
 void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
-        VertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
+        VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
         numHorVertex * numVertVertex,
         vertex.data(),
         indices ? *indices : this->indices,
@@ -28,35 +28,39 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
 
     model = renderer.newModel(
         "chunk",
-        1, 1, topology,
+        1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4)
-        vec4size + 2 * sizeof(LightProps),                      // Time (float), n * LightProps (6*vec4)
+        1, 4 * mat4size + 2 * vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4), sideDepth (vec3)
+        vec4size + 2 * sizeof(LightProps),                          // Time (float), n * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         false);
 
-    uint8_t* dest = model->vsDynUBO.getUBOptr(0);
-    int bytes = 0;
-    memcpy(dest + bytes, &modelMatrix(), mat4size);
-    bytes += mat4size;
-    //memcpy(dest + bytes, &view, mat4size);
-    bytes += mat4size;
-    //memcpy(dest + bytes, &proj, mat4size);
-    bytes += mat4size;
-    memcpy(dest + bytes, &modelMatrixForNormals(modelMatrix()), mat4size);
-    //bytes += mat4size
-    //memcpy(dest + bytes, &camPos, vec3size);
-    //bytes += vec4size;
-    //memcpy(dest + bytes, lights.posDir, lights.posDirBytes);
-    //bytes += lights.posDirBytes;
+    uint8_t* dest;
+    for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
+    {
+        dest = model->vsDynUBO.getUBOptr(i);
+        memcpy(dest, &modelMatrix(), mat4size);
+        dest += mat4size;
+        //memcpy(dest, &view, mat4size);
+        dest += mat4size;
+        //memcpy(dest, &proj, mat4size);
+        dest += mat4size;
+        memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
+        dest += mat4size;
+        //memcpy(dest, &camPos, vec3size);
+        dest += vec4size;
+        memcpy(dest, &sideDepths, vec4size);
+        //dest += vec4size;
+        //memcpy(dest, lights.posDir, lights.posDirBytes);
+        //dest += lights.posDirBytes;
+    }
 
     //dest = model->fsUBO.getUBOptr(0);
-    //float fTime = (float)currentTime;
-    //memcpy(dest, &fTime, sizeof(fTime));
-    //bytes += vec4size;
-    //memcpy(dest + bytes, lights.props, lights.propsBytes);
-    //bytes += lights.propsBytes;
+    //memcpy(dest, &time, sizeof(time));
+    //dest += vec4size;
+    //memcpy(dest, lights.props, lights.propsBytes);
+    //dest += lights.propsBytes;
 
     modelOrdered = true;
 }
@@ -65,9 +69,10 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 {
     if (!modelOrdered) return;
 
+    uint8_t* dest;
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
-        uint8_t* dest = model->vsDynUBO.getUBOptr(0);
+        dest = model->vsDynUBO.getUBOptr(i);
         //memcpy(dest, &modelMatrix(), mat4size);
         dest += mat4size;
         memcpy(dest, &view, mat4size);
@@ -78,15 +83,17 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         dest += mat4size;
         memcpy(dest, &camPos, vec3size);
         dest += vec4size;
+        //memcpy(dest, &sideDepths, vec4size);
+        dest += vec4size;
         memcpy(dest, lights.posDir, lights.posDirBytes);
         //dest += lights.posDirBytes;
-
-        dest = model->fsUBO.getUBOptr(0);
-        memcpy(dest, &time, sizeof(time));
-        dest += vec4size;
-        memcpy(dest, lights.props, lights.propsBytes);
-        //dest += lights.propsBytes;
     }
+
+    dest = model->fsUBO.getUBOptr(0);
+    memcpy(dest, &time, sizeof(time));
+    dest += vec4size;
+    memcpy(dest, lights.props, lights.propsBytes);
+    //dest += lights.propsBytes;
 }
 
 void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)
@@ -279,16 +286,16 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
     // Vertex data (+ frame)
     glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f + yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
     pos0 -= (xAxis * stride + yAxis * stride);      // Set frame
-    unsigned numHorV = numHorVertex  + 2;
-    unsigned numVerV = numVertVertex + 2;
-    vertex.resize(numHorV * numVerV * 6);
+    unsigned tempNumHorV = numHorVertex  + 2;
+    unsigned tempNumVerV = numVertVertex + 2;
+    vertex.resize(tempNumHorV * tempNumVerV * numAttribs);
     glm::vec3 unitVec, cube, sphere, ground;
     size_t index;
 
-    for (size_t v = 0; v < numVerV; v++)
-        for (size_t h = 0; h < numHorV; h++)
+    for (size_t v = 0; v < tempNumVerV; v++)
+        for (size_t h = 0; h < tempNumHorV; h++)
         {
-            index = (v * numHorV + h) * 6;
+            index = (v * tempNumHorV + h) * numAttribs;
 
             // Positions (0, 1, 2)
             cube = pos0 + (xAxis * (float)h * stride) + (yAxis * (float)v * stride);
@@ -298,26 +305,23 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
             vertex[index + 0] = ground.x;
             vertex[index + 1] = ground.y;
             vertex[index + 2] = ground.z;
+            vertex[index + 6] = 0;          // Vertex type (default = 0)
         }
-
+    
     // Normals (3, 4, 5) (+ frame)
-    computeGridNormals(pos0, xAxis, yAxis, numHorV, numVerV);
+    computeGridNormals(pos0, xAxis, yAxis, tempNumHorV, tempNumVerV);
 
     // Crop frame (relocate vertices in the vector and crop it)
-    size_t i = 0;
-    for (size_t v = 1; v < (numVerV - 1); v++)
-        for (size_t h = 1; h < (numHorV - 1); h++)
+    size_t i = 0, j = 0;
+    for (size_t v = 1; v < (tempNumVerV - 1); v++)
+        for (size_t h = 1; h < (tempNumHorV - 1); h++)
         {
-            index = (v * numHorV + h) * 6;
+            index = (v * tempNumHorV + h) * numAttribs;
 
-            vertex[i++] = vertex[index + 0];
-            vertex[i++] = vertex[index + 1];
-            vertex[i++] = vertex[index + 2];
-            vertex[i++] = vertex[index + 3];
-            vertex[i++] = vertex[index + 4];
-            vertex[i++] = vertex[index + 5];
+            for(j = 0; j < numAttribs; j++)
+                vertex[i++] = vertex[index + j];
         }
-    vertex.resize(numHorVertex * numVertVertex * 6);
+    vertex.resize(numHorVertex * numVertVertex * numAttribs);
 
     // Indices
     if (computeIndices)
@@ -386,7 +390,7 @@ void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::ve
     size_t j;
     for (size_t i = 0; i < numVertex; i++)
     {
-        j = i * 6;
+        j = i * numAttribs;
 
         tempNormals[i] = glm::normalize(tempNormals[i]);
         vertex[j + 3] = tempNormals[i].x;
@@ -766,8 +770,6 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 
 glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
 {
-    std::cout << __func__ << "(" << parentID << ", " << depth << ")" << std::endl;
-
     unsigned sideLength = pow(2, depth);
     unsigned parentSideLength = pow(2, depth - 1);
     unsigned parentRows = (parentID - 1) / parentSideLength;
@@ -778,7 +780,6 @@ glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
     chunksIDs[1] = basicID + 1 + (parentRows + 0) * sideLength;
     chunksIDs[2] = basicID + 0 + (parentRows + 1) * sideLength;
     chunksIDs[3] = basicID + 1 + (parentRows + 1) * sideLength;
-
     return chunksIDs;
 }
 
@@ -844,7 +845,7 @@ QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, fl
             cubePlane, 
             depth,
             chunkID);
-
+    
     return new QuadNode<Chunk*>(chunks[center]);
 }
 

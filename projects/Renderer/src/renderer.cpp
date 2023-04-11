@@ -24,6 +24,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 { 
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+		std::cout << "Main thread ID: " << std::this_thread::get_id() << std::endl;
 		std::cout << "   Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
 	#endif
 }
@@ -505,7 +506,7 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 		}
 }
 
-texIterator Renderer::newTexture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
+texIterator Renderer::newTexture(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << path << std::endl;
@@ -638,9 +639,10 @@ void Renderer::loadingThread()
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << " (begin)" << std::endl;
+		std::cout << "Loading thread ID: " << std::this_thread::get_id() << std::endl;
 	#endif
 
-	texIterator beginTexLoad;
+	texIterator beginTexLoad, prevBeginTexLoad;
 	modelIterator beginModLoad;
 	modelIterator endModDelete;
 	texIterator endTexDelete;
@@ -686,25 +688,21 @@ void Renderer::loadingThread()
 		if (countTexLoad || countModLoad || countModDelete || countTexDelete)
 		{
 			// Textures to load
-			if(countTexLoad)
+			while (countTexLoad)
 			{
-				while (countTexLoad)
-				{
-					beginTexLoad->loadAndCreateTexture(&e);
-					++beginTexLoad;
-					--countTexLoad;
-				}
+				beginTexLoad->loadAndCreateTexture(&e);
+				--countTexLoad;
+				prevBeginTexLoad = beginTexLoad;			// Extract element from a list while iterating:
+				++beginTexLoad;								// 1. Increment the iterator
+				prevBeginTexLoad->fullyConstructed = true;	// 2. Remove the previous element with the previous iterator.
 			}
 
 			// Models to load
-			if (countModLoad)
+			while (countModLoad)
 			{
-				while (countModLoad)
-				{
-					beginModLoad->fullConstruction();
-					++beginModLoad;						// <<< Problem? updateCB Vs loadingThread
-					--countModLoad;
-				}
+				beginModLoad->fullConstruction();
+				++beginModLoad;						// <<< Problem? updateCB Vs loadingThread
+				--countModLoad;
 			}
 
 			// Models to delete
@@ -759,7 +757,7 @@ void Renderer::updateStates(uint32_t currentImage)
 	// Update model matrices and other things (user defined)
 	userUpdate(*this, view, proj);
 
-	// - MOVE MODELS AND TEXTURES
+	// - MOVE MODELS AND TEXTURES (multithreading topic)
 
 	uint32_t i;
 
@@ -860,4 +858,3 @@ size_t Renderer::getCommandsCount() { return commandsCount; }
 float Renderer::getAspectRatio() { return (float)e.c.height / e.c.width; }
 
 glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.c.width, e.c.height); }
-

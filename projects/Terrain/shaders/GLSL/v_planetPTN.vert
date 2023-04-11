@@ -15,11 +15,13 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 proj;
     mat4 normalMatrix;			// mat3
 	vec4 camPos;				// vec3
+	vec4 sideDepths;
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
 layout(location = 0) in vec3     inPos;					// Each location has 16 bytes
 layout(location = 1) in vec3     inNormal;
+layout(location = 2) in vec3     inGapFix;
 
 layout(location = 0)  		out vec3	outPos;			// Vertex position.
 layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position

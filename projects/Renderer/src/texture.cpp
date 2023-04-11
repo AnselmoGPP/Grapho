@@ -8,16 +8,16 @@
 #include "texture.hpp"
 #include "commons.hpp"
 
-#define DEBUG_TEXTURE
 
-Texture::Texture(const char* path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
-	: path(nullptr), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
+Texture::Texture(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
+	: path(path), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
-	copyCString(this->path, path);
+	std::cout << typeid(*this).name() << "::" << __func__ << this->path << std::endl;
+	//copyCString(this->path, path);	// where path is const char*
 }
 
 Texture::Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
-	: path(nullptr), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
+	: path(), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
 	this->pixels = new unsigned char[4 * texHeight * texWidth];
 	memcpy(this->pixels, pixels, 4 * texHeight * texWidth);
@@ -46,7 +46,7 @@ Texture::Texture(const Texture& obj)
 */
 Texture::~Texture() 
 { 
-	if(path) delete[] path;
+	//if(path) delete[] path;
 
 	if (e)
 	{
@@ -60,8 +60,8 @@ Texture::~Texture()
 void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 {
 	#ifdef DEBUG_TEXTURE
-		if (path)
-			std::cout << typeid(*this).name() << "::" << __func__ << " (begin): " << path << std::endl;
+		if (path.size())
+			std::cout << typeid(*this).name() << "::" << __func__ << " (begin) (" << path.size() << "): " << path << std::endl;
 		else
 			std::cout << typeid(*this).name() << "::" << __func__ << " (begin): " << "In-code generated texture" << std::endl;
 	#endif
@@ -72,10 +72,10 @@ void Texture::loadAndCreateTexture(VulkanEnvironment* e)
 	createTextureImageView();
 	createTextureSampler();
 
-	fullyConstructed = true;
+	//fullyConstructed = true;
 
 	#ifdef DEBUG_TEXTURE
-		if (path)
+		if (path.size())
 			std::cout << typeid(*this).name() << "::" << __func__ << " (end): " << path << std::endl;
 		else
 			std::cout << typeid(*this).name() << "::" << __func__ << " (end): " << "In-code generated texture" << std::endl;
@@ -90,9 +90,9 @@ void Texture::createTextureImage()
 	#endif
 
 	// Load an image (usually, the most expensive process)
-	if (path)	// data from file
+	if (path.size())	// data from file
 	{
-		pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
+		pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
 		if (!pixels) throw std::runtime_error("Failed to load texture image!");
 	}
 	else { }	// data from code

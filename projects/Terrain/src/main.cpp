@@ -119,11 +119,11 @@ int main(int argc, char* argv[])
 		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	 //planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	planetSeaGrid.addResources(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
+	planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	//planetSeaGrid.addResources(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
-	 //setReticule(app);
+	  //setReticule(app);
 
 	app.run();		// Start rendering
 
@@ -154,7 +154,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
-	std::cout << rend.getFrameCount() << ") " << fps << '\n';
+	std::cout << rend.getFrameCount() << ") " << std::endl;
+	//std::cout << rend.getFrameCount() << ") " << fps << '\n';
 	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
 
 	// Time
@@ -421,6 +422,14 @@ void loadTextures(Renderer& app)
 	textures["snow2_a"] = app.newTexture((texDir + "snow2_a.png").c_str());
 	textures["snow2_n"] = app.newTexture((texDir + "snow2_n.png").c_str());
 	textures["snow2_s"] = app.newTexture((texDir + "snow2_s.png").c_str());
+
+	// In-code textures
+	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi / 100, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	textures["optDepth"] = app.newTexture(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
 
 	// Package textures
 	usedTextures =
@@ -710,17 +719,8 @@ void setAtmosphere(Renderer& app)
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(1.f, 0.5, v_quad, i_quad);
 
-	// Fill table buffers (optical depth & density)
-	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi/100, 10);		// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
-	textures["optDepth"] = app.newTexture(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
-	std::cout << "Val: " << density.heightSteps << std::endl;
-
-	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
 	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };
-
+	
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
 	VertexLoader* vertexLoader = new VertexFromUser(vertexType, 4, v_quad, i_quad, true);
 
