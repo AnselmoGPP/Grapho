@@ -23,6 +23,8 @@ enum primitiveTopology {
 	triangle	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 };
 
+
+
 // LOOK Restart the Renderer object after finishing the render loop
 /**
 *   @brief Responsible for making the rendering (render loop). Manages models, textures, input, camera...
@@ -41,8 +43,15 @@ class Renderer
 	VulkanEnvironment			e;
 	Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
+
 	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass) [0] used to render the main colors or [1] for post processing.
+	std::list<ModelData>		modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
+	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
+
 	std::list<Texture>			textures;					//!< Set of textures
+	std::list<Texture>			texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
+	std::list<Texture>			texturesToDelete;			//!< Textures waiting for being deleted.
+
 	std::list<VkShaderModule>	shaders;					//!< Set of shaders
 	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIterator>	lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
@@ -51,10 +60,6 @@ class Renderer
 	std::thread					thread_loadModels;			//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
 	std::mutex					mutSnapshot;				//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
 
-	std::list<ModelData>		modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
-	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
-	std::list<Texture>			texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
-	std::list<Texture>			texturesToDelete;			//!< Textures waiting for being deleted.
 
 	// Member variables:
 	std::vector<VkCommandBuffer> commandBuffers;			//!< <<< List. Opaque handle to command buffer object. One for each swap chain framebuffer.

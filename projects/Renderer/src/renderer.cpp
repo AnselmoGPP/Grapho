@@ -488,7 +488,7 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 	#endif
 
 	for(uint32_t i = 0; i < e.c.numRenderPasses; i++)
-		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)
+		for (modelIterator it = models[i].begin(); it != models[i].end(); it++)		// Model should not be rendered
 			if (it == model)
 			{
 				model->inModels = false;
@@ -497,7 +497,7 @@ void Renderer::deleteModel(modelIterator model)	// <<< splice an element only kn
 				return;
 			}
 
-	for (modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
+	for (modelIterator it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)	// <<< Potential multithreading issues
 		if (it == model)
 		{
 			model->inModels = false;
@@ -643,7 +643,7 @@ void Renderer::loadingThread()
 	#endif
 
 	texIterator beginTexLoad, prevBeginTexLoad;
-	modelIterator beginModLoad;
+	modelIterator beginModLoad, prevBeginModLoad;
 	modelIterator endModDelete;
 	texIterator endTexDelete;
 	size_t countTexLoad;
@@ -691,17 +691,19 @@ void Renderer::loadingThread()
 			while (countTexLoad)
 			{
 				beginTexLoad->loadAndCreateTexture(&e);
-				--countTexLoad;
 				prevBeginTexLoad = beginTexLoad;			// Extract element from a list while iterating:
 				++beginTexLoad;								// 1. Increment the iterator
 				prevBeginTexLoad->fullyConstructed = true;	// 2. Remove the previous element with the previous iterator.
+				--countTexLoad;
 			}
 
 			// Models to load
 			while (countModLoad)
 			{
 				beginModLoad->fullConstruction();
+				prevBeginModLoad = beginModLoad;
 				++beginModLoad;						// <<< Problem? updateCB Vs loadingThread
+				prevBeginModLoad->fullyConstructed = true;
 				--countModLoad;
 			}
 

@@ -1,4 +1,5 @@
 TODO:
+	Fix/improve loadingThread multiple accesses to lists
 	typedef vec3size and co.
 	It's not necessary to update all the uniforms. Some are not modified anymore.
 	Fix chunk's gaps: two versions, one for current tree, another for new tree

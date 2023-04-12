@@ -323,6 +323,75 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
         }
     vertex.resize(numHorVertex * numVertVertex * numAttribs);
 
+    // Compute gap-fixing data (6, 7, 8) (extra height for some vertices) (6: vertex type, 7: x2 gap fix, 8: x4 gap fix)
+
+    unsigned sideCols = numHorVertex * numAttribs;
+    unsigned sideRows = numVertVertex * numAttribs;
+    glm::vec3 current, average;
+    unsigned remain, prev, next;
+
+    // Is a side vertex? (attribute)
+    // Take corresponding side depth (uniform)
+    // Apply corresponding fix (attribute)
+
+    // vertex type (side): 0, 1, 2, 3, 4
+    // uniform: pass side depths
+    // shader: use the fixes depending upon vertex type and uniform
+
+    if (0)
+        for (size_t v = 1; v < numVertVertex - 1; v++)
+            if (v % 4)
+            {
+                if (v % 2)
+                {
+                    // x2 left
+                    index = v * sideCols;
+                    prev = index - sideCols;
+                    next = index + sideCols;
+                    current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                    average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                    average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                    average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                    vertex[index + 6] = side::left + 1;
+                    vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+
+                    // x2 right
+                    index = v * sideCols + sideCols - 1;
+                    prev = index - sideCols;
+                    next = index + sideCols;
+                    current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                    average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                    average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                    average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                    vertex[index + 6] = side::right + 1;
+                    vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+                }
+
+                remain = v % 4;
+
+                // x4 left
+                index = v * sideCols;
+                prev = index - sideCols * remain;
+                next = index + sideCols * (4 - remain);
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::left + 1;
+                vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+
+                // x4 right
+                index = v * sideCols + sideCols - 1;
+                prev = index - sideCols * remain;
+                next = index + sideCols * (4 - remain);
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::right + 1;
+                vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+            }
+
     // Indices
     if (computeIndices)
         this->computeIndices(indices, numHorVertex, numVertVertex);

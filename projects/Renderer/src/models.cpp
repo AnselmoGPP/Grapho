@@ -63,7 +63,7 @@ ModelData& ModelData::fullConstruction()
 	createDescriptorPool();
 	createDescriptorSets();
 
-	fullyConstructed = true;
+	//fullyConstructed = true;
 	return *this;
 }
 
