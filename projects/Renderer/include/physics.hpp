@@ -116,8 +116,8 @@ glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle);
 glm::vec3 rotatePoint(const glm::vec4& rotQuat, const glm::vec3& point);
 
 /// Get the Hamilton product of 2 quaternions (result = q1 * q2). The product of two rotation quaternions (A * B) will be equivalent to rotation B followed by rotation A (around the rotation axes the object has at the beginning).
-glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2);
 glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2, const glm::vec4& q3);
+glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2);
 
 /// Get rotation matrix. Use it to rotate a point (result = rotMatrix * point) (http://answers.google.com/answers/threadview/id/361441.html)
 glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle);

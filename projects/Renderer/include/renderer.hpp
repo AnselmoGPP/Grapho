@@ -24,7 +24,6 @@ enum primitiveTopology {
 };
 
 
-
 // LOOK Restart the Renderer object after finishing the render loop
 /**
 *   @brief Responsible for making the rendering (render loop). Manages models, textures, input, camera...

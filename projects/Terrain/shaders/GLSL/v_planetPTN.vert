@@ -15,13 +15,13 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 proj;
     mat4 normalMatrix;			// mat3
 	vec4 camPos;				// vec3
-	vec4 sideDepths;
+	vec4 sideDepthsDiff;
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
 layout(location = 0) in vec3     inPos;					// Each location has 16 bytes
 layout(location = 1) in vec3     inNormal;
-layout(location = 2) in vec3     inGapFix;
+layout(location = 2) in vec3    inGapFix;
 
 layout(location = 0)  		out vec3	outPos;			// Vertex position.
 layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
@@ -38,9 +38,11 @@ layout(location = 11) 		out vec3	outTanZ;
 layout(location = 12) 		out vec3	outBTanZ;
 layout(location = 13) flat	out LightPD outLight[NUMLIGHTS];
 
+vec3 fixedPos();
+
 void main()
 {
-	gl_Position     = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
+	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(fixedPos(), 1.0);
 				    
 	outPos          = inPos;
 	outNormal       = mat3(ubo.normalMatrix) * inNormal;
@@ -59,7 +61,7 @@ void main()
 	// TBN matrices for triplanar shader:	<<< Maybe I can reduce X & Z plane projections into a single one
 	vec3 axis = sign(inNormal);
 
-	outTanX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));	// z,y
+	outTanX = normalize(cross(inNormal, vec3(0., axis.x, 0.)));			// z,y
 	outBTanX = normalize(cross(outTanX, inNormal)) * axis.x;
 	
 	outTanY = normalize(cross(inNormal, vec3(0., 0., axis.y)));			// x,z
@@ -69,6 +71,23 @@ void main()
 	outBTanZ = normalize(-cross(outTanZ, inNormal)) * axis.z;
 }
 
+vec3 fixedPos2(float sideDepthDiff)
+{
+	if(sideDepthDiff < 0.1)	return inPos;
+	if(sideDepthDiff < 1.1)	return inPos + normalize(inPos) * inGapFix[1];
+	else					return inPos + normalize(inPos) * inGapFix[2];
+}
+
+vec3 fixedPos()
+{
+	float vertexType = inGapFix[0];
+	
+	if     (vertexType < 0.1f) return inPos;
+	else if(vertexType < 1.1f) return fixedPos2(ubo.sideDepthsDiff[0]);	// right
+	else if(vertexType < 2.1f) return fixedPos2(ubo.sideDepthsDiff[1]);	// left
+	else if(vertexType < 3.1f) return fixedPos2(ubo.sideDepthsDiff[2]);	// up
+	else					   return fixedPos2(ubo.sideDepthsDiff[3]);	// down
+}
 
 /*
 	Notes:

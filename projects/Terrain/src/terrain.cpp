@@ -49,8 +49,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
         dest += mat4size;
         //memcpy(dest, &camPos, vec3size);
-        dest += vec4size;
-        memcpy(dest, &sideDepths, vec4size);
+        //dest += vec4size;
+        //memcpy(dest, &sideDepths, vec4size);
         //dest += vec4size;
         //memcpy(dest, lights.posDir, lights.posDirBytes);
         //dest += lights.posDirBytes;
@@ -83,7 +83,8 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         dest += mat4size;
         memcpy(dest, &camPos, vec3size);
         dest += vec4size;
-        //memcpy(dest, &sideDepths, vec4size);
+        memcpy(dest, &sideDepths, vec4size);
+        //std::cout << sideDepths[0] << ", " << sideDepths[1] << ", " << sideDepths[2] << ", " << sideDepths[3] << std::endl;
         dest += vec4size;
         memcpy(dest, lights.posDir, lights.posDirBytes);
         //dest += lights.posDirBytes;
@@ -323,74 +324,8 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
         }
     vertex.resize(numHorVertex * numVertVertex * numAttribs);
 
-    // Compute gap-fixing data (6, 7, 8) (extra height for some vertices) (6: vertex type, 7: x2 gap fix, 8: x4 gap fix)
-
-    unsigned sideCols = numHorVertex * numAttribs;
-    unsigned sideRows = numVertVertex * numAttribs;
-    glm::vec3 current, average;
-    unsigned remain, prev, next;
-
-    // Is a side vertex? (attribute)
-    // Take corresponding side depth (uniform)
-    // Apply corresponding fix (attribute)
-
-    // vertex type (side): 0, 1, 2, 3, 4
-    // uniform: pass side depths
-    // shader: use the fixes depending upon vertex type and uniform
-
-    if (0)
-        for (size_t v = 1; v < numVertVertex - 1; v++)
-            if (v % 4)
-            {
-                if (v % 2)
-                {
-                    // x2 left
-                    index = v * sideCols;
-                    prev = index - sideCols;
-                    next = index + sideCols;
-                    current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
-                    average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
-                    average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
-                    average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
-                    vertex[index + 6] = side::left + 1;
-                    vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
-
-                    // x2 right
-                    index = v * sideCols + sideCols - 1;
-                    prev = index - sideCols;
-                    next = index + sideCols;
-                    current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
-                    average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
-                    average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
-                    average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
-                    vertex[index + 6] = side::right + 1;
-                    vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
-                }
-
-                remain = v % 4;
-
-                // x4 left
-                index = v * sideCols;
-                prev = index - sideCols * remain;
-                next = index + sideCols * (4 - remain);
-                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
-                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
-                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
-                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
-                vertex[index + 6] = side::left + 1;
-                vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
-
-                // x4 right
-                index = v * sideCols + sideCols - 1;
-                prev = index - sideCols * remain;
-                next = index + sideCols * (4 - remain);
-                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
-                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
-                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
-                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
-                vertex[index + 6] = side::right + 1;
-                vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
-            }
+    // Compute gap-fixing data (6, 7, 8).
+    computeGapFixes();
 
     // Indices
     if (computeIndices)
@@ -497,6 +432,127 @@ void SphericalChunk::computeSizes()
     vertChunkSize = glm::length(bottom - top);
 }
 
+void SphericalChunk::computeGapFixes()
+{
+    // Attributes: 6 (vertex type: 0,1,2,3,4), 7 (extra height for x2 difference), 8 (for x4 difference).
+    // Shader: If vertex type != 0 or 1000, fix vertex position (if required) using side depths (uniform) and extra height (attribute).
+
+    //unsigned sideCols = numHorVertex * numAttribs;
+    //unsigned sideRows = numVertVertex * numAttribs;
+    glm::vec3 current, average;
+    unsigned remain, prev, next;
+    float ratio;
+    size_t index;
+
+    for (size_t v = 1; v < numVertVertex - 1; v++)
+        if (v % 4)
+        {
+            if (v % 2)
+            {
+                // x2 left
+                index = (numHorVertex * v) * numAttribs;
+                prev = index - numHorVertex * numAttribs;
+                next = index + numHorVertex * numAttribs;
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::left + 1;
+                vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+
+                // x2 right
+                index = (numHorVertex * (v + 1) - 1) * numAttribs;
+                prev = index - numHorVertex * numAttribs;
+                next = index + numHorVertex * numAttribs;
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::right + 1;
+                vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+            }
+
+            remain = v % 4;
+            ratio = remain / 4.f;
+
+            // x4 left
+            index = (numHorVertex * v) * numAttribs;
+            prev = index - numHorVertex * numAttribs * remain;
+            next = index + numHorVertex * numAttribs * (4 - remain);
+            current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+            average.x = vertex[prev + 0] + (vertex[next + 0] - vertex[prev + 0]) * ratio;
+            average.y = vertex[prev + 1] + (vertex[next + 1] - vertex[prev + 1]) * ratio;
+            average.z = vertex[prev + 2] + (vertex[next + 2] - vertex[prev + 2]) * ratio;
+            vertex[index + 6] = side::left + 1;
+            vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+
+            // x4 right
+            index = (numHorVertex * (v + 1) - 1) * numAttribs;
+            prev = index - numHorVertex * numAttribs * remain;
+            next = index + numHorVertex * numAttribs * (4 - remain);
+            current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+            average.x = vertex[prev + 0] + (vertex[next + 0] - vertex[prev + 0]) * ratio;
+            average.y = vertex[prev + 1] + (vertex[next + 1] - vertex[prev + 1]) * ratio;
+            average.z = vertex[prev + 2] + (vertex[next + 2] - vertex[prev + 2]) * ratio;
+            vertex[index + 6] = side::right + 1;
+            vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+        }
+
+    for (size_t h = 1; h < numHorVertex - 1; h++)
+        if (h % 4)
+        {
+            if (h % 2)
+            {
+                // x2 up
+                index = (numHorVertex * (numVertVertex - 1) + h) * numAttribs;
+                prev = index - numAttribs;
+                next = index + numAttribs;
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::up + 1;
+                vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+                
+                // x2 down
+                index = h * numAttribs;
+                prev = index - numAttribs;
+                next = index + numAttribs;
+                current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+                average.x = (vertex[prev + 0] + vertex[next + 0]) / 2;
+                average.y = (vertex[prev + 1] + vertex[next + 1]) / 2;
+                average.z = (vertex[prev + 2] + vertex[next + 2]) / 2;
+                vertex[index + 6] = side::down + 1;
+                vertex[index + 7] = glm::length(average - nucleus) - glm::length(current - nucleus);
+            }
+
+            remain = h % 4;
+            ratio = remain / 4.f;
+
+            // x4 up
+            index = (numHorVertex * (numVertVertex - 1) + h) * numAttribs;
+            prev = index - remain * numAttribs;
+            next = index + (4 - remain) * numAttribs;
+            current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+            average.x = vertex[prev + 0] + (vertex[next + 0] - vertex[prev + 0]) * ratio;
+            average.y = vertex[prev + 1] + (vertex[next + 1] - vertex[prev + 1]) * ratio;
+            average.z = vertex[prev + 2] + (vertex[next + 2] - vertex[prev + 2]) * ratio;
+            vertex[index + 6] = side::up + 1;
+            vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+
+            // x4 down
+            index = h * numAttribs;
+            prev = index - remain * numAttribs;
+            next = index + (4 - remain) * numAttribs;
+            current = glm::vec3(vertex[index + 0], vertex[index + 1], vertex[index + 2]);
+            average.x = vertex[prev + 0] + (vertex[next + 0] - vertex[prev + 0]) * ratio;
+            average.y = vertex[prev + 1] + (vertex[next + 1] - vertex[prev + 1]) * ratio;
+            average.z = vertex[prev + 2] + (vertex[next + 2] - vertex[prev + 2]) * ratio;
+            vertex[index + 6] = side::down + 1;
+            vertex[index + 8] = glm::length(average - nucleus) - glm::length(current - nucleus);
+        }
+}
+
 // DynamicGrid ----------------------------------------------------------------------
 
 DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
@@ -549,7 +605,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
     if (fullConstChunks(root[nonActiveTree]))   // <<< Can this process be improved by setting a flag when tree is fully constructed?
     {
-        updateChunksSideDepths(root[nonActiveTree], 1, 1, 1, 1);
+        updateChunksSideDepths(root[nonActiveTree]);
 
         changeRenders(root[activeTree], false);
         if (root[activeTree]) delete root[activeTree];
@@ -677,17 +733,16 @@ void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
     }
 }
 
-void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, unsigned right, unsigned up, unsigned down)
+void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
 {
     node->getElement()->setSideDepths(1000, 1000, 1000, 1000);  // Initialize root side depths to 1000 (flag for grid boundaries). The rest of nodes have side depths of 0 (set previously). 
 
     QuadNode<Chunk*>* currentNode;
+    std::list<Chunk*> allLeaves;
     std::list<QuadNode<Chunk*>*> queue;
     queue.push_back(node);
     
-    //std::cout << "Breath-first traversal -------------------------" << std::endl;
-    
-    // Breadth-first traversal
+    // Get depths of neighbour chunks (breadth-first traversal) (result = depth each side should keep to make its borders fit)
     while (queue.size())
     {
         // Dequeue firt element
@@ -696,14 +751,8 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, 
 
         // Modify data
         updateChunksSideDepths_help(queue, currentNode);
-
-        //std::cout
-        //    << currentNode->getElement()->chunkID << " / "
-        //    << currentNode->getElement()->depth << " / "
-        //    << currentNode->getElement()->sideDepths[0] << ", "
-        //    << currentNode->getElement()->sideDepths[1] << ", "
-        //    << currentNode->getElement()->sideDepths[2] << ", "
-        //    << currentNode->getElement()->sideDepths[3] << std::endl;
+        if(currentNode->isLeaf()) 
+            allLeaves.push_back(currentNode->getElement());
 
         // Enqueue childs
         if (!currentNode->isLeaf())
@@ -713,6 +762,17 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, 
             queue.push_back(currentNode->getC());
             queue.push_back(currentNode->getD());
         }
+    }
+
+    // Get depth differences of neigbour leaves and pass them as UBO
+    for (auto& it : allLeaves)
+    {
+        //std::cout << it->depth << " / " << it->sideDepths[0] << ", " << it->sideDepths[1] << ", " << it->sideDepths[2] << ", " << it->sideDepths[3] << std::endl;
+        if (it->sideDepths[0] != 1000) it->sideDepths[0] = it->depth - it->sideDepths[0];
+        if (it->sideDepths[1] != 1000) it->sideDepths[1] = it->depth - it->sideDepths[1];
+        if (it->sideDepths[2] != 1000) it->sideDepths[2] = it->depth - it->sideDepths[2];
+        if (it->sideDepths[3] != 1000) it->sideDepths[3] = it->depth - it->sideDepths[3];
+        //std::cout << it->sideDepths[0] << ", " << it->sideDepths[1] << ", " << it->sideDepths[2] << ", " << it->sideDepths[3] << std::endl;
     }
 }
 

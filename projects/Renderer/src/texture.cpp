@@ -142,7 +142,6 @@ void Texture::createTextureImage()
 	// Cleanup the staging buffer and its memory
 	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
 	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
-	std::cout << __func__ << std::endl;
 }
 
 void Texture::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)

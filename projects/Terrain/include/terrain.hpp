@@ -114,7 +114,7 @@ public:
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 
 	const unsigned depth;			//!< Range: [0, x]. Depth of this chunk. Useful in a grid of chunks with different lod.
-	glm::uvec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighbors' chunks.
+	glm::vec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighbors' chunks.
 	unsigned chunkID;				//!< Range: [1, x]. Unique number per chunk per depth. Useful for computing sideDepths.
 
 	virtual void computeTerrain(bool computeIndices, float textureFactor = 1.f) = 0;
@@ -165,6 +165,7 @@ class SphericalChunk : public Chunk
 	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coordinate system of the cube side plane.
 
 	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV);
+	void computeGapFixes();
 	void computeSizes() override;
 
 public:
@@ -241,7 +242,7 @@ protected:
 	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
-	void updateChunksSideDepths(QuadNode<Chunk*>* node, unsigned left, unsigned right, unsigned up, unsigned down);	//!< Breath-first search for computing the depth that each side of the chunk must fit.
+	void updateChunksSideDepths(QuadNode<Chunk*>* node);			//!< Breath-first search for computing the depth that each side of the chunk must fit.
 	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*> &queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
 	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);	//!< Remove those chunks that are too far from camera
 	glm::vec4 getChunkIDs(unsigned parentID, unsigned depth);
