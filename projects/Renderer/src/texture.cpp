@@ -116,7 +116,7 @@ void Texture::createTextureImage()
 	void* data;
 	vkMapMemory(e->c.device, stagingBufferMemory, 0, imageSize, 0, &data);	// vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (stagingBufferMemory). We have to provide the logical device that owns the memory (e.device).
 	memcpy(data, pixels, static_cast<size_t>(imageSize));					// Copies a number of bytes (imageSize) from a source (pixels) to a destination (data).
-	vkUnmapMemory(e->c.device, stagingBufferMemory);							// Unmap a previously mapped memory object (stagingBufferMemory).
+	vkUnmapMemory(e->c.device, stagingBufferMemory);						// Unmap a previously mapped memory object (stagingBufferMemory).
 	
 	stbi_image_free(pixels);	// Clean up the original pixel array
 

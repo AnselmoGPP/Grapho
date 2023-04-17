@@ -244,6 +244,7 @@ protected:
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	void updateChunksSideDepths(QuadNode<Chunk*>* node);			//!< Breath-first search for computing the depth that each side of the chunk must fit.
 	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*> &queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
+	void restartSideDepths(QuadNode<Chunk*>* node);					//!< Set side depths of all nodes in the tree to 0.
 	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);	//!< Remove those chunks that are too far from camera
 	glm::vec4 getChunkIDs(unsigned parentID, unsigned depth);
 
@@ -278,11 +279,12 @@ public:
 	PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
 
 	float getRadius();
+	glm::vec3 cubePlane;
 
 private:
 	float radius;
 	glm::vec3 nucleus;
-	glm::vec3 cubePlane;
+	//glm::vec3 cubePlane;
 	glm::vec3 cubeSideCenter;
 
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;

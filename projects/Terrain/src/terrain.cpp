@@ -84,7 +84,6 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         memcpy(dest, &camPos, vec3size);
         dest += vec4size;
         memcpy(dest, &sideDepths, vec4size);
-        //std::cout << sideDepths[0] << ", " << sideDepths[1] << ", " << sideDepths[2] << ", " << sideDepths[3] << std::endl;
         dest += vec4size;
         memcpy(dest, lights.posDir, lights.posDirBytes);
         //dest += lights.posDirBytes;
@@ -437,8 +436,6 @@ void SphericalChunk::computeGapFixes()
     // Attributes: 6 (vertex type: 0,1,2,3,4), 7 (extra height for x2 difference), 8 (for x4 difference).
     // Shader: If vertex type != 0 or 1000, fix vertex position (if required) using side depths (uniform) and extra height (attribute).
 
-    //unsigned sideCols = numHorVertex * numAttribs;
-    //unsigned sideRows = numVertVertex * numAttribs;
     glm::vec3 current, average;
     unsigned remain, prev, next;
     float ratio;
@@ -602,6 +599,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
         createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
+    // <<< Why is executed each time I move? Why is only executed in one plane for fixing gaps?
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
     if (fullConstChunks(root[nonActiveTree]))   // <<< Can this process be improved by setting a flag when tree is fully constructed?
     {
@@ -625,7 +623,6 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     float chunkLength = chunk->getHorChunkSide();
     float sqrSide = chunkLength * chunkLength;
     float sqrDist = (camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z);
-    chunk->setSideDepths(0, 0, 0, 0);
     
     //std::cout << node->getElement()->chunkID << std::endl;
 
@@ -735,6 +732,7 @@ void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
 
 void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
 {
+    restartSideDepths(node);                                    // Set nodes' side depths to 0
     node->getElement()->setSideDepths(1000, 1000, 1000, 1000);  // Initialize root side depths to 1000 (flag for grid boundaries). The rest of nodes have side depths of 0 (set previously). 
 
     QuadNode<Chunk*>* currentNode;
@@ -767,12 +765,14 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
     // Get depth differences of neigbour leaves and pass them as UBO
     for (auto& it : allLeaves)
     {
-        //std::cout << it->depth << " / " << it->sideDepths[0] << ", " << it->sideDepths[1] << ", " << it->sideDepths[2] << ", " << it->sideDepths[3] << std::endl;
         if (it->sideDepths[0] != 1000) it->sideDepths[0] = it->depth - it->sideDepths[0];
         if (it->sideDepths[1] != 1000) it->sideDepths[1] = it->depth - it->sideDepths[1];
         if (it->sideDepths[2] != 1000) it->sideDepths[2] = it->depth - it->sideDepths[2];
         if (it->sideDepths[3] != 1000) it->sideDepths[3] = it->depth - it->sideDepths[3];
-        //std::cout << it->sideDepths[0] << ", " << it->sideDepths[1] << ", " << it->sideDepths[2] << ", " << it->sideDepths[3] << std::endl;
+
+        //uint8_t* ubo = it->model->vsDynUBO.getUBOptr(0);
+        //ubo += 4 * mat4size + vec4size;
+        //memcpy(ubo, &it->sideDepths, vec4size);
     }
 }
 
@@ -860,6 +860,18 @@ void DynamicGrid::updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queu
         currentNode->getC()->getElement()->sideDepths[side::down ] = currentChunk->sideDepths[side::down ];
         currentNode->getD()->getElement()->sideDepths[side::down ] = currentChunk->sideDepths[side::down ];
     }
+}
+
+void DynamicGrid::restartSideDepths(QuadNode<Chunk*>* node)
+{
+    if (!node) return;
+
+    node->getElement()->setSideDepths(0, 0, 0, 0);
+
+    restartSideDepths(node->getA());
+    restartSideDepths(node->getB());
+    restartSideDepths(node->getC());
+    restartSideDepths(node->getD());
 }
 
 void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
@@ -955,7 +967,10 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 // PlanetGrid ----------------------------------------------------------------------
 
 PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
-    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) { }
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
+{ 
+    std::cout << "Cube planes: " << cubePlane[0] << ", " << cubePlane[1] << ", " << cubePlane[2] << std::endl;
+}
 
 float PlanetGrid::getRadius() { return radius; }
 

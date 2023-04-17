@@ -747,7 +747,7 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	timer.computeDeltaTime();
 
-	// Compute transformation matrix
+	//    Compute transformation matrix
 	input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
 	glm::mat4 view = input.cam->GetViewMatrix();
 	glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChain.extent.width / (float)e.swapChain.extent.height);
@@ -756,7 +756,7 @@ void Renderer::updateStates(uint32_t currentImage)
 	//ubo.view = input.cam.GetViewMatrix();
 	//ubo.proj = input.cam.GetProjectionMatrix(e.swapChainExtent.width / (float)e.swapChainExtent.height);
 
-	// Update model matrices and other things (user defined)
+	//    Update model matrices and other things (user defined)
 	userUpdate(*this, view, proj);
 
 	// - MOVE MODELS AND TEXTURES (multithreading topic)
