@@ -6,7 +6,7 @@
 #include "noise.hpp"
 
 
-Noiser::Noiser(
+SingleNoise::SingleNoise(
     FastNoiseLite::NoiseType NoiseType,
     int NumOctaves,
     float Lacunarity,
@@ -16,7 +16,8 @@ Noiser::Noiser(
     unsigned CurveDegree,
     float OffsetX, float OffsetY, float OffsetZ,
     int Seed)
-    : 
+    :
+    Noiser(),
     noiseType(NoiseType), 
     numOctaves(NumOctaves), lacunarity(Lacunarity), persistence(Persistence), 
     scale(Scale), multiplier(Multiplier), 
@@ -66,7 +67,7 @@ Noiser::Noiser(
     std::cout << *this;
 }
 
-float Noiser::getProcessedNoise(float x, float y, float z)
+float SingleNoise::getProcessedNoise(float x, float y, float z)
 {
     result = 0;
     frequency = 1;
@@ -89,19 +90,19 @@ float Noiser::getProcessedNoise(float x, float y, float z)
     return result * std::pow(result / maxHeight, curveDegree);
 }
 
-float Noiser::GetNoise(float x, float y, float z)
+float SingleNoise::GetNoise(float x, float y, float z)
 {
     result = multiplier * scale * noise.GetNoise((x + offsetX) / scale, (y + offsetY) / scale, (z + offsetZ) / scale) / totalAmplitude;
     return result * std::pow(result / maxHeight, curveDegree);
 }
 
-float Noiser::GetNoise(float x, float y)
+float SingleNoise::GetNoise(float x, float y)
 {
     result = multiplier * scale * noise.GetNoise((x + offsetX) / scale, (y + offsetY) / scale) / totalAmplitude;
     return result * std::pow(result / maxHeight, curveDegree);
 }
 
-float Noiser::powLinInterp(float base, float exponent)
+float SingleNoise::powLinInterp(float base, float exponent)
 {
     float down = std::floor(exponent);
     float up   = down + 1;
@@ -113,7 +114,7 @@ float Noiser::powLinInterp(float base, float exponent)
     return down + diff * (up - down);
 }
 
-void Noiser::noiseTester(size_t size)
+void SingleNoise::noiseTester(size_t size)
 {
     float max = 0, min = 0;
     float noise;
@@ -130,7 +131,7 @@ void Noiser::noiseTester(size_t size)
     }
 }
 
-std::ostream& operator << (std::ostream& os, const Noiser& obj)
+std::ostream& operator << (std::ostream& os, const SingleNoise& obj)
 {
     std::cout
         << "Noise data: \n"

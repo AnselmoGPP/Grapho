@@ -89,7 +89,6 @@ class Chunk
 {
 protected:
 	Renderer& renderer;
-	Noiser &noiseGen;
 	glm::vec3 baseCenter;
 	glm::vec3 groundCenter;
 
@@ -107,7 +106,7 @@ protected:
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
-	Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID);
+	Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID);
 	virtual ~Chunk();
 
 	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
@@ -134,11 +133,13 @@ public:
 
 class PlainChunk : public Chunk
 {
+	Noiser* noiseGen;
+
 	void computeGridNormals();
 	void computeSizes() override;
 
 public:
-	PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth = 0, unsigned chunkID = 0);
+	PlainChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth = 0, unsigned chunkID = 0);
 	~PlainChunk() { };
 
 	/**
@@ -157,8 +158,9 @@ public:
 };
 
 
-class SphericalChunk : public Chunk
+class PlanetChunk : public Chunk
 {
+	Noiser* noiseGen;
 	//glm::vec3 cubePlane;
 	glm::vec3 nucleus;
 	float radius;
@@ -169,8 +171,8 @@ class SphericalChunk : public Chunk
 	void computeSizes() override;
 
 public:
-	SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
-	~SphericalChunk() { };
+	PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
+	~PlanetChunk() { };
 
 	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
@@ -199,7 +201,7 @@ public:
 class DynamicGrid
 {
 public:
-	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	virtual ~DynamicGrid();
 
 	glm::mat4 view;
@@ -223,7 +225,6 @@ protected:
 	std::vector<texIterator> textures;
 	//std::vector<Light*> lights;
 	Renderer& renderer;
-	Noiser noiseGenerator;
 	ShaderIter vertShader;
 	ShaderIter fragShader;
 
@@ -265,9 +266,10 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 
 private:
+	Noiser* noiseGen;
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 	std::tuple<float, float, float> closestCenter() override;
 };
@@ -276,15 +278,15 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	PlanetGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
 
 	float getRadius();
-	glm::vec3 cubePlane;
 
 private:
+	Noiser* noiseGen;
 	float radius;
 	glm::vec3 nucleus;
-	//glm::vec3 cubePlane;
+	glm::vec3 cubePlane;
 	glm::vec3 cubeSideCenter;
 
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
@@ -308,7 +310,7 @@ private:
 */
 struct Planet
 {
-	Planet(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	Planet(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
 
 	void addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);			//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
@@ -318,7 +320,7 @@ struct Planet
 	const glm::vec3 nucleus;
 
 private:
-	Noiser noiseGen;
+	Noiser* noiseGen;
 	PlanetGrid planetGrid_pZ;
 	PlanetGrid planetGrid_nZ;
 	PlanetGrid planetGrid_pY;

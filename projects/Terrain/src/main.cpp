@@ -60,7 +60,7 @@ LightSet lights(2);
 std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
-Noiser noiser_1(	// Desert
+SingleNoise noiser_1(	// Desert
 	FastNoiseLite::NoiseType_Cellular,	// Noise type
 	4, 1.5, 0.28f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	1, 70,								// Scale, Multiplier
@@ -68,7 +68,7 @@ Noiser noiser_1(	// Desert
 	500, 500, 0,						// XYZ offsets
 	4952);								// Seed
 
-Noiser noiser_2(	// Hills
+SingleNoise noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
 	3, 7.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
@@ -76,11 +76,11 @@ Noiser noiser_2(	// Hills
 	0, 0, 0,							// XYZ offsets
 	4952);								// Seed
 
-PlainChunk singleChunk(app, noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-TerrainGrid terrGrid(app, noiser_1, lights, 6400, 29, 8, 2, 1.2);
+PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
+TerrainGrid terrGrid(app, &noiser_1, lights, 6400, 29, 8, 2, 1.2);
 
-Planet planetGrid(app, noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
-Planet planetSeaGrid(app, noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetGrid(app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetSeaGrid(app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
 
 bool updateChunk = false, updateChunkGrid = false;
 

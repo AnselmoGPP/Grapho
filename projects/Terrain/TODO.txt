@@ -1,4 +1,5 @@
 TODO:
+	gap-fix for multiple dynamic grids
 	Create a list of leaf nodes and work with them instead of traversing the entire tree (like in DynamicGrid::updateUBOs_help)
 	Fix/improve loadingThread multiple accesses to lists
 	typedef vec3size and co.
@@ -10,7 +11,7 @@ TODO:
 	Default PP shader
 	General debugging (VS warnings)
 	Review comments (<<<, LOOK)
-	Ocean, sand, trees/bush, rocks
+	Ocean, sand, trees/bush, rocks, MixNoise
 	Method for replacing one/some model/s with one/some model/s (only after the new model/s have been loaded)
 	Python script
 	mipmaps

@@ -4,8 +4,8 @@
 
 // Chunk ----------------------------------------------------------------------
 
-Chunk::Chunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : renderer(renderer), noiseGen(noiseGen), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), depth(depth), modelOrdered(false), chunkID(chunkID)
+Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
+    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -125,10 +125,10 @@ void Chunk::setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d)
 
 // PlainChunk ----------------------------------------------------------------------
 
-PlainChunk::PlainChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : Chunk(renderer, noiseGen, center, stride, numHorVertex, numVertVertex, depth, chunkID)
+PlainChunk::PlainChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
+    : Chunk(renderer, center, stride, numHorVertex, numVertVertex, depth, chunkID), noiseGen(noiseGenerator)
 {
-    groundCenter.z = noiseGen.GetNoise(baseCenter.x, baseCenter.y);
+    groundCenter.z = noiseGen->GetNoise(baseCenter.x, baseCenter.y);
 
     computeSizes();
 }
@@ -150,7 +150,7 @@ void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)   // <
             // positions (0, 1, 2)
             vertex[index * 6 + 0] = x0 + x * stride;
             vertex[index * 6 + 1] = y0 + y * stride;
-            vertex[index * 6 + 2] = noiseGen.GetNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
+            vertex[index * 6 + 2] = noiseGen->GetNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
             //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
 
             // textures (3, 4)
@@ -251,14 +251,14 @@ void PlainChunk::computeSizes()
     vertChunkSize = vertBaseSize;
 }
 
-// SphericalChunk ----------------------------------------------------------------------
+// PlanetChunk ----------------------------------------------------------------------
 
-SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
-    : Chunk(renderer, noiseGen, cubeSideCenter, stride, numHorVertex, numVertVertex, depth, chunkID), nucleus(nucleus), radius(radius)
+PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
+    : Chunk(renderer, cubeSideCenter, stride, numHorVertex, numVertVertex, depth, chunkID), noiseGen(noiseGenerator), nucleus(nucleus), radius(radius)
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
-    groundCenter = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+    groundCenter = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
 
     // Set relative axes of the cube face (needed for computing indices in good order)
      if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
@@ -281,7 +281,7 @@ SphericalChunk::SphericalChunk(Renderer& renderer, Noiser& noiseGen, glm::vec3 c
     computeSizes();
 }
 
-void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
+void PlanetChunk::computeTerrain(bool computeIndices, float textureFactor)
 {
     // Vertex data (+ frame)
     glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f + yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
@@ -301,7 +301,7 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
             cube = pos0 + (xAxis * (float)h * stride) + (yAxis * (float)v * stride);
             unitVec = glm::normalize(cube - nucleus);
             sphere = unitVec * radius;
-            ground = sphere + unitVec * noiseGen.GetNoise(sphere.x, sphere.y, sphere.z);
+            ground = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
             vertex[index + 0] = ground.x;
             vertex[index + 1] = ground.y;
             vertex[index + 2] = ground.z;
@@ -331,7 +331,7 @@ void SphericalChunk::computeTerrain(bool computeIndices, float textureFactor)
         this->computeIndices(indices, numHorVertex, numVertVertex);
 }
 
-void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV)
+void PlanetChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV)
 {
     // Initialize normals to 0
     unsigned numVertex = numHorV * numVerV;
@@ -402,7 +402,7 @@ void SphericalChunk::computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::ve
     }
 }
 
-void SphericalChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
+void PlanetChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
 {
     float quarterSide = horBaseSize / 4;
     glm::vec3 vecs[4];
@@ -418,7 +418,7 @@ void SphericalChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
     centers[3] = std::tuple(vecs[3].x, vecs[3].y, vecs[3].z);
 }
 
-void SphericalChunk::computeSizes()
+void PlanetChunk::computeSizes()
 {
     horBaseSize = stride * (numHorVertex - 1);
     vertBaseSize = stride * (numVertVertex - 1);
@@ -431,7 +431,7 @@ void SphericalChunk::computeSizes()
     vertChunkSize = glm::length(bottom - top);
 }
 
-void SphericalChunk::computeGapFixes()
+void PlanetChunk::computeGapFixes()
 {
     // Attributes: 6 (vertex type: 0,1,2,3,4), 7 (extra height for x2 difference), 8 (for x4 difference).
     // Shader: If vertex type != 0 or 1000, fix vertex position (if required) using side depths (uniform) and extra height (attribute).
@@ -552,8 +552,8 @@ void SphericalChunk::computeGapFixes()
 
 // DynamicGrid ----------------------------------------------------------------------
 
-DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, Noiser noiseGenerator, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : camPos(camPos), lights(&lights), renderer(renderer), noiseGenerator(noiseGenerator), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
+DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : camPos(camPos), lights(&lights), renderer(renderer), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
 {
     root[0] = root[1] = nullptr;
     Chunk::computeIndices(indices, numSideVertex, numSideVertex);
@@ -933,8 +933,8 @@ glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
 
 // TerrainGrid ----------------------------------------------------------------------
 
-TerrainGrid::TerrainGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
-    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier)
+TerrainGrid::TerrainGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), noiseGen(noiseGenerator)
 { }
 
 QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
@@ -942,7 +942,7 @@ QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, f
     if (chunks.find(center) == chunks.end())
         chunks[center] = new PlainChunk(
             renderer, 
-            noiseGenerator, 
+            noiseGen, 
             glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
             sideLength / (numSideVertex - 1), 
             numSideVertex, 
@@ -966,20 +966,18 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 
 // PlanetGrid ----------------------------------------------------------------------
 
-PlanetGrid::PlanetGrid(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
-    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, noiseGenerator, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
-{ 
-    std::cout << "Cube planes: " << cubePlane[0] << ", " << cubePlane[1] << ", " << cubePlane[2] << std::endl;
-}
+PlanetGrid::PlanetGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), noiseGen(noiseGenerator), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
+{ }
 
 float PlanetGrid::getRadius() { return radius; }
 
 QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
 {
     if (chunks.find(center) == chunks.end())
-        chunks[center] = new SphericalChunk(
+        chunks[center] = new PlanetChunk(
             renderer, 
-            noiseGenerator, 
+            noiseGen, 
             glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
             sideLength / (numSideVertex - 1), 
             numSideVertex, 
@@ -1001,7 +999,7 @@ std::tuple<float, float, float> PlanetGrid::closestCenter()
 
 // Planet ----------------------------------------------------------------------
 
-Planet::Planet(Renderer& renderer, Noiser noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus)
+Planet::Planet(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus)
     : radius(radius), 
     nucleus(nucleus), 
     noiseGen(noiseGenerator), 
@@ -1059,5 +1057,5 @@ float Planet::callBack_getFloorHeight(const glm::vec3& pos)
     glm::vec3 nucleus(0.f, 0.f, 0.f);
     float radius = planetGrid_pZ.getRadius();
     glm::vec3 espheroid = glm::normalize(pos - nucleus) * radius;
-    return 1.70 + radius + noiseGen.GetNoise(espheroid.x, espheroid.y, espheroid.z);
+    return 1.70 + radius + noiseGen->GetNoise(espheroid.x, espheroid.y, espheroid.z);
 }

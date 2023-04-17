@@ -12,6 +12,17 @@
 #include "glm/gtc/type_ptr.hpp"
 
 
+class Noiser
+{
+public:
+    Noiser() { };
+    virtual ~Noiser() { };
+
+    virtual float GetNoise(float x, float y, float z) = 0;
+    virtual float GetNoise(float x, float y) = 0;
+};
+
+
 /**
     @class Noiser
     @brief Computes the coherent noise (FBM) value for specific 2D/3D coordinates. Range = [-maxHeight, maxHeight]
@@ -29,10 +40,10 @@
      <li>Seed: Seed for noise generation</li>
     </ul>
 */
-class Noiser
+class SingleNoise : public Noiser
 {
 public:
-    Noiser(
+    SingleNoise(
         FastNoiseLite::NoiseType NoiseType,
         int NumOctaves,
         float Lacunarity,
@@ -47,10 +58,10 @@ public:
     float getProcessedNoise(float x, float y, float z);
 
     // Get noise after the full process. Computations performed by FastNoise (Octaves, Lacunarity, Persistence) and this method (Offsets, Scale, Multiplier, Degree).
-    float GetNoise(float x, float y, float z);
-    float GetNoise(float x, float y);
+    float GetNoise(float x, float y, float z) override;
+    float GetNoise(float x, float y) override;
 
-    friend std::ostream& operator << (std::ostream& os, const Noiser& obj);
+    friend std::ostream& operator << (std::ostream& os, const SingleNoise& obj);
 
 private:
     FastNoiseLite noise;
@@ -81,7 +92,18 @@ private:
     void noiseTester(size_t size);
 };
 
-std::ostream& operator << (std::ostream& os, const Noiser& obj);
+std::ostream& operator << (std::ostream& os, const SingleNoise& obj);
+
+/// Takes many SingleNoise and mixes them
+//class NoiseMix : public Noiser
+//{
+//public:
+//    NoiseMix() { };
+//    virtual ~MixNoise() { };
+//
+//    float GetNoise(float x, float y, float z) override;
+//    float GetNoise(float x, float y) override;
+//};
 
 // -----------------------------------------------------------------------------------
 
