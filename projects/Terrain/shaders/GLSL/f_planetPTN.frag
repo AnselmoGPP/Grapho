@@ -41,7 +41,6 @@ struct uvGradient	// Gradients for the X and Y texture coordinates can be used f
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-    vec4 time;				// float
 	LightProps light[NUMLIGHTS];
 } ubo;
 
@@ -76,8 +75,8 @@ vec3  triplanarNormal (sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient
 vec3  toRGB			  (vec3 vec);							// Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
 vec3  toSRGB		  (vec3 vec);							// Transforms linear RGB color to non-linear sRGB
 void  precalculateValues();
-vec2  unpackUV		  (vec2 UV, float texFactor);
-vec3  unpackNormal    (vec3 normal);
+vec2  unpackUV		  (vec2 UV, float texFactor);           // Invert Y axis and apply scale
+vec3  unpackNormal    (vec3 normal);                        // Pass to SRGB, put in range [-1,1], and normalize
 uvGradient getGradients(vec2 uvs);
 vec3  applyLinearFog  (vec3 fragColor, vec3 fogColor, float minDist, float maxDist);
 float applyLinearFog  (float value, float fogValue, float minDist, float maxDist);

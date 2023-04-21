@@ -1,5 +1,12 @@
 TODO:
+	Waves:
+		Gaps problem: Waves are computed for middle vertices too.
+		Transparency (transparent water & darked terrain)
+		Reflections
+		Waves over the sphere surface, not the diameter
+	Improve normal calculation for sphereChunk
 	gap-fix for multiple dynamic grids
+	Apply different LOD when above certain region (not only based on distance to chunk)
 	Create a list of leaf nodes and work with them instead of traversing the entire tree (like in DynamicGrid::updateUBOs_help)
 	Fix/improve loadingThread multiple accesses to lists
 	typedef vec3size and co.

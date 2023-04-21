@@ -30,8 +30,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         "chunk",
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + 2 * vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), n * LightPosDir (2*vec4), sideDepth (vec3)
-        vec4size + 2 * sizeof(LightProps),                          // Time (float), n * LightProps (6*vec4)
+        1, 4 * mat4size + 3 * vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
+        2 * sizeof(LightProps),                                     // n * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         false);
@@ -50,6 +50,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         dest += mat4size;
         //memcpy(dest, &camPos, vec3size);
         //dest += vec4size;
+        //memcpy(dest, &time, sizeof(float));
+        //dest += vec4size;
         //memcpy(dest, &sideDepths, vec4size);
         //dest += vec4size;
         //memcpy(dest, lights.posDir, lights.posDirBytes);
@@ -57,8 +59,6 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
     }
 
     //dest = model->fsUBO.getUBOptr(0);
-    //memcpy(dest, &time, sizeof(time));
-    //dest += vec4size;
     //memcpy(dest, lights.props, lights.propsBytes);
     //dest += lights.propsBytes;
 
@@ -83,6 +83,8 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         dest += mat4size;
         memcpy(dest, &camPos, vec3size);
         dest += vec4size;
+        memcpy(dest, &time, sizeof(float));
+        dest += vec4size;
         memcpy(dest, &sideDepths, vec4size);
         dest += vec4size;
         memcpy(dest, lights.posDir, lights.posDirBytes);
@@ -90,8 +92,6 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
     }
 
     dest = model->fsUBO.getUBOptr(0);
-    memcpy(dest, &time, sizeof(time));
-    dest += vec4size;
     memcpy(dest, lights.props, lights.propsBytes);
     //dest += lights.propsBytes;
 }
@@ -133,7 +133,7 @@ PlainChunk::PlainChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cen
     computeSizes();
 }
 
-void PlainChunk::computeTerrain(bool computeIndices, float textureFactor)   // <<< Fix function to make it similar to SphericalChunk::computeTerrain()
+void PlainChunk::computeTerrain(bool computeIndices)   // <<< Fix function to make it similar to SphericalChunk::computeTerrain()
 {
     size_t index;
     float x0 = baseCenter.x - horChunkSize / 2;
@@ -258,7 +258,7 @@ PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 c
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     glm::vec3 sphere = unitVec * radius;
-    groundCenter = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
+    if(noiseGenerator) groundCenter = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
 
     // Set relative axes of the cube face (needed for computing indices in good order)
      if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
@@ -281,7 +281,7 @@ PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 c
     computeSizes();
 }
 
-void PlanetChunk::computeTerrain(bool computeIndices, float textureFactor)
+void PlanetChunk::computeTerrain(bool computeIndices)
 {
     // Vertex data (+ frame)
     glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f + yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
@@ -550,9 +550,65 @@ void PlanetChunk::computeGapFixes()
         }
 }
 
+// SphereChunk ----------------------------------------------------------------------
+
+SphereChunk::SphereChunk(Renderer& renderer, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
+    : PlanetChunk(renderer, nullptr, cubeSideCenter, stride, numHorVertex, numVertVertex, radius, nucleus, cubePlane, depth, chunkID)
+{
+    groundCenter = glm::normalize(baseCenter - nucleus) * radius;
+}
+
+void SphereChunk::computeTerrain(bool computeIndices)
+{
+    // Vertex data (+ frame)
+    glm::vec3 pos0 = baseCenter - (xAxis * horBaseSize / 2.f + yAxis * vertBaseSize / 2.f);   // Position of the initial coordinate in the cube side plane (lower left).
+    pos0 -= (xAxis * stride + yAxis * stride);      // Set frame
+    unsigned tempNumHorV = numHorVertex + 2;
+    unsigned tempNumVerV = numVertVertex + 2;
+    vertex.resize(tempNumHorV * tempNumVerV * numAttribs);
+    glm::vec3 unitVec, cube, sphere, ground;
+    size_t index;
+
+    for (size_t v = 0; v < tempNumVerV; v++)
+        for (size_t h = 0; h < tempNumHorV; h++)
+        {
+            index = (v * tempNumHorV + h) * numAttribs;
+
+            // Positions (0, 1, 2)
+            cube = pos0 + (xAxis * (float)h * stride) + (yAxis * (float)v * stride);
+            ground = glm::normalize(cube - nucleus) * radius;
+            vertex[index + 0] = ground.x;
+            vertex[index + 1] = ground.y;
+            vertex[index + 2] = ground.z;
+            vertex[index + 6] = 0;          // Vertex type (default = 0)
+        }
+
+    // Normals (3, 4, 5) (+ frame)
+    computeGridNormals(pos0, xAxis, yAxis, tempNumHorV, tempNumVerV);
+
+    // Crop frame (relocate vertices in the vector and crop it)
+    size_t i = 0, j = 0;
+    for (size_t v = 1; v < (tempNumVerV - 1); v++)
+        for (size_t h = 1; h < (tempNumHorV - 1); h++)
+        {
+            index = (v * tempNumHorV + h) * numAttribs;
+
+            for (j = 0; j < numAttribs; j++)
+                vertex[i++] = vertex[index + j];
+        }
+    vertex.resize(numHorVertex * numVertVertex * numAttribs);
+
+    // Compute gap-fixing data (6, 7, 8).
+    computeGapFixes();
+
+    // Indices
+    if (computeIndices)
+        this->computeIndices(indices, numHorVertex, numVertVertex);
+}
+
 // DynamicGrid ----------------------------------------------------------------------
 
-DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
     : camPos(camPos), lights(&lights), renderer(renderer), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier)
 {
     root[0] = root[1] = nullptr;
@@ -586,7 +642,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     unsigned nonActiveTree = (activeTree + 1) % 2;
     if (root[activeTree] && !root[nonActiveTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z)
         return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
-
+    
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
     {
@@ -635,7 +691,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
             chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
             chunk->render(vertShader, fragShader, textures, &indices);
             //chunk->updateUBOs(camPos, view, proj);
-            renderer.setRenders(chunk->model, 0);
+            renderer->setRenders(chunk->model, 0);
             loadedChunks++;
         }
     }
@@ -720,7 +776,7 @@ void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
     if (!node) return;
 
     if (node->isLeaf())
-        renderer.setRenders(node->getElement()->model, (renderMode ? 1 : 0));
+        renderer->setRenders(node->getElement()->model, (renderMode ? 1 : 0));
     else
     {
         changeRenders(node->getA(), renderMode);
@@ -933,7 +989,7 @@ glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
 
 // TerrainGrid ----------------------------------------------------------------------
 
-TerrainGrid::TerrainGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
+TerrainGrid::TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier)
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), noiseGen(noiseGenerator)
 { }
 
@@ -941,7 +997,7 @@ QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, f
 {
     if (chunks.find(center) == chunks.end())
         chunks[center] = new PlainChunk(
-            renderer, 
+            *renderer, 
             noiseGen, 
             glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
             sideLength / (numSideVertex - 1), 
@@ -966,7 +1022,7 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 
 // PlanetGrid ----------------------------------------------------------------------
 
-PlanetGrid::PlanetGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
+PlanetGrid::PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier), noiseGen(noiseGenerator), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
 { }
 
@@ -976,7 +1032,7 @@ QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, fl
 {
     if (chunks.find(center) == chunks.end())
         chunks[center] = new PlanetChunk(
-            renderer, 
+            *renderer, 
             noiseGen, 
             glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)), 
             sideLength / (numSideVertex - 1), 
@@ -996,37 +1052,73 @@ std::tuple<float, float, float> PlanetGrid::closestCenter()
     return std::tuple<float, float, float>(cubeSideCenter.x, cubeSideCenter.y, cubeSideCenter.z);
 }
 
+// SphereGrid ------------------------------------------------------------------
+
+SphereGrid::SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter)
+    : PlanetGrid::PlanetGrid(renderer, nullptr, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, cubePlane, cubeSideCenter)
+{ }
+
+QuadNode<Chunk*>* SphereGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
+{
+    if (chunks.find(center) == chunks.end())
+        chunks[center] = new SphereChunk(
+            *renderer,
+            glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)),
+            sideLength / (numSideVertex - 1),
+            numSideVertex,
+            numSideVertex,
+            radius,
+            nucleus,
+            cubePlane,
+            depth,
+            chunkID);
+    
+    return new QuadNode<Chunk*>(chunks[center]);
+}
 
 // Planet ----------------------------------------------------------------------
 
-Planet::Planet(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus)
+Planet::Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus)
     : radius(radius), 
     nucleus(nucleus), 
     noiseGen(noiseGenerator), 
-    readyForUpdate(false),
-    planetGrid_pZ(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 0, 1), glm::vec3(0, 0, 50)),
-    planetGrid_nZ(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 0, -1), glm::vec3(0, 0, -50)),
-    planetGrid_pY(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 1, 0), glm::vec3(0, 50, 0)),
-    planetGrid_nY(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, -1, 0), glm::vec3(0, -50, 0)),
-    planetGrid_pX(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(1, 0, 0), glm::vec3(50, 0, 0)),
-    planetGrid_nX(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1, 0, 0), glm::vec3(-50, 0, 0))
-{ }
+    readyForUpdate(false)
+{ 
+    planetGrid_pZ = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0,  1), glm::vec3( 0,  0, 50));
+    planetGrid_nZ = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0, -1), glm::vec3( 0,  0,-50));
+    planetGrid_pY = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  1,  0), glm::vec3( 0, 50,  0));
+    planetGrid_nY = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, -1,  0), glm::vec3( 0,-50,  0));
+    planetGrid_pX = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 1,  0,  0), glm::vec3( 50, 0,  0));
+    planetGrid_nX = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1,  0,  0), glm::vec3(-50, 0,  0));
+}
+
+Planet::~Planet()
+{ 
+    std::cout << __func__ << " 1" << std::endl;
+    delete planetGrid_pZ;
+    delete planetGrid_nZ;
+    delete planetGrid_pY;
+    delete planetGrid_nY;
+    delete planetGrid_pX;
+    delete planetGrid_nX;
+    std::cout << __func__ << " 2" << std::endl;
+};
 
 void Planet::addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader)
 {
-    planetGrid_pZ.addTextures(textures);
-    planetGrid_nZ.addTextures(textures);
-    planetGrid_pY.addTextures(textures);
-    planetGrid_nY.addTextures(textures);
-    planetGrid_pX.addTextures(textures);
-    planetGrid_nX.addTextures(textures);
-
-    planetGrid_pZ.addShaders(vertexShader, fragmentShader);
-    planetGrid_nZ.addShaders(vertexShader, fragmentShader);
-    planetGrid_pY.addShaders(vertexShader, fragmentShader);
-    planetGrid_nY.addShaders(vertexShader, fragmentShader);
-    planetGrid_pX.addShaders(vertexShader, fragmentShader);
-    planetGrid_nX.addShaders(vertexShader, fragmentShader);
+    planetGrid_pZ->addTextures(textures);
+    planetGrid_nZ->addTextures(textures);
+    planetGrid_pY->addTextures(textures);
+    planetGrid_nY->addTextures(textures);
+    planetGrid_pX->addTextures(textures);
+    planetGrid_nX->addTextures(textures);
+    
+    planetGrid_pZ->addShaders(vertexShader, fragmentShader);
+    planetGrid_nZ->addShaders(vertexShader, fragmentShader);
+    planetGrid_pY->addShaders(vertexShader, fragmentShader);
+    planetGrid_nY->addShaders(vertexShader, fragmentShader);
+    planetGrid_pX->addShaders(vertexShader, fragmentShader);
+    planetGrid_nX->addShaders(vertexShader, fragmentShader);
 
     readyForUpdate = true;
 }
@@ -1035,18 +1127,18 @@ void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const g
 {
     if (readyForUpdate)
     {
-        planetGrid_pZ.updateTree(camPos);
-        planetGrid_pZ.updateUBOs(view, proj, camPos, lights, frameTime);
-        planetGrid_nZ.updateTree(camPos);
-        planetGrid_nZ.updateUBOs(view, proj, camPos, lights, frameTime);
-        planetGrid_pY.updateTree(camPos);
-        planetGrid_pY.updateUBOs(view, proj, camPos, lights, frameTime);
-        planetGrid_nY.updateTree(camPos);
-        planetGrid_nY.updateUBOs(view, proj, camPos, lights, frameTime);
-        planetGrid_pX.updateTree(camPos);
-        planetGrid_pX.updateUBOs(view, proj, camPos, lights, frameTime);
-        planetGrid_nX.updateTree(camPos);
-        planetGrid_nX.updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pZ->updateTree(camPos);
+        planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nZ->updateTree(camPos);
+        planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pY->updateTree(camPos);
+        planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nY->updateTree(camPos);
+        planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pX->updateTree(camPos);
+        planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nX->updateTree(camPos);
+        planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime);
     }
 }
 
@@ -1055,7 +1147,39 @@ float Planet::getSphereArea() { return 4 * pi * radius * radius; }
 float Planet::callBack_getFloorHeight(const glm::vec3& pos)
 {
     glm::vec3 nucleus(0.f, 0.f, 0.f);
-    float radius = planetGrid_pZ.getRadius();
+    float radius = planetGrid_pZ->getRadius();
     glm::vec3 espheroid = glm::normalize(pos - nucleus) * radius;
     return 1.70 + radius + noiseGen->GetNoise(espheroid.x, espheroid.y, espheroid.z);
+}
+
+// Sphere ----------------------------------------------------------------------
+
+Sphere::Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus)
+    : Planet(renderer, nullptr, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus)
+{
+    delete planetGrid_pZ;
+    delete planetGrid_nZ;
+    delete planetGrid_pY;
+    delete planetGrid_nY;
+    delete planetGrid_pX;
+    delete planetGrid_nX;
+
+    planetGrid_pZ = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 0, 1), glm::vec3(0, 0, 50));
+    planetGrid_nZ = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 0, -1), glm::vec3(0, 0, -50));
+    planetGrid_pY = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, 1, 0), glm::vec3(0, 50, 0));
+    planetGrid_nY = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(0, -1, 0), glm::vec3(0, -50, 0));
+    planetGrid_pX = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(1, 0, 0), glm::vec3(50, 0, 0));
+    planetGrid_nX = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1, 0, 0), glm::vec3(-50, 0, 0));
+}
+
+Sphere::~Sphere()
+{
+    // The 6 grids are already deleted in Planet::~Planet()
+};
+
+float Sphere::callBack_getFloorHeight(const glm::vec3& pos)
+{
+    glm::vec3 nucleus(0.f, 0.f, 0.f);
+    float radius = planetGrid_pZ->getRadius();
+    return 1.70 + radius;
 }

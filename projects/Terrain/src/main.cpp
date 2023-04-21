@@ -33,6 +33,7 @@ void setLights();
 void loadTextures(Renderer& app);
 void loadShaders(Renderer& app);
 float getFloorHeight(const glm::vec3& pos);
+float getSeaHeight(const glm::vec3& pos);
 
 void setAtmosphere(Renderer& app);
 void setReticule(Renderer& app);
@@ -77,10 +78,10 @@ SingleNoise noiser_2(	// Hills
 	4952);								// Seed
 
 PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-TerrainGrid terrGrid(app, &noiser_1, lights, 6400, 29, 8, 2, 1.2);
+TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2);
 
-Planet planetGrid(app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
-Planet planetSeaGrid(app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
+Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.2, 2010, { 0.f, 0.f, 0.f });
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -120,7 +121,7 @@ int main(int argc, char* argv[])
 	//setChunk(app);
 	//setChunkGrid(app);
 	planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	//planetSeaGrid.addResources(usedTextures, shaders["v_planetSea"], shaders["f_planetSea"]);
+	planetSeaGrid.addResources(usedTextures, shaders["v_seaPlanet"], shaders["f_seaPlanet"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 	  //setReticule(app);
@@ -188,7 +189,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	}
 	
 	planetGrid.updateState(camPos, view, proj, lights, frameTime);
-
+	
 	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime);
 
 /*
@@ -350,8 +351,8 @@ void loadShaders(Renderer& app)
 	shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_planetSea"] = app.newShader((shadersDir + "v_planetSea.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_planetSea"] = app.newShader((shadersDir + "f_planetSea.frag").c_str(), shaderc_fragment_shader, true);
+	shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str(), shaderc_vertex_shader, true);
+	shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str(), shaderc_fragment_shader, true);
 
 	shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
@@ -457,6 +458,10 @@ float getFloorHeight(const glm::vec3& pos)
 	return 1.70 + planetGrid.radius + noiser_2.GetNoise(espheroid.x, espheroid.y, espheroid.z);
 }
 
+float getSeaHeight(const glm::vec3& pos)
+{
+	return 1.70 + planetSeaGrid.radius;
+}
 
 void setPoints(Renderer& app)
 {
@@ -645,7 +650,7 @@ void setChunk(Renderer& app)
 	std::cout << "> " << __func__ << "()" << std::endl;
 	updateChunk = true;
 
-	singleChunk.computeTerrain(true, 1.f);
+	singleChunk.computeTerrain(true);
 	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr);
 }
 

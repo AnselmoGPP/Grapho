@@ -21,13 +21,16 @@
 
 	Chunk
 		PlainChunk
-		SphericalChunk
+		PlanetChunk
+			SphereChunk	
 
 	DynamicGrid (QuadNode)
 		TerrainGrid (PlainChunk)
 		PlanetGrid (SphericalChunk)
+			SphereGrid
 
 	Planet (PlanetGrid)
+		Sphere
 */
 
 // -------------------------------
@@ -116,7 +119,7 @@ public:
 	glm::vec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighbors' chunks.
 	unsigned chunkID;				//!< Range: [1, x]. Unique number per chunk per depth. Useful for computing sideDepths.
 
-	virtual void computeTerrain(bool computeIndices, float textureFactor = 1.f) = 0;
+	virtual void computeTerrain(bool computeIndices) = 0;
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
@@ -153,15 +156,15 @@ public:
 	*   @param numVertex_Y Number of vertex along the Y axis
 	*   @param textureFactor How much of the texture surface will fit in a square of 4 contiguous vertex
 	*/
-	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
+	void computeTerrain(bool computeIndices) override;
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
 };
 
 
 class PlanetChunk : public Chunk
 {
+protected:
 	Noiser* noiseGen;
-	//glm::vec3 cubePlane;
 	glm::vec3 nucleus;
 	float radius;
 	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coordinate system of the cube side plane.
@@ -172,10 +175,20 @@ class PlanetChunk : public Chunk
 
 public:
 	PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
-	~PlanetChunk() { };
+	virtual ~PlanetChunk() { };
 
-	void computeTerrain(bool computeIndices, float textureFactor = 1.f) override;
+	virtual void computeTerrain(bool computeIndices) override;
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
+};
+
+
+/// Plain sphere chunk without noise
+class SphereChunk : public PlanetChunk
+{
+public:
+	SphereChunk(Renderer& renderer, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
+
+	void computeTerrain(bool computeIndices) override;
 };
 
 
@@ -201,7 +214,7 @@ public:
 class DynamicGrid
 {
 public:
-	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer& renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 	virtual ~DynamicGrid();
 
 	glm::mat4 view;
@@ -224,7 +237,7 @@ protected:
 	std::vector<uint16_t> indices;
 	std::vector<texIterator> textures;
 	//std::vector<Light*> lights;
-	Renderer& renderer;
+	Renderer* renderer;
 	ShaderIter vertShader;
 	ShaderIter fragShader;
 
@@ -266,7 +279,7 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
 
 private:
 	Noiser* noiseGen;
@@ -278,23 +291,35 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	virtual ~PlanetGrid() { };
 
 	float getRadius();
 
-private:
+protected:
 	Noiser* noiseGen;
 	float radius;
 	glm::vec3 nucleus;
 	glm::vec3 cubePlane;
 	glm::vec3 cubeSideCenter;
 
-	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
+	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 	std::tuple<float, float, float> closestCenter() override;
 };
 
 
+class SphereGrid : public PlanetGrid
+{
+public:
+	SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	
+	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
+};
+
+
 // Planet ----------------------------------------------------------------
+
+//enum dir{ pX, nX, pY, nY, pZ, nZ };
 
 /**
 	Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
@@ -310,7 +335,8 @@ private:
 */
 struct Planet
 {
-	Planet(Renderer& renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	virtual ~Planet();
 
 	void addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);			//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
@@ -319,18 +345,28 @@ struct Planet
 	const float radius;
 	const glm::vec3 nucleus;
 
-private:
+protected:
 	Noiser* noiseGen;
-	PlanetGrid planetGrid_pZ;
-	PlanetGrid planetGrid_nZ;
-	PlanetGrid planetGrid_pY;
-	PlanetGrid planetGrid_nY;
-	PlanetGrid planetGrid_pX;
-	PlanetGrid planetGrid_nX;
+	PlanetGrid* planetGrid_pZ;
+	PlanetGrid* planetGrid_nZ;
+	PlanetGrid* planetGrid_pY;
+	PlanetGrid* planetGrid_nY;
+	PlanetGrid* planetGrid_pX;
+	PlanetGrid* planetGrid_nX;
 
 	bool readyForUpdate;
 
-	float callBack_getFloorHeight(const glm::vec3& pos);	//!< Callback example
+	virtual float callBack_getFloorHeight(const glm::vec3& pos);	//!< Callback example
+};
+
+
+struct Sphere : public Planet
+{
+	float callBack_getFloorHeight(const glm::vec3& pos) override;	//!< Callback example
+
+public:
+	Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	~Sphere();
 };
 
 
