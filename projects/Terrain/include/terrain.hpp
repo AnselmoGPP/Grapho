@@ -123,7 +123,7 @@ public:
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
-	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices);
+	void render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
@@ -214,7 +214,7 @@ public:
 class DynamicGrid
 {
 public:
-	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 	virtual ~DynamicGrid();
 
 	glm::mat4 view;
@@ -230,7 +230,8 @@ public:
 	unsigned getTotalNodes() { return chunks.size(); }
 	unsigned getloadedChunks() { return loadedChunks; }
 	unsigned getRenderedChunks() { return renderedChunks; }
-
+	void toLastDraw() { putToLastDraw(root[activeTree]); };					//!< Call it after updateTree(), so the correct tree is put last to draw
+	
 protected:
 	QuadNode<Chunk*>* root[2];
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
@@ -251,11 +252,13 @@ protected:
 	size_t numLevels;			// Number of LOD
 	size_t minLevel;			// Minimum level used(from 0 to numLevels-1) (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
 	float distMultiplier;		// Relative distance (when distance camera-node's center is <relDist, the node is subdivided.
+	bool transparency;
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
 	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
 	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
 	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
+	void putToLastDraw(QuadNode<Chunk*>* node);						//!< Recursive (Preorder traversal)
 	void updateChunksSideDepths(QuadNode<Chunk*>* node);			//!< Breath-first search for computing the depth that each side of the chunk must fit.
 	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*> &queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
 	void restartSideDepths(QuadNode<Chunk*>* node);					//!< Set side depths of all nodes in the tree to 0.
@@ -279,7 +282,7 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier);
+	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 
 private:
 	Noiser* noiseGen;
@@ -291,7 +294,7 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	virtual ~PlanetGrid() { };
 
 	float getRadius();
@@ -311,7 +314,7 @@ protected:
 class SphereGrid : public PlanetGrid
 {
 public:
-	SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter);
+	SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 };
@@ -335,11 +338,12 @@ public:
 */
 struct Planet
 {
-	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
 	void addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader);			//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
+	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area
 
 	const float radius;
@@ -365,7 +369,7 @@ struct Sphere : public Planet
 	float callBack_getFloorHeight(const glm::vec3& pos) override;	//!< Callback example
 
 public:
-	Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus);
+	Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	~Sphere();
 };
 

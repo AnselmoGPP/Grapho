@@ -78,10 +78,10 @@ SingleNoise noiser_2(	// Hills
 	4952);								// Seed
 
 PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
-TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2);
+TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 
-Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f });
-Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.2, 2010, { 0.f, 0.f, 0.f });
+Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f }, false);
+Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.2, 2020, { 0.f, 0.f, 0.f }, true);
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	//planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetSeaGrid.addResources(usedTextures, shaders["v_seaPlanet"], shaders["f_seaPlanet"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
@@ -191,6 +191,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	planetGrid.updateState(camPos, view, proj, lights, frameTime);
 	
 	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime);
+	planetSeaGrid.toLastDraw();
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -651,7 +652,7 @@ void setChunk(Renderer& app)
 	updateChunk = true;
 
 	singleChunk.computeTerrain(true);
-	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr);
+	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr, false);
 }
 
 void setChunkGrid(Renderer& app)

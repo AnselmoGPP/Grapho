@@ -47,7 +47,7 @@ SphereCam camera_2(
 	45.f, 45.f );					// latitude & longitude
 
 PlaneCam camera_3(
-	glm::vec3(0.f, 2100.f, 0.f),	// camera position
+	glm::vec3(0.f, 2050.f, 0.f),	// camera position
 	50.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(0.f, -90.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)

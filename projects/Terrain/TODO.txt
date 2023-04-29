@@ -1,9 +1,13 @@
 TODO:
+	Optimize radius calculation (like just calculating sqrt(radius))
+	Shader's headers
 	Waves:
-		Gaps problem: Waves are computed for middle vertices too.
+		> Gaps problem: Waves are computed for middle vertices too.
 		Transparency (transparent water & darked terrain)
 		Reflections
-		Waves over the sphere surface, not the diameter
+		> CamPos height passed as UBO
+		> Spherical sea: Hole in waves origin (vertex displacement)
+		Multiple layers of waves
 	Improve normal calculation for sphereChunk
 	gap-fix for multiple dynamic grids
 	Apply different LOD when above certain region (not only based on distance to chunk)
@@ -96,13 +100,13 @@ Not required:
 	Spherical chunks borders (for texture scaling) are not perfect (acceptable bug)
 
 BUGS:
-	Sometimes camera continue moving backwards/left indefinetely.
+	Sometimes camera continue moving backwards/left indefinitely.
 	Camera jump when starting to move camera.
 	When escaping too soon (before planet is rendered), exception happens (elements not already destroyed when calling cleanup)
 	Bug? In updateStates: render() & set UBOs > move models > Copy UBOs to GPU. Problem: UBOs must be set immediatly after render() because, if it's rendered too fast, the model could be rendered before moving models.
 	When ESC pressed, a bug arises if modelsToLoad has still models when closing
 	Fragment shader (f_planet.frag): Artifact lines
-	Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
+	-Check whether the Y axis in normal maps is correctly fipped upside down (Vulkan maps Y axis inversely than OGL)
 	Check that normal maps are correctly put in each face of the planet during Triplanar mapping (I suspect they may not be)
 	BUG: PRESS ESCAPE JUST BEFORE RENDERING
 	Bug when resizing window (crashes) (and maybe not everything is loaded yet) (Out-of-date/Suboptimal KHR or window resized)

@@ -3,7 +3,8 @@
 
 #define PI 3.141592653589793238462
 #define NUMLIGHTS 2
-#define RADIUS 2010
+#define RADIUS 2020
+ 
 
 struct LightPD
 {
@@ -89,6 +90,8 @@ float modulus		  (float dividend, float divider);		// modulus(%) = a - (b * floo
 
 vec3 getTex_Sea();
 vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed);
+float getTransparency(float minTransp, float minDist, float maxDist);
+float getRatio(float value, float min, float max);
 
 // Definitions:
 
@@ -96,17 +99,60 @@ void main()
 {
 	precalculateValues();
 	vec3 color = getTex_Sea();
-	outColor = vec4(color, 1.0);
+	outColor = vec4(color, getTransparency(0.1, 20, 40));
 }
 
 vec3 getTex_Sea()
 {	
+	// Colors: https://colorswall.com/palette/63192
+	// Colors: https://www.color-hex.com/color-palette/101255
+
 	return getFragColor( 
-		vec3(25, 110, 200) / 255.f,
-		triplanarNormal_Sea(texSampler[31], 20, 3),
+		vec3(36, 76, 92) / 255.f,
+		triplanarNormal_Sea(texSampler[31], 10, 2),
 		vec3(1, 1, 1),
-		40 );
+		30 );
 }
+
+float ratio(float value, float min, float max)
+{
+	return clamp((value - min) / (max - min), 0, 1);
+}
+
+float scaleRatio(float ratio, float min, float max)
+{
+	return (max - min) * ratio + min;
+}
+
+vec3 direction(vec3 origin, vec3 end)
+{
+	return normalize(end - origin);
+}
+
+float angle(vec3 dir_1, vec3 dir_2)
+{
+	return acos(dot(dir_1, dir_2));
+}
+
+float getTransparency(float minTransp, float minDist, float maxDist) 
+{
+	return 1;
+	float ratio_1;		// The closer, the more transparent
+	float ratio_2;		// The lower the camera-normal angle is, the more transparent
+	float ratio_3;		// The larger distance, the less transparent
+	
+	ratio_1 = ratio(inDist, minDist, maxDist);				// [0,1]
+	ratio_1 = scaleRatio(ratio_1, minTransp, 1);			// [minTransp, 1]
+	
+	ratio_2 = angle(inNormal, direction(inPos, inCamPos));	// angle normal-vertex-camera
+	ratio_2 = ratio(ratio_2, 0, PI/2);						// [0,1]
+	ratio_2 = scaleRatio(ratio_2, minTransp, 1);			// [minTransp, 1]
+	
+	return ratio_2;
+	
+	// <<< GLSL headers
+}
+
 
 // Tools ---------------------------------------------------------------------------------------------
 
