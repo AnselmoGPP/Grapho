@@ -7,6 +7,7 @@
 #include <algorithm>			// std::min / std::max
 #include <fstream>
 #include <chrono>
+#include <string>
 
 #include "renderer.hpp"
 
@@ -540,15 +541,14 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind shaderKind, bool optimize, bool isFile)
+ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind type, bool optimize, bool isFile)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
 	#endif
-
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
 	// Get data from txt file:
 
-	size_t fileSize = 0;
 	std::vector<char> glslData;
 	std::string fileName;
 
@@ -557,42 +557,41 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 		#ifdef DEBUG_RENDERER
 				std::cout << shaderFile << std::endl;
 		#endif
+		std::cout << shaderFile << std::endl;
 
 		fileName = shaderFile;
-
-		std::ifstream file(shaderFile, std::ios::ate | std::ios::binary);		// ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
-		if (!file.is_open())
-			throw std::runtime_error("Failed to open file!");
-
-		fileSize = (size_t)file.tellg();
-		glslData.resize(fileSize);
-
-		file.seekg(0);
-		file.read(glslData.data(), fileSize);
-
-		file.close();
+		readFile(fileName.c_str(), glslData);
 	}
 	else			// shaderFile == shader content
 	{
 		#ifdef DEBUG_RENDERER
 				std::cout << "Hardcoded shader" << std::endl;
 		#endif
+		std::cout << "Hardcoded shader" << std::endl;
 
 		fileName = "HardcodedShader";
-		fileSize = shaderFile.size();
-		glslData.resize(fileSize);
+		glslData.resize(shaderFile.size());
 		std::copy(shaderFile.begin(), shaderFile.end(), glslData.begin());
 	}
 	
-	// Compile data:
-	
-	shaderc::Compiler compiler;
+	// Compile data (preprocessing > compilation):
+
 	shaderc::CompileOptions options;
+	options.SetIncluder(std::make_unique<ShaderIncluder>());
+	options.SetGenerateDebugInfo();
 	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
-	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(glslData.data(), glslData.size(), shaderKind, fileName.c_str(), options);
+	shaderc::Compiler compiler;
+	
+	shaderc::PreprocessedSourceCompilationResult preProcessed = compiler.PreprocessGlsl(glslData.data(), glslData.size(), type, fileName.c_str(), options);
+	if(preProcessed.GetCompilationStatus() != shaderc_compilation_status_success)
+		std::cerr << "Shader module preprocessing failed - " << preProcessed.GetErrorMessage() << std::endl;
+	
+	std::string ppData(preProcessed.begin());
+	
+	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(ppData.data(), ppData.size(), type, fileName.c_str(), options);
 	if (module.GetCompilationStatus() != shaderc_compilation_status_success)
-		std::cerr << "Error compiling shader module - " << module.GetErrorMessage() << std::endl;
+		std::cerr << "Shader module compilation failed - " << module.GetErrorMessage() << std::endl;
 	
 	std::vector<uint32_t> spirv = { module.cbegin(), module.cend() };
 
@@ -602,6 +601,8 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = spirv.size() * sizeof(uint32_t);
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
+
+	std::cout << "CodeSize: " << createInfo.codeSize << std::endl;
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
@@ -860,3 +861,30 @@ size_t Renderer::getCommandsCount() { return commandsCount; }
 float Renderer::getAspectRatio() { return (float)e.c.height / e.c.width; }
 
 glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.c.width, e.c.height); }
+
+shaderc_include_result* ShaderIncluder::GetInclude(const char* sourceName, shaderc_include_type type, const char* destName, size_t includeDepth)
+{
+	//std::cout << "Source: " << sourceName << std::endl;
+	//std::cout << "Type: " << type << std::endl;
+	//std::cout << "Dest: " << std::string(destName) << std::endl;
+	//std::cout << "Depth: " << includeDepth << std::endl;
+
+	auto container  = new std::array<std::string, 2>;
+	(*container)[0] = std::string(sourceName);
+	readFile(sourceName, (*container)[1]);
+	
+	auto data = new shaderc_include_result;
+	data->user_data          = container;
+	data->source_name        = (*container)[0].data();
+	data->source_name_length = (*container)[0].size();
+	data->content            = (*container)[1].data();
+	data->content_length     = (*container)[1].size();
+
+	return data;
+}
+
+void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
+{
+	delete static_cast<std::array<std::string, 2>*>(data->user_data);
+	delete data;
+}

@@ -1,6 +1,7 @@
 TODO:
 	Optimize radius calculation (like just calculating sqrt(radius))
 	Shader's headers
+	Bug: Black/dark spots/lines on terrain.
 	Waves:
 		> Gaps problem: Waves are computed for middle vertices too.
 		Transparency (transparent water & darked terrain)
@@ -8,6 +9,7 @@ TODO:
 		> CamPos height passed as UBO
 		> Spherical sea: Hole in waves origin (vertex displacement)
 		Multiple layers of waves
+		Optimization area is too evident
 	Improve normal calculation for sphereChunk
 	gap-fix for multiple dynamic grids
 	Apply different LOD when above certain region (not only based on distance to chunk)
@@ -54,7 +56,7 @@ TODO:
 	Fix plane camera (and possibly other cameras)
 	Adjust radio of expensive rendering (planet)
 	Color filters for textures depending on height
-	Black stains due to bad normals
+	<<< black stains
 	Don't render non-visible Chunks
 	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
@@ -112,6 +114,7 @@ BUGS:
 	Bug when resizing window (crashes) (and maybe not everything is loaded yet) (Out-of-date/Suboptimal KHR or window resized)
 	Make terrain too big makes chunks not to update (maybe because chunk's center is too far)
 	Baked optical depth: Weird pixels in borders
+	Black stains due to bad normals
 
 ----------------------------------------
 

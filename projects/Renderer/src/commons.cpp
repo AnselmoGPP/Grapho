@@ -42,17 +42,38 @@ void copyCString(const char*& destination, const char* source)
 	destination = address;
 }
 
-void readFile(std::vector<char>& destination, const char* filename)
+// Read a file called <filename> and save its content in <destination>. Since a std::vector<char> is used, it may save garbage values at the end of the string.
+void readFile(const char* filename, std::vector<char>& destination)
 {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);	// Open file. // ate: Start reading at the end of the of the file  /  binary: Read file as binary file (avoid text transformations)
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);	// Open file. // ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
+	if (!file.is_open())
+		throw std::runtime_error("Failed to open file!");
+	
+	size_t fileSize = 0;
+	fileSize = (size_t)file.tellg();
+	destination.resize(fileSize);					// Allocate the buffer
+
+	file.seekg(0);
+	file.read(destination.data(), fileSize);		// Read data
+
+	file.close();									// Close file
+}
+
+// Read a file called <filename> and save its content in <destination>.
+void readFile(const char* filename, std::string& destination)
+{
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);	// Open file. // ate: Start reading at the end of the file  /  binary: Read file as binary file (avoid text transformations)
 	if (!file.is_open())
 		throw std::runtime_error("Failed to open file!");
 
-	size_t fileSize = (size_t)file.tellg();
-	destination.resize(fileSize);									// Allocate the buffer
+	size_t fileSize = 0;
+	fileSize = (size_t)file.tellg();
+	destination.resize(fileSize);					// Allocate the buffer
 
 	file.seekg(0);
-	file.read(destination.data(), fileSize);						// Read data
-
-	file.close();													// Close file
+	file.read(destination.data(), fileSize);		// Read data
+	
+	file.close();									// Close file
 }
+
+

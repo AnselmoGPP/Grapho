@@ -20,6 +20,7 @@ void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags us
 void copyCString(const char*& destination, const char* source);
 
 /// Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
-void readFile(std::vector<char>& destination, const char* filename);
+void readFile(const char* filename, std::vector<char>& destination);
+void readFile(const char* filename, std::string& destination);
 
 #endif

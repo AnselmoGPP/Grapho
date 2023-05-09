@@ -1,10 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define NUMLIGHTS 2
-#define PI 3.141592653589793238462
-#define E  2.718281828459045235360
-#define SR05 0.707106781	// == sqrt(0.5)     (vec2(SR05, SR05) has module == 1)
+#include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
 #define RADIUS 2020
 #define SPEED     1
@@ -13,12 +10,6 @@
 #define STEEPNESS 0.2		// [0,1]
 #define MIN_RANGE 200
 #define MAX_RANGE 400
-
-struct LightPD
-{
-    vec4 position;			// vec3
-    vec4 direction;			// vec3
-};
 
 layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
@@ -42,21 +33,14 @@ layout(location = 3)  		out float	outSlope;		// Ground slope
 layout(location = 4)  		out float	outDist;		// Distace vertex-camera
 layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
 layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
-layout(location = 7)  		out vec3	outTanX;		// Tangents & Bitangents
-layout(location = 8)  		out vec3	outBTanX;
-layout(location = 9)  		out vec3	outTanY;
-layout(location = 10)  		out vec3	outBTanY;
-layout(location = 11) 		out vec3	outTanZ;
-layout(location = 12) 		out vec3	outBTanZ;
-layout(location = 13) flat  out float   outTime;
+layout(location = 7) flat   out float   outTime;
+layout(location = 8)  		out TB3		outTB3;			// Tangents & Bitangents
 layout(location = 14) flat	out LightPD outLight[NUMLIGHTS];
 
-vec3 fixedPos();										// Fix existing gaps between chunks
 vec3 getSeaOptimized(inout vec3 normal);
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal);			// Gerstner waves standard (https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models)
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal);		// Gerstner waves projected along the sphere surface.
 vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves projected perpendicularly from the direction line to the sphere
-float getDist(vec3 a, vec3 b);
 
 void main()
 {
@@ -79,179 +63,33 @@ void main()
 		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional light
 	}
 	
-	// TBN matrices for triplanar shader (Bitangent, Tangent, Normal) <<< Maybe I can reduce X & Z plane projections into a single one
-	vec3 axis = sign(normal);
-	
-	outTanX = normalize(cross(normal, vec3(0., axis.x, 0.)));		// z,y
-	outBTanX = normalize(cross(outTanX, normal)) * axis.x;
-	
-	outTanY = normalize(cross(normal, vec3(0., 0., axis.y)));		// x,z
-	outBTanY = normalize(cross(outTanY, normal)) * axis.y;
-	
-	outTanZ = normalize(cross(normal, vec3(0., -axis.z, 0.)));		// x,y
-	outBTanZ = normalize(-cross(outTanZ, normal)) * axis.z;
+	outTB3 = getTB3(normal);
 }
 
-
-float getDist(vec3 a, vec3 b) 
-{
-	vec3 diff = a - b;
-	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
-}
-
-vec3 fixedPos_help(float sideDepthDiff)
-{
-	if(sideDepthDiff < 0.1)	return inPos;
-	if(sideDepthDiff < 1.1)	return inPos + normalize(inPos) * inGapFix[1];
-	else					return inPos + normalize(inPos) * inGapFix[2];
-}
-
-vec3 fixedPos()
-{
-	float vertexType = inGapFix[0];
-	
-	if     (vertexType < 0.1f) return inPos;
-	else if(vertexType < 1.1f) return fixedPos_help(ubo.sideDepthsDiff[0]);	// right
-	else if(vertexType < 2.1f) return fixedPos_help(ubo.sideDepthsDiff[1]);	// left
-	else if(vertexType < 3.1f) return fixedPos_help(ubo.sideDepthsDiff[2]);	// up
-	else					   return fixedPos_help(ubo.sideDepthsDiff[3]);	// down
-}
 
 vec3 getSeaOptimized(inout vec3 normal)
 {
 	float dist = getDist(inPos, ubo.camPos.xyz);		// Dist. to the sphere, not the wavy geoid.
 	
 	if(dist > MAX_RANGE) 
-		return fixedPos();
+		return fixedPos(inPos, inGapFix, ubo.sideDepthsDiff);
 	else if(dist > MIN_RANGE)
 	{
 		float ratio = 1 - (dist - MIN_RANGE) / (MAX_RANGE - MIN_RANGE);
-		vec3 pos_0 = fixedPos();
+		vec3 pos_0 = fixedPos(inPos, inGapFix, ubo.sideDepthsDiff);
 		vec3 pos_1 = GerstnerWaves_sphere(pos_0, normal);
 		vec3 diff = pos_1 - pos_0;
 		
 		return pos_0 + ratio * diff;
 	}
 	else 
-		return GerstnerWaves_sphere(fixedPos(), normal);
+		return GerstnerWaves_sphere(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), normal);
 }
 
 vec3 getSphereDir(vec3 planeDir, vec3 normal)
 {
 	vec3 right = cross(planeDir, normal);
 	return cross(normal, right);				// front
-}
-
-// Get angle between two unit vectors.
-float angle(vec3 dir_1, vec3 dir_2)
-{
-	return acos(dot(dir_1, dir_2));
-}
-
-// Given geographic coords (longitude (rads), latitude(rads), height), get cartesian coords (x,y,z).
-vec3 geo2cart(vec3 g)
-{
-	return vec3(
-		(RADIUS + g.z) * cos(g.y) * cos(g.x),		// X = (radius + h) * cos(lat) * cos(lon)
-		(RADIUS + g.z) * cos(g.y) * sin(g.x),		// Y = (radius + h) * cos(lat) * sin(lon)
-		(RADIUS + g.z) * sin(g.y));					// Z = (radius + h) * sin(lat)
-}
-
-// Given cartesian coords (x,y,z), get geographic coords (longitude (rads), latitude(rads), height).
-vec3 cart2geo(vec3 c)
-{
-	float length = sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
-	
-	return vec3(
-		atan(c.z / sqrt(c.x * c.x + c.y * c.y)),				// lat = atan(Z/sqrt(X^2 + Y^2))
-		atan(c.y / c.x),										// lon = atan(Y/X)
-		sqrt(c.x * c.x + c.y * c.y + c.z * c.z) - RADIUS);		// h   = sqrt(X^2 + Y^2 + Z^2) - radius
-}
-
-// Rotation matrix of a rotation by angle rot (rads) around axis (unit vector). Result = rotMatrix * point
-mat3 rotationMatrix2(vec3 axis, float rot)
-{
-	float cosRot = cos(rot);
-	float sinRot = sin(rot);
-	
-	return mat3 (
-		cosRot + axis.x * axis.x * (1 - cosRot),
-		axis.x * axis.y * (1 - cosRot) - axis.z * sinRot, 
-		axis.x * axis.z * (1 - cosRot) + axis.y * sinRot,
-		
-		axis.y * axis.x * (1 - cosRot) + axis.z * sinRot, 
-		cosRot + axis.y * axis.y * (1 - cos(rot)), 
-		axis.y * axis.z * (1 - cosRot) - axis.x * sinRot,
-		
-		axis.z * axis.x * (1 - cosRot) - axis.y * sinRot, 
-		axis.z * axis.y * (1 - cosRot) + axis.x * sinRot, 
-		cosRot + axis.z * axis.z * (1 - cosRot)
-	);
-}
-
-/// Get rotation matrix. Use it to rotate a point (result = rotMatrix * point) (http://answers.google.com/answers/threadview/id/361441.html)
-mat3 rotationMatrix(vec3 rotAxis, float angle)
-{
-	float cosVal = cos(angle / 2);
-	float sinVal = sin(angle / 2);
-	
-	float q0 = cosVal;
-	float q1 = sinVal * rotAxis.x;
-	float q2 = sinVal * rotAxis.y;
-	float q3 = sinVal * rotAxis.z;
-
-	return mat3(
-		q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3,  
-		2 * (q1 * q2 - q0 * q3),
-		2 * (q1 * q3 + q0 * q2),
-
-		2 * (q2 * q1 + q0 * q3),
-		q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3,
-		2 * (q2 * q3 - q0 * q1),
-
-		2 * (q3 * q1 - q0 * q2),
-		2 * (q3 * q2 + q0 * q1),
-		q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3
-	);
-}
-
-// Rotation matrix around X axis (counterclockwise when axis points the observer). Result = rotMatrix * point
-mat3 rotMatrix_X(float angle)
-{
-	return mat3(
-		1, 0, 0,
-		0, cos(angle), -sin(angle),
-		0, sin(angle),  cos(angle));
-}
-
-// Rotation matrix around Y axis (counterclockwise when axis points the observer). Result = rotMatrix * point
-mat3 rotMatrix_Y(float angle)
-{
-	return mat3(
-		 cos(angle), 0, sin(angle),
-		 0, 1, 0,
-		-sin(angle), 0, cos(angle));
-}
-
-// Rotation matrix around Z axis (counterclockwise when axis points the observer). Result = rotMatrix * point
-mat3 rotMatrix_Z(float angle)
-{
-	return mat3(
-		cos(angle), -sin(angle), 0,
-		sin(angle),  cos(angle), 0,
-		0, 0, 1);
-}
-
-// Get a rotation matrix that applies 2 consecutive rotations (counterclockwise when axis points the observer). Result = rotMatrix * point
-mat3 rotationMatrix(mat3 firstRot, mat3 secondRot)
-{
-	return secondRot * firstRot;
-}
-
-// Get a rotation matrix that applies 3 consecutive rotations (counterclockwise when axis points the observer). Result = rotMatrix * point
-mat3 rotationMatrix(mat3 firstRot, mat3 secondRot, mat3 thirdRot)
-{
-	return thirdRot * secondRot * firstRot;
 }
 
 // Gerstner waves applied over a sphere, perpendicular to normal
@@ -279,7 +117,7 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 	
 	for(int i = 0; i < count; i++)
 	{
-		arcDist = angle(-dir[i], up) * RADIUS;
+		arcDist = getAngle(-dir[i], up) * RADIUS;
 		rotAxis = normalize(cross(dir[i], up));
 		
 		horDisp = cos(w * arcDist + speed * time);

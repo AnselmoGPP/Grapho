@@ -181,7 +181,7 @@ public:
 	texIterator		newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);	//!< Texture data from code
 	void			deleteTexture(texIterator texture);
 
-	ShaderIter		newShader(const std::string shaderFile, shaderc_shader_kind kind, bool optimize, bool isFile = true);
+	ShaderIter		newShader(const std::string shaderFile, shaderc_shader_kind type, bool optimize, bool isFile = true);
 	void			deleteShader(ShaderIter shader);
 
 	void			setRenders(modelIterator model, size_t numberOfRenders);
@@ -196,6 +196,31 @@ public:
 	size_t getCommandsCount();
 	float  getAspectRatio();
 	glm::vec2 getScreenSize();
+};
+
+
+/**
+	Includer interface for being able to "#include" headers data on shaders
+	Renderer::newShader():
+		- readFile(shader)
+		- shaderc::CompileOptions < ShaderIncluder
+		- shaderc::Compiler::PreprocessGlsl()
+			- Preprocessor directive exists? 
+				- ShaderIncluder::GetInclude()
+				- ShaderIncluder::ReleaseInclude()
+				- ShaderIncluder::~ShaderIncluder()
+		- shaderc::Compiler::CompileGlslToSpv
+*/
+class ShaderIncluder : public shaderc::CompileOptions::IncluderInterface
+{
+public:
+	~ShaderIncluder() { };
+
+	// Handles shaderc_include_resolver_fn callbacks.
+	shaderc_include_result* GetInclude(const char* sourceName, shaderc_include_type type, const char* destName, size_t includeDepth) override;
+
+	// Handles shaderc_include_result_release_fn callbacks.
+	void ReleaseInclude(shaderc_include_result* data) override;
 };
 
 #endif
