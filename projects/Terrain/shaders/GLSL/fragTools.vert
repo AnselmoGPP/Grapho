@@ -128,6 +128,43 @@ struct uvGradient
 };
 
 
+// Math functions ------------------------------------------------------------------------
+
+// Get distance between two 3D points
+float getDist(vec3 a, vec3 b) 
+{
+	vec3 diff = a - b;
+	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
+}
+
+// Get the ratio of a given "value" within a range [min, max]. Result's range: [0, 1].
+float getRatio(float value, float min, float max)
+{
+	return clamp((value - min) / (max - min), 0, 1);
+}
+
+// Get the ratio of a given a ratio within a range. Result's range: [0, 1]. 
+float getScaleRatio(float ratio, float min, float max)
+{
+	return (max - min) * ratio + min;
+}
+
+// Get a direction given 2 points.
+vec3 getDirection(vec3 origin, vec3 end)
+{
+	return normalize(end - origin);
+}
+
+// Get an angle given 2 directions.
+float getAngle(vec3 dir_1, vec3 dir_2)
+{
+	return acos(dot(dir_1, dir_2));
+}
+
+// Get modulus(%) = a - (b * floor(a/b))
+float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
+
+
 // Graphic functions ------------------------------------------------------------------------
 
 // Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
@@ -174,6 +211,34 @@ vec2 unpackUV(vec2 UV, float texFactor)
 vec3 unpackNormal(vec3 normal)
 {
 	return normalize(toSRGB(normal) * 2.f - 1.f);
+}
+
+// Pass to SRGB, put in range [-1,1], normalize, and adjust normal strength.
+vec3 unpackNormal(vec3 normal, float multiplier)
+{
+	normal = normalize(toSRGB(normal) * 2.f - 1.f);
+
+	normal.z -= (1 - normal.z) * multiplier;
+	normal.z = clamp(normal.z, 0, 1);
+	
+	return normalize(normal);
+
+	// ------------------
+
+	normal = normalize(toSRGB(normal) * 2.f - 1.f);
+
+	float phi   = atan(normal.y / normal.x);
+	float theta = atan(sqrt(normal.x * normal.x + normal.y * normal.y), normal.z);
+
+	//theta = clamp(theta * multiplier, 0, PI/2);
+	
+	//if(theta < 0.1) return normal;
+
+	return normalize(
+			vec3(
+				sin(theta) * cos(phi),
+				sin(theta) * sin(phi),
+				cos(theta) ));
 }
 
 
@@ -246,43 +311,6 @@ void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLI
 		}
 	}
 }
-
-
-// Math functions ------------------------------------------------------------------------
-
-// Get distance between two 3D points
-float getDist(vec3 a, vec3 b) 
-{
-	vec3 diff = a - b;
-	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
-}
-
-// Get the ratio of a given "value" within a range [min, max]. Result's range: [0, 1].
-float getRatio(float value, float min, float max)
-{
-	return clamp((value - min) / (max - min), 0, 1);
-}
-
-// Get the ratio of a given a ratio within a range. Result's range: [0, 1]. 
-float getScaleRatio(float ratio, float min, float max)
-{
-	return (max - min) * ratio + min;
-}
-
-// Get a direction given 2 points.
-vec3 getDirection(vec3 origin, vec3 end)
-{
-	return normalize(end - origin);
-}
-
-// Get an angle given 2 directions.
-float getAngle(vec3 dir_1, vec3 dir_2)
-{
-	return acos(dot(dir_1, dir_2));
-}
-
-// Get modulus(%) = a - (b * floor(a/b))
-float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
 
 
 // Lightning functions ------------------------------------------------------------------------
@@ -366,7 +394,7 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 	return result;
 }
 
-// Get fragment color given 4 texture maps (albedo, normal, specular, roughness)
+// (EXAMPLE) Get fragment color given 4 texture maps (albedo, normal, specular, roughness).
 vec3 getTex(sampler2D albedo, sampler2D normal, sampler2D specular, sampler2D roughness, float scale, vec2 UV)
 {
 	return getFragColor(
@@ -415,8 +443,61 @@ vec3 triplanarNormal(sampler2D tex, float texFactor)
 	vec3 weights = abs(normal);
 	weights *= weights;
 	weights /= weights.x + weights.y + weights.z;
-		
+	
 	return normalize(tnormalX * weights.x  +  tnormalY * weights.y  +  tnormalZ * weights.z);
+}
+
+// Dynamic texture map projected from 3 axes (x,y,z) and mixed. 
+vec4 triplanarTexture_sea(sampler2D tex, float texFactor, float speed, float t)
+{	
+	// Get normal map coordinates
+	float time = t * speed;
+	float offset = texFactor / 4;
+	const int n = 3;
+	
+	vec2 coordsXY[3] = { 
+		vec2(       fragPos.x, time + fragPos.y + offset),
+		vec2(time + fragPos.x,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.y) };
+
+	vec2 coordsZY[3] = {
+		vec2(       fragPos.z, time + fragPos.y + offset),
+		vec2(time + fragPos.z,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.z, time * SR05 + fragPos.y) };
+		
+	vec2 coordsXZ[3] = {
+		vec2(       fragPos.x, time + fragPos.z + offset),
+		vec2(time + fragPos.x,        fragPos.z - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.z) };
+		
+	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
+	vec4 dx = {0,0,0,0};
+	vec4 dy = {0,0,0,0};
+	vec4 dz = {0,0,0,0};
+	int i = 0;
+		
+	for(i = 0; i < n; i++) 
+		dx += texture(tex, unpackUV(coordsZY[i], texFactor));
+	dx = normalize(dx);
+
+	for(i = 0; i < n; i++) 
+		dy += texture(tex, unpackUV(coordsXZ[i], texFactor));
+	dy = normalize(dy);
+		
+	for(i = 0; i < n; i++)
+		dz += texture(tex, unpackUV(coordsXY[i], texFactor));
+	dz = normalize(dz);
+	
+	//vec4 dx = texture(tex, unpackUV(fragPos.zy, texFactor));
+	//vec4 dy = texture(tex, unpackUV(fragPos.xz, texFactor));
+	//vec4 dz = texture(tex, unpackUV(fragPos.xy, texFactor));
+	
+	// Weighted average
+	vec3 weights = abs(normalize(normal));
+	weights *= weights;
+	weights = weights / (weights.x + weights.y + weights.z);
+
+	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
 // Dynamic normal map projected from 3 axes (x,y,z) and mixed. 
@@ -424,25 +505,23 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 {	
 	// Get normal map coordinates
 	float time = t * speed;
-	const int n = 4;
+	float offset = texFactor / 4;
+	const int n = 3;
 	
-	vec2 coordsXY[4] = { 
-		vec2(       fragPos.x, time + fragPos.y) / 4,
-		vec2(time + fragPos.x,        fragPos.y) / 5,
-		vec2(       fragPos.x, time + fragPos.y) / 6,
-		vec2(time + fragPos.x,        fragPos.y) / 7 };
+	vec2 coordsXY[3] = { 
+		vec2(       fragPos.x, time + fragPos.y + offset),
+		vec2(time + fragPos.x,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.y) };
 
-	vec2 coordsZY[4] = {
-		vec2(       fragPos.z, time + fragPos.y) / 4,
-		vec2(time + fragPos.z,        fragPos.y) / 5,
-		vec2(       fragPos.z, time + fragPos.y) / 6,
-		vec2(time + fragPos.z,        fragPos.y) / 7 };
+	vec2 coordsZY[3] = {
+		vec2(       fragPos.z, time + fragPos.y + offset),
+		vec2(time + fragPos.z,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.z, time * SR05 + fragPos.y) };
 		
-	vec2 coordsXZ[4] = {
-		vec2(       fragPos.x, time + fragPos.z) / 4,
-		vec2(time + fragPos.x,        fragPos.z) / 5,
-		vec2(       fragPos.x, time + fragPos.z) / 6,
-		vec2(time + fragPos.x,        fragPos.z) / 7 };
+	vec2 coordsXZ[3] = {
+		vec2(       fragPos.x, time + fragPos.z + offset),
+		vec2(time + fragPos.x,        fragPos.z - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.z) };
 		
 	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
 	vec3 tnormalX = {0,0,0};
@@ -451,15 +530,15 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 	int i = 0;
 		
 	for(i = 0; i < n; i++) 
-		tnormalX += unpackNormal(texture(tex, unpackUV(coordsZY[i], texFactor)).xyz);
+		tnormalX += unpackNormal(texture(tex, unpackUV(coordsZY[i], texFactor)).xyz, 7);
 	tnormalX = normalize(tnormalX);
 
 	for(i = 0; i < n; i++) 
-		tnormalY += unpackNormal(texture(tex, unpackUV(coordsXZ[i], texFactor)).xyz);
+		tnormalY += unpackNormal(texture(tex, unpackUV(coordsXZ[i], texFactor)).xyz, 7);
 	tnormalY = normalize(tnormalY);
 		
 	for(i = 0; i < n; i++)
-		tnormalZ += unpackNormal(texture(tex, unpackUV(coordsXY[i], texFactor)).xyz);
+		tnormalZ += unpackNormal(texture(tex, unpackUV(coordsXY[i], texFactor)).xyz, 7);
 	tnormalZ = normalize(tnormalZ);
 	
 	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
@@ -480,8 +559,18 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 	vec3 weights = abs(normal);
 	weights *= weights;
 	weights /= weights.x + weights.y + weights.z;
-		
+	
 	return normalize(tnormalX * weights.x  +  tnormalY * weights.y  +  tnormalZ * weights.z);
+}
+
+// (EXAMPLE) Get triplanar fragment color given 4 texture maps (albedo, normal, specular, roughness).
+vec3 getTriTex(sampler2D albedo, sampler2D normal, sampler2D specular, sampler2D roughness, float scale, vec2 UV)
+{
+	return getFragColor(
+				triplanarTexture(albedo, scale).rgb,
+				triplanarNormal (normal, scale),
+				triplanarTexture(specular, scale).rgb,
+				triplanarTexture(roughness, scale).r * 255 );
 }
 
 // Get gradients

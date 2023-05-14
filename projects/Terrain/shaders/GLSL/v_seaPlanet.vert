@@ -4,12 +4,25 @@
 #include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
 #define RADIUS 2020
-#define SPEED     1
-#define AMPLITUDE 1
-#define FREQUENCY 0.1
-#define STEEPNESS 0.2		// [0,1]
-#define MIN_RANGE 200
-#define MAX_RANGE 400
+#define MIN 100
+#define MAX 200
+#define WAVES 6
+#define COUNT 6
+
+vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
+float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
+float w        [WAVES] = { 0.05, 0.06, 0.1, 0.15, 0.2, 0.25 };	// Frequency (number of cycles in 2π)
+float A        [WAVES] = { 1.5,  1.4,  0.9, 0.8,  0.5, 0.4 };	// Amplitude
+float steepness[WAVES] = { 0.1,  0.1,  0.2, 0.2,  0.3, 0.3 };	// [0,1]
+float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/(w·A)] (bigger values produce loops)
+
+//vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
+//float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
+//float w        [WAVES] = { 0.3, 0.06, 0.1, 0.15, 0.2, 0.25 };	// Frequency (number of cycles in 2π)
+//float A        [WAVES] = { 5,  1.4,  0.9, 0.8,  0.5, 0.4 };	// Amplitude
+//float steepness[WAVES] = { 0.1,  0.1,  0.2, 0.2,  0.3, 0.3 };	// [0,1]
+//float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/(w·A)] (bigger values produce loops)
+
 
 layout(set = 0, binding = 0) uniform ubobject {
     mat4 model;
@@ -34,10 +47,10 @@ layout(location = 4)  		out float	outDist;		// Distace vertex-camera
 layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
 layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
 layout(location = 7) flat   out float   outTime;
-layout(location = 8)  		out TB3		outTB3;			// Tangents & Bitangents
+layout(location = 8)  		out TB3		outTB3;				// Tangents & Bitangents
 layout(location = 14) flat	out LightPD outLight[NUMLIGHTS];
 
-vec3 getSeaOptimized(inout vec3 normal);
+vec3 getSeaOptimized(inout vec3 normal, float min, float max);
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal);			// Gerstner waves standard (https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models)
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal);		// Gerstner waves projected along the sphere surface.
 vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves projected perpendicularly from the direction line to the sphere
@@ -45,7 +58,7 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves proje
 void main()
 {
 	vec3 normal     = inNormal;
-	vec3 pos        = getSeaOptimized(normal);//GerstnerWaves_sphere(inPos, normal);
+	vec3 pos        = getSeaOptimized(normal, MIN, MAX);
 	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
 				    
 	outPos          = pos;
@@ -66,11 +79,32 @@ void main()
 	outTB3 = getTB3(normal);
 }
 
-
-vec3 getSeaOptimized(inout vec3 normal)
+vec3 getSeaOptimized(inout vec3 normal, float min, float max)
 {
-	float dist = getDist(inPos, ubo.camPos.xyz);		// Dist. to the sphere, not the wavy geoid.
+	float surfDist = getDist(inPos, ubo.camPos.xyz);					// Dist. to the sphere, not the wavy geoid.
+	vec3 pos_1      = fixedPos(inPos, inGapFix, ubo.sideDepthsDiff);
+	vec3 norm_1     = normal;
 	
+	if(surfDist > max) return pos_1;
+	else
+	{
+		vec3 pos_2  = GerstnerWaves_sphere(pos_1, normal);
+		
+		if(surfDist < min) return pos_2;
+		else
+		{
+			float ratio = 1 - getRatio(surfDist, min, max);
+			vec3 diff;
+			
+			diff = normal - norm_1;
+			normal = norm_1 + diff * ratio;
+			
+			diff = pos_2 - pos_1;
+			return pos_1 + diff * ratio;
+		}
+	}
+	
+	/*
 	if(dist > MAX_RANGE) 
 		return fixedPos(inPos, inGapFix, ubo.sideDepthsDiff);
 	else if(dist > MIN_RANGE)
@@ -84,6 +118,7 @@ vec3 getSeaOptimized(inout vec3 normal)
 	}
 	else 
 		return GerstnerWaves_sphere(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), normal);
+	*/
 }
 
 vec3 getSphereDir(vec3 planeDir, vec3 normal)
@@ -95,19 +130,11 @@ vec3 getSphereDir(vec3 planeDir, vec3 normal)
 // Gerstner waves applied over a sphere, perpendicular to normal
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 {
-	float speed      = SPEED;
-	float w          = FREQUENCY;				// Frequency (number of cycles in 2π)
-	float A          = AMPLITUDE;				// Amplitude
-	float steepness  = STEEPNESS;				// [0,1]
-	float Q          = steepness * 1 / (w * A);	// Steepness [0, 1/(w·A)] (bigger values produce loops)
 	float time       = ubo.time[0];
-	const int count  = 6;	
-	vec3 dir[count]  = { 	// Set of unit vectors
-		vec3(1,0,0), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(-SR05, 0, SR05) };
 		
 	vec3 newPos      = pos;
 	vec3 newNormal   = normal;
-	float multiplier = 0.9;
+	//float multiplier = 0.9;
 	float horDisp, verDisp;			// Horizontal/Vertical displacement
 	float arcDist;					// Arc distance (-direction-origin-vertex)
 	float rotAng;
@@ -115,28 +142,28 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 	vec3 right, front, up = normalize(pos);
 
 	
-	for(int i = 0; i < count; i++)
+	for(int i = 0; i < COUNT; i++)
 	{
 		arcDist = getAngle(-dir[i], up) * RADIUS;
 		rotAxis = normalize(cross(dir[i], up));
 		
-		horDisp = cos(w * arcDist + speed * time);
-		verDisp = sin(w * arcDist + speed * time);
+		horDisp = cos(w[i] * arcDist + speed[i] * time);
+		verDisp = sin(w[i] * arcDist + speed[i] * time);
 		
 		// Vertex
-		rotAng  = (Q * A) * horDisp / RADIUS;					
+		rotAng  = (Q(i) * A[i]) * horDisp / RADIUS;					
 		newPos  = rotationMatrix(rotAxis, rotAng) * newPos;		// <<< what if rotation axis is == 0?
-		newPos += normalize(newPos) * A * verDisp;
+		newPos += normalize(newPos) * A[i] * verDisp;
 		
 		// Normal
 		right  = cross(dir[i], up);
 		front  = normalize(cross(up, right));
 		
-		rotAng = asin(w * A * horDisp);
+		rotAng = asin(w[i] * A[i] * horDisp);
 		newNormal = rotationMatrix(rotAxis, -rotAng) * newNormal;
 		
-		speed *= multiplier;
-		w /= multiplier;
+		//speed *= multiplier;
+		//w /= multiplier;
 		//A *= multiplier;
 		//Q *= multiplier;
 	}
@@ -144,7 +171,7 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 	normal = newNormal;
 	return newPos;
 }
-
+/*
 // Gerstner waves applied over a sphere, perpendicular to direction
 vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 {
@@ -221,7 +248,7 @@ vec3 GerstnerWaves(vec3 pos, inout vec3 normal)
 	normalize(normal);
 	return newPos;
 }
-
+*/
 
 /*
 	Notes:

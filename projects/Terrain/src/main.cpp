@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	//planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetSeaGrid.addResources(usedTextures, shaders["v_seaPlanet"], shaders["f_seaPlanet"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
@@ -414,7 +414,10 @@ void loadTextures(Renderer& app)
 
 	// Water
 	textures["sea_n"]   = app.newTexture((texDir + "sea_n.png").c_str());
-					    
+	textures["sea_h"]   = app.newTexture((texDir + "sea_h.png").c_str());
+	textures["foam_a"]  = app.newTexture((texDir + "sea_foam_a.png").c_str());
+	//textures["bubbles_a"] = app.newTexture((texDir + "bubbles_a.png").c_str());
+
 	textures["snow_a"]  = app.newTexture((texDir + "snow_a.png").c_str());
 	textures["snow_n"]  = app.newTexture((texDir + "snow_n.png").c_str());
 	textures["snow_s"]  = app.newTexture((texDir + "snow_s.png").c_str());
@@ -432,7 +435,6 @@ void loadTextures(Renderer& app)
 	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
 	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-
 	// Package textures
 	usedTextures =
 	{
@@ -445,7 +447,7 @@ void loadTextures(Renderer& app)
 		/*25-29*/textures["sandWavy_a"], textures["sandWavy_n"], textures["sandWavy_s"], textures["sandWavy_r"], textures["sandWavy_h"],
 
 		/* 30 */ textures["squares"],
-		/* 31 */ textures["sea_n"]
+		/*31-33*/textures["sea_n"], textures["sea_h"], textures["foam_a"]
 	};
 
 

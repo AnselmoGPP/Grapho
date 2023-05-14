@@ -93,7 +93,11 @@ vec3 fixedPos(vec3 pos, vec3 gapFix, vec4 sideDepthDiff)
 // TBN matrices for triplanar shader (Bitangent, Tangent, Normal) <<< Maybe I can reduce X & Z plane projections into a single one
 TB3 getTB3(vec3 normal)
 {
-	vec3 axis = sign(normal);
+	vec3 axis = sign(normal);	// sign() extracts sign of the parameter
+	if(axis.x == 0) axis.x = 1;
+	if(axis.y == 0) axis.y = 1;
+	if(axis.z == 0) axis.z = 1;	// Avoid dark patches. Disadvantage: creates contrast.
+	
 	TB3 tb;
 	
 	tb.tanX = normalize(cross(normal, vec3(0., axis.x, 0.)));		// z,y
@@ -111,17 +115,39 @@ TB3 getTB3(vec3 normal)
 
 // Math functions ------------------------------------------------------------------------
 
+// Get distance between two 3D points
 float getDist(vec3 a, vec3 b) 
 {
 	vec3 diff = a - b;
 	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
 }
 
-// Get angle between two unit vectors.
+// Get the ratio of a given "value" within a range [min, max]. Result's range: [0, 1].
+float getRatio(float value, float min, float max)
+{
+	return clamp((value - min) / (max - min), 0, 1);
+}
+
+// Get the ratio of a given a ratio within a range. Result's range: [0, 1]. 
+float getScaleRatio(float ratio, float min, float max)
+{
+	return (max - min) * ratio + min;
+}
+
+// Get a direction given 2 points.
+vec3 getDirection(vec3 origin, vec3 end)
+{
+	return normalize(end - origin);
+}
+
+// Get an angle given 2 directions.
 float getAngle(vec3 dir_1, vec3 dir_2)
 {
 	return acos(dot(dir_1, dir_2));
 }
+
+// Get modulus(%) = a - (b * floor(a/b))
+float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
 
 // Given geographic coords (longitude (rads), latitude(rads), height), get cartesian coords (x,y,z).
 vec3 geo2cart(vec3 g, float radius)

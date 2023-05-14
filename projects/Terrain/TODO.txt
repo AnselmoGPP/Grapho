@@ -1,34 +1,30 @@
 TODO:
-	Optimize radius calculation (like just calculating sqrt(radius))
-	Shader's headers
-	Bug: Black/dark spots/lines on terrain.
+	Worker
+	Solve <<<, LOOK, ERROR (and MVS errors/warnings)
+	> typedef vec3size and co.
+	Night light (oppossite of sun light)
 	Waves:
+		Maybe, the more normal and sun light align (or cam dir), the more green water is.
+		Green with height
+		Black shadows when waves are too sharp (bad normals)
+		Transparent when close, opaque when far / Transparency near cost / Transparent water & darked terrain)
+		Foam specularity & roughness in the limit is evident
+		Holes in axes zone / Spherical sea: Hole in waves origin (vertex displacement)
 		> Gaps problem: Waves are computed for middle vertices too.
-		Transparency (transparent water & darked terrain)
 		Reflections
-		> CamPos height passed as UBO
-		> Spherical sea: Hole in waves origin (vertex displacement)
-		Multiple layers of waves
-		Optimization area is too evident
-	Improve normal calculation for sphereChunk
+		Sea has to know about ground. Thus, sea+ground has to be passed to shader. Thus, both have to be calculated at the same time. Thus, dynamicGrid changes are required.
+	Ocean, sand, trees/bush, rocks, MixNoise
 	gap-fix for multiple dynamic grids
 	Apply different LOD when above certain region (not only based on distance to chunk)
 	Create a list of leaf nodes and work with them instead of traversing the entire tree (like in DynamicGrid::updateUBOs_help)
 	Fix/improve loadingThread multiple accesses to lists
-	typedef vec3size and co.
 	It's not necessary to update all the uniforms. Some are not modified anymore.
-	Fix chunk's gaps: two versions, one for current tree, another for new tree
-  	Solve <<<, LOOK, ERROR (and MVS errors)
-	No-noise dynamic grid
-	Sea has to know about ground. Thus, sea+ground has to be passed to shader. Thus, both have to be calculated at the same time. Thus, dynamicGrid changes are required.
+	X Fix chunk's gaps: two versions, one for current tree, another for new tree
+	- No-noise dynamic grid
 	Default PP shader
-	General debugging (VS warnings)
-	Review comments (<<<, LOOK)
-	Ocean, sand, trees/bush, rocks, MixNoise
 	Method for replacing one/some model/s with one/some model/s (only after the new model/s have been loaded)
 	Python script
 	mipmaps
-	Improve distance texture change & texture scaling
 	No blurr between textures starting from X distance
 	Sun with high-dynamic-range rendering
 	newPostProc()
@@ -56,7 +52,6 @@ TODO:
 	Fix plane camera (and possibly other cameras)
 	Adjust radio of expensive rendering (planet)
 	Color filters for textures depending on height
-	<<< black stains
 	Don't render non-visible Chunks
 	SimonDev
 	-Abstract User input and make it visible for everybody (and fix it)
@@ -65,10 +60,7 @@ TODO:
 	Rozamiento / Fuerza instead of speed
 	Slopes are longer steps than plains
 	Add FastNoise2 library (https://github.com/Auburn/FastNoise2/wiki/2:-Including-the-library-in-your-project) or libnoise
-
-	Shader:
-		Can some job be done in the vertex shader?
-
+	Shader: Can some job be done in the vertex shader?
 	Paths using Perlin noise
 	All angles in radians
 	Document: Vulkan system, loading thread system, Grid system
@@ -88,14 +80,18 @@ TODO:
 	GUI
 	FPS > 30
 	Profiling
-	learnopengl.com / SimonDev
-	Later: Readme.md
 	Later: Multithread loading / Reorganize 2nd thread / Parallel thread manager
 	Later: Compute MVP matrix and pass it to the shader
 
 	Scheme pictures
 	Computer graphics article
 	Read specs & tutorial
+	learnopengl.com / SimonDev
+	Later: Readme.md
+
+Not important:
+
+	Optimize radius calculation (like just calculating sqrt(radius))
 
 Not required:
 	
@@ -114,7 +110,6 @@ BUGS:
 	Bug when resizing window (crashes) (and maybe not everything is loaded yet) (Out-of-date/Suboptimal KHR or window resized)
 	Make terrain too big makes chunks not to update (maybe because chunk's center is too far)
 	Baked optical depth: Weird pixels in borders
-	Black stains due to bad normals
 
 ----------------------------------------
 
