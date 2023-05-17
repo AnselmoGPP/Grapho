@@ -9,13 +9,14 @@
 //#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"
 
-#define DEBUG_ENV_CORE				// Standards: NDEBUG, _DEBUG
-#define DEGUB						// FIX MACRO
+//#define DEBUG_ENV_INFO			// Basic info
+//#define DEBUG_ENV_CORE			// Standards: NDEBUG, _DEBUG
+#define VAL_LAYERS					// Enable Validation layers
 
-#ifdef RELEASE
-const bool enableValidationLayers = false;
-#else
+#ifdef VAL_LAYERS
 const bool enableValidationLayers = true;
+#else
+const bool enableValidationLayers = false;
 #endif
 
 typedef std::vector<VkFramebuffer> framebufferSet;
@@ -74,7 +75,6 @@ public:
 	uint32_t width = 1920 / 2;			// <<< Does this change when recreating swap chain?
 	uint32_t height = 1080 / 2;
 
-	bool printInfo = true;
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes

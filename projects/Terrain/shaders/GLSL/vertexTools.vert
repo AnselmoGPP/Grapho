@@ -29,7 +29,7 @@
 
 // Constants ------------------------------------
 
-#define NUMLIGHTS 2
+#define NUMLIGHTS 3
 #define PI 3.141592653589793238462
 #define E  2.718281828459045235360
 #define SR05 0.707106781	// == sqrt(0.5)     (vec2(SR05, SR05) has module == 1)

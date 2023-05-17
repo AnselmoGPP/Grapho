@@ -35,14 +35,12 @@ Renderer::~Renderer()
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
-	std::cout << __func__ << std::endl; 
 }
 
 int Renderer::run()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " begin" << std::endl;
 	#endif
 
 	try 
@@ -61,14 +59,16 @@ int Renderer::run()
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "run() end" << std::endl;
+	#ifdef DEBUG_RENDERER
+		std::cout << typeid(*this).name() << "::" << __func__ << " end" << std::endl;
+	#endif
 }
 
 // (24)
 void Renderer::createCommandBuffers()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " BEGIN" << std::endl;
 	#endif
 
 	//std::cout << __func__ << "()" << std::endl;
@@ -190,6 +190,10 @@ void Renderer::createCommandBuffers()
 	}
 
 	updateCommandBuffer = false;
+
+	#ifdef DEBUG_RENDERER
+		std::cout << typeid(*this).name() << "::" << __func__ << " END" << std::endl;
+	#endif
 }
 
 // (25)
@@ -546,7 +550,7 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
 	#endif
-		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
+
 	// Get data from txt file:
 
 	std::vector<char> glslData;
@@ -557,7 +561,6 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 		#ifdef DEBUG_RENDERER
 				std::cout << shaderFile << std::endl;
 		#endif
-		std::cout << shaderFile << std::endl;
 
 		fileName = shaderFile;
 		readFile(fileName.c_str(), glslData);
@@ -601,8 +604,6 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = spirv.size() * sizeof(uint32_t);
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
-
-	std::cout << "CodeSize: " << createInfo.codeSize << std::endl;
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)

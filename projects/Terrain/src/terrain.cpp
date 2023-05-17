@@ -30,8 +30,8 @@ void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vect
         "chunk",
         1, 1, primitiveTopology::triangle,
         vertexLoader,
-        1, 4 * mat4size + 3 * vec4size + 2 * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
-        2 * sizeof(LightProps),                                     // n * LightProps (6*vec4)
+        1, 4 * mat4size + 3 * vec4size + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
+        numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)
         usedTextures,
         vertexShader, fragmentShader,
         transparency);
@@ -1112,14 +1112,12 @@ Planet::Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, siz
 
 Planet::~Planet()
 { 
-    std::cout << __func__ << " 1" << std::endl;
     delete planetGrid_pZ;
     delete planetGrid_nZ;
     delete planetGrid_pY;
     delete planetGrid_nY;
     delete planetGrid_pX;
     delete planetGrid_nX;
-    std::cout << __func__ << " 2" << std::endl;
 };
 
 void Planet::addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader)

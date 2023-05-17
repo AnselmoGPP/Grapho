@@ -18,6 +18,8 @@
 #include "terrain.hpp"
 #include "common.hpp"
 
+//#define DEBUG_MAIN 
+
 /*
 	Load model X:
 		- Create setX() and call it in main()
@@ -49,7 +51,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -57,7 +59,7 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
-LightSet lights(2); 
+LightSet lights(numLights);
 std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
@@ -98,15 +100,16 @@ glm::vec2 clipPlanes, screenSize;
 
 int main(int argc, char* argv[])
 {
-	//std::cout << std::setprecision(7);
-	std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
-	std::cout << "PlanetGrid area: " << planetGrid.getSphereArea() << std::endl;
-
+	#ifdef DEBUG_MAIN
+		//std::cout << std::setprecision(7);
+		std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
+		std::cout << "PlanetGrid area: " << planetGrid.getSphereArea() << std::endl;
+		TimerSet time;
+		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
+	#endif
+	
 	camera_4.camParticle.setCallback(getFloorHeight);
-	
-	TimerSet time;
-	std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
-	
+
 	setLights();
 	loadShaders(app);
 	loadTextures(app);
@@ -120,7 +123,7 @@ int main(int argc, char* argv[])
 		//setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
-	planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
+	//planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
 	planetSeaGrid.addResources(usedTextures, shaders["v_seaPlanet"], shaders["f_seaPlanet"]);
 	setSun(app);
 	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
@@ -128,7 +131,10 @@ int main(int argc, char* argv[])
 
 	app.run();		// Start rendering
 
-	std::cout << "main() end" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "main() end" << std::endl;
+	#endif
+	
 	if(STANDALONE_EXECUTABLE) system("pause");
 	return EXIT_SUCCESS;
 }
@@ -155,17 +161,20 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
-	std::cout << rend.getFrameCount() << ") " << std::endl;
-	//std::cout << rend.getFrameCount() << ") " << fps << '\n';
-	//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << rend.getFrameCount() << ") " << std::endl;
+		//std::cout << rend.getFrameCount() << ") " << fps << '\n';
+		//std::cout << ") \n  Commands: " << rend.getCommandsCount() / 3 << std::endl;
+	#endif
 
 	// Time
 	sun.updateTime(frameTime);
 
 	// Light
 	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
-	lights.posDir[1].position = camPos;
-	lights.posDir[1].direction = camDir;
+	lights.posDir[1].direction = -sun.lightDirection();	// Directional (night)
+	lights.posDir[2].position  = camPos;
+	lights.posDir[2].direction = camDir;
 
 	//std::cout
 	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
@@ -323,19 +332,23 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 void setLights()
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	//lightss.turnOff(0);
-	lights.setDirectional(0, sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));	// Sun
+	lights.setDirectional(0,  sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));				// Sun
+	lights.setDirectional(1, -sun.lightDirection(), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0, 0, 0.01), glm::vec3(0.001, 0.005, 0.005));// Night
+	lights.setSpot(2, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1, 1, 1, 0., 0.);
 	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
 	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
-	lights.setSpot(1, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1, 1, 1, 0., 0.);
-
 }
 
 void loadShaders(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 	
 	shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
 	shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
@@ -373,7 +386,9 @@ void loadShaders(Renderer& app)
 
 void loadTextures(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	// Special
 	textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());
@@ -466,9 +481,12 @@ float getSeaHeight(const glm::vec3& pos)
 	return 1.70 + planetSeaGrid.radius;
 }
 
+
 void setPoints(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
@@ -489,7 +507,9 @@ void setPoints(Renderer& app)
 
 void setAxis(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint16_t> i_axis;
@@ -513,8 +533,10 @@ void setAxis(Renderer& app)
 
 void setGrid(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
-	
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
+
 	std::vector<VertexPC> v_grid;
 	std::vector<uint16_t> i_grid;
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
@@ -535,7 +557,9 @@ void setGrid(Renderer& app)
 
 void setSkybox(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	std::vector<texIterator> usedTextures = { textures["skybox"] };
 
@@ -555,7 +579,9 @@ void setSkybox(Renderer& app)
 
 void setCottage(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<texIterator> usedTextures = { textures["cottage"] };
@@ -591,7 +617,9 @@ void setCottage(Renderer& app)
 
 void setRoom(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	std::vector<texIterator> usedTextures = { textures["room"] };
 
@@ -619,7 +647,9 @@ void setRoom(Renderer& app)
 
 void setSea(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	std::vector<texIterator> usedTextures = { textures["sea_n"] };
 
@@ -650,7 +680,10 @@ void setSea(Renderer& app)
 
 void setChunk(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
+
 	updateChunk = true;
 
 	singleChunk.computeTerrain(true);
@@ -659,7 +692,10 @@ void setChunk(Renderer& app)
 
 void setChunkGrid(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
+
 	updateChunkGrid = true;
 
 	terrGrid.addTextures(usedTextures);
@@ -669,7 +705,9 @@ void setChunkGrid(Renderer& app)
 
 void setSun(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	//std::vector<float> v_sun;
 	std::vector<VertexPT> v_sun;
@@ -695,7 +733,9 @@ void setSun(Renderer& app)
 
 void setReticule(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	float v_ret[4 * 5];
 	//std::vector<float> v_ret;
@@ -721,7 +761,9 @@ void setReticule(Renderer& app)
 
 void setAtmosphere(Renderer& app)
 {
-	std::cout << "> " << __func__ << "()" << std::endl;
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
 
 	float v_quad[4 * 5];
 	std::vector<uint16_t> i_quad;

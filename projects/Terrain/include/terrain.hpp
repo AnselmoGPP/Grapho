@@ -76,6 +76,8 @@ void inorder(QuadNode<T>* root, V* visitor);
 
 // Chunk -------------------------------
 
+const unsigned numLights = 3;
+
 enum side{ right, left, up, down };
 
 /**

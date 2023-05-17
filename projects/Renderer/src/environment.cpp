@@ -173,8 +173,7 @@ bool VulkanCore::checkValidationLayerSupport(const std::vector<const char*>& req
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
 	// Print "requiredLayers" and "availableLayers"
-	if (printInfo)
-	{
+	#ifdef DEBUG_ENV_INFO
 		std::cout << "   Required validation layers: \n";
 		for (size_t i = 0; i < requiredLayers.size(); ++i)
 			std::cout << "      " << requiredLayers[i] << '\n';
@@ -182,7 +181,7 @@ bool VulkanCore::checkValidationLayerSupport(const std::vector<const char*>& req
 		std::cout << "   Available validation layers: \n";
 		for (size_t i = 0; i < layerCount; ++i)
 			std::cout << "      " << availableLayers[i].layerName << '\n';
-	}
+	#endif
 
 	// Check if all the "requiredLayers" exist in "availableLayers"
 	for (const char* reqLayer : requiredLayers)
@@ -295,8 +294,7 @@ bool VulkanCore::checkExtensionSupport(const char* const* requiredExtensions, ui
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
 
 	// Print "requiredExtensions" and "availableExtensions"
-	if (printInfo)
-	{
+	#ifdef DEBUG_ENV_INFO
 		std::cout << "   Required extensions: \n";
 		for (size_t i = 0; i < reqExtCount; ++i)
 			std::cout << "      " << requiredExtensions[i] << '\n';
@@ -304,7 +302,7 @@ bool VulkanCore::checkExtensionSupport(const char* const* requiredExtensions, ui
 		std::cout << "   Available extensions: \n";
 		for (size_t i = 0; i < extensionCount; ++i)
 			std::cout << "      " << availableExtensions[i].extensionName << '\n';
-	}
+	#endif
 
 	// Check if all the "requiredExtensions" exist in "availableExtensions"
 	for (size_t i = 0; i < reqExtCount; ++i)
@@ -403,7 +401,12 @@ void VulkanCore::pickPhysicalDevice()
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 	if (deviceCount == 0) throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-	else if (printInfo) std::cout << "   Devices with Vulkan support: " << deviceCount << std::endl;
+	else
+	{
+		#ifdef DEBUG_ENV_INFO
+			std::cout << "   Devices with Vulkan support: " << deviceCount << std::endl;
+		#endif
+	}
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
@@ -426,15 +429,14 @@ void VulkanCore::pickPhysicalDevice()
 	else
 		throw std::runtime_error("Failed to find a suitable GPU!");
 
-	if (printInfo)
-	{
+	#ifdef DEBUG_ENV_INFO
 		std::cout << "   Device features: " << std::endl;
 		std::cout << "      MSAA samples: " << msaaSamples << std::endl;
 		std::cout << "      Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
 		std::cout << "      Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
 		std::cout << "      Large points supported: " << (largePointsSupported() ? "Yes" : "No") << std::endl;
 		std::cout << "      Wide lines supported: " << (wideLinesSupported() ? "Yes" : "No") << std::endl;
-	}
+	#endif
 }
 
 /**
@@ -484,7 +486,9 @@ int VulkanCore::evaluateDevice(VkPhysicalDevice device)
 	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete GPUs have better performance (and integrated GPUs, worse).
 	score += deviceProperties.limits.maxImageDimension2D;									// Maximum size of textures.
 	
-	if (printInfo) std::cout << "      (" << score << ") " << deviceProperties.deviceName << std::endl;
+	#ifdef DEBUG_ENV_INFO
+		std::cout << "      (" << score << ") " << deviceProperties.deviceName << std::endl;
+	#endif
 
 	return score;
 }
@@ -729,7 +733,9 @@ void VulkanEnvironment::createSwapChain()
 	swapChain.images.resize(imageCount);
 	vkGetSwapchainImagesKHR(c.device, swapChain.swapChain, &imageCount, swapChain.images.data());
 
-	if(c.printInfo) std::cout << "   Swap chain images: " << swapChain.images.size() << std::endl;
+	#ifdef DEBUG_ENV_INFO
+		std::cout << "   Swap chain images: " << swapChain.images.size() << std::endl;
+	#endif
 
 	// Save format and extent for future use
 	swapChain.imageFormat = surfaceFormat.format;

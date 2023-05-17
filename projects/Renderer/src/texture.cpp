@@ -12,13 +12,20 @@
 Texture::Texture(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 	: path(path), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(0), texHeight(0), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
-	std::cout << typeid(*this).name() << "::" << __func__ << this->path << std::endl;
+	#ifdef DEBUG_TEXTURE
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << this->path << std::endl;
+	#endif
+		
 	//copyCString(this->path, path);	// where path is const char*
 }
 
 Texture::Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode)
 	: path(), e(nullptr), imageFormat(imageFormat), addressMode(addressMode), texWidth(texWidth), texHeight(texHeight), texChannels(0), pixels(nullptr), fullyConstructed(false), mipLevels(0)
 {
+	#ifdef DEBUG_TEXTURE
+		std::cout << typeid(*this).name() << "::" << __func__ << ": Texture from in-code data" << std::endl;
+	#endif
+
 	this->pixels = new unsigned char[4 * texHeight * texWidth];
 	memcpy(this->pixels, pixels, 4 * texHeight * texWidth);
 }

@@ -159,14 +159,14 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 		newPos += normalize(newPos) * A[i] * verDisp;
 		
 		// Normal
-		//rotAng = asin(w[i] * A[i] * horDisp);					// <<< correct? Dark shadows when A==2 or w==2
-		//newNormal = rotationMatrix(rotAxis, -rotAng) * newNormal;
+		rotAng = asin(w[i] * A[i] * horDisp);					// <<< correct? Dark shadows when A==2 or w==2
+		newNormal = rotationMatrix(rotAxis, -rotAng) * newNormal;
 		
 		// Normal (alternative)
-		newNormal = rotMat * newNormal;														// Move normal according to vertex displacement
-		frontProj = dot(newNormal, normalize(cross(up, rotAxis)));							// Project normal on front
-		rotAng    = acos(frontProj - (w[i] * A[i] * horDisp)) - acos(frontProj);			// Angle (Alpha - Beta)
-		newNormal = rotationMatrix(rotAxis, rotAng) * newNormal;
+		//newNormal = rotMat * newNormal;												// Move normal according to vertex displacement
+		//frontProj = dot(newNormal, normalize(cross(up, rotAxis)));					// Project normal on front
+		//rotAng    = acos(frontProj - (w[i] * A[i] * horDisp)) - acos(frontProj);	// Angle (Alpha - Beta)
+		//newNormal = rotationMatrix(rotAxis, rotAng) * newNormal;
 	}
 
 	normal = newNormal;

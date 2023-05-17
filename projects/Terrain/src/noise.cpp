@@ -61,10 +61,13 @@ SingleNoise::SingleNoise(
 
     std::mt19937_64 engine;
     engine.seed(seed);
-    std::uniform_int_distribution<int> distribution(-10000, 10000);
-    std::cout << "Random: " << distribution(engine) << ", " << distribution(engine) << ", " << distribution(engine) << std::endl;
 
-    std::cout << *this;
+    #ifdef DEBUG_NOISE
+      std::cout << *this;
+
+      std::uniform_int_distribution<int> distribution(-10000, 10000);
+      std::cout << "Random: " << distribution(engine) << ", " << distribution(engine) << ", " << distribution(engine) << std::endl;
+    #endif
 }
 
 float SingleNoise::getProcessedNoise(float x, float y, float z)
