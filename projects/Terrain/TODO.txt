@@ -1,4 +1,5 @@
 TODO:
+	Light color
 	Worker
 	Solve <<<, LOOK, ERROR (and MVS errors/warnings)
 	> typedef vec3size and co.

@@ -18,8 +18,8 @@ float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/
 
 //vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
 //float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
-//float w        [WAVES] = { 0.3, 0.06, 0.1, 0.15, 0.2, 0.25 };	// Frequency (number of cycles in 2π)
-//float A        [WAVES] = { 5,  1.4,  0.9, 0.8,  0.5, 0.4 };	// Amplitude
+//float w        [WAVES] = { 1, 0.06, 0.1, 0.15, 0.2, 0.25 };	// Frequency (number of cycles in 2π)
+//float A        [WAVES] = { 2,  1.4,  0.9, 0.8,  0.5, 0.4 };	// Amplitude
 //float steepness[WAVES] = { 0.1,  0.1,  0.2, 0.2,  0.3, 0.3 };	// [0,1]
 //float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/(w·A)] (bigger values produce loops)
 
@@ -138,34 +138,35 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 	float horDisp, verDisp;			// Horizontal/Vertical displacement
 	float arcDist;					// Arc distance (-direction-origin-vertex)
 	float rotAng;
+	float frontProj;
 	vec3 rotAxis;
-	vec3 right, front, up = normalize(pos);
-
+	//vec3 right, front;
+	vec3 up = normalize(pos);
+	mat3 rotMat;
 	
 	for(int i = 0; i < COUNT; i++)
 	{
 		arcDist = getAngle(-dir[i], up) * RADIUS;
-		rotAxis = normalize(cross(dir[i], up));
+		rotAxis = cross(dir[i], up);
 		
 		horDisp = cos(w[i] * arcDist + speed[i] * time);
 		verDisp = sin(w[i] * arcDist + speed[i] * time);
 		
 		// Vertex
-		rotAng  = (Q(i) * A[i]) * horDisp / RADIUS;					
-		newPos  = rotationMatrix(rotAxis, rotAng) * newPos;		// <<< what if rotation axis is == 0?
+		rotAng  = (Q(i) * A[i]) * horDisp / RADIUS;		
+		rotMat  = rotationMatrix(rotAxis, rotAng);
+		newPos  = rotMat * newPos;		// <<< what if rotation axis is == 0?
 		newPos += normalize(newPos) * A[i] * verDisp;
 		
 		// Normal
-		right  = cross(dir[i], up);
-		front  = normalize(cross(up, right));
+		//rotAng = asin(w[i] * A[i] * horDisp);					// <<< correct? Dark shadows when A==2 or w==2
+		//newNormal = rotationMatrix(rotAxis, -rotAng) * newNormal;
 		
-		rotAng = asin(w[i] * A[i] * horDisp);
-		newNormal = rotationMatrix(rotAxis, -rotAng) * newNormal;
-		
-		//speed *= multiplier;
-		//w /= multiplier;
-		//A *= multiplier;
-		//Q *= multiplier;
+		// Normal (alternative)
+		newNormal = rotMat * newNormal;														// Move normal according to vertex displacement
+		frontProj = dot(newNormal, normalize(cross(up, rotAxis)));							// Project normal on front
+		rotAng    = acos(frontProj - (w[i] * A[i] * horDisp)) - acos(frontProj);			// Angle (Alpha - Beta)
+		newNormal = rotationMatrix(rotAxis, rotAng) * newNormal;
 	}
 
 	normal = newNormal;
