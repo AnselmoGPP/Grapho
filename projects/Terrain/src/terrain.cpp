@@ -17,7 +17,7 @@ Chunk::~Chunk()
         renderer.deleteModel(model);
 }
 
-void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, bool transparency)
+void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
     VertexLoader* vertexLoader = new VertexFromUser(
         VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
@@ -689,7 +689,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         if (chunk->modelOrdered == false)
         {
             chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
-            chunk->render(vertShader, fragShader, textures, &indices, transparency);
+            chunk->render(vertShader, fragShader, textures, &indices, lights->numLights, transparency);
             //chunk->updateUBOs(camPos, view, proj);
             renderer->setRenders(chunk->model, 0);
             loadedChunks++;

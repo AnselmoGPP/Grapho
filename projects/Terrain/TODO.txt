@@ -1,9 +1,7 @@
 TODO:
-	Light color
 	Worker
 	Solve <<<, LOOK, ERROR (and MVS errors/warnings)
 	> typedef vec3size and co.
-	Night light (oppossite of sun light)
 	Waves:
 		Maybe, the more normal and sun light align (or cam dir), the more green water is.
 		Green with height

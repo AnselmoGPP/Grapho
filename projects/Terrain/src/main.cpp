@@ -51,7 +51,7 @@ void setChunkGrid(Renderer& app);
 void setSun(Renderer& app);
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
 std::map<std::string, ShaderIter> shaders;		// Shaders
@@ -59,7 +59,7 @@ std::map<std::string, ShaderIter> shaders;		// Shaders
 // Others
 int gridStep = 50;
 ifOnce check;			// LOOK implement as functor (function with state)
-LightSet lights(numLights);
+LightSet lights(3);
 std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 	//setSea(app);
 	setSkybox(app);
 		//setCottage(app);
-		//setRoom(app);
+	setRoom(app);
 	//setChunk(app);
 	//setChunkGrid(app);
 	//planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
@@ -337,9 +337,9 @@ void setLights()
 	#endif
 
 	//lightss.turnOff(0);
-	lights.setDirectional(0,  sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));				// Sun
-	lights.setDirectional(1, -sun.lightDirection(), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0, 0, 0.01), glm::vec3(0.001, 0.005, 0.005));// Night
-	lights.setSpot(2, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1, 1, 1, 0., 0.);
+	lights.setDirectional(0,  sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));						// Sun
+	lights.setDirectional(1, -sun.lightDirection(), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));	// Night
+	lights.setSpot(2, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1, 0.09, 0.032, 0., 0.);	// Flashlight
 	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
 	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
 }
@@ -639,9 +639,9 @@ void setRoom(Renderer& app)
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
 	app.setRenders(assets["room"], 3);	// TEST(in render loop) : setRenders(out of range)
 
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -pi/2), glm::vec3( 0.f, -50.f, 3.f)), mat4size);
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3( 0.f, -80.f, 3.f)), mat4size);
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi/2), glm::vec3(30.f, -80.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -pi/2), glm::vec3(2030.f, 0.f, 0.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3(0.f, 2030.f, 0.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi/2), glm::vec3(0.f, 0.f, 2030.f)), mat4size);
 	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 }
 
@@ -687,7 +687,7 @@ void setChunk(Renderer& app)
 	updateChunk = true;
 
 	singleChunk.computeTerrain(true);
-	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr, false);
+	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr, lights.numLights, false);
 }
 
 void setChunkGrid(Renderer& app)

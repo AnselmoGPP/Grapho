@@ -79,7 +79,7 @@ struct LightProps
     vec4 diffuse;		// vec3
     vec4 specular;		// vec3
 
-    vec4 degree;		// vec3	(constant, linear, quadratic)
+    vec4 degree;		// vec3	(constant, linear, quadratic) (for attenuation)
     vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
 };
 
@@ -95,7 +95,7 @@ struct Light
     vec3 diffuse;		// vec3
     vec3 specular;		// vec3
 
-    vec3 degree;		// vec3	(constant, linear, quadratic)
+    vec3 degree;		// vec3	(constant, linear, quadratic) (for attenuation)
     vec2 cutOff;		// vec2 (cuttOff, outerCutOff)
 } light[NUMLIGHTS];
 
