@@ -7,7 +7,7 @@
 
 #include "environment.hpp"
 
-//#define DEBUG_TEXTURE
+#define DEBUG_TEXTURE
 
 class Texture
 {

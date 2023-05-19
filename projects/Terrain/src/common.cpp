@@ -21,8 +21,8 @@
 		const std::string texDir("../../../textures/");
 	#elif _WIN64 || _WIN32
 		const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
-		const std::string vertexDir("../../../models/");
-		const std::string texDir("../../../textures/");
+		const std::string vertexDir("../../../cg_resources/vertex/");
+		const std::string texDir("../../../cg_resources/textures/");
 	#endif
 #endif
 

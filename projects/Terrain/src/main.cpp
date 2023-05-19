@@ -392,8 +392,8 @@ void loadTextures(Renderer& app)
 
 	// Special
 	textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());
-	textures["cottage"]  = app.newTexture((texDir + "cottage/cottage_diffuse.png").c_str());
-	textures["room"]	 = app.newTexture((texDir + "viking_room.png").c_str());
+	textures["cottage"]  = app.newTexture((texDir + "models/cottage/cottage_diffuse.png").c_str());
+	textures["room"]	 = app.newTexture((texDir + "models/viking_room.png").c_str());
 	textures["squares"]  = app.newTexture((texDir + "squares.png").c_str());
 	textures["sun"]		 = app.newTexture((texDir + "Sun/sun2_1.png").c_str());
 	textures["reticule"] = app.newTexture((texDir + "HUD/reticule_1.png").c_str());
@@ -401,47 +401,47 @@ void loadTextures(Renderer& app)
 	//textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
 
 	// Plants
-	textures["grassDry_a"] = app.newTexture((texDir + "grassDry_a.png").c_str());
-	textures["grassDry_n"] = app.newTexture((texDir + "grassDry_n.png").c_str());
-	textures["grassDry_s"] = app.newTexture((texDir + "grassDry_s.png").c_str());
-	textures["grassDry_r"] = app.newTexture((texDir + "grassDry_r.png").c_str());
-	textures["grassDry_h"] = app.newTexture((texDir + "grassDry_h.png").c_str());
+	textures["grassDry_a"] = app.newTexture((texDir + "grass/grassDry_a.png").c_str());
+	textures["grassDry_n"] = app.newTexture((texDir + "grass/grassDry_n.png").c_str());
+	textures["grassDry_s"] = app.newTexture((texDir + "grass/grassDry_s.png").c_str());
+	textures["grassDry_r"] = app.newTexture((texDir + "grass/grassDry_r.png").c_str());
+	textures["grassDry_h"] = app.newTexture((texDir + "grass/grassDry_h.png").c_str());
 
 	// Rocks
-	textures["bumpRock_a"] = app.newTexture((texDir + "bumpRock_a.png").c_str());
-	textures["bumpRock_n"] = app.newTexture((texDir + "bumpRock_n.png").c_str());
-	textures["bumpRock_s"] = app.newTexture((texDir + "bumpRock_s.png").c_str());
-	textures["bumpRock_r"] = app.newTexture((texDir + "bumpRock_r.png").c_str());
-	textures["bumpRock_h"] = app.newTexture((texDir + "bumpRock_h.png").c_str());
+	textures["bumpRock_a"] = app.newTexture((texDir + "rock/bumpRock_a.png").c_str());
+	textures["bumpRock_n"] = app.newTexture((texDir + "rock/bumpRock_n.png").c_str());
+	textures["bumpRock_s"] = app.newTexture((texDir + "rock/bumpRock_s.png").c_str());
+	textures["bumpRock_r"] = app.newTexture((texDir + "rock/bumpRock_r.png").c_str());
+	textures["bumpRock_h"] = app.newTexture((texDir + "rock/bumpRock_h.png").c_str());
 
 	// Soils
-	textures["sandDunes_a"]  = app.newTexture((texDir + "sandDunes_a.png").c_str());
-	textures["sandDunes_n"]  = app.newTexture((texDir + "sandDunes_n.png").c_str());
-	textures["sandDunes_s"]  = app.newTexture((texDir + "sandDunes_s.png").c_str());
-	textures["sandDunes_r"]  = app.newTexture((texDir + "sandDunes_r.png").c_str());
-	textures["sandDunes_h"]  = app.newTexture((texDir + "sandDunes_h.png").c_str());
+	textures["sandDunes_a"]  = app.newTexture((texDir + "sand/sandDunes_a.png").c_str());
+	textures["sandDunes_n"]  = app.newTexture((texDir + "sand/sandDunes_n.png").c_str());
+	textures["sandDunes_s"]  = app.newTexture((texDir + "sand/sandDunes_s.png").c_str());
+	textures["sandDunes_r"]  = app.newTexture((texDir + "sand/sandDunes_r.png").c_str());
+	textures["sandDunes_h"]  = app.newTexture((texDir + "sand/sandDunes_h.png").c_str());
 
-	textures["sandWavy_a"]   = app.newTexture((texDir + "sandWavy_a.png").c_str());
-	textures["sandWavy_n"]   = app.newTexture((texDir + "sandWavy_n.png").c_str());
-	textures["sandWavy_s"]   = app.newTexture((texDir + "sandWavy_s.png").c_str());
-	textures["sandWavy_r"]   = app.newTexture((texDir + "sandWavy_r.png").c_str());
-	textures["sandWavy_h"]   = app.newTexture((texDir + "sandWavy_h.png").c_str());
+	textures["sandWavy_a"]   = app.newTexture((texDir + "sand/sandWavy_a.png").c_str());
+	textures["sandWavy_n"]   = app.newTexture((texDir + "sand/sandWavy_n.png").c_str());
+	textures["sandWavy_s"]   = app.newTexture((texDir + "sand/sandWavy_s.png").c_str());
+	textures["sandWavy_r"]   = app.newTexture((texDir + "sand/sandWavy_r.png").c_str());
+	textures["sandWavy_h"]   = app.newTexture((texDir + "sand/sandWavy_h.png").c_str());
 
 	// Water
-	textures["sea_n"]   = app.newTexture((texDir + "sea_n.png").c_str());
-	textures["sea_h"]   = app.newTexture((texDir + "sea_h.png").c_str());
-	textures["foam_a"]  = app.newTexture((texDir + "sea_foam_a.png").c_str());
+	textures["sea_n"]   = app.newTexture((texDir + "water/sea_n.png").c_str());
+	textures["sea_h"]   = app.newTexture((texDir + "water/sea_h.png").c_str());
+	textures["foam_a"]  = app.newTexture((texDir + "water/sea_foam_a.png").c_str());
 	//textures["bubbles_a"] = app.newTexture((texDir + "bubbles_a.png").c_str());
 
-	textures["snow_a"]  = app.newTexture((texDir + "snow_a.png").c_str());
-	textures["snow_n"]  = app.newTexture((texDir + "snow_n.png").c_str());
-	textures["snow_s"]  = app.newTexture((texDir + "snow_s.png").c_str());
-	textures["snow_r"]  = app.newTexture((texDir + "snow_r.png").c_str());
-	textures["snow_h"]	= app.newTexture((texDir + "snow_h.png").c_str());
+	textures["snow_a"]  = app.newTexture((texDir + "snow/snow_a.png").c_str());
+	textures["snow_n"]  = app.newTexture((texDir + "snow/snow_n.png").c_str());
+	textures["snow_s"]  = app.newTexture((texDir + "snow/snow_s.png").c_str());
+	textures["snow_r"]  = app.newTexture((texDir + "snow/snow_r.png").c_str());
+	textures["snow_h"]	= app.newTexture((texDir + "snow/snow_h.png").c_str());
 
-	textures["snow2_a"] = app.newTexture((texDir + "snow2_a.png").c_str());
-	textures["snow2_n"] = app.newTexture((texDir + "snow2_n.png").c_str());
-	textures["snow2_s"] = app.newTexture((texDir + "snow2_s.png").c_str());
+	textures["snow2_a"] = app.newTexture((texDir + "snow/snow2_a.png").c_str());
+	textures["snow2_n"] = app.newTexture((texDir + "snow/snow2_n.png").c_str());
+	textures["snow2_s"] = app.newTexture((texDir + "snow/snow2_s.png").c_str());
 
 	// In-code textures
 	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi / 100, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
