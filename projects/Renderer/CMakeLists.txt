@@ -70,14 +70,13 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/glm/glm-0.9.9.5
 	../../extern/stb
 	../../extern/tinyobjloader
+	../../extern/assimp/include
+	../../_BUILD/extern/assimp/include/
 	../../extern/BulletPhysics/bullet3/src
 	#../../extern/vulkansdk-linux-x86_64-1.2.170.0/1.2.170.0/x86_64/include
 	#../../extern/imgui/imgui-1.72b
 	#../../extern/eigen-3.3.8
 )
-
-
-
 
 
 

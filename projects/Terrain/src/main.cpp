@@ -18,7 +18,7 @@
 #include "terrain.hpp"
 #include "common.hpp"
 
-//#define DEBUG_MAIN 
+#define DEBUG_MAIN 
 
 /*
 	Load model X:
@@ -350,38 +350,45 @@ void loadShaders(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 	
-	shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
+	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
+	{		
+		shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
 
-	shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
-	shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
+		shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
+
+		if (0) throw "Test exception";
+	}
+	catch (std::exception e) { std::cout << e.what() << std::endl; }
+	catch (const char* msg) { std::cout << msg << std::endl; }
 }
 
 void loadTextures(Renderer& app)
@@ -490,7 +497,7 @@ void setPoints(Renderer& app)
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices, false);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
 	assets["points"] = app.newModel(
 		"points",
@@ -516,7 +523,7 @@ void setAxis(Renderer& app)
 	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
 
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, numVertex, v_axis.data(), i_axis, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
 
 	assets["axis"] = app.newModel(
 		"axis",
@@ -542,7 +549,7 @@ void setGrid(Renderer& app)
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
 
 	VertexType vertexType({ 3 * sizeof(float), 3 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, numVertex, v_grid.data(), i_grid, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_grid.data(), i_grid);
 
 	assets["grid"] = app.newModel(
 		"grid",
@@ -564,7 +571,7 @@ void setSkybox(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["skybox"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, 14, v_cube.data(), i_inCube, false);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 14, v_cube.data(), i_inCube);
 
 	assets["skyBox"] = app.newModel(
 		"skyBox",
@@ -586,8 +593,7 @@ void setCottage(Renderer& app)
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<texIterator> usedTextures = { textures["cottage"] };
 
-	VertexType vertexType({ vec3size, vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromFile(vertexType, (vertexDir + "cottage_obj.obj").c_str());
+	VertexLoader* vertexLoader = new VertexFromFile((vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		"cottage",
@@ -602,7 +608,7 @@ void setCottage(Renderer& app)
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);			// TEST (before render loop): deleteModel
 
-	vertexLoader = new VertexFromFile(vertexType, (vertexDir + "cottage_obj.obj").c_str());
+	vertexLoader = new VertexFromFile((vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
 		"cottage",
@@ -623,8 +629,7 @@ void setRoom(Renderer& app)
 
 	std::vector<texIterator> usedTextures = { textures["room"] };
 
-	VertexType vertexType({ vec3size, vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromFile(vertexType, (vertexDir + "viking_room.obj").c_str());
+	VertexLoader* vertexLoader = new VertexFromFile2((vertexDir + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
 		"room",
@@ -665,14 +670,14 @@ void setSea(Renderer& app)
 	//std::vector<uint16_t> i_sea;
 	//size_t numVertex = getPlane(v_sea, i_sea, 2000.f, 2000.f, 20.f);
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, 4, v_sea, i_sea, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_sea, i_sea);
 
 	assets["sea"] = app.newModel(
 		"plainSea",
 		1, 1, primitiveTopology::triangle,
 		vertexLoader,
-		1, 4 * mat4size + vec4size + 2 * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
-		vec4size + 2 * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
+		1, 4 * mat4size + vec4size + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
+		vec4size + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
 		usedTextures,
 		shaders["v_sea"], shaders["f_sea"],
 		true);
@@ -718,7 +723,7 @@ void setSun(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["sun"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, numVertex, v_sun.data(), i_sun, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_sun.data(), i_sun);
 
 	assets["sun"] = app.newModel(
 		"sun",
@@ -746,7 +751,7 @@ void setReticule(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["reticule"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, 4, v_ret, i_ret, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_ret, i_ret);
 
 	assets["reticule"] = app.newModel(
 		"reticule",
@@ -772,7 +777,7 @@ void setAtmosphere(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };
 	
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser(vertexType, 4, v_quad, i_quad, true);
+	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_quad, i_quad);
 
 	assets["atmosphere"] = app.newModel(
 		"atmosphere",

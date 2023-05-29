@@ -24,7 +24,7 @@
 			- VertexPTN
 */
 
-/// Used for configuring VertexSet. Defines the size and type of attributes the vertex is made of (Position, Color, Texture coordinates, Normal, other...).
+/// Used for configuring VertexSet. Defines the size and type of attributes the vertex is made of (Position, Color, Texture coordinates, Normals...).
 class VertexType
 {
 public:
@@ -36,8 +36,6 @@ public:
 	VkVertexInputBindingDescription getBindingDescription();					//!< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
 	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();	//!< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
 
-	//static const std::array<size_t, 4> attribsSize;	//!< Size of each attribute type
-	//std::array<size_t, 4> numEachAttrib;			//!< Amount of each type of attribute
 	std::vector<VkFormat> attribsFormats;			//!< Format (VkFormat) of each vertex attribute. E.g.: VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT...
 	std::vector<size_t> attribsSizes;				//!< Size of each attribute type. E.g.: 3 * sizeof(float)...
 	size_t vertexSize;								//!< Size (bytes) of a vertex object
@@ -64,6 +62,7 @@ public:
 	size_t size() const;
 	char* data() const;
 	void push_back(const void* element);
+	void reserve(unsigned size);
 	void reset(VertexType vertexType, size_t numOfVertex, const void* buffer);	/// Similar to a copy constructor, but just using its parameters instead of an already existing object.
 	void* getElement(size_t i) const;		///< For debugging purposes
 

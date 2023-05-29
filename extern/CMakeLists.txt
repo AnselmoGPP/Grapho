@@ -7,8 +7,13 @@ CMAKE_MINIMUM_REQUIRED (VERSION 3.12)
 PROJECT (in_source_dependencies)
 
 # Dependencies
+MESSAGE(STATUS "[GLFW] ---------------")		# Start building GLFW (https://stackoverflow.com/questions/35744647/disabling-cmake-option-has-no-effect)
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/glfw/glfw-3.3.2)
+MESSAGE(STATUS "[GLM] ---------------")
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/glm/glm-0.9.9.5)
+MESSAGE(STATUS "[Assimp] ---------------")
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/assimp)
+#MESSAGE(STATUS ">>> BulletPhysics <<<")
 #ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/BulletPhysics/bullet3)
 
 # Main project

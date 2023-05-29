@@ -19,12 +19,11 @@ Chunk::~Chunk()
 
 void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
-    VertexLoader* vertexLoader = new VertexFromUser(
+    VertexLoader* vertexLoader = new VertexFromUser_computed(
         VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
         numHorVertex * numVertVertex,
         vertex.data(),
-        indices ? *indices : this->indices,
-        true);
+        indices ? *indices : this->indices);
 
     model = renderer.newModel(
         "chunk",

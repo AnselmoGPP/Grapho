@@ -26,7 +26,7 @@ Texture::Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat im
 		std::cout << typeid(*this).name() << "::" << __func__ << ": Texture from in-code data" << std::endl;
 	#endif
 
-	this->pixels = new unsigned char[4 * texHeight * texWidth];
+	this->pixels = new unsigned char[4 * texHeight * texWidth];	// Copy texture to member texture
 	memcpy(this->pixels, pixels, 4 * texHeight * texWidth);
 }
 /*
@@ -102,7 +102,7 @@ void Texture::createTextureImage()
 		pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);		// Returns a pointer to an array of pixel values. STBI_rgb_alpha forces the image to be loaded with an alpha channel, even if it doesn't have one.
 		if (!pixels) throw std::runtime_error("Failed to load texture image!");
 	}
-	else { }	// data from code
+	else { }			// data from code
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4;												// 4 bytes per rgba pixel
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;	// Calculate the number levels (mipmaps)

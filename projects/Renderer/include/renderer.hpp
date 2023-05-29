@@ -14,7 +14,7 @@
 #include "timer.hpp"
 #include "commons.hpp"
 
-//#define DEBUG_RENDERER
+#define DEBUG_RENDERER
 
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {
@@ -43,7 +43,7 @@ class Renderer
 	Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
 
-	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass) [0] used to render the main colors or [1] for post processing.
+	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass). [0] for main colors. [1] for post processing.
 	std::list<ModelData>		modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
 	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
 

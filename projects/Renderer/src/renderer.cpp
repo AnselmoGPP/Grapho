@@ -580,10 +580,10 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	// Compile data (preprocessing > compilation):
 
 	shaderc::CompileOptions options;
-	options.SetIncluder(std::make_unique<ShaderIncluder>());
-	options.SetGenerateDebugInfo();
-	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
-
+		options.SetIncluder(std::make_unique<ShaderIncluder>());
+		options.SetGenerateDebugInfo();
+		//if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);	// This option makes shaderc::CompileGlslToSpv fail when Assimp::Importer is present in code, even if an Importer object is not created (odd) (Importer is in VertexFromFile2::loadVertex).
+	
 	shaderc::Compiler compiler;
 	
 	shaderc::PreprocessedSourceCompilationResult preProcessed = compiler.PreprocessGlsl(glslData.data(), glslData.size(), type, fileName.c_str(), options);
@@ -591,24 +591,24 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 		std::cerr << "Shader module preprocessing failed - " << preProcessed.GetErrorMessage() << std::endl;
 	
 	std::string ppData(preProcessed.begin());
-	
 	shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(ppData.data(), ppData.size(), type, fileName.c_str(), options);
+
 	if (module.GetCompilationStatus() != shaderc_compilation_status_success)
 		std::cerr << "Shader module compilation failed - " << module.GetErrorMessage() << std::endl;
 	
 	std::vector<uint32_t> spirv = { module.cbegin(), module.cend() };
-
+	
 	//Create shader module:
 
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = spirv.size() * sizeof(uint32_t);
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
-
+	
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create shader module!");
-
+	
 	shaders.push_back(shaderModule);
 	return (--shaders.end());
 }

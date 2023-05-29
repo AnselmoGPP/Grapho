@@ -15,15 +15,15 @@
 
 // VertexFromUser -------------------------------------------------------
 
-VertexFromUser::VertexFromUser(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow)
+VertexFromUser_computed::VertexFromUser_computed(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow)
 	: VertexLoader(), sourceVertexCount(vertexCount), sourceVertices(vertexData), sourceIndices(indices), immediateMode(loadNow) 
 {
 	this->vertexType = vertexType; 
 }
 
-VertexFromUser::~VertexFromUser() { }
+VertexFromUser_computed::~VertexFromUser_computed() { }
 
-void VertexFromUser::setDestination(VertexSet& vertices, std::vector<uint16_t>& indices)
+void VertexFromUser_computed::setDestination(VertexSet& vertices, std::vector<uint16_t>& indices)
 {
 	this->destVertices = &vertices;
 	this->destIndices = &indices;
@@ -31,9 +31,9 @@ void VertexFromUser::setDestination(VertexSet& vertices, std::vector<uint16_t>& 
 	if (immediateMode) loadData();
 }
 
-void VertexFromUser::loadVertex() { if (!immediateMode) loadData(); }
+void VertexFromUser_computed::loadVertex() { if (!immediateMode) loadData(); }
 
-void VertexFromUser::loadData()
+void VertexFromUser_computed::loadData()
 {
 	destVertices->reset(vertexType, sourceVertexCount, sourceVertices);
 	*destIndices = sourceIndices;
@@ -42,13 +42,13 @@ void VertexFromUser::loadData()
 
 // VertexFromFile -------------------------------------------------------
 
-VertexFromFile::VertexFromFile(const VertexType& vertexType, const char* modelPath) : VertexLoader()
+VertexFromFile::VertexFromFile(const char* modelPath) : VertexLoader()
 {
-	this->vertexType = vertexType;
-	copyCString(this->OBJfilePath, modelPath);
+	this->vertexType = VertexType({ 3 * sizeof(float), 3 * sizeof(float), 2 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
+	copyCString(this->filePath, modelPath);
 }
 
-VertexFromFile::~VertexFromFile() { delete OBJfilePath; }
+VertexFromFile::~VertexFromFile() { delete filePath; }
 
 // (18)
 void VertexFromFile::loadVertex()
@@ -59,7 +59,7 @@ void VertexFromFile::loadVertex()
 	std::vector<tinyobj::material_t>	 materials;			// OBJ models can also define a material and texture per face, but we will ignore those.
 	std::string							 warn, err;			// Errors and warnings that occur while loading the file.
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, OBJfilePath))
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filePath))
 		throw std::runtime_error(warn + err);
 
 	// Combine all the faces in the file into a single model
@@ -69,7 +69,7 @@ void VertexFromFile::loadVertex()
 		for (const auto& index : shape.mesh.indices)
 		{
 			// Get each vertex
-			VertexPCT vertex{};
+			VertexPCT vertex{};	// <<< out of the loop better?
 
 			vertex.pos = {
 				attrib.vertices[3 * index.vertex_index + 0],			// attrib.vertices is an array of floats, so we need to multiply the index by 3 and add offsets for accessing XYZ components.
@@ -96,3 +96,141 @@ void VertexFromFile::loadVertex()
 		}
 }
 
+
+// VertexFromFile2 -------------------------------------------------------
+
+VertexFromFile2::VertexFromFile2(const char* modelPath)  : VertexLoader()
+{
+	this->vertexType = VertexType({ 3 * sizeof(float), 3 * sizeof(float), 2 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
+	filePath = modelPath;
+}
+
+VertexFromFile2::~VertexFromFile2() { }
+
+// (18)
+void VertexFromFile2::loadVertex()
+{
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
+	
+	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	{
+		std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+		return;
+	}
+	
+	processNode(scene->mRootNode, scene);
+}
+
+void VertexFromFile2::processNode(aiNode* node, const aiScene* scene)
+{
+	// Process all node's meshes
+	aiMesh* mesh;
+	for (unsigned i = 0; i < node->mNumMeshes; i++)
+	{
+		mesh = scene->mMeshes[node->mMeshes[i]];
+		meshes.push_back(mesh);
+		processMesh(mesh, scene);
+	}
+
+	// Repeat process in children
+	for (unsigned i = 0; i < node->mNumChildren; i++)
+		processNode(node->mChildren[i], scene);
+}
+
+void VertexFromFile2::processMesh(aiMesh* mesh, const aiScene* scene)
+{
+	//std::vector<Vertex> vertices;
+	//std::vector<unsigned int> indices;
+	//std::vector<Textures> textures;
+
+	// Resize vertices/index buffer
+	// Find vertices/index buffer position
+	// Save data there
+
+	//destVertices->reserve(destVertices->size() + mesh->mNumVertices);
+	float* vertex = new float[vertexType.vertexSize / sizeof(float)];	// [3 + 3 + 2]
+	unsigned i, j;
+
+	// Get VERTEX data (positions, normals, UVs) and store it.
+
+	for (i = 0; i < mesh->mNumVertices; i++)
+	{
+		vertex[0] = mesh->mVertices[i].x;
+		vertex[1] = mesh->mVertices[i].y;
+		vertex[2] = mesh->mVertices[i].z;
+
+		if (mesh->mNormals)
+		{
+			vertex[3] = mesh->mNormals[i].x;
+			vertex[4] = mesh->mNormals[i].y;
+			vertex[5] = mesh->mNormals[i].z;
+		}
+		else { vertex[3] = 0.f; vertex[4] = 0.f; vertex[5] = 1.f; };
+
+		if (mesh->mTextureCoords[0])
+		{
+			vertex[6] = mesh->mTextureCoords[0][i].x;
+			vertex[7] = mesh->mTextureCoords[0][i].y;
+		}
+		else { vertex[6] = 0.f; vertex[7] = 0.f; };
+
+		destVertices->push_back(vertex);
+	}
+
+	delete[] vertex;
+
+	// Get INDICES and store them.
+	aiFace face;
+	for (i = 0; i < mesh->mNumFaces; i++)
+	{
+		face = mesh->mFaces[i];
+		for (j = 0; j < face.mNumIndices; j++)
+			destIndices->push_back(face.mIndices[j]);
+	}
+
+	// Process material
+	//if (mesh->mMaterialIndex >= 0)
+	//{
+	//	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+	//	std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+	//	textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+	//	std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+	//	textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+	//}
+
+	//return Mesh(vertices, indices, textures);
+}
+
+
+/*
+std::vector<Texture> VertexFromFile2::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+{
+	std::vector<Texture> textures;
+
+	for (unsigned i = 0; i < mat->GetTextureCount(type); i++) // check texture is already loaded
+	{
+		aiString str;
+		mat->GetTexture(type, i, &str); // get texture file location
+		bool skip = false;
+
+		for (unsigned j = 0; j < textures_loaded.size(); j++)
+		{
+			textures.push_back(textures_loaded[j]);
+			skip = true;
+			break;
+		}
+
+		if (!skip)
+		{
+			Texture texture;
+			texture.id = TextureFromFile(str.C_Str(), directory); // load texture using std_image.h
+			texture.type = typeName;
+			texture.path = str.C_Str();
+			texture.push_back(texture);
+			textures_loaded.push_back(texture);
+		}
+	}
+	return textures;
+}
+*/

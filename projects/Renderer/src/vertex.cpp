@@ -107,7 +107,7 @@ void* VertexSet::getElement(size_t i) const { return &(buffer[i * Vtype.vertexSi
 void VertexSet::push_back(const void* element)
 {
 	// Resize buffer if required
-	if (numVertex == capacity)
+	if (numVertex == capacity)// reserve(2 * capacity);
 	{
 		capacity *= 2;
 		char* temp = new char[capacity * Vtype.vertexSize];
@@ -118,6 +118,26 @@ void VertexSet::push_back(const void* element)
 
 	std::memcpy(&buffer[totalBytes()], (char*)element, Vtype.vertexSize);
 	numVertex++;
+}
+
+void VertexSet::reserve(unsigned newCapacity)
+{
+	if (newCapacity > capacity)
+	{
+		char* temp = new char[newCapacity * Vtype.vertexSize];
+		std::memcpy(temp, buffer, totalBytes());
+		delete[] buffer;
+		buffer = temp;
+		capacity = newCapacity;
+	}
+	else if (newCapacity < capacity)
+	{
+		char* temp = new char[newCapacity * Vtype.vertexSize];
+		std::memcpy(temp, buffer, newCapacity * Vtype.vertexSize);
+		delete[] buffer;
+		buffer = temp;
+		capacity = newCapacity;
+	}
 }
 
 void VertexSet::reset(VertexType vertexType, size_t numOfVertex, const void* buffer)

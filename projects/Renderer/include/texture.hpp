@@ -34,14 +34,14 @@ public:
 	//Texture(const Texture& obj);			//!< Copy constructor.
 	~Texture();
 
-	void loadAndCreateTexture(VulkanEnvironment* e);	///< Load image and create the VkImage, VkImageView and VkSampler.
+	void loadAndCreateTexture(VulkanEnvironment* e);	//!< Load image and create the VkImage, VkImageView and VkSampler. Used in Renderer::loadingThread()
 
 	bool			fullyConstructed;		//!< Flags if this object has been fully constructed (i.e. has a texture loaded into Vulkan).
-	uint32_t		mipLevels;				///< Number of levels (mipmaps)
-	VkImage			textureImage;			///< Opaque handle to an image object.
-	VkDeviceMemory	textureImageMemory;		///< Opaque handle to a device memory object.
-	VkImageView		textureImageView;		///< Image view for the texture image (images are accessed through image views rather than directly).
-	VkSampler		textureSampler;			///< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
+	uint32_t		mipLevels;				//!< Number of levels (mipmaps)
+	VkImage			textureImage;			//!< Opaque handle to an image object.
+	VkDeviceMemory	textureImageMemory;		//!< Opaque handle to a device memory object.
+	VkImageView		textureImageView;		//!< Image view for the texture image (images are accessed through image views rather than directly).
+	VkSampler		textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
 
 typedef std::list<Texture>::iterator texIterator;

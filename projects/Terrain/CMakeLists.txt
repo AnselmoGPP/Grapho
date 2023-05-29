@@ -20,13 +20,13 @@ MESSAGE(STATUS "Project: " ${PROJECT_NAME})
 
 ADD_DEFINITIONS(
 	-std=c++17
-	-O2		# Optimization incompatible with Release mode
+	-O2		# O2 optimization is incompatible with Debug mode
 	#-O3
 )
 #ADD_COMPILE_DEFINITIONS( IMGUI_IMPL_OPENGL_LOADER_GLEW=1 )
 #ADD_COMPILE_DEFINITIONS( IMGUI_IMPL_OPENGL_LOADER_GLAD=1 )
 
-ADD_EXECUTABLE(${PROJECT_NAME}
+ADD_EXECUTABLE( ${PROJECT_NAME}
 	src/main.cpp
 
 	src/noise.cpp
@@ -59,6 +59,9 @@ TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	../../extern/glm/glm-0.9.9.5
 	../../extern/stb
 	../../extern/tinyobjloader
+	../../extern/assimp/include
+	../../extern/assimp/contrib
+	../../_BUILD/extern/assimp/include/
 	../../extern/FastNoiseLite
 	../../extern/FastNoise2/include
 	#../../extern/BulletPhysics/bullet3/src/
@@ -84,6 +87,10 @@ elseif( WIN32 )
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/projects/Renderer/Release/Vk_renderer.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/Release/glfw3.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/Release/glm_static.lib
+		
+		optimized   ${PROJECT_SOURCE_DIR}/../../_BUILD/extern/assimp/lib/Release/assimp-vc143-mt.lib
+		optimized   ${PROJECT_SOURCE_DIR}/../../_BUILD/extern/assimp/contrib/zlib/Release/zlibstatic.lib
+		#optimized  ${PROJECT_SOURCE_DIR}/../../_BUILD/extern/assimp/bin/Release/assimp-vc143-mt.dll
 
 		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Collision.lib
 		#optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/lib/Release/Bullet3Dynamics.lib
