@@ -51,7 +51,8 @@ class Renderer
 	std::list<Texture>			texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
 	std::list<Texture>			texturesToDelete;			//!< Textures waiting for being deleted.
 
-	std::list<VkShaderModule>	shaders;					//!< Set of shaders
+	std::list<Shader>			shaders;					//!< Set of shaders
+
 	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIterator>	lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
@@ -174,15 +175,15 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
+	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(std::string path, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);												//!< Insert a partially initialized texture object in texturesToLoad list. Later, data from file will be loaded.
 	texIterator		newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);	//!< Texture data from code
 	void			deleteTexture(texIterator texture);
 
-	ShaderIter		newShader(const std::string shaderFile, shaderc_shader_kind type, bool optimize, bool isFile = true);
-	void			deleteShader(ShaderIter shader);
+	shaderIter		newShader(const std::string shaderFile);
+	void			deleteShader(shaderIter shader);
 
 	void			setRenders(modelIterator model, size_t numberOfRenders);
 

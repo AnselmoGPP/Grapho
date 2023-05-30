@@ -18,7 +18,7 @@
 #include "terrain.hpp"
 #include "common.hpp"
 
-#define DEBUG_MAIN 
+//#define DEBUG_MAIN 
 
 /*
 	Load model X:
@@ -54,7 +54,7 @@ void setSun(Renderer& app);
 Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
-std::map<std::string, ShaderIter> shaders;		// Shaders
+std::map<std::string, shaderIter> shaders;		// Shaders
 
 // Others
 int gridStep = 50;
@@ -351,39 +351,39 @@ void loadShaders(Renderer& app)
 	#endif
 	
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
-	{		
-		shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str(), shaderc_fragment_shader, true);
+	{	
+		shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str());
+		shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str());
 
-		shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str());
+		shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str());
 
-		shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str());
+		shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str());
 
-		shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str());
+		shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str());
 
-		shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str());
+		shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str());
 
-		shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str());
+		shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str());
 
-		shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str());
+		shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str());
 
-		shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str());
+		shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str());
 
-		shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str());
+		shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str());
 
-		shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str());
+		shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str());
 
-		shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str(), shaderc_vertex_shader, true);
-		shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str(), shaderc_fragment_shader, true);
+		shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str());
+		shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str());
 
 		if (0) throw "Test exception";
 	}

@@ -1,4 +1,6 @@
 TODO:
+	Delete vertices and indices buffers after uploading data.
+	Take out from memory data stored from the beginnning (cube vertices, etc)
 	Pass vector of vertices to VertexLoader
 	VertexFromUser_notComputed
 	Pass complete model + additional textures + others (vertices, indices, textures, shaders)

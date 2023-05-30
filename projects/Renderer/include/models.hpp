@@ -38,8 +38,8 @@ class ModelData
 	VulkanEnvironment* e;
 	VertexLoader* vertexLoader;
 	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
-	ShaderIter vertexShader;
-	ShaderIter fragmentShader;
+	shaderIter vertexShader;
+	shaderIter fragmentShader;
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
@@ -89,7 +89,7 @@ class ModelData
 	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(std::string modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
+	ModelData(std::string modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 

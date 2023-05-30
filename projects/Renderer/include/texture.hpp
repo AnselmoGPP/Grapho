@@ -7,7 +7,20 @@
 
 #include "environment.hpp"
 
-#define DEBUG_TEXTURE
+//#define DEBUG_TEXTURE
+
+class Shader
+{
+public:
+	Shader(const std::string path, VkShaderModule shaderModule) 
+		: path(path), shaderModule(shaderModule) { };
+
+	const VkShaderModule shaderModule;
+	const std::string path;
+};
+
+typedef std::list<Shader>::iterator shaderIter;
+
 
 class Texture
 {

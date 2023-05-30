@@ -1,3 +1,29 @@
+/*
+	#include hierarchy:
+
+	-Toolkit
+	-Renderer
+		>models
+			-vertex
+			-ubo
+				>environment
+				>commons
+			-texture
+				>environment
+				>commons
+			-loaddata
+				>vertex
+				>commons
+			-commons
+		>input
+			-camera
+				>physics
+		>timer
+		>commons
+			-Environment	
+*/
+
+
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
 #include <iomanip>
@@ -11,7 +37,7 @@
 
 std::map<std::string, modelIterator> assets;	// Model iterators
 std::map<std::string, texIterator> textures;	// Texture iterators
-std::map<std::string, ShaderIter> shaders;		// Shaders
+std::map<std::string, shaderIter> shaders;		// Shaders
 
 FreePolarCam camera(
 	glm::vec3(0.f, 0.f, 20.0f),			// camera position
@@ -61,8 +87,8 @@ void setPoints(Renderer& app)
 
 	textures["tex"] = app.newTexture(".../../../textures/tech_a.png");
 
-	shaders["v_point"] = app.newShader("../../../projects/Renderer/shaders/GLSL/v_pointPC.vert", shaderc_vertex_shader, true);
-	shaders["f_point"] = app.newShader("../../../projects/Renderer/shaders/GLSL/f_pointPC.frag", shaderc_fragment_shader, true);
+	shaders["v_point"] = app.newShader("../../../projects/Renderer/shaders/GLSL/v_pointPC.vert");
+	shaders["f_point"] = app.newShader("../../../projects/Renderer/shaders/GLSL/f_pointPC.frag");
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });

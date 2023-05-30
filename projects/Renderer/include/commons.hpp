@@ -9,7 +9,6 @@
 
 #include "environment.hpp"
 
-typedef std::list<VkShaderModule>::iterator ShaderIter;
 
 //extern std::vector< std::function<glm::mat4(float)> > room_MM;	// Store callbacks of type 'glm::mat4 callb(float a)'. Requires <functional> library
 

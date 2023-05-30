@@ -22,6 +22,7 @@ protected:
 	VertexSet* destVertices;
 	std::vector<uint16_t>* destIndices;
 
+
 public:
 	VertexLoader() : vertexType(), destVertices(nullptr), destIndices(nullptr) { };
 	virtual ~VertexLoader() { };

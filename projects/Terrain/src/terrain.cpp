@@ -17,7 +17,7 @@ Chunk::~Chunk()
         renderer.deleteModel(model);
 }
 
-void Chunk::render(ShaderIter vertexShader, ShaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
+void Chunk::render(shaderIter vertexShader, shaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
     VertexLoader* vertexLoader = new VertexFromUser_computed(
         VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
@@ -627,7 +627,7 @@ DynamicGrid::~DynamicGrid()
 
 void DynamicGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
 
-void DynamicGrid::addShaders(ShaderIter vertexShader, ShaderIter fragmentShader)
+void DynamicGrid::addShaders(shaderIter vertexShader, shaderIter fragmentShader)
 {
     this->vertShader = vertexShader;
     this->fragShader = fragmentShader;
@@ -1119,7 +1119,7 @@ Planet::~Planet()
     delete planetGrid_nX;
 };
 
-void Planet::addResources(const std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader)
+void Planet::addResources(const std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader)
 {
     planetGrid_pZ->addTextures(textures);
     planetGrid_nZ->addTextures(textures);

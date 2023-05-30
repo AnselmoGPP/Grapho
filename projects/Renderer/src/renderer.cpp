@@ -456,8 +456,8 @@ void Renderer::cleanup()
 	textures.clear();
 
 	// Cleanup shaders
-	for (ShaderIter it = shaders.begin(); it != shaders.end(); it++)
-		vkDestroyShaderModule(e.c.device, *it, nullptr);
+	for (shaderIter it = shaders.begin(); it != shaders.end(); it++)
+		vkDestroyShaderModule(e.c.device, it->shaderModule, nullptr);
 	shaders.clear();
 
 	// Cleanup environment
@@ -465,7 +465,7 @@ void Renderer::cleanup()
 	e.cleanup(); 
 }
 
-modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, ShaderIter vertexShader, ShaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
+modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
@@ -545,7 +545,7 @@ void Renderer::deleteTexture(texIterator texture)	// <<< splice an element only 
 		texturesToDelete.splice(texturesToDelete.cend(), textures, texture);
 }
 
-ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind type, bool optimize, bool isFile)
+shaderIter Renderer::newShader(const std::string shaderFile)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << std::flush;
@@ -553,10 +553,11 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 
 	// Get data from txt file:
 
+	shaderc_shader_kind type;
 	std::vector<char> glslData;
 	std::string fileName;
 
-	if (isFile)		// shaderFile == shader file name
+	if (1)		// shaderFile == shader file name
 	{
 		#ifdef DEBUG_RENDERER
 				std::cout << shaderFile << std::endl;
@@ -564,8 +565,11 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 
 		fileName = shaderFile;
 		readFile(fileName.c_str(), glslData);
+
+		char id = fileName[fileName.size() - 4];
+		id == 'v' ? type = shaderc_vertex_shader : type = shaderc_fragment_shader;
 	}
-	else			// shaderFile == shader content
+	else		// shaderFile == shader content
 	{
 		#ifdef DEBUG_RENDERER
 				std::cout << "Hardcoded shader" << std::endl;
@@ -609,17 +613,17 @@ ShaderIter Renderer::newShader(const std::string shaderFile, shaderc_shader_kind
 	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create shader module!");
 	
-	shaders.push_back(shaderModule);
+	shaders.push_back(Shader(shaderFile, shaderModule));
 	return (--shaders.end());
 }
 
-void Renderer::deleteShader(ShaderIter shader)
+void Renderer::deleteShader(shaderIter shader)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
-	vkDestroyShaderModule(e.c.device, *shader, nullptr);
+	vkDestroyShaderModule(e.c.device, shader->shaderModule, nullptr);
 	shaders.erase(shader);
 }
 
