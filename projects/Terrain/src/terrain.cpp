@@ -19,7 +19,7 @@ Chunk::~Chunk()
 
 void Chunk::render(shaderIter vertexShader, shaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
-    VertexLoader* vertexLoader = new VertexFromUser_computed(
+    DataLoader* DataLoader = new DataFromUser_computed(
         VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
         numHorVertex * numVertVertex,
         vertex.data(),
@@ -28,7 +28,7 @@ void Chunk::render(shaderIter vertexShader, shaderIter fragmentShader, std::vect
     model = renderer.newModel(
         "chunk",
         1, 1, primitiveTopology::triangle,
-        vertexLoader,
+        DataLoader,
         1, 4 * mat4size + 3 * vec4size + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
         numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)
         usedTextures,

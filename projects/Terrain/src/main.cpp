@@ -497,12 +497,12 @@ void setPoints(Renderer& app)
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
 	assets["points"] = app.newModel(
 		"points",
 		1, 1, primitiveTopology::point,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
@@ -523,12 +523,12 @@ void setAxis(Renderer& app)
 	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
 
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
 
 	assets["axis"] = app.newModel(
 		"axis",
 		2, 1, primitiveTopology::line,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
@@ -549,12 +549,12 @@ void setGrid(Renderer& app)
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
 
 	VertexType vertexType({ 3 * sizeof(float), 3 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_grid.data(), i_grid);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_grid.data(), i_grid);
 
 	assets["grid"] = app.newModel(
 		"grid",
 		1, 1, primitiveTopology::line,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		noTextures,
@@ -571,12 +571,12 @@ void setSkybox(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["skybox"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 14, v_cube.data(), i_inCube);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 14, v_cube.data(), i_inCube);
 
 	assets["skyBox"] = app.newModel(
 		"skyBox",
 		0, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
@@ -593,12 +593,12 @@ void setCottage(Renderer& app)
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
 	std::vector<texIterator> usedTextures = { textures["cottage"] };
 
-	VertexLoader* vertexLoader = new VertexFromFile((vertexDir + "cottage_obj.obj").c_str());
+	DataLoader* DataLoader = new DataFromFile((vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		"cottage",
 		1, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
@@ -608,12 +608,12 @@ void setCottage(Renderer& app)
 	// Delete a model you passed previously.
 	app.deleteModel(assets["cottage"]);			// TEST (before render loop): deleteModel
 
-	vertexLoader = new VertexFromFile((vertexDir + "cottage_obj.obj").c_str());
+	DataLoader = new DataFromFile((vertexDir + "cottage_obj.obj").c_str());
 
 	assets["cottage"] = app.newModel(
 		"cottage",
 		1, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
@@ -629,12 +629,12 @@ void setRoom(Renderer& app)
 
 	std::vector<texIterator> usedTextures = { textures["room"] };
 
-	VertexLoader* vertexLoader = new VertexFromFile2((vertexDir + "viking_room.obj").c_str());
+	DataLoader* DataLoader = new DataFromFile2((vertexDir + "viking_room.obj").c_str());
 
 	assets["room"] = app.newModel(
 		"room",
 		1, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		2, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
@@ -670,12 +670,12 @@ void setSea(Renderer& app)
 	//std::vector<uint16_t> i_sea;
 	//size_t numVertex = getPlane(v_sea, i_sea, 2000.f, 2000.f, 20.f);
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_sea, i_sea);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_sea, i_sea);
 
 	assets["sea"] = app.newModel(
 		"plainSea",
 		1, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 4 * mat4size + vec4size + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
 		vec4size + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
 		usedTextures,
@@ -723,12 +723,12 @@ void setSun(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["sun"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, numVertex, v_sun.data(), i_sun);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_sun.data(), i_sun);
 
 	assets["sun"] = app.newModel(
 		"sun",
 		0, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 3 * mat4size,	// M, V, P
 		0,
 		usedTextures,
@@ -751,12 +751,12 @@ void setReticule(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["reticule"] };
 
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_ret, i_ret);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_ret, i_ret);
 
 	assets["reticule"] = app.newModel(
 		"reticule",
 		2, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, vec4size,				// aspect ratio (float)
 		0,
 		usedTextures,
@@ -777,12 +777,12 @@ void setAtmosphere(Renderer& app)
 	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };
 	
 	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	VertexLoader* vertexLoader = new VertexFromUser_computed(vertexType, 4, v_quad, i_quad);
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_quad, i_quad);
 
 	assets["atmosphere"] = app.newModel(
 		"atmosphere",
 		2, 1, primitiveTopology::triangle,
-		vertexLoader,
+		DataLoader,
 		1, 2 * mat4size + 8 * vec4size,
 		0,
 		usedTextures,

@@ -175,7 +175,7 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
+	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, DataLoader* DataLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
 	void			deleteModel(modelIterator model);
 
 	texIterator		newTexture(std::string path, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);												//!< Insert a partially initialized texture object in texturesToLoad list. Later, data from file will be loaded.

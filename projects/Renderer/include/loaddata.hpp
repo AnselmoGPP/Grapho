@@ -9,13 +9,13 @@
 
 
 /**
-	@class VertexLoader
+	@class DataLoader
 	@brief Abstract data type used for defining how to load Vertices and Indices (from file, from user creation, from variable...) into our ModelData object.
 
 	The user must define a subclass where to override loadVertex() (pure virtual method). User can override setDestination() (virtual) too, and create new methods and variables.
 	setDestination() is called by ModelData's constructor. loadVertex() is called by Renderer::fullConstructor() (loading thread).
 */
-class VertexLoader
+class DataLoader
 {
 protected:
 	VertexType vertexType;
@@ -24,8 +24,8 @@ protected:
 
 
 public:
-	VertexLoader() : vertexType(), destVertices(nullptr), destIndices(nullptr) { };
-	virtual ~VertexLoader() { };
+	DataLoader() : vertexType(), destVertices(nullptr), destIndices(nullptr) { };
+	virtual ~DataLoader() { };
 
 	VertexType& getVertexType() { return vertexType; };
 	virtual void setDestination(VertexSet& vertices, std::vector<uint16_t>& indices) { this->destVertices = &vertices; this->destIndices = &indices; };	//!< Specify where vertex and index data is copied to (ModelData::vertices, ModelData::indices).
@@ -34,7 +34,7 @@ public:
 
 
 /// The user provides the already computed vertex and index data directly in-code. By default, data is copied directly, which lets the user delete the data source to save memory
-class VertexFromUser_computed : public VertexLoader
+class DataFromUser_computed : public DataLoader
 {
 	size_t sourceVertexCount;
 	const void* sourceVertices;
@@ -45,8 +45,8 @@ class VertexFromUser_computed : public VertexLoader
 
 public:
 	//VertexFromUser(size_t vertexCount, const void* vertexData, size_t indicesCount, const uint32_t* indices);
-	VertexFromUser_computed(const VertexType &vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow = true);
-	~VertexFromUser_computed() override;
+	DataFromUser_computed(const VertexType &vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow = true);
+	~DataFromUser_computed() override;
 
 	void setDestination(VertexSet& vertices, std::vector<uint16_t>& indices) override;
 	void loadVertex() override;
@@ -54,11 +54,11 @@ public:
 
 
 /// The user cannot provide the vertex and index data yet, but that will be computed in the worker.
-class VertexFromUser_notComputed : public VertexLoader
+class DataFromUser_notComputed : public DataLoader
 {
 public:
-	VertexFromUser_notComputed(const char* modelPath) { };
-	~VertexFromUser_notComputed() override { };
+	DataFromUser_notComputed(const char* modelPath) { };
+	~DataFromUser_notComputed() override { };
 
 	void loadVertex() override { };
 };
@@ -71,13 +71,13 @@ public:
 	Faces consist of an arbitrary amount of vertices and are defined by indices
 	Each vertex refers to a position, normal and /or texture coordinate by index.
 */
-class VertexFromFile : public VertexLoader
+class DataFromFile : public DataLoader
 {
 	const char* filePath;			//!< Path to model file to load (set of vertex and indices)
 
 public:
-	VertexFromFile(const char* modelPath);
-	~VertexFromFile() override;
+	DataFromFile(const char* modelPath);
+	~DataFromFile() override;
 
 	void loadVertex() override;		//!< Populate the vertices and indices members with the vertex data from the mesh (OBJ file). An OBJ file consists of positions, normals, texture coordinatesand faces.Faces consist of an arbitrary amount of vertices, where each vertex refers to a position, normaland /or texture coordinate by index.
 };
@@ -88,7 +88,7 @@ public:
 
 	Assimp: A file has a scene, which has tree. Each node has many meshes. Each mesh has many vertices (vertex data), many faces (each face has some indices), and one texture per material (NOT SURE ABOUT THIS) (diffuse, specular...). 
 */
-class VertexFromFile2 : public VertexLoader
+class DataFromFile2 : public DataLoader
 {
 	std::string filePath;			//!< Path to model file to load (set of vertex and indices)
 	std::vector<aiMesh*> meshes;	//!< Not used
@@ -98,8 +98,8 @@ class VertexFromFile2 : public VertexLoader
 	//std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
 
 public:
-	VertexFromFile2(const char* modelPath);
-	~VertexFromFile2() override;
+	DataFromFile2(const char* modelPath);
+	~DataFromFile2() override;
 
 	void loadVertex() override;
 };

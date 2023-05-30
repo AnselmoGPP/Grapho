@@ -6,7 +6,7 @@
 std::vector<texIterator> noTextures;
 std::vector<uint16_t> noIndices;
 
-ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
+ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, DataLoader* dataLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 	: modelName(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
@@ -14,7 +14,7 @@ ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, siz
 	fragmentShader(fragmentShader),
 	hasTransparencies(transparency),
 	textures(textures),
-	vertices(vertexLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
+	vertices(dataLoader->getVertexType()),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
 	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
 	renderPassIndex(renderPassIndex),
@@ -27,8 +27,8 @@ ModelData::ModelData(std::string modelName, VulkanEnvironment & environment, siz
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
-	this->vertexLoader = vertexLoader;
-	this->vertexLoader->setDestination(vertices, indices);
+	this->dataLoader = dataLoader;
+	this->dataLoader->setDestination(vertices, indices);
 }
 
 ModelData::~ModelData()
@@ -42,7 +42,7 @@ ModelData::~ModelData()
 		cleanup();
 	}
 
-	delete vertexLoader;
+	delete dataLoader;
 }
 
 ModelData& ModelData::fullConstruction()
@@ -54,7 +54,7 @@ ModelData& ModelData::fullConstruction()
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
 
-	vertexLoader->loadVertex();
+	dataLoader->loadVertex();
 	createVertexBuffer();
 	if(indices.size()) createIndexBuffer();
 

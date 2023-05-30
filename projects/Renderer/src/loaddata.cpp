@@ -15,15 +15,15 @@
 
 // VertexFromUser -------------------------------------------------------
 
-VertexFromUser_computed::VertexFromUser_computed(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow)
-	: VertexLoader(), sourceVertexCount(vertexCount), sourceVertices(vertexData), sourceIndices(indices), immediateMode(loadNow) 
+DataFromUser_computed::DataFromUser_computed(const VertexType& vertexType, size_t vertexCount, const void* vertexData, std::vector<uint16_t>& indices, bool loadNow)
+	: DataLoader(), sourceVertexCount(vertexCount), sourceVertices(vertexData), sourceIndices(indices), immediateMode(loadNow) 
 {
 	this->vertexType = vertexType; 
 }
 
-VertexFromUser_computed::~VertexFromUser_computed() { }
+DataFromUser_computed::~DataFromUser_computed() { }
 
-void VertexFromUser_computed::setDestination(VertexSet& vertices, std::vector<uint16_t>& indices)
+void DataFromUser_computed::setDestination(VertexSet& vertices, std::vector<uint16_t>& indices)
 {
 	this->destVertices = &vertices;
 	this->destIndices = &indices;
@@ -31,27 +31,27 @@ void VertexFromUser_computed::setDestination(VertexSet& vertices, std::vector<ui
 	if (immediateMode) loadData();
 }
 
-void VertexFromUser_computed::loadVertex() { if (!immediateMode) loadData(); }
+void DataFromUser_computed::loadVertex() { if (!immediateMode) loadData(); }
 
-void VertexFromUser_computed::loadData()
+void DataFromUser_computed::loadData()
 {
 	destVertices->reset(vertexType, sourceVertexCount, sourceVertices);
 	*destIndices = sourceIndices;
 }
 
 
-// VertexFromFile -------------------------------------------------------
+// DataFromFile -------------------------------------------------------
 
-VertexFromFile::VertexFromFile(const char* modelPath) : VertexLoader()
+DataFromFile::DataFromFile(const char* modelPath) : DataLoader()
 {
 	this->vertexType = VertexType({ 3 * sizeof(float), 3 * sizeof(float), 2 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
 	copyCString(this->filePath, modelPath);
 }
 
-VertexFromFile::~VertexFromFile() { delete filePath; }
+DataFromFile::~DataFromFile() { delete filePath; }
 
 // (18)
-void VertexFromFile::loadVertex()
+void DataFromFile::loadVertex()
 {
 	// Load model
 	tinyobj::attrib_t					 attrib;			// Holds all of the positions, normals and texture coordinates.
@@ -97,18 +97,18 @@ void VertexFromFile::loadVertex()
 }
 
 
-// VertexFromFile2 -------------------------------------------------------
+// DataFromFile2 -------------------------------------------------------
 
-VertexFromFile2::VertexFromFile2(const char* modelPath)  : VertexLoader()
+DataFromFile2::DataFromFile2(const char* modelPath)  : DataLoader()
 {
 	this->vertexType = VertexType({ 3 * sizeof(float), 3 * sizeof(float), 2 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
 	filePath = modelPath;
 }
 
-VertexFromFile2::~VertexFromFile2() { }
+DataFromFile2::~DataFromFile2() { }
 
 // (18)
-void VertexFromFile2::loadVertex()
+void DataFromFile2::loadVertex()
 {
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs);
@@ -122,7 +122,7 @@ void VertexFromFile2::loadVertex()
 	processNode(scene->mRootNode, scene);
 }
 
-void VertexFromFile2::processNode(aiNode* node, const aiScene* scene)
+void DataFromFile2::processNode(aiNode* node, const aiScene* scene)
 {
 	// Process all node's meshes
 	aiMesh* mesh;
@@ -138,7 +138,7 @@ void VertexFromFile2::processNode(aiNode* node, const aiScene* scene)
 		processNode(node->mChildren[i], scene);
 }
 
-void VertexFromFile2::processMesh(aiMesh* mesh, const aiScene* scene)
+void DataFromFile2::processMesh(aiMesh* mesh, const aiScene* scene)
 {
 	//std::vector<Vertex> vertices;
 	//std::vector<unsigned int> indices;
@@ -204,7 +204,7 @@ void VertexFromFile2::processMesh(aiMesh* mesh, const aiScene* scene)
 
 
 /*
-std::vector<Texture> VertexFromFile2::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+std::vector<Texture> DataFromFile2::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
 {
 	std::vector<Texture> textures;
 

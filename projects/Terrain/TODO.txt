@@ -1,16 +1,17 @@
 TODO:
+	Delete Dataloader object when already used for passing data / Same for vertex data stored in ModelData object.
 	Delete vertices and indices buffers after uploading data.
 	Take out from memory data stored from the beginnning (cube vertices, etc)
-	Pass vector of vertices to VertexLoader
-	VertexFromUser_notComputed
+	Pass vector of vertices to DataLoader
+	DataFromUser_notComputed
 	Pass complete model + additional textures + others (vertices, indices, textures, shaders)
 	Link dll library (assimp)
-	Use VertexSet::reserve in VertexSet::push_back and in VertexFromFile2
+	Use VertexSet::reserve in VertexSet::push_back and in DataFromFile2
 	Load model
 		Do it on worker
 		Load vertex & textures
 		Notes: Vertex data comes from in-code (computed or not) and file
-		VertexFromUser_notComputed
+		DataFromUser_notComputed
 	Modify worker mechanism: Data is uploaded in models. Each model loads texture first, and vertex later.
 	Use height map to get sea vertex positions (texture passed to vertex shader)
 	Load texture files on worker
@@ -56,9 +57,9 @@ TODO:
 	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
 	Review command buffer creation
 	Review anisotropic filtering
-	Review VertexLoader
+	Review DataLoader
 	Review createUniformBuffers
-	Review ModelData::fullConstruction() (i.e., union of vertexLoader->loadVertex() & createVertexBuffer())
+	Review ModelData::fullConstruction() (i.e., union of DataLoader->loadVertex() & createVertexBuffer())
 	Review ModelData::vertex & ModelData::indices. Maybe, not required once VkBuffer is created.
 	Review UBO::ubo. Maybe not required if we can copy data into VkBuffer directly 
 	Delete chunks that are in modelsToLoad but that aren't needed now because we have moved too far away from them

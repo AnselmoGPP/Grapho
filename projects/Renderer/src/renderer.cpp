@@ -465,7 +465,7 @@ void Renderer::cleanup()
 	e.cleanup(); 
 }
 
-modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VertexLoader* vertexLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
+modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, DataLoader* DataLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
@@ -478,7 +478,7 @@ modelIterator Renderer::newModel(std::string modelName, size_t layer, size_t num
 		layer,
 		numRenderings, 
 		(VkPrimitiveTopology) primitiveTopology, 
-		vertexLoader,
+		DataLoader,
 		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		textures, 
 		vertexShader, fragmentShader,
@@ -586,7 +586,7 @@ shaderIter Renderer::newShader(const std::string shaderFile)
 	shaderc::CompileOptions options;
 		options.SetIncluder(std::make_unique<ShaderIncluder>());
 		options.SetGenerateDebugInfo();
-		//if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);	// This option makes shaderc::CompileGlslToSpv fail when Assimp::Importer is present in code, even if an Importer object is not created (odd) (Importer is in VertexFromFile2::loadVertex).
+		//if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);	// This option makes shaderc::CompileGlslToSpv fail when Assimp::Importer is present in code, even if an Importer object is not created (odd) (Importer is in DataFromFile2::loadVertex).
 	
 	shaderc::Compiler compiler;
 	
