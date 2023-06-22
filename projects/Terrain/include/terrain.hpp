@@ -101,18 +101,19 @@ protected:
 	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied (sphere section)
 	int numAttribs;							//!< Number of attributes per vertex (9)
 
+	VerticesInfo* vertexData;
 	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
-	glm::vec3 getVertex(size_t position) const { return glm::vec3(vertex[position * numAttribs + 0], vertex[position * numAttribs + 1], vertex[position * numAttribs + 2]); };
-	glm::vec3 getNormal(size_t position) const { return glm::vec3(vertex[position * numAttribs + 3], vertex[position * numAttribs + 4], vertex[position * numAttribs + 5]); };
+	glm::vec3 getVertex(size_t position) const;
+	glm::vec3 getNormal(size_t position) const;
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
 	Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID);
 	virtual ~Chunk();
 
-	modelIterator model;			//!< Model iterator. It has to be created with render(), which calls app->newModel()
+	modelIter model;				//!< Model iterator. It has to be created with render(), which calls app->newModel()
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 
 	const unsigned depth;			//!< Range: [0, x]. Depth of this chunk. Useful in a grid of chunks with different lod.
@@ -123,7 +124,7 @@ public:
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
-	void render(shaderIter vertexShader, shaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
+	void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
@@ -223,8 +224,9 @@ public:
 	LightSet* lights;
 	float time;
 
-	void addTextures(const std::vector<texIterator>& textures);				//!< Add textures ids of already loaded textures.
-	void addShaders(shaderIter vertexShader, shaderIter fragmentShader);	//!< Add shaders ids of already loaded shaders.
+	//void addTextures(const std::vector<TextureInfo>& textures);							//!< Add textures ids of already loaded textures.
+	//void addShaders(const ShaderInfo& vertexShader, const ShaderInfo& fragmentShader);	//!< Add shaders ids of already loaded shaders.
+	void addResources(const std::vector<ShaderInfo>& shadersInfo, const std::vector<TextureInfo>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
 	unsigned getTotalNodes() { return chunks.size(); }
@@ -235,12 +237,10 @@ public:
 protected:
 	QuadNode<Chunk*>* root[2];
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
-	std::vector<uint16_t> indices;
-	std::vector<texIterator> textures;
-	//std::vector<Light*> lights;
 	Renderer* renderer;
-	shaderIter vertShader;
-	shaderIter fragShader;
+	std::vector<uint16_t> indices;
+	std::vector<ShaderInfo> shaders;
+	std::vector<TextureInfo> textures;
 
 	unsigned activeTree;
 	unsigned loadedChunks;
@@ -341,7 +341,7 @@ struct Planet
 	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
-	void addResources(const std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader);			//!< Add textures and shader
+	void addResources(const std::vector<ShaderInfo>& shaders, const std::vector<TextureInfo>& textures);							//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area

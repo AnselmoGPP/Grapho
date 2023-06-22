@@ -24,8 +24,9 @@
 
 #define LINE_WIDTH 1.0f
 
-extern std::vector<texIterator> noTextures;	// Vector with 0 Texture objects
-extern std::vector<uint16_t> noIndices;		// Vector with 0 indices
+class ModelData;
+typedef std::list<ModelData>::iterator modelIter;
+
 
 /**
 	@class ModelData
@@ -36,10 +37,8 @@ extern std::vector<uint16_t> noIndices;		// Vector with 0 indices
 class ModelData
 {
 	VulkanEnvironment* e;
-	DataLoader* dataLoader;
 	VkPrimitiveTopology primitiveTopology;	//!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
-	shaderIter vertexShader;
-	shaderIter fragmentShader;
+	std::vector<shaderIter> shaders;		//!< Vertex shader (0), Fragment shader (1)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
 	// Main methods:
@@ -85,16 +84,20 @@ class ModelData
 	// Helper methods:
 
 	/// Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
-	VkShaderModule				createShaderModule(const std::vector<char>& code);				//!< Not used
-	void						copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	VkShaderModule createShaderModule(const std::vector<char>& code);				//!< Not used
+
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 public:
-	ModelData(std::string modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, DataLoader* dataLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex);
+	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 
 	/// Creates graphic pipeline and descriptor sets, and loads data for creating buffers (vertex, indices, textures). Useful in a second thread
-	ModelData& fullConstruction();
+	ModelData& fullConstruction(std::list<Shader>& shadersList, std::list<Texture>& texturesList, std::mutex& mutResources);
+
+	/// Load resources (vertices, indices, shaders, textures) into this object, and upload to Vulkan. If a shader or texture exists in Renderer, it just takes the iterator.
+	void loadResources(std::list<Shader>& shadersList, std::list<Texture>& texturesList, std::mutex& mutResources);
 
 	/// Destroys graphic pipeline and descriptor sets. Called by destructor, and for window resizing (by Renderer::recreateSwapChain()::cleanupSwapChain()).
 	void cleanup_Pipeline_Descriptors();
@@ -105,7 +108,7 @@ public:
 	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.
 
-	std::vector<texIterator>	 textures;				//!< Set of textures used by this model.
+	std::vector<texIter>		 textures;				//!< Set of textures used by this model.
 
 	VertexSet					 vertices;				//!< Vertices of our model (position, color, texture coordinates, ...). This data is copied into Vulkan
 	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).
@@ -122,22 +125,16 @@ public:
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	const uint32_t				 renderPassIndex;		//!< Index of the renderPass used (0 for rendering geometry, 1 for post processing)
-	size_t						 layer;					//!< Layer where this model will be drawn.
+	size_t						 layer;					//!< Layer where this model will be drawn (Painter's algorithm).
 	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
+	ResourcesInfo* loadInfo;							//!< Info used for loading resources (vertices, indices, shaders, textures). When resources are loaded, this is nullptr.
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
-	std::string modelName;								//!< For debugging purposes.
+	std::string name;									//!< For debugging purposes.
 
 	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
 	void setRenderCount(size_t numRenders);
-
-	//bool isDataFromFile();											//!< True if vertex/index data came from a file. <<< not used
-
-	//std::vector <std::function<glm::mat4(float)>> getModelMatrix;	//!< Callbacks required in loopManager::updateStates() for each model to render.
-	//glm::mat4(*getModelMatrix) (float time);
 };
-
-typedef std::list<ModelData>::iterator modelIterator;
 
 #endif

@@ -7,20 +7,57 @@
 #include <mutex>
 #include <optional>					// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 
-#include "shaderc/shaderc.hpp"		// Compile GLSL code to SPIR-V
-
 #include "models.hpp"
 #include "input.hpp"
 #include "timer.hpp"
 #include "commons.hpp"
 
-#define DEBUG_RENDERER
+//#define DEBUG_RENDERER
+//#define DEBUG_WORKER
 
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {
 	point		= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
 	line		= VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
 	triangle	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+};
+
+
+/// Reponsible for the loading thread and its processes.
+class LoadingWorker
+{
+	std::list<ModelData>*	models;					//!< Array of 2 lists (rendering & post-processing)
+	std::list<ModelData>&	modelsToLoad;
+	std::list<ModelData>&	modelsToDelete;
+	std::list<Texture>&		textures;
+	std::list<Shader>&		shaders;
+	bool&					updateCommandBuffer;
+
+	int						waitTime;				//!< Time (milliseconds) the loading-thread wait till next check.
+	bool					runThread;				//!< Signals whether the secondary thread (loadingThread) should be running.
+	std::thread				thread_loadModels;		//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
+	std::list<ModelData>	modelTP;				//!< Model To Process: A model is moved here temporarily for processing. After processing, it's tranferred to its final destination.
+
+	/**
+		@brief Load and delete models (including their shaders and textures)
+
+		<ul> Process:
+			<li>  Initializes and moves models from modelsToLoad to models </li>
+			<li>  Deletes models from modelsToDelete </li>
+				<li> Deletes shaders and textures with counter == 0 </li>
+		</ul>
+	*/
+	void loadingThread();
+
+public:
+	LoadingWorker(int waitTime, std::list<ModelData>* models, std::list<ModelData>& modelsToLoad, std::list<ModelData>& modelsToDelete, std::list<Texture>& textures, std::list<Shader>& shaders, bool& updateCommandBuffer);
+	~LoadingWorker();
+
+	std::mutex mutModels, mutLoad, mutDelete, mutResources;
+
+	void start();
+	void stop();
+	bool isBeingProcessed(modelIter model);
 };
 
 
@@ -36,7 +73,6 @@ class Renderer
 	const int MAX_FRAMES_IN_FLIGHT = 2;		//!< How many frames should be processed concurrently.
 	VkClearColorValue backgroundColor = { 50 / 255.f, 150 / 255.f, 255 / 255.f, 1.0f };
 	int maxFPS = 60;
-	int waitTime = 500;		//!< Time the loading-thread wait till next check.
 
 	// Main parameters
 	VulkanEnvironment			e;
@@ -48,18 +84,12 @@ class Renderer
 	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
 
 	std::list<Texture>			textures;					//!< Set of textures
-	std::list<Texture>			texturesToLoad;				//!< Textures waiting for being loaded and moved to textures list.
-	std::list<Texture>			texturesToDelete;			//!< Textures waiting for being deleted.
-
 	std::list<Shader>			shaders;					//!< Set of shaders
 
+	LoadingWorker				worker;
+
 	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
-	std::vector<modelIterator>	lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
-
-	// Threads stuff
-	std::thread					thread_loadModels;			//!< Thread for loading new models. Initiated in the constructor. Finished if glfwWindowShouldClose
-	std::mutex					mutSnapshot;				//!< Used for safely making a snapshot in the loading thread of the lists texturesToLoad, modelsToLoad, modelsToDelete, and texturesToDelete.
-
+	std::vector<modelIter>		lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
 	// Member variables:
 	std::vector<VkCommandBuffer> commandBuffers;			//!< <<< List. Opaque handle to command buffer object. One for each swap chain framebuffer.
@@ -71,8 +101,6 @@ class Renderer
 	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
 
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
-	bool						runThread;					//!< Signals whether the secondary thread (loadingThread) should be running.
-
 	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
 	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
 
@@ -103,7 +131,6 @@ class Renderer
 
 	/// Create semaphores and fences for synchronizing the events occuring in each frame (drawFrame()).
 	void createSyncObjects();
-	void renderLoop();
 
 	/**
 	*	Acquire image from swap chain, execute command buffer with that image as attachment in the framebuffer, and return the image to the swap chain for presentation.
@@ -124,31 +151,15 @@ class Renderer
 
 	// Update uniforms, transformation matrices, add/delete new models/textures, and submit command buffer. Transformation matrices (MVP) will be generated each frame.
 	void updateStates(uint32_t currentImage);
+
+	/// Callback used by the client for updating states of their models
 	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
 
-	/*
-	@brief Check for pending items to load/delete (textures & models).
-	
-	<ul>Checking and loading process:
-		<li> [mutSnapshot]: </li>
-		<li>  texturesToLoad </li>
-		<li>  modelsToLoad </li>
-		<li>  modelsToDelete </li>
-		<li>  texturesToDelete </li>
-		<li> Texture::loadAndCreateTexture </li>
-		<li> ModelData::fullConstruction </li>
-		<li> modelsToDelete.erase </li>
-		<li> texturesToDelete.erase </li>
-	</ul>
-*/
-	void loadingThread();
-
-	/// Used in drawFrame(). The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events and recreate the swap chain.
+	/// Used in drawFrame(). The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events (when acquiring/submitting an image from/to the swap chain) and recreate the swap chain.
 	void recreateSwapChain();
 
 	/// Used in recreateSwapChain()
-	void cleanupSwapChain();
-	void stopThread();
+	void cleanupSwapChain();		
 
 public:
 	// LOOK what if firstModel.size() == 0
@@ -156,10 +167,10 @@ public:
 	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers);
 	~Renderer();
 	
-	int				run();			//!< Create command buffer and start render loop.
-	TimerSet&		getTimer();		//!< Returns the timer object (provides access to time data).
-	Camera&			getCamera();	//!< Returns the camera object (provides access to camera data).
-	Input&			getInput();
+	void		renderLoop();	//!< Create command buffer and start render loop.
+	TimerSet&	getTimer();		//!< Returns the timer object (provides access to time data).
+	Camera&		getCamera();	//!< Returns the camera object (provides access to camera data).
+	Input&		getInput();
 
 	/**
 		@brief Insert a partially initialized model object in modelsToLoad list.The loadModels_Thread() thread will fully initialize it as soon as possible.
@@ -175,53 +186,27 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	modelIterator	newModel(std::string modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, DataLoader* DataLoader, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader, bool transparency, uint32_t renderPassIndex = 0);
-	void			deleteModel(modelIterator model);
+	/// Create (partially) a new model in the list modelsToLoad.
+	modelIter	newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
 
-	texIterator		newTexture(std::string path, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);												//!< Insert a partially initialized texture object in texturesToLoad list. Later, data from file will be loaded.
-	texIterator		newTexture(unsigned char* pixels, unsigned texWidth, unsigned texHeight, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);	//!< Texture data from code
-	void			deleteTexture(texIterator texture);
+	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes.
+	void deleteModel(modelIter model);
 
-	shaderIter		newShader(const std::string shaderFile);
-	void			deleteShader(shaderIter shader);
+	void setRenders(modelIter model, size_t numberOfRenders);
 
-	void			setRenders(modelIterator model, size_t numberOfRenders);
-
-	size_t			getRendersCount(modelIterator model);
+	size_t getRendersCount(modelIter model);
 
 	/// Make a model the last to be drawn within its own layer. Useful for transparent objects.
-	void			toLastDraw(modelIterator model);
+	void toLastDraw(modelIter model);
 
 	size_t getFrameCount();
 	size_t getModelsCount();
 	size_t getCommandsCount();
 	float  getAspectRatio();
 	glm::vec2 getScreenSize();
-};
-
-
-/**
-	Includer interface for being able to "#include" headers data on shaders
-	Renderer::newShader():
-		- readFile(shader)
-		- shaderc::CompileOptions < ShaderIncluder
-		- shaderc::Compiler::PreprocessGlsl()
-			- Preprocessor directive exists? 
-				- ShaderIncluder::GetInclude()
-				- ShaderIncluder::ReleaseInclude()
-				- ShaderIncluder::~ShaderIncluder()
-		- shaderc::Compiler::CompileGlslToSpv
-*/
-class ShaderIncluder : public shaderc::CompileOptions::IncluderInterface
-{
-public:
-	~ShaderIncluder() { };
-
-	// Handles shaderc_include_resolver_fn callbacks.
-	shaderc_include_result* GetInclude(const char* sourceName, shaderc_include_type type, const char* destName, size_t includeDepth) override;
-
-	// Handles shaderc_include_result_release_fn callbacks.
-	void ReleaseInclude(shaderc_include_result* data) override;
+	size_t loadedModels();		//!< Returns number of models in Renderer:models
+	size_t loadedShaders();		//!< Returns number of shaders in Renderer:shaders
+	size_t loadedTextures();	//!< Returns number of textures in Renderer:textures
 };
 
 #endif

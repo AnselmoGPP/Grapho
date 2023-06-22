@@ -46,6 +46,7 @@ public:
 class VertexSet
 {
 public:
+	VertexSet();
 	VertexSet(VertexType vertexType);
 	//VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer);
 	~VertexSet();
@@ -63,8 +64,14 @@ public:
 	char* data() const;
 	void push_back(const void* element);
 	void reserve(unsigned size);
-	void reset(VertexType vertexType, size_t numOfVertex, const void* buffer);	/// Similar to a copy constructor, but just using its parameters instead of an already existing object.
-	void* getElement(size_t i) const;		///< For debugging purposes
+	void reset(VertexType vertexType, size_t numOfVertex, const void* buffer);	//!< Similar to a copy constructor, but just using its parameters instead of an already existing object.
+	void reset(VertexType vertexType);
+
+	// Debugging purposes
+	void* getElement(size_t i) const;		//!< Get pointer to element
+	void printElement(size_t i) const;		//!< Print vertex floats
+	void printAllElements() const;	//!< Print vertex floats of all elements
+	size_t getNumVertex() const;
 
 private:
 	char* buffer;			// Set of vertex objects stored directly in bytes

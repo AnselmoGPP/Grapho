@@ -32,35 +32,32 @@
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void setLights();
-void loadTextures(Renderer& app);
-void loadShaders(Renderer& app);
 float getFloorHeight(const glm::vec3& pos);
 float getSeaHeight(const glm::vec3& pos);
 
-void setAtmosphere(Renderer& app);
-void setReticule(Renderer& app);
-void setPoints(Renderer& app);
-void setAxis(Renderer& app);
-void setGrid(Renderer& app);
-void setSea(Renderer& app);
-void setSkybox(Renderer& app);
-void setCottage(Renderer& app);
-void setRoom(Renderer& app);
-void setChunk(Renderer& app);
-void setChunkGrid(Renderer& app);
-void setSun(Renderer& app);
+void setSkybox(Renderer& app);			// L0, T
+void setSun(Renderer& app);				// L0, T
+void setPoints(Renderer& app);			// L1, P
+void setGrid(Renderer& app);			// L1, L
+void setSea(Renderer& app);				// L1, T
+void setCottage(Renderer& app);			// L1, M
+void setRoom(Renderer& app);			// L1, M
+void setChunk(Renderer& app);			// L1, T
+void setChunkGrid(Renderer& app);		// L1, T
+void setAtmosphere(Renderer& app);		// L2, PP
+void setReticule(Renderer& app);		// l2, T
+void setAxis(Renderer& app);			// L2, L
+void setAxis2(Renderer& app);			// 
+void setNoPP(Renderer& app);			// no post-processing
 
 // Models, textures, & shaders
 Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-std::map<std::string, modelIterator> assets;	// Model iterators
-std::map<std::string, texIterator> textures;	// Texture iterators
-std::map<std::string, shaderIter> shaders;		// Shaders
+std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
 int gridStep = 50;
-ifOnce check;			// LOOK implement as functor (function with state)
+ifOnce check;									// LOOK implement as functor (function with state)
 LightSet lights(3);
-std::vector<texIterator> usedTextures;			// Package of textures from std::map<> textures
 SunSystem sun(0.00, 0.0, 3.14/10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
 
 SingleNoise noiser_1(	// Desert
@@ -108,28 +105,36 @@ int main(int argc, char* argv[])
 		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 	#endif
 	
-	camera_4.camParticle.setCallback(getFloorHeight);
+	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
+	{
+		camera_4.camParticle.setCallback(getFloorHeight);
 
-	setLights();
-	loadShaders(app);
-	loadTextures(app);
+		setLights();
 
-	//setPoints(app);
-	//setAxis(app);
-	//setGrid(app);
-	//setSea(app);
-	setSkybox(app);
+		//setPoints(app);
+		//setAxis(app);
+		setGrid(app);
+		//setSea(app);
+		setSkybox(app);
 		//setCottage(app);
-	setRoom(app);
-	//setChunk(app);
-	//setChunkGrid(app);
-	//planetGrid.addResources(usedTextures, shaders["v_planet"], shaders["f_planet"]);
-	planetSeaGrid.addResources(usedTextures, shaders["v_seaPlanet"], shaders["f_seaPlanet"]);
-	setSun(app);
-	setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
-	  //setReticule(app);
+		setRoom(app);
+		//setChunk(app);
+		//setChunkGrid(app);
+		planetGrid.addResources(std::vector<ShaderInfo>{shaderInfos[14], shaderInfos[15]}, usedTextures);
+		//planetSeaGrid.addResources(std::vector<ShaderInfo>{shaderInfos[10], shaderInfos[11]}, usedTextures);
 
-	app.run();		// Start rendering
+		setNoPP(app);
+		//setAxis2(app);
+		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+		
+		setSun(app);
+		//setReticule(app);
+
+		app.renderLoop();		// Start rendering
+		if (0) throw "Test exception";
+	}
+	catch (std::exception e) { std::cout << e.what() << std::endl; }
+	catch (const char* msg) { std::cout << msg << std::endl; }
 
 	#ifdef DEBUG_MAIN
 		std::cout << "main() end" << std::endl;
@@ -161,6 +166,10 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
+	//std::cout << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
+
+	for(size_t i = 0; i < rend.loadedModels(); i++)
+
 	#ifdef DEBUG_MAIN
 		std::cout << rend.getFrameCount() << ") " << std::endl;
 		//std::cout << rend.getFrameCount() << ") " << fps << '\n';
@@ -172,7 +181,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	// Light
 	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
+
 	lights.posDir[1].direction = -sun.lightDirection();	// Directional (night)
+
 	lights.posDir[2].position  = camPos;
 	lights.posDir[2].direction = camDir;
 
@@ -254,7 +265,24 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 8 * vec4size, &screenSize, sizeof(glm::vec2));
 			memcpy(dest + 9 * vec4size, &view, sizeof(view));
 			memcpy(dest + 9 * vec4size + 1 * mat4size, &proj, sizeof(proj));
-		}	
+		}
+
+	if (assets.find("noPP") != assets.end())
+		for (i = 0; i < assets["noPP"]->vsDynUBO.numDynUBOs; i++)
+		{
+			dest = assets["noPP"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * vec4size, &fov, sizeof(fov));
+			memcpy(dest + 1 * vec4size, &aspectRatio, sizeof(aspectRatio));
+			memcpy(dest + 2 * vec4size, &camPos, sizeof(camPos));
+			memcpy(dest + 3 * vec4size, &camDir, sizeof(camDir));
+			memcpy(dest + 4 * vec4size, &camUp, sizeof(camUp));
+			memcpy(dest + 5 * vec4size, &camRight, sizeof(camRight));
+			memcpy(dest + 6 * vec4size, &lights.posDir[0].direction, sizeof(glm::vec3));
+			memcpy(dest + 7 * vec4size, &clipPlanes, sizeof(glm::vec2));
+			memcpy(dest + 8 * vec4size, &screenSize, sizeof(glm::vec2));
+			memcpy(dest + 9 * vec4size, &view, sizeof(view));
+			memcpy(dest + 9 * vec4size + 1 * mat4size, &proj, sizeof(proj));
+		}
 
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++)	{
@@ -273,7 +301,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("grid") != assets.end())
 		for (i = 0; i < assets["grid"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["grid"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(200.f, 200.f, 200.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)camPos.x / gridStep), gridStep * ((int)camPos.y / gridStep), 0.0f)), mat4size);
+			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)camPos.x / gridStep), gridStep * ((int)camPos.y / gridStep), 0.0f)), mat4size);
 			memcpy(dest + 1 * mat4size, &view, mat4size);
 			memcpy(dest + 2 * mat4size, &proj, mat4size);
 		}
@@ -344,139 +372,6 @@ void setLights()
 	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
 }
 
-void loadShaders(Renderer& app)
-{
-	#ifdef DEBUG_MAIN
-		std::cout << "> " << __func__ << "()" << std::endl;
-	#endif
-	
-	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
-	{	
-		shaders["v_point"] = app.newShader((shadersDir + "v_pointPC.vert").c_str());
-		shaders["f_point"] = app.newShader((shadersDir + "f_pointPC.frag").c_str());
-
-		shaders["v_line"] = app.newShader((shadersDir + "v_linePC.vert").c_str());
-		shaders["f_line"] = app.newShader((shadersDir + "f_linePC.frag").c_str());
-
-		shaders["v_skybox"] = app.newShader((shadersDir + "v_trianglePT.vert").c_str());
-		shaders["f_skybox"] = app.newShader((shadersDir + "f_trianglePT.frag").c_str());
-
-		shaders["v_house"] = app.newShader((shadersDir + "v_trianglePCT.vert").c_str());
-		shaders["f_house"] = app.newShader((shadersDir + "f_trianglePCT.frag").c_str());
-
-		shaders["v_sea"] = app.newShader((shadersDir + "v_sea.vert").c_str());
-		shaders["f_sea"] = app.newShader((shadersDir + "f_sea.frag").c_str());
-
-		shaders["v_seaPlanet"] = app.newShader((shadersDir + "v_seaPlanet.vert").c_str());
-		shaders["f_seaPlanet"] = app.newShader((shadersDir + "f_seaPlanet.frag").c_str());
-
-		shaders["v_terrain"] = app.newShader((shadersDir + "v_terrainPTN.vert").c_str());
-		shaders["f_terrain"] = app.newShader((shadersDir + "f_terrainPTN.frag").c_str());
-
-		shaders["v_planet"] = app.newShader((shadersDir + "v_planetPTN.vert").c_str());
-		shaders["f_planet"] = app.newShader((shadersDir + "f_planetPTN.frag").c_str());
-
-		shaders["v_sun"] = app.newShader((shadersDir + "v_sunPT.vert").c_str());
-		shaders["f_sun"] = app.newShader((shadersDir + "f_sunPT.frag").c_str());
-
-		shaders["v_hud"] = app.newShader((shadersDir + "v_hudPT.vert").c_str());
-		shaders["f_hud"] = app.newShader((shadersDir + "f_hudPT.frag").c_str());
-
-		shaders["v_atmosphere"] = app.newShader((shadersDir + "v_atmosphere.vert").c_str());
-		shaders["f_atmosphere"] = app.newShader((shadersDir + "f_atmosphere.frag").c_str());
-
-		if (0) throw "Test exception";
-	}
-	catch (std::exception e) { std::cout << e.what() << std::endl; }
-	catch (const char* msg) { std::cout << msg << std::endl; }
-}
-
-void loadTextures(Renderer& app)
-{
-	#ifdef DEBUG_MAIN
-		std::cout << "> " << __func__ << "()" << std::endl;
-	#endif
-
-	// Special
-	textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());
-	textures["cottage"]  = app.newTexture((texDir + "models/cottage/cottage_diffuse.png").c_str());
-	textures["room"]	 = app.newTexture((texDir + "models/viking_room.png").c_str());
-	textures["squares"]  = app.newTexture((texDir + "squares.png").c_str());
-	textures["sun"]		 = app.newTexture((texDir + "Sun/sun2_1.png").c_str());
-	textures["reticule"] = app.newTexture((texDir + "HUD/reticule_1.png").c_str());
-	//app.deleteTexture(textures["skybox"]);													// TEST (before render loop): deleteTexture
-	//textures["skybox"]	 = app.newTexture((texDir + "sky_box/space1.jpg").c_str());	// TEST (before render loop): newTexture
-
-	// Plants
-	textures["grassDry_a"] = app.newTexture((texDir + "grass/grassDry_a.png").c_str());
-	textures["grassDry_n"] = app.newTexture((texDir + "grass/grassDry_n.png").c_str());
-	textures["grassDry_s"] = app.newTexture((texDir + "grass/grassDry_s.png").c_str());
-	textures["grassDry_r"] = app.newTexture((texDir + "grass/grassDry_r.png").c_str());
-	textures["grassDry_h"] = app.newTexture((texDir + "grass/grassDry_h.png").c_str());
-
-	// Rocks
-	textures["bumpRock_a"] = app.newTexture((texDir + "rock/bumpRock_a.png").c_str());
-	textures["bumpRock_n"] = app.newTexture((texDir + "rock/bumpRock_n.png").c_str());
-	textures["bumpRock_s"] = app.newTexture((texDir + "rock/bumpRock_s.png").c_str());
-	textures["bumpRock_r"] = app.newTexture((texDir + "rock/bumpRock_r.png").c_str());
-	textures["bumpRock_h"] = app.newTexture((texDir + "rock/bumpRock_h.png").c_str());
-
-	// Soils
-	textures["sandDunes_a"]  = app.newTexture((texDir + "sand/sandDunes_a.png").c_str());
-	textures["sandDunes_n"]  = app.newTexture((texDir + "sand/sandDunes_n.png").c_str());
-	textures["sandDunes_s"]  = app.newTexture((texDir + "sand/sandDunes_s.png").c_str());
-	textures["sandDunes_r"]  = app.newTexture((texDir + "sand/sandDunes_r.png").c_str());
-	textures["sandDunes_h"]  = app.newTexture((texDir + "sand/sandDunes_h.png").c_str());
-
-	textures["sandWavy_a"]   = app.newTexture((texDir + "sand/sandWavy_a.png").c_str());
-	textures["sandWavy_n"]   = app.newTexture((texDir + "sand/sandWavy_n.png").c_str());
-	textures["sandWavy_s"]   = app.newTexture((texDir + "sand/sandWavy_s.png").c_str());
-	textures["sandWavy_r"]   = app.newTexture((texDir + "sand/sandWavy_r.png").c_str());
-	textures["sandWavy_h"]   = app.newTexture((texDir + "sand/sandWavy_h.png").c_str());
-
-	// Water
-	textures["sea_n"]   = app.newTexture((texDir + "water/sea_n.png").c_str());
-	textures["sea_h"]   = app.newTexture((texDir + "water/sea_h.png").c_str());
-	textures["foam_a"]  = app.newTexture((texDir + "water/sea_foam_a.png").c_str());
-	//textures["bubbles_a"] = app.newTexture((texDir + "bubbles_a.png").c_str());
-
-	textures["snow_a"]  = app.newTexture((texDir + "snow/snow_a.png").c_str());
-	textures["snow_n"]  = app.newTexture((texDir + "snow/snow_n.png").c_str());
-	textures["snow_s"]  = app.newTexture((texDir + "snow/snow_s.png").c_str());
-	textures["snow_r"]  = app.newTexture((texDir + "snow/snow_r.png").c_str());
-	textures["snow_h"]	= app.newTexture((texDir + "snow/snow_h.png").c_str());
-
-	textures["snow2_a"] = app.newTexture((texDir + "snow/snow2_a.png").c_str());
-	textures["snow2_n"] = app.newTexture((texDir + "snow/snow2_n.png").c_str());
-	textures["snow2_s"] = app.newTexture((texDir + "snow/snow2_s.png").c_str());
-
-	// In-code textures
-	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi / 100, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
-	textures["optDepth"] = app.newTexture(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
-	textures["density"] = app.newTexture(density.table.data(), 1, density.heightSteps, VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-	// Package textures
-	usedTextures =
-	{
-		/*0 - 4*/textures["grassDry_a"], textures["grassDry_n"], textures["grassDry_s"], textures["grassDry_r"], textures["grassDry_h"],
-		/*5 - 9*/textures["bumpRock_a"], textures["bumpRock_n"], textures["bumpRock_s"], textures["bumpRock_r"], textures["bumpRock_h"],
-		/*10-14*/textures["snow_a"],textures["snow_n"], textures["snow_s"], textures["snow_r"], textures["snow_h"],
-		/*15-19*/textures["snow2_a"],textures["snow2_n"], textures["snow2_s"], textures["snow_r"], textures["snow_h"],
-
-		/*20-24*/textures["sandDunes_a"], textures["sandDunes_n"], textures["sandDunes_s"], textures["sandDunes_r"], textures["sandDunes_h"],
-		/*25-29*/textures["sandWavy_a"], textures["sandWavy_n"], textures["sandWavy_s"], textures["sandWavy_r"], textures["sandWavy_h"],
-
-		/* 30 */ textures["squares"],
-		/*31-33*/textures["sea_n"], textures["sea_h"], textures["foam_a"]
-	};
-
-
-	// <<< You could build materials (make sets of textures) here
-	// <<< Then, user could make sets of materials and send them to a modelObject
-}
-
 float getFloorHeight(const glm::vec3& pos)
 {
 	glm::vec3 espheroid = glm::normalize(pos - planetGrid.nucleus) * planetGrid.radius;
@@ -499,14 +394,15 @@ void setPoints(Renderer& app)
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
+	VerticesInfo vertexData(vt_33, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
+	std::vector<ShaderInfo> shaders{ shaderInfos[0], shaderInfos[1] };
+
 	assets["points"] = app.newModel(
 		"points",
 		1, 1, primitiveTopology::point,
-		DataLoader,
+		vertexData, shaders, noTextures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		noTextures,
-		shaders["v_point"], shaders["f_point"],
 		false);
 
 	memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
@@ -525,15 +421,44 @@ void setAxis(Renderer& app)
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
 
+	VerticesInfo vertexData(vt_33, v_axis.data(), numVertex, i_axis);
+	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
+
 	assets["axis"] = app.newModel(
 		"axis",
 		2, 1, primitiveTopology::line,
-		DataLoader,
+		vertexData, shaders, noTextures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		noTextures,
-		shaders["v_line"], shaders["f_line"],
 		false);
+
+	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
+}
+
+void setAxis2(Renderer& app)
+{
+#ifdef DEBUG_MAIN
+	std::cout << "> " << __func__ << "()" << std::endl;
+#endif
+
+	std::vector<VertexPC> v_axis;
+	std::vector<uint16_t> i_axis;
+	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
+
+	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
+	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
+
+	VerticesInfo vertexData(vt_33, v_axis.data(), numVertex, i_axis);
+	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
+
+	assets["axis"] = app.newModel(
+		"axis",
+		0, 1, primitiveTopology::line,
+		vertexData, shaders, noTextures,
+		1, 3 * mat4size,	// M, V, P
+		0,
+		false,
+		1 );
 
 	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
 }
@@ -546,19 +471,17 @@ void setGrid(Renderer& app)
 
 	std::vector<VertexPC> v_grid;
 	std::vector<uint16_t> i_grid;
-	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 0, glm::vec3(0.1, 0.1, 0.6));
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 100, glm::vec3(0.5, 0.5, 0.5));
 
-	VertexType vertexType({ 3 * sizeof(float), 3 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_grid.data(), i_grid);
+	VerticesInfo vertexData(vt_33, v_grid.data(), numVertex, i_grid);
+	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
 
 	assets["grid"] = app.newModel(
 		"grid",
 		1, 1, primitiveTopology::line,
-		DataLoader,
+		vertexData, shaders, noTextures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		noTextures,
-		shaders["v_line"], shaders["f_line"],
 		false);
 }
 
@@ -568,19 +491,16 @@ void setSkybox(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	std::vector<texIterator> usedTextures = { textures["skybox"] };
-
-	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 14, v_cube.data(), i_inCube);
+	VerticesInfo vertexData( vt_32, v_cube.data(), 14, i_inCube);
+	std::vector<ShaderInfo> shaders{ shaderInfos[4], shaderInfos[5] };
+	std::vector<TextureInfo> textures{ texInfos[0] };
 
 	assets["skyBox"] = app.newModel(
 		"skyBox",
 		0, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		usedTextures,
-		shaders["v_skybox"], shaders["f_skybox"],
 		false);
 }
 
@@ -591,18 +511,20 @@ void setCottage(Renderer& app)
 	#endif
 
 	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
-	std::vector<texIterator> usedTextures = { textures["cottage"] };
+	//std::vector<texIterator> usedTextures = { textures0["cottage"] };
 
 	DataLoader* DataLoader = new DataFromFile((vertexDir + "cottage_obj.obj").c_str());
+
+	VerticesInfo vertexData(vt_332, vertexDir + "cottage_obj.obj");
+	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
+	std::vector<TextureInfo> textures{ texInfos[1] };
 
 	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
 		"cottage",
 		1, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		usedTextures,
-		shaders["v_house"], shaders["f_house"],
 		false);
 
 	// Delete a model you passed previously.
@@ -613,11 +535,9 @@ void setCottage(Renderer& app)
 	assets["cottage"] = app.newModel(
 		"cottage",
 		1, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		usedTextures,
-		shaders["v_house"], shaders["f_house"],
 		false);
 }
 
@@ -627,18 +547,20 @@ void setRoom(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	std::vector<texIterator> usedTextures = { textures["room"] };
+	//std::vector<texIterator> usedTextures = { textures0["room"] };
 
 	DataLoader* DataLoader = new DataFromFile2((vertexDir + "viking_room.obj").c_str());
+
+	VerticesInfo vertexData(vt_332, vertexDir + "viking_room.obj");
+	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
+	std::vector<TextureInfo> textures{ texInfos[2] };
 
 	assets["room"] = app.newModel(
 		"room",
 		1, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		2, 3 * mat4size,	// M, V, P
 		0,
-		usedTextures,
-		shaders["v_house"], shaders["f_house"],
 		false);
 
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
@@ -656,7 +578,7 @@ void setSea(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	std::vector<texIterator> usedTextures = { textures["sea_n"] };
+	//std::vector<texIterator> usedTextures = { textures0["sea_n"] };
 
 	float extent = 2000, height = 0;
 	float v_sea[4 * 6] = {
@@ -672,14 +594,16 @@ void setSea(Renderer& app)
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_sea, i_sea);
 
+	VerticesInfo vertexData(vt_33, v_sea, 4, i_sea);
+	std::vector<ShaderInfo> shaders{ shaderInfos[8], shaderInfos[9] };
+	std::vector<TextureInfo> textures{ texInfos[26] };
+
 	assets["sea"] = app.newModel(
 		"plainSea",
 		1, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 4 * mat4size + vec4size + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
 		vec4size + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
-		usedTextures,
-		shaders["v_sea"], shaders["f_sea"],
 		true);
 }
 
@@ -690,9 +614,10 @@ void setChunk(Renderer& app)
 	#endif
 
 	updateChunk = true;
+	std::vector<ShaderInfo> shaders{ shaderInfos[12], shaderInfos[13] };
 
 	singleChunk.computeTerrain(true);
-	singleChunk.render(shaders["v_terrain"], shaders["f_terrain"], usedTextures, nullptr, lights.numLights, false);
+	singleChunk.render(shaders, usedTextures, nullptr, lights.numLights, false);
 }
 
 void setChunkGrid(Renderer& app)
@@ -703,8 +628,9 @@ void setChunkGrid(Renderer& app)
 
 	updateChunkGrid = true;
 
-	terrGrid.addTextures(usedTextures);
-	terrGrid.addShaders(shaders["v_terrain"], shaders["f_terrain"]);
+	std::vector<ShaderInfo> shaders{ shaderInfos[12], shaderInfos[13] };
+
+	terrGrid.addResources(shaders, usedTextures);
 	//terrChunks.updateTree(glm::vec3(0,0,0));
 }
 
@@ -720,19 +646,16 @@ void setSun(Renderer& app)
 	//getQuad(v_sun, i_sun, 1.f, 1.f, 0);
 	size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	std::vector<texIterator> usedTextures = { textures["sun"] };
-
-	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_sun.data(), i_sun);
+	VerticesInfo vertexData(vt_32, v_sun.data(), numVertex, i_sun);
+	std::vector<ShaderInfo> shaders{ shaderInfos[16], shaderInfos[17] };
+	std::vector<TextureInfo> textures{ texInfos[4] };
 
 	assets["sun"] = app.newModel(
 		"sun",
 		0, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 3 * mat4size,	// M, V, P
 		0,
-		usedTextures,
-		shaders["v_sun"], shaders["f_sun"],
 		true);
 }
 
@@ -748,19 +671,16 @@ void setReticule(Renderer& app)
 	getScreenQuad(0.1, 0.1, v_ret, i_ret);
 	//getQuad(v_ret, i_ret, 0.1, 0.1, 0.1);
 
-	std::vector<texIterator> usedTextures = { textures["reticule"] };
-
-	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_ret, i_ret);
+	VerticesInfo vertexData(vt_32, v_ret, 4, i_ret);
+	std::vector<ShaderInfo> shaders{ shaderInfos[18], shaderInfos[19] };
+	std::vector<TextureInfo> textures{ texInfos[5] };
 
 	assets["reticule"] = app.newModel(
 		"reticule",
 		2, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, vec4size,				// aspect ratio (float)
 		0,
-		usedTextures,
-		shaders["v_hud"], shaders["f_hud"],
 		true);
 }
 
@@ -774,19 +694,46 @@ void setAtmosphere(Renderer& app)
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(1.f, 0.5, v_quad, i_quad);
 
-	std::vector<texIterator> usedTextures = { textures["optDepth"], textures["density"] };
-	
-	VertexType vertexType({ vec3size, vec2size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_quad, i_quad);
+	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi / 100, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	TextureInfo texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	TextureInfo texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	VerticesInfo vertexData(vt_32, v_quad, 4, i_quad);
+	std::vector<ShaderInfo> shaders{ shaderInfos[20], shaderInfos[21] };
+	std::vector<TextureInfo> textures{ texOD, texDV };
 
 	assets["atmosphere"] = app.newModel(
 		"atmosphere",
 		2, 1, primitiveTopology::triangle,
-		DataLoader,
+		vertexData, shaders, textures,
 		1, 2 * mat4size + 8 * vec4size,
 		0,
-		usedTextures,
-		shaders["v_atmosphere"], shaders["f_atmosphere"],
+		false,
+		1);
+}
+
+void setNoPP(Renderer& app)
+{
+	#ifdef DEBUG_MAIN
+		std::cout << "> " << __func__ << "()" << std::endl;
+	#endif
+
+	float v_quad[4 * 5];
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(1.f, 0.5, v_quad, i_quad);
+
+	VerticesInfo vertexData(vt_32, v_quad, 4, i_quad);
+	std::vector<ShaderInfo> shaders{ shaderInfos[22], shaderInfos[23] };
+	std::vector<TextureInfo> textures{ texInfos[4], texInfos[5] };
+
+	assets["noPP"] = app.newModel(
+		"noPP",
+		2, 1, primitiveTopology::triangle,
+		vertexData, shaders, textures,
+		1, 2 * mat4size + 8 * vec4size,
+		0,
 		false,
 		1);
 }

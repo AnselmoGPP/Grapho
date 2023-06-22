@@ -1,5 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#pragma shader_stage(fragment)
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 

@@ -47,24 +47,8 @@ vec4 atmosphere();
 
 void main()
 {
-	//vec2 NDCs = { gl_FragCoord.x / 960, gl_FragCoord.y / 540 };	// Get fragment Normalize Device Coordinates (NDC) [0,1] from its Window Coordinates (pixels)
-	
-	// https://www.reddit.com/r/vulkan/comments/mf1rb5/input_attachment_not_accessible_from_fragment/
-	// https://stackoverflow.com/questions/45154213/is-there-a-way-to-address-subpassinput-in-vulkan
-	// ChatGPT: The inputAttachment function is only available in GLSL shaders if the "GL_NV_shader_framebuffer_fetch" extension is enabled. This extension is not part of the core Vulkan specification and may not be available on all devices.
-	//inputAttachment(0, vec2(NDCs.x, NDCs.y));
-	//subpassLoad(inputAttachment, vec2(NDCs.x, NDCs.y));
-	
-	//outColor = originalColor();
-	//outColor = originalColorMSAA();
-	//outColor = vec4(depth(), depth(), depth(), 1.f);
-	//outColor = vec4(linearDepth(), linearDepth(), linearDepth(), 1.f);
-	//outColor = texture(texSampler, inUVs * vec2(1, -1));
-	//outColor = optDepthTexture();
-	//outColor = sphere();
-	//outColor = sea();			// <<< to do
-	outColor = atmosphere();	// <<< to optimize (less lookups)
-	//if(depth() == 1) outColor = vec4(0,1,0,1);
+	outColor = originalColor();
+
 }
 
 vec4 getTexture(sampler2D   tex, vec2  uv) { return texture(tex, uv); }

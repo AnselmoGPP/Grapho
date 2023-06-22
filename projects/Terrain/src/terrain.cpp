@@ -5,7 +5,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), depth(depth), modelOrdered(false), chunkID(chunkID)
+    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), vertexData(nullptr), depth(depth), modelOrdered(false), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -17,22 +17,38 @@ Chunk::~Chunk()
         renderer.deleteModel(model);
 }
 
-void Chunk::render(shaderIter vertexShader, shaderIter fragmentShader, std::vector<texIterator>& usedTextures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
+glm::vec3 Chunk::getVertex(size_t position) const
+{ 
+    return glm::vec3(
+        vertex[position * numAttribs + 0], 
+        vertex[position * numAttribs + 1], 
+        vertex[position * numAttribs + 2] ); 
+};
+
+glm::vec3 Chunk::getNormal(size_t position) const
+{ 
+    return glm::vec3(
+        vertex[position * numAttribs + 3], 
+        vertex[position * numAttribs + 4], 
+        vertex[position * numAttribs + 5] ); 
+};
+
+void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
-    DataLoader* DataLoader = new DataFromUser_computed(
+    // <<< Compute terrain and render here. No need to store vertices, indices or VertexInfo in Chunk object.
+
+    vertexData = new VerticesInfo(
         VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
-        numHorVertex * numVertVertex,
-        vertex.data(),
+        vertex.data(), 
+        numHorVertex * numVertVertex, 
         indices ? *indices : this->indices);
 
     model = renderer.newModel(
         "chunk",
         1, 1, primitiveTopology::triangle,
-        DataLoader,
+        *vertexData, shaders, textures,
         1, 4 * mat4size + 3 * vec4size + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
         numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)
-        usedTextures,
-        vertexShader, fragmentShader,
         transparency);
 
     uint8_t* dest;
@@ -146,16 +162,10 @@ void PlainChunk::computeTerrain(bool computeIndices)   // <<< Fix function to ma
         {
             index = y * numHorVertex + x;
 
-            // positions (0, 1, 2)
+            // Positions (0, 1, 2)
             vertex[index * 6 + 0] = x0 + x * stride;
             vertex[index * 6 + 1] = y0 + y * stride;
             vertex[index * 6 + 2] = noiseGen->GetNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
-            //std::cout << vertex[pos * 8 + 0] << ", " << vertex[pos * 8 + 1] << ", " << vertex[pos * 8 + 2] << std::endl;
-
-            // textures (3, 4)
-            //vertex[index * 8 + 3] = vertex[index * 8 + 0] * textureFactor;
-            //vertex[index * 8 + 4] = vertex[index * 8 + 1] * textureFactor;     // LOOK produces textures reflected in the x-axis
-            //std::cout << vertex[pos * 8 + 3] << ", " << vertex[pos * 8 + 4] << std::endl;
         }
 
     // Normals (3, 4, 5)
@@ -624,13 +634,18 @@ DynamicGrid::~DynamicGrid()
 
     chunks.clear();
 }
+/*
+void DynamicGrid::addTextures(const std::vector<TextureInfo>& textures) { this->textures = textures; }
 
-void DynamicGrid::addTextures(const std::vector<texIterator>& textures) { this->textures = textures; }
-
-void DynamicGrid::addShaders(shaderIter vertexShader, shaderIter fragmentShader)
+void DynamicGrid::addShaders(const ShaderInfo& vertexShader, const ShaderInfo& fragmentShader) 
+{ 
+    this->shaders = std::vector<ShaderInfo>{ vertexShader, fragmentShader };
+}
+*/
+void DynamicGrid::addResources(const std::vector<ShaderInfo>& shadersInfo, const std::vector<TextureInfo>& texturesInfo)
 {
-    this->vertShader = vertexShader;
-    this->fragShader = fragmentShader;
+    this->shaders = shadersInfo;
+    this->textures = texturesInfo;
 }
 
 void DynamicGrid::updateTree(glm::vec3 newCamPos)
@@ -688,7 +703,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         if (chunk->modelOrdered == false)
         {
             chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
-            chunk->render(vertShader, fragShader, textures, &indices, lights->numLights, transparency);
+            chunk->render(shaders, textures, &indices, lights->numLights, transparency);
             //chunk->updateUBOs(camPos, view, proj);
             renderer->setRenders(chunk->model, 0);
             loadedChunks++;
@@ -1119,21 +1134,14 @@ Planet::~Planet()
     delete planetGrid_nX;
 };
 
-void Planet::addResources(const std::vector<texIterator>& textures, shaderIter vertexShader, shaderIter fragmentShader)
+void Planet::addResources(const std::vector<ShaderInfo>& shaders, const std::vector<TextureInfo>& textures)
 {
-    planetGrid_pZ->addTextures(textures);
-    planetGrid_nZ->addTextures(textures);
-    planetGrid_pY->addTextures(textures);
-    planetGrid_nY->addTextures(textures);
-    planetGrid_pX->addTextures(textures);
-    planetGrid_nX->addTextures(textures);
-    
-    planetGrid_pZ->addShaders(vertexShader, fragmentShader);
-    planetGrid_nZ->addShaders(vertexShader, fragmentShader);
-    planetGrid_pY->addShaders(vertexShader, fragmentShader);
-    planetGrid_nY->addShaders(vertexShader, fragmentShader);
-    planetGrid_pX->addShaders(vertexShader, fragmentShader);
-    planetGrid_nX->addShaders(vertexShader, fragmentShader);
+    planetGrid_pZ->addResources(shaders, textures);
+    planetGrid_nZ->addResources(shaders, textures);
+    planetGrid_pY->addResources(shaders, textures);
+    planetGrid_nY->addResources(shaders, textures);
+    planetGrid_pX->addResources(shaders, textures);
+    planetGrid_nX->addResources(shaders, textures);
 
     readyForUpdate = true;
 }

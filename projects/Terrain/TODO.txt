@@ -1,4 +1,10 @@
 TODO:
+	setAxis2()
+	noPP shaders
+	Implement axis and reticule in PP
+	VertexSet::push_back <<< simplify
+	ModelData::vertexType doesn't exist
+	Pass shaders loading to DataLoader > Load data on worker > Search on Renderer::shaders
 	Delete Dataloader object when already used for passing data / Same for vertex data stored in ModelData object.
 	Delete vertices and indices buffers after uploading data.
 	Take out from memory data stored from the beginnning (cube vertices, etc)

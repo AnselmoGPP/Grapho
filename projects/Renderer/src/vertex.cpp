@@ -65,8 +65,10 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 
 //VerteSet -----------------------------------------------------------------
 
+VertexSet::VertexSet() : Vtype(), buffer(nullptr), capacity(0), numVertex(0) { }
+
 VertexSet::VertexSet(VertexType vertexType)
-	: capacity(8), numVertex(0), Vtype(vertexType)
+	: Vtype(vertexType), capacity(8), numVertex(0)
 { 
 	this->buffer = new char[capacity * vertexType.vertexSize];
 }
@@ -103,6 +105,23 @@ size_t VertexSet::size() const { return numVertex; }
 char* VertexSet::data() const { return buffer; }
 
 void* VertexSet::getElement(size_t i) const { return &(buffer[i * Vtype.vertexSize]); }
+
+void VertexSet::printElement(size_t i) const
+{
+	float* ptr = (float*)getElement(i);
+	size_t size = Vtype.vertexSize / sizeof(float);
+	for (size_t i = 0; i < size; i++)
+		std::cout << *((float*)ptr + i) << ", ";
+	std::cout << std::endl;
+}
+
+void VertexSet::printAllElements() const
+{
+	for (size_t i = 0; i < numVertex; i++)
+		printElement(i);
+}
+
+size_t VertexSet::getNumVertex() const { return numVertex; }
 
 void VertexSet::push_back(const void* element)
 {
@@ -142,7 +161,7 @@ void VertexSet::reserve(unsigned newCapacity)
 
 void VertexSet::reset(VertexType vertexType, size_t numOfVertex, const void* buffer)
 {
-	delete[] this->buffer;
+	if(buffer) delete[] this->buffer;
 
 	Vtype = vertexType;
 	numVertex = numOfVertex;
@@ -150,6 +169,17 @@ void VertexSet::reset(VertexType vertexType, size_t numOfVertex, const void* buf
 	capacity = pow(2, 1 + (int)(log(numOfVertex) / log(2)));		// log b (M) = ln(M) / ln(b)
 	this->buffer = new char[capacity * vertexType.vertexSize];
 	std::memcpy(this->buffer, buffer, totalBytes());
+}
+
+void VertexSet::reset(VertexType vertexType)
+{
+	if(buffer) delete[] this->buffer;
+
+	Vtype = vertexType;
+	numVertex = 0;
+	capacity = 8;
+
+	this->buffer = new char[capacity * vertexType.vertexSize];
 }
 
 

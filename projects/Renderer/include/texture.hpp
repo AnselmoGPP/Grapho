@@ -5,24 +5,185 @@
 
 #include <glm/glm.hpp>
 
-#include "environment.hpp"
+#include "shaderc/shaderc.hpp"		// Compile GLSL code to SPIR-V
 
-//#define DEBUG_TEXTURE
+#include "assimp/Importer.hpp"		// Import textures
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
+
+#include "environment.hpp"
+#include "vertex.hpp"
+
+//#define DEBUG_RESOURCES
+
+extern VertexType vt_32;					//!< (Vert, UV)
+extern VertexType vt_33;					//!< (Vert, Color)
+extern VertexType vt_332;					//!< (Vert, Normal, UV)
+extern VertexType vt_333;					//!< (Vert, Normal, vertexFixes)
+
+class Shader;
+class Texture;
+class TextureInfo;
+
+typedef std::list<Shader >::iterator shaderIter;
+typedef std::list<Texture>::iterator texIter;
+
+extern std::vector<TextureInfo> noTextures;		//!< Vector with 0 TextureInfo objects
+extern std::vector<uint16_t   > noIndices;			//!< Vector with 0 indices
+
+
+// VERTICES --------------------------------------------------------
+
+struct ResourcesInfo;
+
+class VerticesInfo
+{
+	std::string path;
+
+	VertexSet* destVertices;
+	std::vector<uint16_t>* destIndices;
+	ResourcesInfo* destResources;
+
+	std::vector<char> vertexData;
+	std::vector<uint16_t> indices;
+
+	void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
+	void processMesh(aiMesh* mesh, const aiScene* scene);
+
+public:
+	VerticesInfo(const VertexType& vertexType, std::string& filePath);	// From file <<< Can vertexType be taken from file?
+	VerticesInfo(const VertexType& vertexType, const void* vertexData, size_t vertexCount, std::vector<uint16_t>& indices);	// from buffers
+
+	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo);
+
+	//const std::string id;
+	const VertexType vertexType;
+	size_t vertexCount;
+};
+
+
+// VERTICES --------------------------------------------------------
 
 class Shader
 {
 public:
-	Shader(const std::string path, VkShaderModule shaderModule) 
-		: path(path), shaderModule(shaderModule) { };
+	Shader(VulkanEnvironment& e, const std::string id, VkShaderModule shaderModule);
+	~Shader();
+
+	VulkanEnvironment& e;
+	const std::string id;						//!< Used for checking whether the shader to load is already loaded.
+	unsigned counter;							//!< Number of ModelData objects using this shader.
 
 	const VkShaderModule shaderModule;
-	const std::string path;
 };
 
 typedef std::list<Shader>::iterator shaderIter;
 
+class ShaderInfo
+{
+	std::string filePath;
+
+	std::vector<char> glslData;	// <<< pointer instead?
+
+public:
+	ShaderInfo(std::string& filePath);
+	ShaderInfo(const std::string& id, std::string& text);
+	ShaderInfo& operator=(const ShaderInfo& obj);
+
+	std::list<Shader>::iterator loadShader(VulkanEnvironment& e, std::list<Shader>& loadedShaders);
+
+	std::string id;
+};
+
+/**
+	Includer interface for being able to "#include" headers data on shaders
+	Renderer::newShader():
+		- readFile(shader)
+		- shaderc::CompileOptions < ShaderIncluder
+		- shaderc::Compiler::PreprocessGlsl()
+			- Preprocessor directive exists?
+				- ShaderIncluder::GetInclude()
+				- ShaderIncluder::ReleaseInclude()
+				- ShaderIncluder::~ShaderIncluder()
+		- shaderc::Compiler::CompileGlslToSpv
+*/
+class ShaderIncluder : public shaderc::CompileOptions::IncluderInterface
+{
+public:
+	~ShaderIncluder() { };
+
+	// Handles shaderc_include_resolver_fn callbacks.
+	shaderc_include_result* GetInclude(const char* sourceName, shaderc_include_type type, const char* destName, size_t includeDepth) override;
+
+	// Handles shaderc_include_result_release_fn callbacks.
+	void ReleaseInclude(shaderc_include_result* data) override;
+};
+
+
+// TEXTURE --------------------------------------------------------
 
 class Texture
+{
+public:
+	Texture(VulkanEnvironment& e, const std::string& id, VkImage textureImage, VkDeviceMemory textureImageMemory, VkImageView textureImageView, VkSampler textureSampler);
+	~Texture();
+
+	VulkanEnvironment& e;
+	const std::string id;						//!< Used for checking whether the texture to load is already loaded.
+	unsigned counter;							//!< Number of ModelData objects using this texture.
+
+	VkImage				textureImage;			//!< Opaque handle to an image object.
+	VkDeviceMemory		textureImageMemory;		//!< Opaque handle to a device memory object.
+	VkImageView			textureImageView;		//!< Image view for the texture image (images are accessed through image views rather than directly).
+	VkSampler			textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
+};
+
+class TextureInfo
+{
+	std::string filePath;
+
+	unsigned char* pixels;
+	int texWidth, texHeight;
+
+	std::pair<VkImage, VkDeviceMemory> createTextureImage();
+	VkImageView                        createTextureImageView(VkImage textureImage);
+	VkSampler                          createTextureSampler();
+
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+
+	VulkanEnvironment* e;
+	uint32_t mipLevels;				//!< Number of levels (mipmaps)
+
+public:
+	TextureInfo(std::string filePath, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureInfo(unsigned char* pixels, int texWidth, int texHeight, std::string id, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureInfo& operator=(const TextureInfo& obj);
+	~TextureInfo();
+
+	std::list<Texture>::iterator loadTexture(VulkanEnvironment& e, std::list<Texture>& loadedTextures);
+
+	std::string id;
+	VkFormat imageFormat;
+	VkSamplerAddressMode addressMode;
+};
+
+
+// RESOURCES --------------------------------------------------------
+
+struct ResourcesInfo
+{
+	ResourcesInfo(VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo);
+
+	VerticesInfo vertices;
+	std::vector<ShaderInfo> shaders;
+	std::vector<TextureInfo> textures;
+};
+
+
+// OTHERS --------------------------------------------------------
+
+class Texture0
 {
 	std::string path;									///< Path to the texture file.
 	VulkanEnvironment* e;								///< Pointer, instead of a reference, because it is not defined at object creation but when calling loadAndCreateTexture().
@@ -42,10 +203,10 @@ class Texture
 	unsigned char* pixels;					//!< stbi_uc* pixels
 
 public:
-	Texture(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
-	Texture(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode);	//!< Construction from in-code data
+	Texture0(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
+	Texture0(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode);	//!< Construction from in-code data
 	//Texture(const Texture& obj);			//!< Copy constructor.
-	~Texture();
+	~Texture0();
 
 	void loadAndCreateTexture(VulkanEnvironment* e);	//!< Load image and create the VkImage, VkImageView and VkSampler. Used in Renderer::loadingThread()
 
@@ -56,8 +217,6 @@ public:
 	VkImageView		textureImageView;		//!< Image view for the texture image (images are accessed through image views rather than directly).
 	VkSampler		textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
-
-typedef std::list<Texture>::iterator texIterator;
 
 /**
 	@struct PBRmaterial
@@ -77,7 +236,7 @@ typedef std::list<Texture>::iterator texIterator;
 */
 struct PBRmaterial
 {
-	std::vector<texIterator> texMaps;
+	std::vector<texIter> texMaps;
 };
 
 

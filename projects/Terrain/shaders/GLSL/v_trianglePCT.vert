@@ -1,5 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#pragma shader_stage(vertex)
 
 //#include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
