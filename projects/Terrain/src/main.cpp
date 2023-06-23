@@ -35,20 +35,19 @@ void setLights();
 float getFloorHeight(const glm::vec3& pos);
 float getSeaHeight(const glm::vec3& pos);
 
-void setSkybox(Renderer& app);			// L0, T
+void setSkybox(Renderer& app);			// L0, T (layer 0, Triangles)
 void setSun(Renderer& app);				// L0, T
 void setPoints(Renderer& app);			// L1, P
+void setAxis(Renderer& app);			// L1, L
 void setGrid(Renderer& app);			// L1, L
 void setSea(Renderer& app);				// L1, T
 void setCottage(Renderer& app);			// L1, M
 void setRoom(Renderer& app);			// L1, M
 void setChunk(Renderer& app);			// L1, T
 void setChunkGrid(Renderer& app);		// L1, T
-void setAtmosphere(Renderer& app);		// L2, PP
-void setReticule(Renderer& app);		// l2, T
-void setAxis(Renderer& app);			// L2, L
-void setAxis2(Renderer& app);			// 
-void setNoPP(Renderer& app);			// no post-processing
+void setAtmosphere(Renderer& app);		// --, PP
+void setReticule(Renderer& app);		// --, PP
+void setNoPP(Renderer& app);			// --, PP
 
 // Models, textures, & shaders
 Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
@@ -110,10 +109,9 @@ int main(int argc, char* argv[])
 		camera_4.camParticle.setCallback(getFloorHeight);
 
 		setLights();
-
 		//setPoints(app);
-		//setAxis(app);
-		setGrid(app);
+		setAxis(app);
+		//setGrid(app);
 		//setSea(app);
 		setSkybox(app);
 		//setCottage(app);
@@ -124,11 +122,10 @@ int main(int argc, char* argv[])
 		//planetSeaGrid.addResources(std::vector<ShaderInfo>{shaderInfos[10], shaderInfos[11]}, usedTextures);
 
 		setNoPP(app);
-		//setAxis2(app);
 		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 		
 		setSun(app);
-		//setReticule(app);
+		setReticule(app);
 
 		app.renderLoop();		// Start rendering
 		if (0) throw "Test exception";
@@ -254,23 +251,6 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
 		{
 			dest = assets["atmosphere"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * vec4size, &fov, sizeof(fov));
-			memcpy(dest + 1 * vec4size, &aspectRatio, sizeof(aspectRatio));
-			memcpy(dest + 2 * vec4size, &camPos, sizeof(camPos));
-			memcpy(dest + 3 * vec4size, &camDir, sizeof(camDir));
-			memcpy(dest + 4 * vec4size, &camUp, sizeof(camUp));
-			memcpy(dest + 5 * vec4size, &camRight, sizeof(camRight));
-			memcpy(dest + 6 * vec4size, &lights.posDir[0].direction, sizeof(glm::vec3));
-			memcpy(dest + 7 * vec4size, &clipPlanes, sizeof(glm::vec2));
-			memcpy(dest + 8 * vec4size, &screenSize, sizeof(glm::vec2));
-			memcpy(dest + 9 * vec4size, &view, sizeof(view));
-			memcpy(dest + 9 * vec4size + 1 * mat4size, &proj, sizeof(proj));
-		}
-
-	if (assets.find("noPP") != assets.end())
-		for (i = 0; i < assets["noPP"]->vsDynUBO.numDynUBOs; i++)
-		{
-			dest = assets["noPP"]->vsDynUBO.getUBOptr(i);
 			memcpy(dest + 0 * vec4size, &fov, sizeof(fov));
 			memcpy(dest + 1 * vec4size, &aspectRatio, sizeof(aspectRatio));
 			memcpy(dest + 2 * vec4size, &camPos, sizeof(camPos));
@@ -416,7 +396,7 @@ void setAxis(Renderer& app)
 
 	std::vector<VertexPC> v_axis;
 	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
+	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);
 
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
@@ -431,34 +411,6 @@ void setAxis(Renderer& app)
 		1, 3 * mat4size,	// M, V, P
 		0,
 		false);
-
-	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
-}
-
-void setAxis2(Renderer& app)
-{
-#ifdef DEBUG_MAIN
-	std::cout << "> " << __func__ << "()" << std::endl;
-#endif
-
-	std::vector<VertexPC> v_axis;
-	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 3000, 0.8);
-
-	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
-
-	VerticesInfo vertexData(vt_33, v_axis.data(), numVertex, i_axis);
-	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
-
-	assets["axis"] = app.newModel(
-		"axis",
-		0, 1, primitiveTopology::line,
-		vertexData, shaders, noTextures,
-		1, 3 * mat4size,	// M, V, P
-		0,
-		false,
-		1 );
 
 	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
 }
@@ -666,10 +618,8 @@ void setReticule(Renderer& app)
 	#endif
 
 	float v_ret[4 * 5];
-	//std::vector<float> v_ret;
 	std::vector<uint16_t> i_ret;
 	getScreenQuad(0.1, 0.1, v_ret, i_ret);
-	//getQuad(v_ret, i_ret, 0.1, 0.1, 0.1);
 
 	VerticesInfo vertexData(vt_32, v_ret, 4, i_ret);
 	std::vector<ShaderInfo> shaders{ shaderInfos[18], shaderInfos[19] };
@@ -730,9 +680,9 @@ void setNoPP(Renderer& app)
 
 	assets["noPP"] = app.newModel(
 		"noPP",
-		2, 1, primitiveTopology::triangle,
+		2, 1, primitiveTopology::triangle,		// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 		vertexData, shaders, textures,
-		1, 2 * mat4size + 8 * vec4size,
+		1, 1,									// <<< ModelSet doesn't work if there is no dynUBO_vs
 		0,
 		false,
 		1);

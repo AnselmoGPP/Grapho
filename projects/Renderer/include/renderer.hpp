@@ -159,7 +159,10 @@ class Renderer
 	void recreateSwapChain();
 
 	/// Used in recreateSwapChain()
-	void cleanupSwapChain();		
+	void cleanupSwapChain();	
+
+	/// Used for clearing depth buffer between sets of draw commands in order to apply Painter's algorithm.
+	void clearDepthBuffer(VkCommandBuffer commandBuffer);
 
 public:
 	// LOOK what if firstModel.size() == 0
@@ -186,8 +189,8 @@ public:
 		@param vertexType
 		@param transparency
 	*/
-	/// Create (partially) a new model in the list modelsToLoad.
-	modelIter	newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
+	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
+	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
 
 	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes.
 	void deleteModel(modelIter model);

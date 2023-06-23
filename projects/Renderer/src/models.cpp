@@ -7,12 +7,7 @@ ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size
 	: name(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
-	//vertexShader(vertexShader),
-	//fragmentShader(fragmentShader),
 	hasTransparencies(transparency),
-	//vertexData(vertexData),
-	//textures(textures),
-	//vertices(verticesInfo.vertexType),				// Done for calling the correct getAttributeDescriptions() and getBindingDescription() in createGraphicsPipeline()
 	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
 	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
 	renderPassIndex(renderPassIndex),

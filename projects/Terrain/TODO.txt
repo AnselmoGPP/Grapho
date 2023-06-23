@@ -1,6 +1,5 @@
 TODO:
-	setAxis2()
-	noPP shaders
+	Render different layers (background, scene, HUD) using different subpasses. Render reticule & axis to 3th subpass
 	Implement axis and reticule in PP
 	VertexSet::push_back <<< simplify
 	ModelData::vertexType doesn't exist

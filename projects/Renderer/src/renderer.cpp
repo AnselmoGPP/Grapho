@@ -255,24 +255,13 @@ void Renderer::createCommandBuffers()
 		
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 		
-		VkClearAttachment attachmentToClear;
-		attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
-
-		VkClearRect rectangleToClear;
-		rectangleToClear.rect.offset = { 0, 0 };
-		rectangleToClear.rect.extent = e.swapChain.extent;
-		rectangleToClear.baseArrayLayer = 0;
-		rectangleToClear.layerCount = 1;
-
 		VkDeviceSize offsets[] = { 0 };
 	
-
-		for (size_t j = 0; j < numLayers; j++)	// for each layer
+		for (size_t j = 0; j < numLayers; j++)	// for each LAYER
 		{
-			vkCmdClearAttachments(commandBuffers[i], 1, &attachmentToClear, 1, &rectangleToClear);
+			clearDepthBuffer(commandBuffers[i]);
 			
-			for (modelIter it = models[0].begin(); it != models[0].end(); it++)	// for each model (color)
+			for (modelIter it = models[0].begin(); it != models[0].end(); it++)	// for each MODEL (color)
 			{
 				if (it->layer != j || !it->activeRenders) continue;
 
@@ -281,7 +270,7 @@ void Renderer::createCommandBuffers()
 				if (it->indices.size())
 					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-				for (size_t k = 0; k < it->activeRenders; k++)	// for each rendering
+				for (size_t k = 0; k < it->activeRenders; k++)	// for each RENDERING
 				{
 					commandsCount++;
 
@@ -313,7 +302,7 @@ void Renderer::createCommandBuffers()
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start subpass
 		
-		for (modelIter it = models[1].begin(); it != models[1].end(); it++)	// for each model (post processing)
+		for (modelIter it = models[1].begin(); it != models[1].end(); it++)	// for each MODEL (post processing)
 		{
 			if (!it->activeRenders) continue;
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
@@ -569,6 +558,21 @@ void Renderer::cleanupSwapChain()
 
 	// Environment
 	e.cleanup_Images_RenderPass_SwapChain();
+}
+
+void Renderer::clearDepthBuffer(VkCommandBuffer commandBuffer)
+{
+	VkClearAttachment attachmentToClear;
+	attachmentToClear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	attachmentToClear.clearValue.depthStencil = { 1.0f, 0 };
+
+	VkClearRect rectangleToClear;
+	rectangleToClear.rect.offset = { 0, 0 };
+	rectangleToClear.rect.extent = e.swapChain.extent;
+	rectangleToClear.baseArrayLayer = 0;
+	rectangleToClear.layerCount = 1;
+
+	vkCmdClearAttachments(commandBuffer, 1, &attachmentToClear, 1, &rectangleToClear);
 }
 
 void Renderer::cleanup()

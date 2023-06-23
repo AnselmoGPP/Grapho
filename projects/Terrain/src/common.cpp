@@ -97,7 +97,10 @@ ShaderInfo shaderInfos[]
 	/*21*/ ShaderInfo(shadersDir + "f_atmosphere.frag"),
 
 	/*22*/ ShaderInfo(shadersDir + "v_noPP.vert"),
-	/*23*/ ShaderInfo(shadersDir + "f_noPP.frag")
+	/*23*/ ShaderInfo(shadersDir + "f_noPP.frag"),
+
+	/*24*/ ShaderInfo(shadersDir + "v_linePC_PP.vert"),
+	/*25*/ ShaderInfo(shadersDir + "f_linePC_PP.frag"),
 };
 
 TextureInfo texInfos[]
