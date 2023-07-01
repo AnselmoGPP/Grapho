@@ -5,16 +5,10 @@
 #include "commons.hpp"
 
 
+Sizes size;
+
+
 // Dynamic Uniform Buffer Objects -----------------------------------------------------------------
-
-size_t UniformAlignment	= 16;
-size_t vec2size			= sizeof(glm::vec2);
-size_t vec3size			= sizeof(glm::vec3);
-size_t vec4size			= sizeof(glm::vec4);
-size_t ivec4size		= sizeof(glm::ivec4);
-size_t mat4size			= sizeof(glm::mat4);
-size_t materialSize		= sizeof(Material);
-
 
 /// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, dynamicOffsets).
 UBO::UBO(VulkanEnvironment* e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment)

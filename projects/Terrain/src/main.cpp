@@ -118,8 +118,8 @@ int main(int argc, char* argv[])
 		setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
-		planetGrid.addResources(std::vector<ShaderInfo>{shaderInfos[14], shaderInfos[15]}, usedTextures);
-		//planetSeaGrid.addResources(std::vector<ShaderInfo>{shaderInfos[10], shaderInfos[11]}, usedTextures);
+		//planetGrid.addResources(std::vector<ShaderInfo>{shaderInfos[14], shaderInfos[15]}, usedTextures);
+		planetSeaGrid.addResources(std::vector<ShaderInfo>{shaderInfos[10], shaderInfos[11]}, usedTextures);
 
 		setNoPP(app);
 		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
@@ -251,70 +251,70 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
 		{
 			dest = assets["atmosphere"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * vec4size, &fov, sizeof(fov));
-			memcpy(dest + 1 * vec4size, &aspectRatio, sizeof(aspectRatio));
-			memcpy(dest + 2 * vec4size, &camPos, sizeof(camPos));
-			memcpy(dest + 3 * vec4size, &camDir, sizeof(camDir));
-			memcpy(dest + 4 * vec4size, &camUp, sizeof(camUp));
-			memcpy(dest + 5 * vec4size, &camRight, sizeof(camRight));
-			memcpy(dest + 6 * vec4size, &lights.posDir[0].direction, sizeof(glm::vec3));
-			memcpy(dest + 7 * vec4size, &clipPlanes, sizeof(glm::vec2));
-			memcpy(dest + 8 * vec4size, &screenSize, sizeof(glm::vec2));
-			memcpy(dest + 9 * vec4size, &view, sizeof(view));
-			memcpy(dest + 9 * vec4size + 1 * mat4size, &proj, sizeof(proj));
+			memcpy(dest + 0 * size.vec4, &fov, sizeof(fov));
+			memcpy(dest + 1 * size.vec4, &aspectRatio, sizeof(aspectRatio));
+			memcpy(dest + 2 * size.vec4, &camPos, sizeof(camPos));
+			memcpy(dest + 3 * size.vec4, &camDir, sizeof(camDir));
+			memcpy(dest + 4 * size.vec4, &camUp, sizeof(camUp));
+			memcpy(dest + 5 * size.vec4, &camRight, sizeof(camRight));
+			memcpy(dest + 6 * size.vec4, &lights.posDir[0].direction, sizeof(glm::vec3));
+			memcpy(dest + 7 * size.vec4, &clipPlanes, sizeof(glm::vec2));
+			memcpy(dest + 8 * size.vec4, &screenSize, sizeof(glm::vec2));
+			memcpy(dest + 9 * size.vec4, &view, sizeof(view));
+			memcpy(dest + 9 * size.vec4 + 1 * size.mat4, &proj, sizeof(proj));
 		}
 
 	if (assets.find("points") != assets.end())
 		for (i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++)	{
 			dest = assets["points"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
 	if (assets.find("axis") != assets.end())
 		for (i = 0; i < assets["axis"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["axis"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
 	if (assets.find("grid") != assets.end())
 		for (i = 0; i < assets["grid"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["grid"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)camPos.x / gridStep), gridStep * ((int)camPos.y / gridStep), 0.0f)), mat4size);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)camPos.x / gridStep), gridStep * ((int)camPos.y / gridStep), 0.0f)), size.mat4);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
 	if (assets.find("skyBox") != assets.end())
 		for (i = 0; i < assets["skyBox"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["skyBox"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(600.f, 600.f, 600.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(camPos.x, camPos.y, camPos.z)), mat4size);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(600.f, 600.f, 600.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(camPos.x, camPos.y, camPos.z)), size.mat4);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
 	if (assets.find("cottage") != assets.end())
 		for (i = 0; i < assets["cottage"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["cottage"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(pi/2, frameTime * pi/2, 0.f), glm::vec3(0.f, 0.f, 0.f)), mat4size);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(pi/2, frameTime * pi/2, 0.f), glm::vec3(0.f, 0.f, 0.f)), size.mat4);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 		
 	if (assets.find("room") != assets.end())
 		for (i = 0; i < assets["room"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["room"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["sun"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * mat4size, &sun.MM(camPos), mat4size);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 0 * size.mat4, &sun.MM(camPos), size.mat4);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 	
 	if (assets.find("sea") != assets.end())
@@ -323,16 +323,16 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["sea"]->vsDynUBO.numDynUBOs; i++) 
 		{
 			dest = assets["sea"]->vsDynUBO.getUBOptr(0);
-			memcpy(dest + 0 * mat4size, &modelMatrix(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(camPos.x, camPos.y, 0)), mat4size);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
-			memcpy(dest + 3 * mat4size, &modelMatrixForNormals(modelMatrix()), mat4size);
-			memcpy(dest + 4 * mat4size, &camPos, vec3size);
-			memcpy(dest + 4 * mat4size + vec4size, lights.posDir, lights.posDirBytes);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(camPos.x, camPos.y, 0)), size.mat4);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
+			memcpy(dest + 3 * size.mat4, &modelMatrixForNormals(modelMatrix()), size.mat4);
+			memcpy(dest + 4 * size.mat4, &camPos, size.vec3);
+			memcpy(dest + 4 * size.mat4 + size.vec4, lights.posDir, lights.posDirBytes);
 
 			dest = assets["sea"]->fsUBO.getUBOptr(0);					// << Add to dest when advancing pointer
-			memcpy(dest + 0 * vec4size, &frameTime, sizeof(frameTime));
-			memcpy(dest + 1 * vec4size, lights.props, lights.propsBytes);
+			memcpy(dest + 0 * size.vec4, &frameTime, sizeof(frameTime));
+			memcpy(dest + 1 * size.vec4, lights.props, lights.propsBytes);
 		}
 	}
 }
@@ -371,7 +371,7 @@ void setPoints(Renderer& app)
 	#endif
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
-	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
+	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
 	VerticesInfo vertexData(vt_33, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
@@ -381,11 +381,11 @@ void setPoints(Renderer& app)
 		"points",
 		1, 1, primitiveTopology::point,
 		vertexData, shaders, noTextures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 
-	memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
+	memcpy(assets["points"]->vsDynUBO.getUBOptr(0), &modelMatrix(), size.mat4);
 }
 
 void setAxis(Renderer& app)
@@ -398,7 +398,7 @@ void setAxis(Renderer& app)
 	std::vector<uint16_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);
 
-	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
+	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
 
 	VerticesInfo vertexData(vt_33, v_axis.data(), numVertex, i_axis);
@@ -408,11 +408,11 @@ void setAxis(Renderer& app)
 		"axis",
 		2, 1, primitiveTopology::line,
 		vertexData, shaders, noTextures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 
-	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), mat4size);
+	memcpy(assets["axis"]->vsDynUBO.getUBOptr(0), &modelMatrix(), size.mat4);
 }
 
 void setGrid(Renderer& app)
@@ -432,7 +432,7 @@ void setGrid(Renderer& app)
 		"grid",
 		1, 1, primitiveTopology::line,
 		vertexData, shaders, noTextures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 }
@@ -451,7 +451,7 @@ void setSkybox(Renderer& app)
 		"skyBox",
 		0, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 }
@@ -475,7 +475,7 @@ void setCottage(Renderer& app)
 		"cottage",
 		1, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 
@@ -488,7 +488,7 @@ void setCottage(Renderer& app)
 		"cottage",
 		1, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 }
@@ -511,17 +511,17 @@ void setRoom(Renderer& app)
 		"room",
 		1, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		2, 3 * mat4size,	// M, V, P
+		2, 3 * size.mat4,	// M, V, P
 		0,
 		false);
 
 	app.setRenders(assets["room"], 2);	// TEST (before render loop): setRenders
 	app.setRenders(assets["room"], 3);	// TEST(in render loop) : setRenders(out of range)
 
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -pi/2), glm::vec3(2030.f, 0.f, 0.f)), mat4size);
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3(0.f, 2030.f, 0.f)), mat4size);
-	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi/2), glm::vec3(0.f, 0.f, 2030.f)), mat4size);
-	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi), glm::vec3(30.f, -50.f, 3.f)), mat4size);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(0), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, -pi/2), glm::vec3(2030.f, 0.f, 0.f)), size.mat4);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(1), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,   0.f), glm::vec3(0.f, 2030.f, 0.f)), size.mat4);
+	memcpy(assets["room"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi/2), glm::vec3(0.f, 0.f, 2030.f)), size.mat4);
+	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi), glm::vec3(30.f, -50.f, 3.f)), size.mat4);
 }
 
 void setSea(Renderer& app)
@@ -543,7 +543,7 @@ void setSea(Renderer& app)
 	//std::vector<VertexPT> v_sea;
 	//std::vector<uint16_t> i_sea;
 	//size_t numVertex = getPlane(v_sea, i_sea, 2000.f, 2000.f, 20.f);
-	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
+	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_sea, i_sea);
 
 	VerticesInfo vertexData(vt_33, v_sea, 4, i_sea);
@@ -554,8 +554,8 @@ void setSea(Renderer& app)
 		"plainSea",
 		1, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 4 * mat4size + vec4size + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
-		vec4size + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
+		1, 4 * size.mat4 + size.vec4 + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
+		size.vec4 + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
 		true);
 }
 
@@ -606,7 +606,7 @@ void setSun(Renderer& app)
 		"sun",
 		0, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 3 * mat4size,	// M, V, P
+		1, 3 * size.mat4,	// M, V, P
 		0,
 		true);
 }
@@ -629,7 +629,7 @@ void setReticule(Renderer& app)
 		"reticule",
 		2, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, vec4size,				// aspect ratio (float)
+		1, size.vec4,				// aspect ratio (float)
 		0,
 		true);
 }
@@ -644,10 +644,10 @@ void setAtmosphere(Renderer& app)
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(1.f, 0.5, v_quad, i_quad);
 
-	OpticalDepthTable optDepth(10, 1400, 2450, 5, pi / 100, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	OpticalDepthTable optDepth(10, 1400, 2450, 30, pi / 20, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
 	TextureInfo texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-	DensityVector density(1400, 2450, 5, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	DensityVector density(1400, 2450, 30, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
 	TextureInfo texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	VerticesInfo vertexData(vt_32, v_quad, 4, i_quad);
@@ -658,7 +658,7 @@ void setAtmosphere(Renderer& app)
 		"atmosphere",
 		2, 1, primitiveTopology::triangle,
 		vertexData, shaders, textures,
-		1, 2 * mat4size + 8 * vec4size,
+		1, 2 * size.mat4 + 8 * size.vec4,
 		0,
 		false,
 		1);

@@ -38,7 +38,7 @@ void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& t
     // <<< Compute terrain and render here. No need to store vertices, indices or VertexInfo in Chunk object.
 
     vertexData = new VerticesInfo(
-        VertexType({ vec3size, vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
+        VertexType({ size.vec3, size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
         vertex.data(), 
         numHorVertex * numVertVertex, 
         indices ? *indices : this->indices);
@@ -47,7 +47,7 @@ void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& t
         "chunk",
         1, 1, primitiveTopology::triangle,
         *vertexData, shaders, textures,
-        1, 4 * mat4size + 3 * vec4size + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
+        1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
         numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)
         transparency);
 
@@ -55,14 +55,14 @@ void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& t
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         dest = model->vsDynUBO.getUBOptr(i);
-        memcpy(dest, &modelMatrix(), mat4size);
-        dest += mat4size;
+        memcpy(dest, &modelMatrix(), size.mat4);
+        dest += size.mat4;
         //memcpy(dest, &view, mat4size);
-        dest += mat4size;
+        dest += size.mat4;
         //memcpy(dest, &proj, mat4size);
-        dest += mat4size;
-        memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
-        dest += mat4size;
+        dest += size.mat4;
+        memcpy(dest, &modelMatrixForNormals(modelMatrix()), size.mat4);
+        dest += size.mat4;
         //memcpy(dest, &camPos, vec3size);
         //dest += vec4size;
         //memcpy(dest, &time, sizeof(float));
@@ -89,19 +89,19 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
     {
         dest = model->vsDynUBO.getUBOptr(i);
         //memcpy(dest, &modelMatrix(), mat4size);
-        dest += mat4size;
-        memcpy(dest, &view, mat4size);
-        dest += mat4size;
-        memcpy(dest, &proj, mat4size);
-        dest += mat4size;
+        dest += size.mat4;
+        memcpy(dest, &view, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &proj, size.mat4);
+        dest += size.mat4;
         //memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
-        dest += mat4size;
-        memcpy(dest, &camPos, vec3size);
-        dest += vec4size;
+        dest += size.mat4;
+        memcpy(dest, &camPos, size.vec3);
+        dest += size.vec4;
         memcpy(dest, &time, sizeof(float));
-        dest += vec4size;
-        memcpy(dest, &sideDepths, vec4size);
-        dest += vec4size;
+        dest += size.vec4;
+        memcpy(dest, &sideDepths, size.vec4);
+        dest += size.vec4;
         memcpy(dest, lights.posDir, lights.posDirBytes);
         //dest += lights.posDirBytes;
     }

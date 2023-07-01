@@ -76,8 +76,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (size_t i = 0; i < assets["points"]->vsDynUBO.numDynUBOs; i++) 
 		{
 			uint8_t* dest = assets["points"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 1 * mat4size, &view, mat4size);
-			memcpy(dest + 2 * mat4size, &proj, mat4size);
+			memcpy(dest + 1 * size.mat4, &view, size.mat4);
+			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 }
 

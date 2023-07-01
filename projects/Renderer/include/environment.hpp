@@ -45,9 +45,9 @@ struct Image
 	Image();
 	void destroy(VkDevice device);
 
-	VkImage			image;
-	VkDeviceMemory	memory;
-	VkImageView		view;
+	VkImage			image;		//!< Image object
+	VkDeviceMemory	memory;		//!< Device memory object
+	VkImageView		view;		//!< References a part of the image to be used (subset of its pixels). Required for being able to access it.
 	VkSampler		sampler;	//!< Images are accessed through image views rather than directly
 };
 
@@ -187,6 +187,10 @@ private:
 	void createRenderPass_MS_PP();
 	void createImageResources_MS_PP();
 	void createFramebuffers_MS_PP();
+
+	void createRenderPass_2x2();
+	void createImageResources_2x2();
+	void createFramebuffers_2x2();
 };
 
 #endif

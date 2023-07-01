@@ -1,9 +1,17 @@
 TODO:
-	Render different layers (background, scene, HUD) using different subpasses. Render reticule & axis to 3th subpass
-	Implement axis and reticule in PP
+	Redefine renderpass (Implement axis and reticule in PP). 
+		Render different layers (background, scene, HUD) using different subpasses. Render reticule & axis to 3th subpass
+		Atmosphere computed in subpass (not new renderpass) 
+		Single sample for background (1st render pass)
+		Single sample for PP performed in subpass?
+		Single sample for all PP
+	
+	Diffuse sea foam with distance
 	VertexSet::push_back <<< simplify
 	ModelData::vertexType doesn't exist
-	Pass shaders loading to DataLoader > Load data on worker > Search on Renderer::shaders
+	Size type
+	ModelSet doesn't work if there is no dynUBO_vs
+
 	Delete Dataloader object when already used for passing data / Same for vertex data stored in ModelData object.
 	Delete vertices and indices buffers after uploading data.
 	Take out from memory data stored from the beginnning (cube vertices, etc)
@@ -12,15 +20,10 @@ TODO:
 	Pass complete model + additional textures + others (vertices, indices, textures, shaders)
 	Link dll library (assimp)
 	Use VertexSet::reserve in VertexSet::push_back and in DataFromFile2
-	Load model
-		Do it on worker
-		Load vertex & textures
-		Notes: Vertex data comes from in-code (computed or not) and file
-		DataFromUser_notComputed
+	Load model from callback
 	Modify worker mechanism: Data is uploaded in models. Each model loads texture first, and vertex later.
 	Use height map to get sea vertex positions (texture passed to vertex shader)
 	Load texture files on worker
-	Worker
 	Solve <<<, LOOK, ERROR (and MVS errors/warnings)
 	> typedef vec3size and co.
 	Waves:
