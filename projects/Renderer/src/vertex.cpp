@@ -126,14 +126,8 @@ size_t VertexSet::getNumVertex() const { return numVertex; }
 void VertexSet::push_back(const void* element)
 {
 	// Resize buffer if required
-	if (numVertex == capacity)// reserve(2 * capacity);
-	{
-		capacity *= 2;
-		char* temp = new char[capacity * Vtype.vertexSize];
-		std::memcpy(temp, buffer, totalBytes());
-		delete[] buffer;
-		buffer = temp;
-	}
+	if (numVertex == capacity)
+		reserve(2 * capacity);
 
 	std::memcpy(&buffer[totalBytes()], (char*)element, Vtype.vertexSize);
 	numVertex++;

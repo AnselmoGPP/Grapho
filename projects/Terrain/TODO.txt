@@ -7,9 +7,7 @@ TODO:
 		Single sample for all PP
 	
 	Diffuse sea foam with distance
-	VertexSet::push_back <<< simplify
-	ModelData::vertexType doesn't exist
-	Size type
+	ModelData::vertexType doesn't exist / Use modules in VerticesInfo and so / Keep data in VerticesInfo and so and delete it when not necessary (use modules).
 	ModelSet doesn't work if there is no dynUBO_vs
 
 	Delete Dataloader object when already used for passing data / Same for vertex data stored in ModelData object.

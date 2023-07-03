@@ -31,10 +31,10 @@ typedef std::list<Texture>::iterator texIter;
 extern std::vector<TextureInfo> noTextures;		//!< Vector with 0 TextureInfo objects
 extern std::vector<uint16_t   > noIndices;			//!< Vector with 0 indices
 
+struct ResourcesInfo;
+
 
 // VERTICES --------------------------------------------------------
-
-struct ResourcesInfo;
 
 class VerticesInfo
 {
