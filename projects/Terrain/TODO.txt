@@ -1,4 +1,13 @@
 TODO:
+	Delete deprecated classes: DataLoader...
+	ModelData's flags fullyConstructed and inModels are necessary? Are they initialized in the correct places? 
+	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
+	Mutex for ShaderInfo::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
+	After moving buffers to VerticesInfo, ModelData::loadResources can be replaced by ResourcesInfo::loadResources
+	loadInfo->vertices.vertices.Vtype.getAttributeDescriptions();
+	^         ^
+	loader?   vertexData?
+
 	Redefine renderpass (Implement axis and reticule in PP). 
 		Render different layers (background, scene, HUD) using different subpasses. Render reticule & axis to 3th subpass
 		Atmosphere computed in subpass (not new renderpass) 

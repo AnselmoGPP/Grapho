@@ -117,7 +117,7 @@ void LoadingWorker::loadingThread()
 			std::cout << "Delete resources (" << shaders.size() << ", " << textures.size() << ')' << std::endl;
 		#endif
 
-		// DELETE UNUSED RESOURCES
+		// DELETE UNUSED RESOURCES <<< This should be done in main thread, not in loading thread because it could be redundant in an scenario of multiple loading threads.
 		if (modelsDeleted)
 		{
 			const std::lock_guard<std::mutex> lock(mutResources);
@@ -226,7 +226,7 @@ void Renderer::createCommandBuffers()
 
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-
+	
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -245,18 +245,18 @@ void Renderer::createCommandBuffers()
 		renderPassInfo.renderPass = e.renderPass[0];
 		renderPassInfo.framebuffer = e.framebuffers[i][0];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = e.swapChain.extent;					// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-		std::array<VkClearValue, 3> clearValues{};								// The order of clearValues should be identical to the order of your attachments.
-		clearValues[0].color = backgroundColor;									// Resolve color buffer. Background color (alpha = 1 means 100% opacity)
-		clearValues[1].depthStencil = { 1.0f, 0 };								// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
-		clearValues[2].color = backgroundColor;									// MSAA color buffer.
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-		renderPassInfo.pClearValues = clearValues.data();						// ... used as load operation for the color attachment and depth buffer.
+		renderPassInfo.renderArea.extent = e.swapChain.extent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+		std::array<VkClearValue, 3> clearValues{};									// The order of clearValues should be identical to the order of your attachments.
+		clearValues[0].color = backgroundColor;										// Resolve color buffer. Background color (alpha = 1 means 100% opacity)
+		clearValues[1].depthStencil = { 1.0f, 0 };									// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+		clearValues[2].color = backgroundColor;										// MSAA color buffer.
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+		renderPassInfo.pClearValues = clearValues.data();							// ... used as load operation for the color attachment and depth buffer.
 		
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 		
 		VkDeviceSize offsets[] = { 0 };
-	
+		
 		for (size_t j = 0; j < numLayers; j++)	// for each LAYER
 		{
 			clearDepthBuffer(commandBuffers[i]);
@@ -264,11 +264,12 @@ void Renderer::createCommandBuffers()
 			for (modelIter it = models[0].begin(); it != models[0].end(); it++)	// for each MODEL (color)
 			{
 				if (it->layer != j || !it->activeRenders) continue;
-
+				
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
-				if (it->indices.size())
-					vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
+
+				if (it->vert.indexCount)	// has indices (it doesn't if data represents points)
+					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 				for (size_t k = 0; k < it->activeRenders; k++)	// for each RENDERING
 				{
@@ -279,10 +280,10 @@ void Renderer::createCommandBuffers()
 					else
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 
-					if (it->indices.size())	// has indices
-						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+					if (it->vert.indexCount)		// has indices
+						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
 					else
-						vkCmdDraw(commandBuffers[i], it->vertices.size(), 1, 0, 0);
+						vkCmdDraw(commandBuffers[i], it->vert.vertexCount, 1, 0, 0);
 				}
 			}
 		}
@@ -306,18 +307,18 @@ void Renderer::createCommandBuffers()
 		{
 			if (!it->activeRenders) continue;
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vertexBuffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], it->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[0]);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
 		}
-
+		
 		vkCmdEndRenderPass(commandBuffers[i]);
 		
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to record command buffer!");
 	}
-
+	
 	updateCommandBuffer = false;
 
 	#ifdef DEBUG_RENDERER
@@ -602,8 +603,8 @@ void Renderer::cleanup()
 
 	models[0].clear();
 	models[1].clear();
-
 	modelsToLoad.clear();
+	modelsToDelete.clear();
 
 	textures.clear();
 

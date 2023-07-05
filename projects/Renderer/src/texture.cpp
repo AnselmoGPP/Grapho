@@ -26,52 +26,48 @@ ResourcesInfo::ResourcesInfo(VerticesInfo& verticesInfo, std::vector<ShaderInfo>
 
 // VERTICES --------------------------------------------------------
 
-VerticesInfo::VerticesInfo(const VertexType& vertexType, std::string& filePath)
-	: vertexType(vertexType), path(filePath) { }
+VerticesLoader::VerticesLoader(const VertexType& vertexType) : vertexType(vertexType) { }
 
-VerticesInfo::VerticesInfo(const VertexType& vertexType, const void* vertexData, size_t vertexCount, std::vector<uint16_t>& indices)
-	: vertexType(vertexType), indices(indices), vertexCount(vertexCount) 
-{ 
-	size_t bytesCount = vertexCount * vertexType.vertexSize;
-	this->vertexData.resize(bytesCount);
-	std::copy((char*)vertexData, (char*)vertexData + bytesCount, this->vertexData.data());
-}
 
-void VerticesInfo::loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo)
+VerticesFromBuffer::VerticesFromBuffer(const VertexType& vertexType, const void* verticesData, size_t vertexCount, const std::vector<uint16_t>& indices, VertexSet& destVertices, std::vector<uint16_t>& destIndices)
+	: VerticesLoader(vertexType)
 {
-	#ifdef DEBUG_RESOURCES
-		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
-	#endif
-
-	destVertices = &vertices;
-	destIndices = &indices;
-	destResources = resourcesInfo;
-
-	if (vertexData.size())	// from buffer
-	{
-		destVertices->reset(vertexType, vertexCount, vertexData.data());
-		*destIndices = this->indices;
-	}
-	else if (path.size())	// from file
-	{
-		destVertices->reset(vertexType);
-
-		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
-
-		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-		{
-			std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
-			return;
-		}
-
-		processNode(scene->mRootNode, scene);
-	}
-	else 
-		std::cout << "Vertices could not be loaded" << std::endl;
+	destVertices.reset(vertexType, vertexCount, verticesData);
+	destIndices = indices;
 }
 
-void VerticesInfo::processNode(aiNode* node, const aiScene* scene)
+void VerticesFromBuffer::loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo)
+{
+	// Data was already loaded in the VerticesFromBuffer's constructor
+}
+
+VerticesLoader* VerticesFromBuffer::clone() { return new VerticesFromBuffer(*this); }
+
+
+VerticesFromFile::VerticesFromFile(const VertexType& vertexType, std::string& filePath)
+	: VerticesLoader(vertexType), path(filePath) { }
+
+void VerticesFromFile::loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo)
+{
+	this->vertices = &vertices;
+	this->indices = &indices;
+	this->resources = resourcesInfo;
+
+	vertices.reset(vertexType);
+
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	{
+		std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+		return;
+	}
+
+	processNode(scene->mRootNode, scene);
+}
+
+void VerticesFromFile::processNode(aiNode* node, const aiScene* scene)
 {
 	// Process all node's meshes
 	aiMesh* mesh;
@@ -89,7 +85,7 @@ void VerticesInfo::processNode(aiNode* node, const aiScene* scene)
 		processNode(node->mChildren[i], scene);
 }
 
-void VerticesInfo::processMesh(aiMesh* mesh, const aiScene* scene)
+void VerticesFromFile::processMesh(aiMesh* mesh, const aiScene* scene)
 {
 	//<<< destVertices->reserve(destVertices->size() + mesh->mNumVertices);
 	float* vertex = new float[vertexType.vertexSize / sizeof(float)];	// [3 + 3 + 2]
@@ -117,7 +113,7 @@ void VerticesInfo::processMesh(aiMesh* mesh, const aiScene* scene)
 		}
 		else { vertex[6] = 0.f; vertex[7] = 0.f; };
 
-		destVertices->push_back(vertex);
+		vertices->push_back(vertex);	// Get VERTICES
 	}
 
 	delete[] vertex;
@@ -128,9 +124,9 @@ void VerticesInfo::processMesh(aiMesh* mesh, const aiScene* scene)
 	{
 		face = mesh->mFaces[i];
 		for (j = 0; j < face.mNumIndices; j++)
-			destIndices->push_back(face.mIndices[j]);
+			indices->push_back(face.mIndices[j]);	// Get INDICES
 	}
-	
+
 	// Process material
 	if (mesh->mMaterialIndex >= 0)
 	{
@@ -138,14 +134,54 @@ void VerticesInfo::processMesh(aiMesh* mesh, const aiScene* scene)
 		aiTextureType types[] = { aiTextureType_DIFFUSE, aiTextureType_SPECULAR };
 		aiString fileName;
 
-		for(unsigned i = 0; i < 2; i++)
+		for (unsigned i = 0; i < 2; i++)
 			for (unsigned j = 0; j < material->GetTextureCount(types[i]); j++)
 			{
-				material->GetTexture(types[i], j, &fileName);		// get texture file location
-				destResources->textures.push_back(TextureInfo(fileName.C_Str()));
+				material->GetTexture(types[i], j, &fileName);					// get texture file location
+				resources->textures.push_back(TextureInfo(fileName.C_Str()));	// Get RESOURCES
 				fileName.Clear();
 			}
 	}
+}
+
+VerticesLoader* VerticesFromFile::clone() { return new VerticesFromFile(*this); }
+
+
+VerticesInfo::VerticesInfo(const VertexType& vertexType, std::string& filePath)
+	: loader(nullptr)
+{ 
+	loader = new VerticesFromFile(vertexType, filePath);
+}
+
+VerticesInfo::VerticesInfo(const VertexType& vertexType, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices)
+	: loader(nullptr)
+{ 
+	loader = new VerticesFromBuffer(vertexType, verticesData, vertexCount, indices, this->vertices, this->indices);
+
+	//size_t bytesCount = vertexCount * vertexType.vertexSize;
+	//this->vertexData.resize(bytesCount);
+	//std::copy((char*)vertexData, (char*)vertexData + bytesCount, this->vertexData.data());
+}
+
+VerticesInfo::VerticesInfo(const VerticesInfo& obj)
+{
+	vertices = obj.vertices;
+	indices = obj.indices;
+
+	if (obj.loader)
+		loader = obj.loader->clone();
+	else 
+		loader = nullptr;
+}
+
+VerticesInfo::~VerticesInfo() { if(loader) delete loader; }
+
+void VerticesInfo::loadVertices(ResourcesInfo* resourcesInfo)
+{
+	#ifdef DEBUG_RESOURCES
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+	loader->loadVertices(vertices, indices, resourcesInfo);
 }
 
 

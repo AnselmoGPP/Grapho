@@ -36,29 +36,74 @@ struct ResourcesInfo;
 
 // VERTICES --------------------------------------------------------
 
-class VerticesInfo
+class VerticesLoader
+{
+public:
+	VerticesLoader(const VertexType& vertexType);
+	virtual ~VerticesLoader() { };
+
+	virtual void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) = 0;
+	virtual VerticesLoader* clone() = 0;
+
+	const VertexType vertexType;
+};
+
+class VerticesFromBuffer : public VerticesLoader
+{
+	//size_t vertexCount;
+
+public:
+	VerticesFromBuffer(const VertexType& vertexType, const void* verticesData, size_t vertexCount, const std::vector<uint16_t>& indices, VertexSet& destVertices, std::vector<uint16_t>& destIndices);
+
+	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) override;
+	VerticesLoader* clone() override;
+};
+
+class VerticesFromFile : public VerticesLoader
 {
 	std::string path;
 
-	VertexSet* destVertices;
-	std::vector<uint16_t>* destIndices;
-	ResourcesInfo* destResources;
-
-	std::vector<char> vertexData;
-	std::vector<uint16_t> indices;
+	VertexSet* vertices;
+	std::vector<uint16_t>* indices;
+	ResourcesInfo* resources;
 
 	void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
 	void processMesh(aiMesh* mesh, const aiScene* scene);
 
 public:
-	VerticesInfo(const VertexType& vertexType, std::string& filePath);	// From file <<< Can vertexType be taken from file?
-	VerticesInfo(const VertexType& vertexType, const void* vertexData, size_t vertexCount, std::vector<uint16_t>& indices);	// from buffers
+	VerticesFromFile(const VertexType& vertexType, std::string& filePath);
 
-	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo);
+	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) override;
+	VerticesLoader* clone() override;
+};
 
-	//const std::string id;
-	const VertexType vertexType;
-	size_t vertexCount;
+
+class VerticesInfo
+{
+	//std::string path;
+
+	//std::vector<char> vertexData;
+	//std::vector<uint16_t> indices;
+
+	//void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
+	//void processMesh(aiMesh* mesh, const aiScene* scene);
+
+public:
+	VerticesInfo(const VertexType& vertexType, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
+	VerticesInfo(const VertexType& vertexType, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< from buffers
+	VerticesInfo(const VerticesInfo& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
+	~VerticesInfo();
+
+	VertexSet vertices;
+	std::vector<uint16_t> indices;
+
+	VerticesLoader* loader;
+
+	void loadVertices(ResourcesInfo* resourcesInfo);
+
+	////const std::string id;
+	//const VertexType vertexType;
+	//size_t vertexCount;
 };
 
 
@@ -178,6 +223,8 @@ struct ResourcesInfo
 	VerticesInfo vertices;
 	std::vector<ShaderInfo> shaders;
 	std::vector<TextureInfo> textures;
+
+
 };
 
 

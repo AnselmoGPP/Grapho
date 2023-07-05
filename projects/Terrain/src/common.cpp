@@ -61,6 +61,7 @@ PlanetFPcam camera_4(
 	1000,							// radius
 	0.f, 90.f );					// latitude & longitude
 
+
 ShaderInfo shaderInfos[]
 {
 	/*00*/ ShaderInfo(shadersDir + "v_pointPC.vert"),
