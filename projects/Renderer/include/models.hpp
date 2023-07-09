@@ -16,8 +16,7 @@
 
 #include "vertex.hpp"
 #include "ubo.hpp"
-#include "texture.hpp"
-#include "loaddata.hpp"
+#include "importer.hpp"
 #include "commons.hpp"
 
 //#define DEBUG_MODELS
@@ -76,12 +75,12 @@ class ModelData
 	/// Clear descriptor sets, vertex and indices. Called by destructor.
 	void cleanup();
 
-	/// Delete ResourcesInfo object (no longer required after uploading resources to Vulkan)
+	/// Delete ResourcesLoader object (no longer required after uploading resources to Vulkan)
 	void deleteLoader();
 
 public:
 	/// Construct an object for rendering
-	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
+	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 
@@ -111,7 +110,7 @@ public:
 	size_t						 layer;					//!< Layer where this model will be drawn (Painter's algorithm).
 	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
-	ResourcesInfo* loadInfo;							//!< Info used for loading resources (vertices, indices, shaders, textures). When resources are loaded, this is nullptr.
+	ResourcesLoader* resLoader;							//!< Info used for loading resources (vertices, indices, shaders, textures). When resources are loaded, this is set to nullptr.
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
 	std::string name;									//!< For debugging purposes.

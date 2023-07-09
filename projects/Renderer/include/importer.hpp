@@ -2,19 +2,27 @@
 #define TEXTURE_HPP
 
 #include <list>
+//#include <unordered_map>			// For storing unique vertices from the model
 
 #include <glm/glm.hpp>
 
-#include "shaderc/shaderc.hpp"		// Compile GLSL code to SPIR-V
+//#define TINYOBJLOADER_IMPLEMENTATION	// Import OBJ models
+//#include "tiny_obj_loader.h"
 
-#include "assimp/Importer.hpp"		// Import textures
+#include "assimp/Importer.hpp"			// Import models (vertices)
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
+
+//#define STB_IMAGE_IMPLEMENTATION		// Import textures
+//#include "stb_image.h"
+
+#include "shaderc/shaderc.hpp"			// Compile shaders (GLSL code to SPIR-V)
 
 #include "environment.hpp"
 #include "vertex.hpp"
 
 //#define DEBUG_RESOURCES
+
 
 extern VertexType vt_32;					//!< (Vert, UV)
 extern VertexType vt_33;					//!< (Vert, Color)
@@ -23,15 +31,15 @@ extern VertexType vt_333;					//!< (Vert, Normal, vertexFixes)
 
 class Shader;
 class Texture;
-class TextureInfo;
+class TextureLoader;
 
 typedef std::list<Shader >::iterator shaderIter;
 typedef std::list<Texture>::iterator texIter;
 
-extern std::vector<TextureInfo> noTextures;		//!< Vector with 0 TextureInfo objects
+extern std::vector<TextureLoader> noTextures;		//!< Vector with 0 TextureLoader objects
 extern std::vector<uint16_t   > noIndices;			//!< Vector with 0 indices
 
-struct ResourcesInfo;
+struct ResourcesLoader;
 
 
 // VERTICES --------------------------------------------------------
@@ -51,12 +59,13 @@ struct VertexData
 };
 
 
-class VerticesLoaderModule
+/// Vertices loader module used in VerticesLoader for loading vertices from any source.
+class VLModule
 {
 protected:
 	const size_t vertexSize;
 
-	virtual void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) = 0;					//!< Get raw vertex data (vertices & indices)
+	virtual void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesLoader& destResources) = 0;					//!< Get raw vertex data (vertices & indices)
 	void createBuffers(VertexData& result, const VertexSet& rawVertices, const std::vector<uint16_t>& rawIndices, VulkanEnvironment* e);	//!< Upload raw vertex data to Vulkan (i.e., create Vulkan buffers)
 
 	void createVertexBuffer(const VertexSet& rawVertices, VertexData& result, VulkanEnvironment* e);									//!< Vertex buffer creation.
@@ -64,49 +73,50 @@ protected:
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VulkanEnvironment* e);
 
 public:
-	VerticesLoaderModule(size_t vertexSize);
-	virtual ~VerticesLoaderModule() { };
+	VLModule(size_t vertexSize);
+	virtual ~VLModule() { };
 
-	void loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e);
-	virtual VerticesLoaderModule* clone() = 0;
+	void loadVertices(VertexData& result, ResourcesLoader* resources, VulkanEnvironment* e);
+	virtual VLModule* clone() = 0;
 };
 
-class VLM_fromBuffer : public VerticesLoaderModule
+class VLM_fromBuffer : public VLModule
 {
 	VertexSet rawVertices;
 	std::vector<uint16_t> rawIndices;
 
-	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) override;
+	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesLoader& destResources) override;
 
 public:
 	VLM_fromBuffer(const void* verticesData, size_t vertexSize, size_t vertexCount, const std::vector<uint16_t>& indices);
 
-	VerticesLoaderModule* clone() override;
+	VLModule* clone() override;
 };
 
-class VLM_fromFile : public VerticesLoaderModule
+class VLM_fromFile : public VLModule
 {
 	std::string path;
 
 	VertexSet* vertices;
 	std::vector<uint16_t>* indices;
-	ResourcesInfo* resources;
+	ResourcesLoader* resources;
 
 	void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
 	void processMesh(aiMesh* mesh, const aiScene* scene);
 
-	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) override;
+	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesLoader& destResources) override;
 
 public:
 	VLM_fromFile(size_t vertexSize, std::string& filePath);
 
-	VerticesLoaderModule* clone() override;
+	VLModule* clone() override;
 };
 
 
+/// Wrapper around VL_module for loading vertices from any source.
 class VerticesLoader
 {
-	VerticesLoaderModule* loader;
+	VLModule* loader;
 
 public:
 	VerticesLoader(size_t vertexSize, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
@@ -114,7 +124,7 @@ public:
 	VerticesLoader(const VerticesLoader& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
 	~VerticesLoader();
 
-	void loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e);
+	void loadVertices(VertexData& result, ResourcesLoader* resources, VulkanEnvironment* e);
 };
 
 
@@ -135,16 +145,16 @@ public:
 
 typedef std::list<Shader>::iterator shaderIter;
 
-class ShaderInfo
+class ShaderLoader
 {
 	std::string filePath;
 
 	std::vector<char> glslData;	// <<< pointer instead?
 
 public:
-	ShaderInfo(std::string& filePath);
-	ShaderInfo(const std::string& id, std::string& text);
-	ShaderInfo& operator=(const ShaderInfo& obj);
+	ShaderLoader(std::string& filePath);
+	ShaderLoader(const std::string& id, std::string& text);
+	ShaderLoader& operator=(const ShaderLoader& obj);
 
 	std::list<Shader>::iterator loadShader(VulkanEnvironment& e, std::list<Shader>& loadedShaders);
 
@@ -195,7 +205,7 @@ public:
 };
 
 // Used for loading textures to Vulkan. You get Texture objects.
-class TextureInfo
+class TextureLoader
 {
 	std::string filePath;
 
@@ -213,10 +223,10 @@ class TextureInfo
 	uint32_t mipLevels;				//!< Number of levels (mipmaps)
 
 public:
-	TextureInfo(std::string filePath, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	TextureInfo(unsigned char* pixels, int texWidth, int texHeight, std::string id, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	TextureInfo& operator=(const TextureInfo& obj);
-	~TextureInfo();
+	TextureLoader(std::string filePath, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureLoader(unsigned char* pixels, int texWidth, int texHeight, std::string id, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureLoader& operator=(const TextureLoader& obj);
+	~TextureLoader();
 
 	std::list<Texture>::iterator loadTexture(VulkanEnvironment& e, std::list<Texture>& loadedTextures);
 
@@ -229,14 +239,14 @@ public:
 // RESOURCES --------------------------------------------------------
 
 // Encapsulates data required for loading resources (vertices, indices, shaders, textures) and loading methods.
-struct ResourcesInfo
+struct ResourcesLoader
 {
-	ResourcesInfo(VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, VulkanEnvironment* e);
+	ResourcesLoader(VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, VulkanEnvironment* e);
 
 	VulkanEnvironment* e;
 	VerticesLoader vertices;
-	std::vector<ShaderInfo> shaders;
-	std::vector<TextureInfo> textures;
+	std::vector<ShaderLoader> shaders;
+	std::vector<TextureLoader> textures;
 
 	/// Load resources (vertices, indices, shaders, textures) and upload them to Vulkan. If a shader or texture exists in Renderer, it just takes the iterator.
 	void loadResources(VertexData& destVertexData, std::vector<shaderIter>& destShaders, std::list<Shader>& loadedShaders, std::vector<texIter>& destTextures, std::list<Texture>& loadedTextures, std::mutex& mutResources);
@@ -244,63 +254,6 @@ struct ResourcesInfo
 
 
 // OTHERS --------------------------------------------------------
-
-class Texture0
-{
-	std::string path;									///< Path to the texture file.
-	VulkanEnvironment* e;								///< Pointer, instead of a reference, because it is not defined at object creation but when calling loadAndCreateTexture().
-	VkFormat imageFormat;								//!< VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_R32_SFLOAT, ...
-	VkSamplerAddressMode addressMode;					//!< VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT, ...
-	//VkFilter magMinFilter;							//!< VK_FILTER_LINEAR, VK_FILTER_NEAREST, ...
-
-	void createTextureImage();							///< Load an image and upload it into a Vulkan object. Process: Load a texture > Copy it to a buffer > Copy it to an image > Cleanup the buffer.
-	void createTextureImageView();						///< Create an image view for the texture (images are accessed through image views rather than directly).
-	void createTextureSampler();						///< Create a sampler for the textures (it applies filtering and transformations).
-
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);							///< Used in createTextureImage() for copying the staging buffer (VkBuffer) to the texture image (VkImage). 
-	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);	///< Generate mipmaps
-
-	// Temporals for loading data from code
-	int texWidth, texHeight, texChannels;
-	unsigned char* pixels;					//!< stbi_uc* pixels
-
-public:
-	Texture0(std::string path, VkFormat imageFormat, VkSamplerAddressMode addressMode);										//!< Construction from a texture file
-	Texture0(unsigned char* pixels, int texWidth, int texHeight, VkFormat imageFormat, VkSamplerAddressMode addressMode);	//!< Construction from in-code data
-	//Texture(const Texture& obj);			//!< Copy constructor.
-	~Texture0();
-
-	void loadAndCreateTexture(VulkanEnvironment* e);	//!< Load image and create the VkImage, VkImageView and VkSampler. Used in Renderer::loadingThread()
-
-	bool			fullyConstructed;		//!< Flags if this object has been fully constructed (i.e. has a texture loaded into Vulkan).
-	uint32_t		mipLevels;				//!< Number of levels (mipmaps)
-	VkImage			textureImage;			//!< Opaque handle to an image object.
-	VkDeviceMemory	textureImageMemory;		//!< Opaque handle to a device memory object.
-	VkImageView		textureImageView;		//!< Image view for the texture image (images are accessed through image views rather than directly).
-	VkSampler		textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
-};
-
-/**
-	@struct PBRmaterial
-	@brief Set of texture maps used for PBR (Physically Based Rendering). Passed to shader as textures.
-
-	Commonly used maps:
-	<ul>
-		<li>Diffuse/Albedo </li>
-		<li>Specular/Roughness/Smoothness(inverted) </li>
-		<li>Shininess (Metallic?) </li>
-		<li>Normals </li>
-		<li>Ambient occlusion </li>
-		<li>Height maps (for geometry shader?) </li>
-		<li>Emissive </li>
-		<li>Subsurface scattering </li>
-	</ul>
-*/
-struct PBRmaterial
-{
-	std::vector<texIter> texMaps;
-};
-
 
 /// Precompute all optical depth values through the atmosphere. Useful for creating a lookup table for atmosphere rendering.
 class OpticalDepthTable

@@ -124,7 +124,7 @@ public:
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
-	void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
+	void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
@@ -224,9 +224,9 @@ public:
 	LightSet* lights;
 	float time;
 
-	//void addTextures(const std::vector<TextureInfo>& textures);							//!< Add textures ids of already loaded textures.
-	//void addShaders(const ShaderInfo& vertexShader, const ShaderInfo& fragmentShader);	//!< Add shaders ids of already loaded shaders.
-	void addResources(const std::vector<ShaderInfo>& shadersInfo, const std::vector<TextureInfo>& texturesInfo);		//!< Add textures and shaders info
+	//void addTextures(const std::vector<TextureLoader>& textures);							//!< Add textures ids of already loaded textures.
+	//void addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader);	//!< Add shaders ids of already loaded shaders.
+	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
 	unsigned getTotalNodes() { return chunks.size(); }
@@ -239,8 +239,8 @@ protected:
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;
 	Renderer* renderer;
 	std::vector<uint16_t> indices;
-	std::vector<ShaderInfo> shaders;
-	std::vector<TextureInfo> textures;
+	std::vector<ShaderLoader> shaders;
+	std::vector<TextureLoader> textures;
 
 	unsigned activeTree;
 	unsigned loadedChunks;
@@ -341,7 +341,7 @@ struct Planet
 	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
-	void addResources(const std::vector<ShaderInfo>& shaders, const std::vector<TextureInfo>& textures);							//!< Add textures and shader
+	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area

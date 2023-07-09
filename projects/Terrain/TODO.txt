@@ -1,14 +1,12 @@
 TODO:
-	-Change hpp files names
-	-Change class names
+	Create ShaderLoader & TextureLoader
 	Analyze std::hash (vertex.hpp)
 	How can be noPP model be loaded at the same time as skybox? Otherwise, error could happen.
-	-Delete deprecated classes: DataLoader...
 	ModelData's flags fullyConstructed and inModels are necessary? Are they initialized in the correct places? 
 	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
-	Mutex for ShaderInfo::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
-	After moving buffers to VerticesLoader, ModelData::loadResources can be replaced by ResourcesInfo::loadResources
-	loadInfo->vertices.vertices.Vtype.getAttributeDescriptions();
+	Mutex for ShaderLoader::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
+	After moving buffers to VerticesLoader, ModelData::loadResources can be replaced by ResourcesLoader::loadResources
+	resLoader->vertices.vertices.Vtype.getAttributeDescriptions();
 	^         ^
 	loader?   vertexData?
 
@@ -76,7 +74,6 @@ TODO:
 	Automatize (add to Renderer) the rendering of one texture at the same time other texture is unrendered
 	Review command buffer creation
 	Review anisotropic filtering
-	Review DataLoader
 	Review createUniformBuffers
 	Review ModelData::fullConstruction() (i.e., union of DataLoader->loadVertex() & createVertexBuffer())
 	Review ModelData::vertex & ModelData::indices. Maybe, not required once VkBuffer is created.

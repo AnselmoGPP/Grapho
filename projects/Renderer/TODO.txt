@@ -1,5 +1,3 @@
-Finish compileShaders()
-
 Make Readme.md for knowing how to build the project
 Upload to git
 Doxygen comments

@@ -33,7 +33,7 @@ glm::vec3 Chunk::getNormal(size_t position) const
         vertex[position * numAttribs + 5] ); 
 };
 
-void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
+void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
     // <<< Compute terrain and render here. No need to store vertices, indices or VertexInfo in Chunk object.
 
@@ -635,14 +635,14 @@ DynamicGrid::~DynamicGrid()
     chunks.clear();
 }
 /*
-void DynamicGrid::addTextures(const std::vector<TextureInfo>& textures) { this->textures = textures; }
+void DynamicGrid::addTextures(const std::vector<TextureLoader>& textures) { this->textures = textures; }
 
-void DynamicGrid::addShaders(const ShaderInfo& vertexShader, const ShaderInfo& fragmentShader) 
+void DynamicGrid::addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader) 
 { 
-    this->shaders = std::vector<ShaderInfo>{ vertexShader, fragmentShader };
+    this->shaders = std::vector<ShaderLoader>{ vertexShader, fragmentShader };
 }
 */
-void DynamicGrid::addResources(const std::vector<ShaderInfo>& shadersInfo, const std::vector<TextureInfo>& texturesInfo)
+void DynamicGrid::addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo)
 {
     this->shaders = shadersInfo;
     this->textures = texturesInfo;
@@ -1134,7 +1134,7 @@ Planet::~Planet()
     delete planetGrid_nX;
 };
 
-void Planet::addResources(const std::vector<ShaderInfo>& shaders, const std::vector<TextureInfo>& textures)
+void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures)
 {
     planetGrid_pZ->addResources(shaders, textures);
     planetGrid_nZ->addResources(shaders, textures);

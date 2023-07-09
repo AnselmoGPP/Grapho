@@ -33,11 +33,10 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	src/renderer.cpp
 	src/models.cpp
 	src/vertex.cpp
-	src/texture.cpp
+	src/importer.cpp
 	src/ubo.cpp
 	src/camera.cpp
 	src/input.cpp
-	src/loaddata.cpp
 	src/timer.cpp
 	src/toolkit.cpp
 	src/physics.cpp
@@ -47,11 +46,10 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	include/environment.hpp
 	include/models.hpp
 	include/vertex.hpp
-	include/texture.hpp
+	include/importer.hpp
 	include/ubo.hpp
 	include/camera.hpp
 	include/input.hpp
-	include/loaddata.hpp
 	include/timer.hpp
 	include/toolkit.hpp
 	include/physics.hpp

@@ -119,8 +119,8 @@ int main(int argc, char* argv[])
 		setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
-		//planetGrid.addResources(std::vector<ShaderInfo>{shaderInfos[14], shaderInfos[15]}, usedTextures);
-		planetSeaGrid.addResources(std::vector<ShaderInfo>{shaderInfos[10], shaderInfos[11]}, usedTextures);
+		//planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
+		planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
 
 		setNoPP(app);
 		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
@@ -374,7 +374,7 @@ void setPoints(Renderer& app)
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
 
 	VerticesLoader vertexData(vt_33.vertexSize, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
-	std::vector<ShaderInfo> shaders{ shaderInfos[0], shaderInfos[1] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[0], ShaderLoaders[1] };
 
 	assets["points"] = app.newModel(
 		"points",
@@ -398,7 +398,7 @@ void setAxis(Renderer& app)
 	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
-	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[2], ShaderLoaders[3] };
 
 	assets["axis"] = app.newModel(
 		"axis",
@@ -422,7 +422,7 @@ void setGrid(Renderer& app)
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 100, glm::vec3(0.5, 0.5, 0.5));
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_grid.data(), numVertex, i_grid);
-	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[2], ShaderLoaders[3] };
 
 	assets["grid"] = app.newModel(
 		"grid",
@@ -440,8 +440,8 @@ void setSkybox(Renderer& app)
 	#endif
 
 	VerticesLoader vertexData( vt_32.vertexSize, v_cube.data(), 14, i_inCube);
-	std::vector<ShaderInfo> shaders{ shaderInfos[4], shaderInfos[5] };
-	std::vector<TextureInfo> textures{ texInfos[0] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[4], ShaderLoaders[5] };
+	std::vector<TextureLoader> textures{ texInfos[0] };
 
 	assets["skyBox"] = app.newModel(
 		"skyBox",
@@ -459,8 +459,8 @@ void setCottage(Renderer& app)
 	#endif
 
 	VerticesLoader vertexData(vt_332.vertexSize, vertexDir + "cottage_obj.obj");
-	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
-	std::vector<TextureInfo> textures{ texInfos[1] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[6], ShaderLoaders[7] };
+	std::vector<TextureLoader> textures{ texInfos[1] };
 
 	assets["cottage"] = app.newModel(
 		"cottage",
@@ -478,8 +478,8 @@ void setRoom(Renderer& app)
 	#endif
 
 	VerticesLoader vertexData(vt_332.vertexSize, vertexDir + "viking_room.obj");
-	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
-	std::vector<TextureInfo> textures{ texInfos[2] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[6], ShaderLoaders[7] };
+	std::vector<TextureLoader> textures{ texInfos[2] };
 
 	assets["room"] = app.newModel(
 		"room",
@@ -515,8 +515,8 @@ void setSea(Renderer& app)
 	std::vector<uint16_t> i_sea = { 0,1,3, 1,2,3 };
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_sea, 4, i_sea);
-	std::vector<ShaderInfo> shaders{ shaderInfos[8], shaderInfos[9] };
-	std::vector<TextureInfo> textures{ texInfos[26] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[8], ShaderLoaders[9] };
+	std::vector<TextureLoader> textures{ texInfos[26] };
 
 	assets["sea"] = app.newModel(
 		"plainSea",
@@ -534,7 +534,7 @@ void setChunk(Renderer& app)
 	#endif
 
 	updateChunk = true;
-	std::vector<ShaderInfo> shaders{ shaderInfos[12], shaderInfos[13] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[12], ShaderLoaders[13] };
 
 	singleChunk.computeTerrain(true);
 	singleChunk.render(shaders, usedTextures, nullptr, lights.numLights, false);
@@ -548,7 +548,7 @@ void setChunkGrid(Renderer& app)
 
 	updateChunkGrid = true;
 
-	std::vector<ShaderInfo> shaders{ shaderInfos[12], shaderInfos[13] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[12], ShaderLoaders[13] };
 
 	terrGrid.addResources(shaders, usedTextures);
 	//terrChunks.updateTree(glm::vec3(0,0,0));
@@ -565,8 +565,8 @@ void setSun(Renderer& app)
 	size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
-	std::vector<ShaderInfo> shaders{ shaderInfos[16], shaderInfos[17] };
-	std::vector<TextureInfo> textures{ texInfos[4] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[16], ShaderLoaders[17] };
+	std::vector<TextureLoader> textures{ texInfos[4] };
 
 	assets["sun"] = app.newModel(
 		"sun",
@@ -588,8 +588,8 @@ void setReticule(Renderer& app)
 	getScreenQuad(v_ret, i_ret, 0.1, 0.1);
 	
 	VerticesLoader vertexData(vt_32.vertexSize, v_ret.data(), 4, i_ret);
-	std::vector<ShaderInfo> shaders{ shaderInfos[18], shaderInfos[19] };
-	std::vector<TextureInfo> textures{ texInfos[5] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[18], ShaderLoaders[19] };
+	std::vector<TextureLoader> textures{ texInfos[5] };
 
 	assets["reticule"] = app.newModel(
 		"reticule",
@@ -611,14 +611,14 @@ void setAtmosphere(Renderer& app)
 	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
 
 	OpticalDepthTable optDepth(10, 1400, 2450, 30, pi / 20, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
-	TextureInfo texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureLoader texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	DensityVector density(1400, 2450, 30, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
-	TextureInfo texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	TextureLoader texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
-	std::vector<ShaderInfo> shaders{ shaderInfos[20], shaderInfos[21] };
-	std::vector<TextureInfo> textures{ texOD, texDV };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[20], ShaderLoaders[21] };
+	std::vector<TextureLoader> textures{ texOD, texDV };
 
 	assets["atmosphere"] = app.newModel(
 		"atmosphere",
@@ -641,8 +641,8 @@ void setNoPP(Renderer& app)
 	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
-	std::vector<ShaderInfo> shaders{ shaderInfos[22], shaderInfos[23] };
-	std::vector<TextureInfo> textures{ texInfos[4], texInfos[5] };
+	std::vector<ShaderLoader> shaders{ ShaderLoaders[22], ShaderLoaders[23] };
+	std::vector<TextureLoader> textures{ texInfos[4], texInfos[5] };
 
 	assets["noPP"] = app.newModel(
 		"noPP",

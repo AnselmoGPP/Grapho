@@ -3,7 +3,7 @@
 #include "commons.hpp"
 
 
-ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
 	: name(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
@@ -21,7 +21,7 @@ ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
-	loadInfo = new ResourcesInfo(verticesLoader, shadersInfo, texturesInfo, e);
+	resLoader = new ResourcesLoader(verticesLoader, shadersInfo, texturesInfo, e);
 }
 
 ModelData::~ModelData()
@@ -50,9 +50,9 @@ ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::li
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 
-	if (loadInfo)
+	if (resLoader)
 	{
-		loadInfo->loadResources(vert, shaders, loadedShaders, textures, loadedTextures, mutResources);
+		resLoader->loadResources(vert, shaders, loadedShaders, textures, loadedTextures, mutResources);
 		deleteLoader();
 	}
 	else std::cout << "Error: No loading info data" << std::endl;
@@ -594,10 +594,10 @@ void ModelData::cleanup()
 
 void ModelData::deleteLoader()
 {
-	if (loadInfo)
+	if (resLoader)
 	{
-		delete loadInfo;
-		loadInfo = nullptr;
+		delete resLoader;
+		resLoader = nullptr;
 	}
 }
 

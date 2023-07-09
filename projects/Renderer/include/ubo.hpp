@@ -150,6 +150,7 @@ private:
 };
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)
+/*
 struct UBO_MVP {
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
@@ -162,6 +163,6 @@ struct UBO_MVPN {
 	alignas(16) glm::mat4 proj;
 	alignas(16) glm::mat3 normalMatrix;
 };
-
+*/
 
 #endif

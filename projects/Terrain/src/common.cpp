@@ -62,148 +62,148 @@ PlanetFPcam camera_4(
 	0.f, 90.f );					// latitude & longitude
 
 
-ShaderInfo shaderInfos[]
+ShaderLoader ShaderLoaders[]
 {
-	/*00*/ ShaderInfo(shadersDir + "v_pointPC.vert"),
-	/*01*/ ShaderInfo(shadersDir + "f_pointPC.frag"),
+	/*00*/ ShaderLoader(shadersDir + "v_pointPC.vert"),
+	/*01*/ ShaderLoader(shadersDir + "f_pointPC.frag"),
 
-	/*02*/ ShaderInfo(shadersDir + "v_linePC.vert"),
-	/*03*/ ShaderInfo(shadersDir + "f_linePC.frag"),
+	/*02*/ ShaderLoader(shadersDir + "v_linePC.vert"),
+	/*03*/ ShaderLoader(shadersDir + "f_linePC.frag"),
 
-	/*04*/ ShaderInfo(shadersDir + "v_trianglePT.vert"),
-	/*05*/ ShaderInfo(shadersDir + "f_trianglePT.frag"),
+	/*04*/ ShaderLoader(shadersDir + "v_trianglePT.vert"),
+	/*05*/ ShaderLoader(shadersDir + "f_trianglePT.frag"),
 
-	/*06*/ ShaderInfo(shadersDir + "v_trianglePCT.vert"),
-	/*07*/ ShaderInfo(shadersDir + "f_trianglePCT.frag"),
+	/*06*/ ShaderLoader(shadersDir + "v_trianglePCT.vert"),
+	/*07*/ ShaderLoader(shadersDir + "f_trianglePCT.frag"),
 
-	/*08*/ ShaderInfo(shadersDir + "v_sea.vert"),
-	/*09*/ ShaderInfo(shadersDir + "f_sea.frag"),
+	/*08*/ ShaderLoader(shadersDir + "v_sea.vert"),
+	/*09*/ ShaderLoader(shadersDir + "f_sea.frag"),
 
-	/*10*/ ShaderInfo(shadersDir + "v_seaPlanet.vert"),
-	/*11*/ ShaderInfo(shadersDir + "f_seaPlanet.frag"),
+	/*10*/ ShaderLoader(shadersDir + "v_seaPlanet.vert"),
+	/*11*/ ShaderLoader(shadersDir + "f_seaPlanet.frag"),
 
-	/*12*/ ShaderInfo(shadersDir + "v_terrainPTN.vert"),
-	/*13*/ ShaderInfo(shadersDir + "f_terrainPTN.frag"),
+	/*12*/ ShaderLoader(shadersDir + "v_terrainPTN.vert"),
+	/*13*/ ShaderLoader(shadersDir + "f_terrainPTN.frag"),
 
-	/*14*/ ShaderInfo(shadersDir + "v_planetPTN.vert"),
-	/*15*/ ShaderInfo(shadersDir + "f_planetPTN.frag"),
+	/*14*/ ShaderLoader(shadersDir + "v_planetPTN.vert"),
+	/*15*/ ShaderLoader(shadersDir + "f_planetPTN.frag"),
 
-	/*16*/ ShaderInfo(shadersDir + "v_sunPT.vert"),
-	/*17*/ ShaderInfo(shadersDir + "f_sunPT.frag"),
+	/*16*/ ShaderLoader(shadersDir + "v_sunPT.vert"),
+	/*17*/ ShaderLoader(shadersDir + "f_sunPT.frag"),
 
-	/*18*/ ShaderInfo(shadersDir + "v_hudPT.vert"),
-	/*19*/ ShaderInfo(shadersDir + "f_hudPT.frag"),
+	/*18*/ ShaderLoader(shadersDir + "v_hudPT.vert"),
+	/*19*/ ShaderLoader(shadersDir + "f_hudPT.frag"),
 
-	/*20*/ ShaderInfo(shadersDir + "v_atmosphere.vert"),
-	/*21*/ ShaderInfo(shadersDir + "f_atmosphere.frag"),
+	/*20*/ ShaderLoader(shadersDir + "v_atmosphere.vert"),
+	/*21*/ ShaderLoader(shadersDir + "f_atmosphere.frag"),
 
-	/*22*/ ShaderInfo(shadersDir + "v_noPP.vert"),
-	/*23*/ ShaderInfo(shadersDir + "f_noPP.frag"),
+	/*22*/ ShaderLoader(shadersDir + "v_noPP.vert"),
+	/*23*/ ShaderLoader(shadersDir + "f_noPP.frag"),
 
-	/*24*/ ShaderInfo(shadersDir + "v_linePC_PP.vert"),
-	/*25*/ ShaderInfo(shadersDir + "f_linePC_PP.frag"),
+	/*24*/ ShaderLoader(shadersDir + "v_linePC_PP.vert"),
+	/*25*/ ShaderLoader(shadersDir + "f_linePC_PP.frag"),
 };
 
-TextureInfo texInfos[]
+TextureLoader texInfos[]
 {
 	// Special
-	/*00*/ TextureInfo(texDir + "sky_box/space1.jpg"),
-	/*01*/ TextureInfo(texDir + "models/cottage/cottage_diffuse.png"),
-	/*02*/ TextureInfo(texDir + "models/viking_room.png"),
-	/*03*/ TextureInfo(texDir + "squares.png"),
-	/*04*/ TextureInfo(texDir + "Sun/sun2_1.png"),
-	/*05*/ TextureInfo(texDir + "HUD/reticule_1.png"),
+	/*00*/ TextureLoader(texDir + "sky_box/space1.jpg"),
+	/*01*/ TextureLoader(texDir + "models/cottage/cottage_diffuse.png"),
+	/*02*/ TextureLoader(texDir + "models/viking_room.png"),
+	/*03*/ TextureLoader(texDir + "squares.png"),
+	/*04*/ TextureLoader(texDir + "Sun/sun2_1.png"),
+	/*05*/ TextureLoader(texDir + "HUD/reticule_1.png"),
 
 	// Plants
-	/*06*/ TextureInfo(texDir + "grass/grassDry_a.png"),
-	/*07*/ TextureInfo(texDir + "grass/grassDry_n.png"),
-	/*08*/ TextureInfo(texDir + "grass/grassDry_s.png"),
-	/*09*/ TextureInfo(texDir + "grass/grassDry_r.png"),
-	/*10*/ TextureInfo(texDir + "grass/grassDry_h.png"),
+	/*06*/ TextureLoader(texDir + "grass/grassDry_a.png"),
+	/*07*/ TextureLoader(texDir + "grass/grassDry_n.png"),
+	/*08*/ TextureLoader(texDir + "grass/grassDry_s.png"),
+	/*09*/ TextureLoader(texDir + "grass/grassDry_r.png"),
+	/*10*/ TextureLoader(texDir + "grass/grassDry_h.png"),
 
 	// Rocks
-	/*11*/ TextureInfo(texDir + "rock/bumpRock_a.png"),
-	/*12*/ TextureInfo(texDir + "rock/bumpRock_n.png"),
-	/*13*/ TextureInfo(texDir + "rock/bumpRock_s.png"),
-	/*14*/ TextureInfo(texDir + "rock/bumpRock_r.png"),
-	/*15*/ TextureInfo(texDir + "rock/bumpRock_h.png"),
+	/*11*/ TextureLoader(texDir + "rock/bumpRock_a.png"),
+	/*12*/ TextureLoader(texDir + "rock/bumpRock_n.png"),
+	/*13*/ TextureLoader(texDir + "rock/bumpRock_s.png"),
+	/*14*/ TextureLoader(texDir + "rock/bumpRock_r.png"),
+	/*15*/ TextureLoader(texDir + "rock/bumpRock_h.png"),
 
 	// Soils
-	/*16*/ TextureInfo(texDir + "sand/sandDunes_a.png"),
-	/*17*/ TextureInfo(texDir + "sand/sandDunes_n.png"),
-	/*18*/ TextureInfo(texDir + "sand/sandDunes_s.png"),
-	/*19*/ TextureInfo(texDir + "sand/sandDunes_r.png"),
-	/*20*/ TextureInfo(texDir + "sand/sandDunes_h.png"),
+	/*16*/ TextureLoader(texDir + "sand/sandDunes_a.png"),
+	/*17*/ TextureLoader(texDir + "sand/sandDunes_n.png"),
+	/*18*/ TextureLoader(texDir + "sand/sandDunes_s.png"),
+	/*19*/ TextureLoader(texDir + "sand/sandDunes_r.png"),
+	/*20*/ TextureLoader(texDir + "sand/sandDunes_h.png"),
 
-	/*21*/ TextureInfo(texDir + "sand/sandWavy_a.png"),
-	/*22*/ TextureInfo(texDir + "sand/sandWavy_n.png"),
-	/*23*/ TextureInfo(texDir + "sand/sandWavy_s.png"),
-	/*24*/ TextureInfo(texDir + "sand/sandWavy_r.png"),
-	/*25*/ TextureInfo(texDir + "sand/sandWavy_h.png"),
+	/*21*/ TextureLoader(texDir + "sand/sandWavy_a.png"),
+	/*22*/ TextureLoader(texDir + "sand/sandWavy_n.png"),
+	/*23*/ TextureLoader(texDir + "sand/sandWavy_s.png"),
+	/*24*/ TextureLoader(texDir + "sand/sandWavy_r.png"),
+	/*25*/ TextureLoader(texDir + "sand/sandWavy_h.png"),
 
 	// Water
-	/*26*/ TextureInfo(texDir + "water/sea_n.png"),
-	/*27*/ TextureInfo(texDir + "water/sea_h.png"),
-	/*28*/ TextureInfo(texDir + "water/sea_foam_a.png"),
-	//TextureInfo(texDir + "bubbles_a.png"),
+	/*26*/ TextureLoader(texDir + "water/sea_n.png"),
+	/*27*/ TextureLoader(texDir + "water/sea_h.png"),
+	/*28*/ TextureLoader(texDir + "water/sea_foam_a.png"),
+	//TextureLoader(texDir + "bubbles_a.png"),
 
-	/*29*/ TextureInfo(texDir + "snow/snow_a.png"),
-	/*30*/ TextureInfo(texDir + "snow/snow_n.png"),
-	/*31*/ TextureInfo(texDir + "snow/snow_s.png"),
-	/*32*/ TextureInfo(texDir + "snow/snow_r.png"),
-	/*33*/ TextureInfo(texDir + "snow/snow_h.png"),
+	/*29*/ TextureLoader(texDir + "snow/snow_a.png"),
+	/*30*/ TextureLoader(texDir + "snow/snow_n.png"),
+	/*31*/ TextureLoader(texDir + "snow/snow_s.png"),
+	/*32*/ TextureLoader(texDir + "snow/snow_r.png"),
+	/*33*/ TextureLoader(texDir + "snow/snow_h.png"),
 
-	/*34*/ TextureInfo(texDir + "snow/snow2_a.png"),
-	/*35*/ TextureInfo(texDir + "snow/snow2_n.png"),
-	/*36*/ TextureInfo(texDir + "snow/snow2_s.png"),
+	/*34*/ TextureLoader(texDir + "snow/snow2_a.png"),
+	/*35*/ TextureLoader(texDir + "snow/snow2_n.png"),
+	/*36*/ TextureLoader(texDir + "snow/snow2_s.png"),
 };
 
-std::vector<TextureInfo> usedTextures
+std::vector<TextureLoader> usedTextures
 {
 	// Plants
-	/*00*/ TextureInfo(texDir + "grass/grassDry_a.png"),
-	/*01*/ TextureInfo(texDir + "grass/grassDry_n.png"),
-	/*02*/ TextureInfo(texDir + "grass/grassDry_s.png"),
-	/*03*/ TextureInfo(texDir + "grass/grassDry_r.png"),
-	/*04*/ TextureInfo(texDir + "grass/grassDry_h.png"),
+	/*00*/ TextureLoader(texDir + "grass/grassDry_a.png"),
+	/*01*/ TextureLoader(texDir + "grass/grassDry_n.png"),
+	/*02*/ TextureLoader(texDir + "grass/grassDry_s.png"),
+	/*03*/ TextureLoader(texDir + "grass/grassDry_r.png"),
+	/*04*/ TextureLoader(texDir + "grass/grassDry_h.png"),
 
 	// Rocks
-	/*11*/ TextureInfo(texDir + "rock/bumpRock_a.png"),
-	/*12*/ TextureInfo(texDir + "rock/bumpRock_n.png"),
-	/*13*/ TextureInfo(texDir + "rock/bumpRock_s.png"),
-	/*14*/ TextureInfo(texDir + "rock/bumpRock_r.png"),
-	/*15*/ TextureInfo(texDir + "rock/bumpRock_h.png"),
+	/*11*/ TextureLoader(texDir + "rock/bumpRock_a.png"),
+	/*12*/ TextureLoader(texDir + "rock/bumpRock_n.png"),
+	/*13*/ TextureLoader(texDir + "rock/bumpRock_s.png"),
+	/*14*/ TextureLoader(texDir + "rock/bumpRock_r.png"),
+	/*15*/ TextureLoader(texDir + "rock/bumpRock_h.png"),
 
 	// Snow
-	/*29*/ TextureInfo(texDir + "snow/snow_a.png"),
-	/*30*/ TextureInfo(texDir + "snow/snow_n.png"),
-	/*31*/ TextureInfo(texDir + "snow/snow_s.png"),
-	/*32*/ TextureInfo(texDir + "snow/snow_r.png"),
-	/*33*/ TextureInfo(texDir + "snow/snow_h.png"),
+	/*29*/ TextureLoader(texDir + "snow/snow_a.png"),
+	/*30*/ TextureLoader(texDir + "snow/snow_n.png"),
+	/*31*/ TextureLoader(texDir + "snow/snow_s.png"),
+	/*32*/ TextureLoader(texDir + "snow/snow_r.png"),
+	/*33*/ TextureLoader(texDir + "snow/snow_h.png"),
 
-	/*34*/ TextureInfo(texDir + "snow/snow2_a.png"),
-	/*35*/ TextureInfo(texDir + "snow/snow2_n.png"),
-	/*36*/ TextureInfo(texDir + "snow/snow2_s.png"),
-	/*32*/ TextureInfo(texDir + "snow/snow_r.png"),		// repeated
-	/*33*/ TextureInfo(texDir + "snow/snow_h.png"),		// repeated
+	/*34*/ TextureLoader(texDir + "snow/snow2_a.png"),
+	/*35*/ TextureLoader(texDir + "snow/snow2_n.png"),
+	/*36*/ TextureLoader(texDir + "snow/snow2_s.png"),
+	/*32*/ TextureLoader(texDir + "snow/snow_r.png"),		// repeated
+	/*33*/ TextureLoader(texDir + "snow/snow_h.png"),		// repeated
 
 	// Soils
-	/*16*/ TextureInfo(texDir + "sand/sandDunes_a.png"),
-	/*17*/ TextureInfo(texDir + "sand/sandDunes_n.png"),
-	/*18*/ TextureInfo(texDir + "sand/sandDunes_s.png"),
-	/*19*/ TextureInfo(texDir + "sand/sandDunes_r.png"),
-	/*20*/ TextureInfo(texDir + "sand/sandDunes_h.png"),
+	/*16*/ TextureLoader(texDir + "sand/sandDunes_a.png"),
+	/*17*/ TextureLoader(texDir + "sand/sandDunes_n.png"),
+	/*18*/ TextureLoader(texDir + "sand/sandDunes_s.png"),
+	/*19*/ TextureLoader(texDir + "sand/sandDunes_r.png"),
+	/*20*/ TextureLoader(texDir + "sand/sandDunes_h.png"),
 
-	/*21*/ TextureInfo(texDir + "sand/sandWavy_a.png"),
-	/*22*/ TextureInfo(texDir + "sand/sandWavy_n.png"),
-	/*23*/ TextureInfo(texDir + "sand/sandWavy_s.png"),
-	/*24*/ TextureInfo(texDir + "sand/sandWavy_r.png"),
-	/*25*/ TextureInfo(texDir + "sand/sandWavy_h.png"),
+	/*21*/ TextureLoader(texDir + "sand/sandWavy_a.png"),
+	/*22*/ TextureLoader(texDir + "sand/sandWavy_n.png"),
+	/*23*/ TextureLoader(texDir + "sand/sandWavy_s.png"),
+	/*24*/ TextureLoader(texDir + "sand/sandWavy_r.png"),
+	/*25*/ TextureLoader(texDir + "sand/sandWavy_h.png"),
 
-	/*03*/ TextureInfo(texDir + "squares.png"),
+	/*03*/ TextureLoader(texDir + "squares.png"),
 
 	// Water
-	/*26*/ TextureInfo(texDir + "water/sea_n.png"),
-	/*27*/ TextureInfo(texDir + "water/sea_h.png"),
-	/*28*/ TextureInfo(texDir + "water/sea_foam_a.png")
+	/*26*/ TextureLoader(texDir + "water/sea_n.png"),
+	/*27*/ TextureLoader(texDir + "water/sea_h.png"),
+	/*28*/ TextureLoader(texDir + "water/sea_foam_a.png")
 };

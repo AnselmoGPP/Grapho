@@ -5,7 +5,7 @@
 
 #include "ubo.hpp"
 #include "camera.hpp"
-#include "texture.hpp"
+#include "importer.hpp"
 
 // MVS executable's path        == Grapho\_BUILD\projects\Terrain (Terrain.sln)
 // Standalone executable's path == Grapho\_BUILD\projects\Terrain\Release (Terrain.exe)
@@ -24,9 +24,9 @@ extern PlanetFPcam camera_4;
 
 // Resources
 
-extern ShaderInfo shaderInfos[];
-extern TextureInfo texInfos[];
+extern ShaderLoader ShaderLoaders[];
+extern TextureLoader texInfos[];
 
-extern std::vector<TextureInfo> usedTextures;	// Package of textures
+extern std::vector<TextureLoader> usedTextures;	// Package of textures
 
 #endif

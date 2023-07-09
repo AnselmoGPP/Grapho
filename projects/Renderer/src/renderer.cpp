@@ -619,7 +619,7 @@ void Renderer::cleanup()
 	#endif
 }
 
-modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
