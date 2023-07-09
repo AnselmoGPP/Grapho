@@ -37,15 +37,15 @@ void Chunk::render(std::vector<ShaderInfo>& shaders, std::vector<TextureInfo>& t
 {
     // <<< Compute terrain and render here. No need to store vertices, indices or VertexInfo in Chunk object.
 
-    vertexData = new VerticesInfo(
-        VertexType({ size.vec3, size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT }),
+    vertexData = new VerticesLoader(
+        vt_333.vertexSize,
         vertex.data(), 
         numHorVertex * numVertVertex, 
         indices ? *indices : this->indices);
 
     model = renderer.newModel(
         "chunk",
-        1, 1, primitiveTopology::triangle,
+        1, 1, primitiveTopology::triangle, vt_333,
         *vertexData, shaders, textures,
         1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
         numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)

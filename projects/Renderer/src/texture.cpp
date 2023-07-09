@@ -20,40 +20,213 @@ std::vector<uint16_t   > noIndices;
 
 // RESOURCES --------------------------------------------------------
 
-ResourcesInfo::ResourcesInfo(VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo)
-	: vertices(verticesInfo), shaders(shadersInfo), textures(texturesInfo) { }
+ResourcesInfo::ResourcesInfo(VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, VulkanEnvironment* e)
+	: vertices(verticesLoader), shaders(shadersInfo), textures(texturesInfo), e(e) { }
+
+void ResourcesInfo::loadResources(VertexData& destVertexData, std::vector<shaderIter>& destShaders, std::list<Shader>& loadedShaders, std::vector<texIter>& destTextures, std::list<Texture>& loadedTextures, std::mutex& mutResources)
+{
+	#ifdef DEBUG_RESOURCES
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
+	vertices.loadVertices(destVertexData, this, e);
+
+	{
+		const std::lock_guard<std::mutex> lock(mutResources);
+		
+		// Load shaders
+		for (unsigned i = 0; i < shaders.size(); i++)
+		{
+			shaderIter iter = shaders[i].loadShader(*e, loadedShaders);
+			iter->counter++;
+			destShaders.push_back(iter);
+		}
+		
+		// Load textures
+		for (unsigned i = 0; i < textures.size(); i++)
+		{
+			texIter iter = textures[i].loadTexture(*e, loadedTextures);
+			iter->counter++;
+			destTextures.push_back(iter);
+		}
+	}
+}
 
 
 // VERTICES --------------------------------------------------------
 
-VerticesLoader::VerticesLoader(const VertexType& vertexType) : vertexType(vertexType) { }
+VerticesLoaderModule::VerticesLoaderModule(size_t vertexSize) : vertexSize(vertexSize) { }
 
-
-VerticesFromBuffer::VerticesFromBuffer(const VertexType& vertexType, const void* verticesData, size_t vertexCount, const std::vector<uint16_t>& indices, VertexSet& destVertices, std::vector<uint16_t>& destIndices)
-	: VerticesLoader(vertexType)
+void VerticesLoaderModule::loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e)
 {
-	destVertices.reset(vertexType, vertexCount, verticesData);
-	destIndices = indices;
+	VertexSet rawVertices;
+	std::vector<uint16_t> rawIndices;
+
+	getRawData(rawVertices, rawIndices, *resources);		// Get the raw data
+
+	createBuffers(result, rawVertices, rawIndices, e);		// Upload data to Vulkan
 }
 
-void VerticesFromBuffer::loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo)
+void VerticesLoaderModule::createBuffers(VertexData& result, const VertexSet& rawVertices, const std::vector<uint16_t>& rawIndices, VulkanEnvironment* e)
 {
-	// Data was already loaded in the VerticesFromBuffer's constructor
+	createVertexBuffer(rawVertices, result, e);
+	createIndexBuffer(rawIndices, result, e);
 }
 
-VerticesLoader* VerticesFromBuffer::clone() { return new VerticesFromBuffer(*this); }
-
-
-VerticesFromFile::VerticesFromFile(const VertexType& vertexType, std::string& filePath)
-	: VerticesLoader(vertexType), path(filePath) { }
-
-void VerticesFromFile::loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo)
+void VerticesLoaderModule::createVertexBuffer(const VertexSet& rawVertices, VertexData& result, VulkanEnvironment* e)
 {
-	this->vertices = &vertices;
-	this->indices = &indices;
-	this->resources = resourcesInfo;
+	#ifdef DEBUG_RESOURCES
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
 
-	vertices.reset(vertexType);
+	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
+	VkDeviceSize   bufferSize = rawVertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
+	VkBuffer	   stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+
+	createBuffer(
+		e,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 											// VK_BUFFER_USAGE_ ... TRANSFER_SRC_BIT / TRANSFER_DST_BIT (buffer can be used as source/destination in a memory transfer operation).
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory);
+
+	// Fill the staging buffer (by mapping the buffer memory into CPU accessible memory: https://en.wikipedia.org/wiki/Memory-mapped_I/O)
+	void* data;
+	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);	// Access a memory region. Use VK_WHOLE_SIZE to map all of the memory.
+	memcpy(data, rawVertices.data(), (size_t)bufferSize);					// Copy the vertex data to the mapped memory.
+	vkUnmapMemory(e->c.device, stagingBufferMemory);						// Unmap memory.
+
+	/*
+		Note:
+		The driver may not immediately copy the data into the buffer memory (example: because of caching).
+		It is also possible that writes to the buffer are not visible in the mapped memory yet. Two ways to deal with that problem:
+		  - (Our option) Coherent memory heap: Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT. This ensures that the mapped memory always matches the contents of the allocated memory (this may lead to slightly worse performance than explicit flushing, but this doesn't matter since we will use a staging buffer).
+		  - Flushing memory: Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory.
+		Either option means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible on the GPU yet.
+		The transfer of data to the GPU happens in the background and the specification simply tells us that it is guaranteed to be complete as of the next call to vkQueueSubmit.
+	*/
+
+	// Create the actual vertex buffer (Device local buffer used as actual vertex buffer. Generally it doesn't allow to use vkMapMemory, but we can copy from stagingBuffer to vertexBuffer, though you need to specify the transfer source flag for stagingBuffer and the transfer destination flag for vertexBuffer).
+	// This makes vertex data to be loaded from high performance memory.
+	createBuffer(
+		e,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		result.vertexBuffer,
+		result.vertexBufferMemory);
+
+	result.vertexCount = rawVertices.getNumVertex();
+
+	// Move the vertex data to the device local buffer
+	copyBuffer(stagingBuffer, result.vertexBuffer, bufferSize, e);
+
+	// Clean up
+	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
+	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
+}
+
+void VerticesLoaderModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, VertexData& result, VulkanEnvironment* e)
+{
+	#ifdef DEBUG_RESOURCES
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
+	if (rawIndices.size() == 0) return;
+
+	// Create a staging buffer
+	VkDeviceSize   bufferSize = sizeof(rawIndices[0]) * rawIndices.size();
+	VkBuffer	   stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+
+	createBuffer(
+		e,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory);
+
+	// Fill the staging buffer
+	void* data;
+	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, rawIndices.data(), (size_t)bufferSize);
+	vkUnmapMemory(e->c.device, stagingBufferMemory);
+
+	// Create the vertex buffer
+	createBuffer(
+		e,
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		result.indexBuffer,
+		result.indexBufferMemory);
+
+	result.indexCount = rawIndices.size();
+
+	// Move the vertex data to the device local buffer
+	copyBuffer(stagingBuffer, result.indexBuffer, bufferSize, e);
+
+	// Clean up
+	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
+	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
+}
+
+/**
+	@brief Copies some amount of data (size) from srcBuffer into dstBuffer. Used in createVertexBuffer() and createIndexBuffer().
+
+	Memory transfer operations are executed using command buffers (like drawing commands), so we allocate a temporary command buffer. You may wish to create a separate command pool for these kinds of short-lived buffers, because the implementation could apply memory allocation optimizations. You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
+*/
+void VerticesLoaderModule::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VulkanEnvironment* e)
+{
+	#ifdef DEBUG_MODELS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
+	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
+
+	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).
+	VkBufferCopy copyRegion{};
+	copyRegion.size = size;
+	copyRegion.srcOffset = 0;	// Optional
+	copyRegion.dstOffset = 0;	// Optional
+
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	e->endSingleTimeCommands(commandBuffer);
+}
+
+
+VLM_fromBuffer::VLM_fromBuffer(const void* verticesData, size_t vertexSize, size_t vertexCount, const std::vector<uint16_t>& indices)
+	: VerticesLoaderModule(vertexSize)
+{
+	rawVertices.reset(vertexSize, vertexCount, verticesData);
+	rawIndices = indices;
+}
+
+VerticesLoaderModule* VLM_fromBuffer::clone() { return new VLM_fromBuffer(*this); }
+
+void VLM_fromBuffer::getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources)
+{
+	destVertices = rawVertices;
+	destIndices = rawIndices;
+}
+
+
+VLM_fromFile::VLM_fromFile(size_t vertexSize, std::string& filePath)
+	: VerticesLoaderModule(vertexSize), path(filePath) { }
+
+VerticesLoaderModule* VLM_fromFile::clone() { return new VLM_fromFile(*this); }
+
+void VLM_fromFile::getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources)
+{
+	this->vertices = &destVertices;
+	this->indices = &destIndices;
+	this->resources = &destResources;
+
+	vertices->reset(vertexSize);
 
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
@@ -67,7 +240,7 @@ void VerticesFromFile::loadVertices(VertexSet& vertices, std::vector<uint16_t>& 
 	processNode(scene->mRootNode, scene);
 }
 
-void VerticesFromFile::processNode(aiNode* node, const aiScene* scene)
+void VLM_fromFile::processNode(aiNode* node, const aiScene* scene)
 {
 	// Process all node's meshes
 	aiMesh* mesh;
@@ -85,10 +258,10 @@ void VerticesFromFile::processNode(aiNode* node, const aiScene* scene)
 		processNode(node->mChildren[i], scene);
 }
 
-void VerticesFromFile::processMesh(aiMesh* mesh, const aiScene* scene)
+void VLM_fromFile::processMesh(aiMesh* mesh, const aiScene* scene)
 {
 	//<<< destVertices->reserve(destVertices->size() + mesh->mNumVertices);
-	float* vertex = new float[vertexType.vertexSize / sizeof(float)];	// [3 + 3 + 2]
+	float* vertex = new float[vertexSize / sizeof(float)];	// [3 + 3 + 2]
 	unsigned i, j;
 
 	// Get VERTEX data (positions, normals, UVs) and store it.
@@ -144,44 +317,36 @@ void VerticesFromFile::processMesh(aiMesh* mesh, const aiScene* scene)
 	}
 }
 
-VerticesLoader* VerticesFromFile::clone() { return new VerticesFromFile(*this); }
 
-
-VerticesInfo::VerticesInfo(const VertexType& vertexType, std::string& filePath)
+VerticesLoader::VerticesLoader(size_t vertexSize, std::string& filePath)
 	: loader(nullptr)
 { 
-	loader = new VerticesFromFile(vertexType, filePath);
+	loader = new VLM_fromFile(vertexSize, filePath);
 }
 
-VerticesInfo::VerticesInfo(const VertexType& vertexType, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices)
+VerticesLoader::VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices)
 	: loader(nullptr)
 { 
-	loader = new VerticesFromBuffer(vertexType, verticesData, vertexCount, indices, this->vertices, this->indices);
-
-	//size_t bytesCount = vertexCount * vertexType.vertexSize;
-	//this->vertexData.resize(bytesCount);
-	//std::copy((char*)vertexData, (char*)vertexData + bytesCount, this->vertexData.data());
+	loader = new VLM_fromBuffer(verticesData, vertexSize, vertexCount, indices);
 }
 
-VerticesInfo::VerticesInfo(const VerticesInfo& obj)
+VerticesLoader::VerticesLoader(const VerticesLoader& obj)
 {
-	vertices = obj.vertices;
-	indices = obj.indices;
-
 	if (obj.loader)
 		loader = obj.loader->clone();
 	else 
 		loader = nullptr;
 }
 
-VerticesInfo::~VerticesInfo() { if(loader) delete loader; }
+VerticesLoader::~VerticesLoader() { if(loader) delete loader; }
 
-void VerticesInfo::loadVertices(ResourcesInfo* resourcesInfo)
+void VerticesLoader::loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e)
 {
 	#ifdef DEBUG_RESOURCES
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-	loader->loadVertices(vertices, indices, resourcesInfo);
+
+	loader->loadVertices(result, resources, e);
 }
 
 

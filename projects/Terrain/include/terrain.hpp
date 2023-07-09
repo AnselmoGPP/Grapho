@@ -101,7 +101,7 @@ protected:
 	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied (sphere section)
 	int numAttribs;							//!< Number of attributes per vertex (9)
 
-	VerticesInfo* vertexData;
+	VerticesLoader* vertexData;
 	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 

@@ -579,25 +579,25 @@ void Renderer::clearDepthBuffer(VkCommandBuffer commandBuffer)
 void Renderer::cleanup()
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (1/2)" << std::endl;
 	#endif
 
 	// Cleanup renderer
 	//cleanupSwapChain();
-
+	
 	// Renderer
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
 		vkQueueWaitIdle(e.c.graphicsQueue);
 		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
 	}
-
+	
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {							// Semaphores (render & image available) & fences (in flight)
 		vkDestroySemaphore(e.c.device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(e.c.device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(e.c.device, framesInFlight[i], nullptr);
 	}
-
+	
 	// Cleanup models, textures and shaders
 	// const std::lock_guard<std::mutex> lock(worker.mutModels);	// Not necessary (worker stopped loading thread)
 
@@ -605,17 +605,21 @@ void Renderer::cleanup()
 	models[1].clear();
 	modelsToLoad.clear();
 	modelsToDelete.clear();
-
+	
 	textures.clear();
 
 	shaders.clear();
-
+	
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: models (" << models[0].size() << ", " << models[1].size() << "), modelsToLoad (" << modelsToLoad.size() << "), modelsToDelete (" << modelsToDelete.size() << ") " << std::endl;
-	e.cleanup(); 
+	e.cleanup();
+
+	#ifdef DEBUG_RENDERER
+		std::cout << typeid(*this).name() << "::" << __func__ << " (2/2)" << std::endl;
+	#endif
 }
 
-modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
@@ -628,7 +632,8 @@ modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRend
 		modelName, e, 
 		layer, numRenderings, 
 		(VkPrimitiveTopology) primitiveTopology,
-		verticesInfo, shadersInfo, texturesInfo,
+		vertexType,
+		VerticesLoader, shadersInfo, texturesInfo,
 		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		transparency,
 		renderPassIndex);
@@ -803,4 +808,5 @@ size_t Renderer::loadedModels() { return models[0].size() + models[1].size(); }
 size_t Renderer::loadedShaders() { return shaders.size(); }
 
 size_t Renderer::loadedTextures() { return textures.size(); }
+
 

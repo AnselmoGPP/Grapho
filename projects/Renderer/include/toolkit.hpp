@@ -74,23 +74,23 @@ void printVec(const T& vec)
 // Vertex sets -----------------------------------------------------------------
 
 /// Get the XYZ axis as 3 RGB lines
-size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int lengthFromCenter, float colorIntensity);
+size_t getAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float lengthFromCenter, float colorIntensity);
 
 /// Get a set of lines that form a grid
-size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color);
+size_t getGrid(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color);
 
 /// DELETE (Local space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that use MVP matrix (example: sun).
-size_t getQuad(std::vector<VertexPT>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue);
+size_t getQuad(std::vector<float>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue);
 
 /// DELETE (NDC space) Get a VertexPT of a square (vertSize x horSize), its indices, and number of vertices (4). Used for draws that doesn't use MVP matrix (example: reticule).
-size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize);
+size_t getPlaneNDC(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize);
 
 /// Get vertex data (NDC space vertices & UVs coordinates) and indices of a screen quad. Used for draws that doesn't use MVP matrix (example: reticule or postprocessing effect).
-void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vector<uint16_t> &indices);
+void getScreenQuad(std::vector<float>& vertices, std::vector<uint16_t>& indices, float radius, float zValue);
 
 /// Skybox
-extern std::vector<VertexPT> v_cube;
-extern std::vector<uint16_t> i_inCube;
+extern std::vector<float> v_cube;
+extern std::vector<uint16_t> i_inCube;  
 
 /// Get a set of vertex representing a grid square plane centered at the origin at the XY plane. 
 class SqrMesh

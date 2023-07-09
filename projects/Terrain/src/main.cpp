@@ -109,9 +109,10 @@ int main(int argc, char* argv[])
 		camera_4.camParticle.setCallback(getFloorHeight);
 
 		setLights();
+		
 		//setPoints(app);
 		setAxis(app);
-		//setGrid(app);
+		setGrid(app);
 		//setSea(app);
 		setSkybox(app);
 		//setCottage(app);
@@ -125,7 +126,7 @@ int main(int argc, char* argv[])
 		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 		
 		setSun(app);
-		setReticule(app);
+		//setReticule(app);
 
 		app.renderLoop();		// Start rendering
 		if (0) throw "Test exception";
@@ -371,15 +372,13 @@ void setPoints(Renderer& app)
 	#endif
 
 	Icosahedron icos(30.f);	// Just created for calling destructor, which applies a multiplier.
-	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
-	VerticesInfo vertexData(vt_33, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
+	VerticesLoader vertexData(vt_33.vertexSize, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
 	std::vector<ShaderInfo> shaders{ shaderInfos[0], shaderInfos[1] };
 
 	assets["points"] = app.newModel(
 		"points",
-		1, 1, primitiveTopology::point,
+		1, 1, primitiveTopology::point, vt_33,
 		vertexData, shaders, noTextures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -394,19 +393,16 @@ void setAxis(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	std::vector<VertexPC> v_axis;
+	std::vector<float> v_axis;
 	std::vector<uint16_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);
 
-	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, numVertex, v_axis.data(), i_axis);
-
-	VerticesInfo vertexData(vt_33, v_axis.data(), numVertex, i_axis);
+	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
 	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
 
 	assets["axis"] = app.newModel(
 		"axis",
-		2, 1, primitiveTopology::line,
+		1, 1, primitiveTopology::line, vt_33,
 		vertexData, shaders, noTextures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -421,16 +417,16 @@ void setGrid(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	std::vector<VertexPC> v_grid;
+	std::vector<float> v_grid;
 	std::vector<uint16_t> i_grid;
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 100, glm::vec3(0.5, 0.5, 0.5));
 
-	VerticesInfo vertexData(vt_33, v_grid.data(), numVertex, i_grid);
+	VerticesLoader vertexData(vt_33.vertexSize, v_grid.data(), numVertex, i_grid);
 	std::vector<ShaderInfo> shaders{ shaderInfos[2], shaderInfos[3] };
 
 	assets["grid"] = app.newModel(
 		"grid",
-		1, 1, primitiveTopology::line,
+		1, 1, primitiveTopology::line, vt_33,
 		vertexData, shaders, noTextures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -443,13 +439,13 @@ void setSkybox(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	VerticesInfo vertexData( vt_32, v_cube.data(), 14, i_inCube);
+	VerticesLoader vertexData( vt_32.vertexSize, v_cube.data(), 14, i_inCube);
 	std::vector<ShaderInfo> shaders{ shaderInfos[4], shaderInfos[5] };
 	std::vector<TextureInfo> textures{ texInfos[0] };
 
 	assets["skyBox"] = app.newModel(
 		"skyBox",
-		0, 1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -462,31 +458,13 @@ void setCottage(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	// Add a model to render. An iterator is returned (modelIterator). Save it for updating model data later.
-	//std::vector<texIterator> usedTextures = { textures0["cottage"] };
-
-	DataLoader* DataLoader = new DataFromFile((vertexDir + "cottage_obj.obj").c_str());
-
-	VerticesInfo vertexData(vt_332, vertexDir + "cottage_obj.obj");
+	VerticesLoader vertexData(vt_332.vertexSize, vertexDir + "cottage_obj.obj");
 	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
 	std::vector<TextureInfo> textures{ texInfos[1] };
 
-	assets["cottage"] = app.newModel(			// TEST (before render loop): newModel
-		"cottage",
-		1, 1, primitiveTopology::triangle,
-		vertexData, shaders, textures,
-		1, 3 * size.mat4,	// M, V, P
-		0,
-		false);
-
-	// Delete a model you passed previously.
-	app.deleteModel(assets["cottage"]);			// TEST (before render loop): deleteModel
-
-	DataLoader = new DataFromFile((vertexDir + "cottage_obj.obj").c_str());
-
 	assets["cottage"] = app.newModel(
 		"cottage",
-		1, 1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle, vt_332,
 		vertexData, shaders, textures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -499,17 +477,13 @@ void setRoom(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	//std::vector<texIterator> usedTextures = { textures0["room"] };
-
-	DataLoader* DataLoader = new DataFromFile2((vertexDir + "viking_room.obj").c_str());
-
-	VerticesInfo vertexData(vt_332, vertexDir + "viking_room.obj");
+	VerticesLoader vertexData(vt_332.vertexSize, vertexDir + "viking_room.obj");
 	std::vector<ShaderInfo> shaders{ shaderInfos[6], shaderInfos[7] };
 	std::vector<TextureInfo> textures{ texInfos[2] };
 
 	assets["room"] = app.newModel(
 		"room",
-		1, 1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle, vt_332,
 		vertexData, shaders, textures,
 		2, 3 * size.mat4,	// M, V, P
 		0,
@@ -540,19 +514,13 @@ void setSea(Renderer& app)
 		 extent, extent, height,  0, 0, 1 };
 	std::vector<uint16_t> i_sea = { 0,1,3, 1,2,3 };
 
-	//std::vector<VertexPT> v_sea;
-	//std::vector<uint16_t> i_sea;
-	//size_t numVertex = getPlane(v_sea, i_sea, 2000.f, 2000.f, 20.f);
-	VertexType vertexType({ size.vec3, size.vec3 }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
-	DataLoader* DataLoader = new DataFromUser_computed(vertexType, 4, v_sea, i_sea);
-
-	VerticesInfo vertexData(vt_33, v_sea, 4, i_sea);
+	VerticesLoader vertexData(vt_33.vertexSize, v_sea, 4, i_sea);
 	std::vector<ShaderInfo> shaders{ shaderInfos[8], shaderInfos[9] };
 	std::vector<TextureInfo> textures{ texInfos[26] };
 
 	assets["sea"] = app.newModel(
 		"plainSea",
-		1, 1, primitiveTopology::triangle,
+		1, 1, primitiveTopology::triangle, vt_33,
 		vertexData, shaders, textures,
 		1, 4 * size.mat4 + size.vec4 + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
 		size.vec4 + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
@@ -592,19 +560,17 @@ void setSun(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	//std::vector<float> v_sun;
-	std::vector<VertexPT> v_sun;
+	std::vector<float> v_sun;	// [4 * 5]
 	std::vector<uint16_t> i_sun;
-	//getQuad(v_sun, i_sun, 1.f, 1.f, 0);
 	size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	VerticesInfo vertexData(vt_32, v_sun.data(), numVertex, i_sun);
+	VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
 	std::vector<ShaderInfo> shaders{ shaderInfos[16], shaderInfos[17] };
 	std::vector<TextureInfo> textures{ texInfos[4] };
 
 	assets["sun"] = app.newModel(
 		"sun",
-		0, 1, primitiveTopology::triangle,
+		0, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textures,
 		1, 3 * size.mat4,	// M, V, P
 		0,
@@ -617,17 +583,17 @@ void setReticule(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	float v_ret[4 * 5];
+	std::vector<float> v_ret;	// [4 * 5] ;
 	std::vector<uint16_t> i_ret;
-	getScreenQuad(0.1, 0.1, v_ret, i_ret);
-
-	VerticesInfo vertexData(vt_32, v_ret, 4, i_ret);
+	getScreenQuad(v_ret, i_ret, 0.1, 0.1);
+	
+	VerticesLoader vertexData(vt_32.vertexSize, v_ret.data(), 4, i_ret);
 	std::vector<ShaderInfo> shaders{ shaderInfos[18], shaderInfos[19] };
 	std::vector<TextureInfo> textures{ texInfos[5] };
 
 	assets["reticule"] = app.newModel(
 		"reticule",
-		2, 1, primitiveTopology::triangle,
+		2, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textures,
 		1, size.vec4,				// aspect ratio (float)
 		0,
@@ -640,9 +606,9 @@ void setAtmosphere(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	float v_quad[4 * 5];
+	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
-	getScreenQuad(1.f, 0.5, v_quad, i_quad);
+	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
 
 	OpticalDepthTable optDepth(10, 1400, 2450, 30, pi / 20, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
 	TextureInfo texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -650,13 +616,13 @@ void setAtmosphere(Renderer& app)
 	DensityVector density(1400, 2450, 30, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
 	TextureInfo texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	VerticesInfo vertexData(vt_32, v_quad, 4, i_quad);
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
 	std::vector<ShaderInfo> shaders{ shaderInfos[20], shaderInfos[21] };
 	std::vector<TextureInfo> textures{ texOD, texDV };
 
 	assets["atmosphere"] = app.newModel(
 		"atmosphere",
-		2, 1, primitiveTopology::triangle,
+		2, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textures,
 		1, 2 * size.mat4 + 8 * size.vec4,
 		0,
@@ -670,19 +636,19 @@ void setNoPP(Renderer& app)
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
 
-	float v_quad[4 * 5];
+	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
-	getScreenQuad(1.f, 0.5, v_quad, i_quad);
+	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
 
-	VerticesInfo vertexData(vt_32, v_quad, 4, i_quad);
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
 	std::vector<ShaderInfo> shaders{ shaderInfos[22], shaderInfos[23] };
 	std::vector<TextureInfo> textures{ texInfos[4], texInfos[5] };
 
 	assets["noPP"] = app.newModel(
 		"noPP",
-		2, 1, primitiveTopology::triangle,		// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
+		2, 1, primitiveTopology::triangle, vt_32,		// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 		vertexData, shaders, textures,
-		1, 1,									// <<< ModelSet doesn't work if there is no dynUBO_vs
+		1, 1,											// <<< ModelSet doesn't work if there is no dynUBO_vs
 		0,
 		false,
 		1);

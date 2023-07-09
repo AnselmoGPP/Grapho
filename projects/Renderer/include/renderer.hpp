@@ -190,7 +190,7 @@ public:
 		@param transparency
 	*/
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
-	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
+	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
 
 	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes.
 	void deleteModel(modelIter model);

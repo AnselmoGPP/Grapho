@@ -94,7 +94,7 @@ void setPoints(Renderer& app)
 	VertexType vertexType({ vec3size, vec3size }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 	DataLoader* DataLoader = new DataFromUser_computed(vertexType, Icosahedron::icos.size() / 6, Icosahedron::icos.data(), noIndices);
 
-	VerticesInfo vertexData(vt_33, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
+	VerticesLoader vertexData(vt_33, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
 	std::vector<ShaderInfo> shaders{ 
 		ShaderInfo(std::string("../../../projects/Renderer/shaders/GLSL/v_pointPC.vert")), 
 		ShaderInfo(std::string("../../../projects/Renderer/shaders/GLSL/f_pointPC.frag")) };

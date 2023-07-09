@@ -28,21 +28,6 @@ class ModelData;
 typedef std::list<ModelData>::iterator modelIter;
 
 
-/// Vulkan Vertex data (position, color, texture coordinates...) and Indices
-struct VertexData
-{
-	// Vertices
-	uint32_t					 vertexCount;
-	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).
-	VkDeviceMemory				 vertexBufferMemory;	//!< Opaque handle to a device memory object (here, memory for the vertex buffer).
-
-	// Indices
-	uint32_t					 indexCount;
-	VkBuffer					 indexBuffer;			//!< Opaque handle to a buffer object (here, index buffer).
-	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
-};
-
-
 /**
 	@class ModelData
 	@brief Stores the data directly related to a graphic object. 
@@ -53,6 +38,7 @@ class ModelData
 {
 	const VkPrimitiveTopology primitiveTopology;	    //!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
 	VulkanEnvironment* e;
+	VertexType vertexType;
 	std::vector<shaderIter> shaders;		//!< Vertex shader (0), Fragment shader (1)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 
@@ -81,12 +67,6 @@ class ModelData
 	*/
 	void createGraphicsPipeline();
 
-	/// Vertex buffer creation.
-	void createVertexBuffer();
-
-	/// Index buffer creation
-	void createIndexBuffer();
-
 	/// Descriptor pool creation (a descriptor set for each VkBuffer resource to bind it to the uniform buffer descriptor).
 	void createDescriptorPool();
 
@@ -99,24 +79,14 @@ class ModelData
 	/// Delete ResourcesInfo object (no longer required after uploading resources to Vulkan)
 	void deleteLoader();
 
-	// Helper methods:
-
-	/// Take a buffer with the bytecode as parameter and create a VkShaderModule from it.
-	VkShaderModule createShaderModule(const std::vector<char>& code);				//!< Not used
-
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-
 public:
 	/// Construct an object for rendering
-	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
+	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
 
 	virtual ~ModelData();
 
 	/// Creates graphic pipeline and descriptor sets, and loads data for creating buffers (vertex, indices, textures). Useful in a second thread
 	ModelData& fullConstruction(std::list<Shader>& shadersList, std::list<Texture>& texturesList, std::mutex& mutResources);
-
-	/// Load resources (vertices, indices, shaders, textures) into this object, and upload to Vulkan. If a shader or texture exists in Renderer, it just takes the iterator.
-	void loadResources(std::list<Shader>& loadedShaders, std::list<Texture>& loadedTextures, std::mutex& mutResources);
 
 	/// Destroys graphic pipeline and descriptor sets. Called by destructor, and for window resizing (by Renderer::recreateSwapChain()::cleanupSwapChain()).
 	void cleanup_Pipeline_Descriptors();

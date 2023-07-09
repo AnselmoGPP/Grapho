@@ -82,16 +82,16 @@ SqrMesh::SqrMesh(size_t sideCount, float sideLength)
 
 float SqrMesh::sideFromRadius(float radius) { return std::sqrt(2 * std::pow(radius, 2)); }
 
-size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int lengthFromCenter, float colorIntensity)
+size_t getAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float lengthFromCenter, float colorIntensity)
 {
 	// Vertex buffer
-	vertexDestination = std::vector<VertexPC> { 
-		VertexPC(glm::vec3( 0, 0, 0), glm::vec3(colorIntensity, 0, 0)),
-		VertexPC(glm::vec3( lengthFromCenter, 0, 0), glm::vec3(colorIntensity, 0, 0)),
-		VertexPC(glm::vec3( 0, 0, 0), glm::vec3(0, colorIntensity, 0)),
-		VertexPC(glm::vec3( 0, lengthFromCenter, 0), glm::vec3(0, colorIntensity, 0)),
-		VertexPC(glm::vec3( 0, 0, 0), glm::vec3(0, 0, colorIntensity)),
-		VertexPC(glm::vec3( 0, 0, lengthFromCenter), glm::vec3(0, 0, colorIntensity)) };
+	vertexDestination = { 
+		0, 0, 0,                  colorIntensity, 0, 0,
+		lengthFromCenter, 0, 0,   colorIntensity, 0, 0,
+		0, 0, 0,                  0, colorIntensity, 0,
+		0, lengthFromCenter, 0,   0, colorIntensity, 0,
+		0, 0, 0,                  0, 0, colorIntensity,
+		0, 0, lengthFromCenter,   0, 0, colorIntensity };
 
 	// Indices buffer
 	indicesDestination = std::vector<uint16_t>{ 0, 1,  2, 3,  4, 5 };
@@ -100,26 +100,39 @@ size_t getAxis(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 	return 6;
 }
 
-size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
+size_t getGrid(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
 {
 	// Vertex buffer
 	int start = (stepSize * stepsPerSide) / 2;
-
+	size_t numVertex = (stepsPerSide + 1) * 4;
+	vertexDestination.resize(numVertex * 6);
+	glm::vec3* vertexPtr = (glm::vec3*)vertexDestination.data();
+	
 	for (int i = 0; i <= stepsPerSide; i++)
 	{
-		vertexDestination.push_back({ glm::vec3(-start, -start + i * stepSize, height), color });
-		vertexDestination.push_back({ glm::vec3( start, -start + i * stepSize, height), color });
+		*vertexPtr = glm::vec3(-start, -start + i * stepSize, height);
+		vertexPtr++;
+		*vertexPtr = color;
+		vertexPtr++;
+		*vertexPtr = glm::vec3( start, -start + i * stepSize, height);
+		vertexPtr++;
+		*vertexPtr = color;
+		vertexPtr++;
 	}
 
 	for (int i = 0; i <= stepsPerSide; i++)
 	{
-		vertexDestination.push_back({ glm::vec3(-start + i * stepSize, -start, height), color });
-		vertexDestination.push_back({ glm::vec3(-start + i * stepSize,  start, height), color });
+		*vertexPtr = glm::vec3(-start + i * stepSize, -start, height);
+		vertexPtr++;
+		*vertexPtr = color;
+		vertexPtr++;
+		*vertexPtr = glm::vec3(-start + i * stepSize,  start, height);
+		vertexPtr++;
+		*vertexPtr = color;
+		vertexPtr++;
 	}
 	
 	// Indices buffer
-	size_t numVertex = (stepsPerSide + 1) * 4;
-
 	for (uint16_t i = 0; i < numVertex; i++)
 		indicesDestination.push_back(i);
 
@@ -127,71 +140,67 @@ size_t getGrid(std::vector<VertexPC>& vertexDestination, std::vector<uint16_t>& 
 	return numVertex;
 }
 
-size_t getQuad(std::vector<VertexPT>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue)
+size_t getQuad(std::vector<float>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue)
 {
 	//destVertex = std::vector<float>{
 	//-horSize / 2,  vertSize / 2, zValue, 0, 0,		// top left
 	//-horSize / 2, -vertSize / 2, zValue, 0, 1,		// low left
 	// horSize / 2, -vertSize / 2, zValue, 1, 1,		// low right
-	// horSize / 2,  vertSize / 2, zValue, 1, 0 };	// top right
+	// horSize / 2,  vertSize / 2, zValue, 1, 0 };		// top right
 
-	destVertex = std::vector<VertexPT>{
-		VertexPT(glm::vec3(-horSize/2,  vertSize/2, zValue), glm::vec2(0, 0)),		// top left
-		VertexPT(glm::vec3(-horSize/2, -vertSize/2, zValue), glm::vec2(0, 1)),		// low left
-		VertexPT(glm::vec3( horSize/2, -vertSize/2, zValue), glm::vec2(1, 1)),		// low right
-		VertexPT(glm::vec3( horSize/2,  vertSize/2, zValue), glm::vec2(1, 0)) };	// top right
+	destVertex = {
+		-horSize/2,  vertSize/2, zValue,     0, 0,		// top left
+		-horSize/2, -vertSize/2, zValue,     0, 1,		// low left
+		 horSize/2, -vertSize/2, zValue,     1, 1,		// low right
+		 horSize/2,  vertSize/2, zValue,     1, 0 };	// top right
 
 	destIndices = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
 	return 4;
 }
 
-size_t getPlaneNDC(std::vector<VertexPT>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
+size_t getPlaneNDC(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float vertSize, float horSize)
 {
-	vertexDestination = std::vector<VertexPT>{ 
-		VertexPT( glm::vec3(-horSize/2, -vertSize/2, 0.f), glm::vec2(0, 0) ),
-		VertexPT( glm::vec3(-horSize/2,  vertSize/2, 0.f), glm::vec2(0, 1) ),
-		VertexPT( glm::vec3( horSize/2,  vertSize/2, 0.f), glm::vec2(1, 1) ),
-		VertexPT( glm::vec3( horSize/2, -vertSize/2, 0.f), glm::vec2(1, 0) ) };
+	vertexDestination = { 
+		-horSize/2, -vertSize/2, 0.f,     0, 0,
+		-horSize/2,  vertSize/2, 0.f,     0, 1,
+		 horSize/2,  vertSize/2, 0.f,     1, 1,
+		 horSize/2, -vertSize/2, 0.f,     1, 0 };
 
 	indicesDestination = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
 	return 4;
 }
 
-void getScreenQuad(float radius, float zValue, float vertices[4 * 5], std::vector<uint16_t> &indices)
+void getScreenQuad(std::vector<float>& vertices, std::vector<uint16_t>& indices, float radius, float zValue)
 {
-	float temp[4 * 5] =
-	{
+	vertices = {
 		-radius,-radius, zValue,  0, 0,
 		-radius, radius, zValue,  0, 1,
 		 radius, radius, zValue,  1, 1,
-		 radius,-radius, zValue,  1, 0
-	};
-
-	for (unsigned i = 0; i < 20; i++)
-		vertices[i] = temp[i];
+		 radius,-radius, zValue,  1, 0 };
 
 	indices = std::vector<uint16_t>{ 0,1,3, 1,2,3 };
 }
 
 // Skybox
-std::vector<VertexPT> v_cube =
+std::vector<float> v_cube =
 {
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2( 0., 1/3.)), 
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2( 0., 2/3.)), 
-	VertexPT(glm::vec3(-1,  1,  1), glm::vec2(.25, 1/3.)),
-	VertexPT(glm::vec3(-1,  1, -1), glm::vec2(.25, 2/3.)),
-	VertexPT(glm::vec3( 1,  1,  1), glm::vec2( .5, 1/3.)), 
-	VertexPT(glm::vec3( 1,  1, -1), glm::vec2( .5, 2/3.)), 
-	VertexPT(glm::vec3( 1, -1,  1), glm::vec2(.75, 1/3.)),
-	VertexPT(glm::vec3( 1, -1, -1), glm::vec2(.75, 2/3.)),
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2( 1., 1/3.)), 
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2( 1., 2/3.)), 
-	VertexPT(glm::vec3(-1, -1,  1), glm::vec2(.25, 0.  )),  
-	VertexPT(glm::vec3( 1, -1,  1), glm::vec2( .5, 0.  )),   
-	VertexPT(glm::vec3(-1, -1, -1), glm::vec2(.25, 1.  )),  
-	VertexPT(glm::vec3( 1, -1, -1), glm::vec2( .5, 1.  ))    
+	//Vertices    UV coords
+	-1, -1,  1,    0., 1/3., 
+	-1, -1, -1,    0., 2/3., 
+	-1,  1,  1,   .25, 1/3.,
+	-1,  1, -1,   .25, 2/3.,
+	 1,  1,  1,    .5, 1/3., 
+	 1,  1, -1,    .5, 2/3., 
+	 1, -1,  1,   .75, 1/3.,
+	 1, -1, -1,   .75, 2/3.,
+	-1, -1,  1,    1., 1/3., 
+	-1, -1, -1,    1., 2/3., 
+	-1, -1,  1,   .25, 0.  ,  
+	 1, -1,  1,    .5, 0.  ,   
+	-1, -1, -1,   .25, 1.  ,  
+	 1, -1, -1,    .5, 1.      
 };
 
 std::vector<uint16_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };

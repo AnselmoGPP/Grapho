@@ -65,22 +65,14 @@ std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescripti
 
 //VerteSet -----------------------------------------------------------------
 
-VertexSet::VertexSet() : Vtype(), buffer(nullptr), capacity(0), numVertex(0) { }
+VertexSet::VertexSet() : vertexSize(0), buffer(nullptr), capacity(0), numVertex(0) { }
 
-VertexSet::VertexSet(VertexType vertexType)
-	: Vtype(vertexType), capacity(8), numVertex(0)
+VertexSet::VertexSet(size_t vertexSize)
+	: vertexSize(vertexSize), capacity(8), numVertex(0)
 { 
-	this->buffer = new char[capacity * vertexType.vertexSize];
+	this->buffer = new char[capacity * vertexSize];
 }
-/*
-VertexSet::VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer)
-	: Vtype(vertexType), numVertex(numOfVertex)
-{
-	capacity = pow(2, 1 + (int)(log(numOfVertex)/log(2)));		// log b (M) = ln(M) / ln(b)
-	this->buffer = new char[capacity * vertexType.vertexSize];
-	std::memcpy(this->buffer, buffer, totalBytes());
-}
-*/
+
 VertexSet::~VertexSet() { delete[] buffer; };
 
 VertexSet& VertexSet::operator=(const VertexSet& obj)
@@ -88,28 +80,38 @@ VertexSet& VertexSet::operator=(const VertexSet& obj)
 	if (&obj == this) return *this;
 
 	numVertex = obj.numVertex;
-	Vtype = obj.Vtype;
+	vertexSize = obj.vertexSize;
 	capacity = obj.capacity;
 
 	delete[] buffer;
-	buffer = new char[capacity * Vtype.vertexSize];
+	buffer = new char[capacity * vertexSize];
 	std::memcpy(buffer, obj.buffer, totalBytes());
 
 	return *this;
 }
 
-size_t VertexSet::totalBytes() const { return numVertex * Vtype.vertexSize; }
+VertexSet::VertexSet(const VertexSet& obj)
+{
+	numVertex = obj.numVertex;
+	vertexSize = obj.vertexSize;
+	capacity = obj.capacity;
+
+	buffer = new char[capacity * vertexSize];
+	std::memcpy(buffer, obj.buffer, totalBytes());
+}
+
+size_t VertexSet::totalBytes() const { return numVertex * vertexSize; }
 
 size_t VertexSet::size() const { return numVertex; }
 
 char* VertexSet::data() const { return buffer; }
 
-void* VertexSet::getElement(size_t i) const { return &(buffer[i * Vtype.vertexSize]); }
+void* VertexSet::getElement(size_t i) const { return &(buffer[i * vertexSize]); }
 
 void VertexSet::printElement(size_t i) const
 {
 	float* ptr = (float*)getElement(i);
-	size_t size = Vtype.vertexSize / sizeof(float);
+	size_t size = vertexSize / sizeof(float);
 	for (size_t i = 0; i < size; i++)
 		std::cout << *((float*)ptr + i) << ", ";
 	std::cout << std::endl;
@@ -129,7 +131,7 @@ void VertexSet::push_back(const void* element)
 	if (numVertex == capacity)
 		reserve(2 * capacity);
 
-	std::memcpy(&buffer[totalBytes()], (char*)element, Vtype.vertexSize);
+	std::memcpy(&buffer[totalBytes()], (char*)element, vertexSize);
 	numVertex++;
 }
 
@@ -137,7 +139,7 @@ void VertexSet::reserve(unsigned newCapacity)
 {
 	if (newCapacity > capacity)
 	{
-		char* temp = new char[newCapacity * Vtype.vertexSize];
+		char* temp = new char[newCapacity * vertexSize];
 		std::memcpy(temp, buffer, totalBytes());
 		delete[] buffer;
 		buffer = temp;
@@ -145,35 +147,35 @@ void VertexSet::reserve(unsigned newCapacity)
 	}
 	else if (newCapacity < capacity)
 	{
-		char* temp = new char[newCapacity * Vtype.vertexSize];
-		std::memcpy(temp, buffer, newCapacity * Vtype.vertexSize);
+		char* temp = new char[newCapacity * vertexSize];
+		std::memcpy(temp, buffer, newCapacity * vertexSize);
 		delete[] buffer;
 		buffer = temp;
 		capacity = newCapacity;
 	}
 }
 
-void VertexSet::reset(VertexType vertexType, size_t numOfVertex, const void* buffer)
+void VertexSet::reset(size_t vertexSize, size_t numOfVertex, const void* buffer)
 {
 	if(buffer) delete[] this->buffer;
 
-	Vtype = vertexType;
-	numVertex = numOfVertex;
+	this->vertexSize = vertexSize;
+	this->numVertex = numOfVertex;
 
 	capacity = pow(2, 1 + (int)(log(numOfVertex) / log(2)));		// log b (M) = ln(M) / ln(b)
-	this->buffer = new char[capacity * vertexType.vertexSize];
+	this->buffer = new char[capacity * vertexSize];
 	std::memcpy(this->buffer, buffer, totalBytes());
 }
 
-void VertexSet::reset(VertexType vertexType)
+void VertexSet::reset(size_t vertexSize)
 {
 	if(buffer) delete[] this->buffer;
 
-	Vtype = vertexType;
+	this->vertexSize = vertexSize;
 	numVertex = 0;
 	capacity = 8;
 
-	this->buffer = new char[capacity * vertexType.vertexSize];
+	this->buffer = new char[capacity * vertexSize];
 }
 
 
@@ -223,90 +225,4 @@ bool VertexPCT::operator==(const VertexPCT& other) const {
 size_t std::hash<VertexPCT>::operator()(VertexPCT const& vertex) const
 {
 	return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-}
-
-
-//Vertex PC (Position, Color) -----------------------------------------------------------------
-
-VertexPC::VertexPC(glm::vec3 vertex, glm::vec3 vertexColor)
-	: pos(vertex), color(vertexColor) { }
-
-VkVertexInputBindingDescription VertexPC::getBindingDescription()
-{
-	VkVertexInputBindingDescription bindingDescription{};
-	bindingDescription.binding = 0;							// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
-	bindingDescription.stride = sizeof(VertexPC);			// Number of bytes from one entry to the next.
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;	// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
-
-	return bindingDescription;
-}
-
-std::array<VkVertexInputAttributeDescription, 3> VertexPC::getAttributeDescriptions()
-{
-	std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-	attributeDescriptions[0].binding = 0;							// From which binding the per-vertex data comes.
-	attributeDescriptions[0].location = 0;							// Directive "location" of the input in the vertex shader.
-	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;	// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
-	attributeDescriptions[0].offset = offsetof(VertexPC, pos);		// Number of bytes since the start of the per-vertex data to read from.
-
-	attributeDescriptions[1].binding = 0;
-	attributeDescriptions[1].location = 1;
-	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset = offsetof(VertexPC, color);
-
-	return attributeDescriptions;
-}
-
-bool VertexPC::operator==(const VertexPC& other) const {
-	return	pos == other.pos &&
-			color == other.color;
-}
-
-size_t std::hash<VertexPC>::operator()(VertexPC const& vertex) const
-{
-	return ( (hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1 );
-}
-
-
-//Vertex PT (Position, Texture) -----------------------------------------------------------------
-
-VertexPT::VertexPT(glm::vec3 vertex, glm::vec2 textureCoordinates)
-	: pos(vertex), texCoord(textureCoordinates) { }
-
-VkVertexInputBindingDescription VertexPT::getBindingDescription()
-{
-	VkVertexInputBindingDescription bindingDescription{};
-	bindingDescription.binding = 0;							// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
-	bindingDescription.stride = sizeof(VertexPT);			// Number of bytes from one entry to the next.
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;	// VK_VERTEX_INPUT_RATE_ ... VERTEX, INSTANCE (move to the next data entry after each vertex or instance).
-
-	return bindingDescription;
-}
-
-std::array<VkVertexInputAttributeDescription, 3> VertexPT::getAttributeDescriptions()
-{
-	std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-	attributeDescriptions[0].binding = 0;							// From which binding the per-vertex data comes.
-	attributeDescriptions[0].location = 0;							// Directive "location" of the input in the vertex shader.
-	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;	// Type of data for the attribute: VK_FORMAT_ ... R32_SFLOAT (float), R32G32_SFLOAT (vec2), R32G32B32_SFLOAT (vec3), R32G32B32A32_SFLOAT (vec4), R64_SFLOAT (64-bit double), R32G32B32A32_UINT (uvec4: 32-bit unsigned int), R32G32_SINT (ivec2: 32-bit signed int)...
-	attributeDescriptions[0].offset = offsetof(VertexPT, pos);		// Number of bytes since the start of the per-vertex data to read from.
-
-	attributeDescriptions[1].binding = 0;
-	attributeDescriptions[1].location = 1;
-	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset = offsetof(VertexPT, texCoord);
-
-	return attributeDescriptions;
-}
-
-bool VertexPT::operator==(const VertexPT& other) const {
-	return	pos == other.pos &&
-		texCoord == other.texCoord;
-}
-
-size_t std::hash<VertexPT>::operator()(VertexPT const& vertex) const
-{
-	return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec2>()(vertex.texCoord) << 1)) >> 1);
 }

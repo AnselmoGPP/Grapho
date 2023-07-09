@@ -1,9 +1,13 @@
 TODO:
-	Delete deprecated classes: DataLoader...
+	-Change hpp files names
+	-Change class names
+	Analyze std::hash (vertex.hpp)
+	How can be noPP model be loaded at the same time as skybox? Otherwise, error could happen.
+	-Delete deprecated classes: DataLoader...
 	ModelData's flags fullyConstructed and inModels are necessary? Are they initialized in the correct places? 
 	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
 	Mutex for ShaderInfo::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
-	After moving buffers to VerticesInfo, ModelData::loadResources can be replaced by ResourcesInfo::loadResources
+	After moving buffers to VerticesLoader, ModelData::loadResources can be replaced by ResourcesInfo::loadResources
 	loadInfo->vertices.vertices.Vtype.getAttributeDescriptions();
 	^         ^
 	loader?   vertexData?
@@ -16,7 +20,7 @@ TODO:
 		Single sample for all PP
 	
 	Diffuse sea foam with distance
-	ModelData::vertexType doesn't exist / Use modules in VerticesInfo and so / Keep data in VerticesInfo and so and delete it when not necessary (use modules).
+	ModelData::vertexType doesn't exist / Use modules in VerticesLoader and so / Keep data in VerticesLoader and so and delete it when not necessary (use modules).
 	ModelSet doesn't work if there is no dynUBO_vs
 
 	Delete Dataloader object when already used for passing data / Same for vertex data stored in ModelData object.

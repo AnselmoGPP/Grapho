@@ -24,7 +24,7 @@
 			- VertexPTN
 */
 
-/// Used for configuring VertexSet. Defines the size and type of attributes the vertex is made of (Position, Color, Texture coordinates, Normals...).
+/// VertexType defines the characteristics of a vertex. Defines the size and type of attributes the vertex is made of (Position, Color, Texture coordinates, Normals...).
 class VertexType
 {
 public:
@@ -47,25 +47,21 @@ class VertexSet
 {
 public:
 	VertexSet();
-	VertexSet(VertexType vertexType);
+	VertexSet(size_t vertexSize);
 	//VertexSet(VertexType vertexType, size_t numOfVertex, const void* buffer);
 	~VertexSet();
 	VertexSet& operator=(const VertexSet& obj);	// Not used
+	VertexSet(const VertexSet& obj);			//!< Copy constructor
 
-	VertexType Vtype;						// Vertex type. Contains the configuration of a vertex
-
-	//VkVertexInputBindingDescription					getBindingDescription();	///< Describes at which rate to load data from memory throughout the vertices (number of bytes between data entries and whether to move to the next data entry after each vertex or after each instance).
-	//std::vector<VkVertexInputAttributeDescription>	getAttributeDescriptions();	///< Describe how to extract a vertex attribute from a chunk of vertex data originiating from a binding description. Two attributes here: position and color.
-
-	//bool operator==(const VertexPCT& other) const;							///< Overriding of operator ==. Required for doing comparisons in loadModel().
+	size_t vertexSize;
 
 	size_t totalBytes() const;
 	size_t size() const;
 	char* data() const;
 	void push_back(const void* element);
 	void reserve(unsigned size);
-	void reset(VertexType vertexType, size_t numOfVertex, const void* buffer);	//!< Similar to a copy constructor, but just using its parameters instead of an already existing object.
-	void reset(VertexType vertexType);
+	void reset(size_t vertexSize, size_t numOfVertex, const void* buffer);	//!< Similar to a copy constructor, but just using its parameters instead of an already existing object.
+	void reset(size_t vertexSize);
 
 	// Debugging purposes
 	void* getElement(size_t i) const;		//!< Get pointer to element
@@ -98,52 +94,6 @@ struct VertexPCT
 /// Hash function for VertexPCT. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
 template<> struct std::hash<VertexPCT> {
 	size_t operator()(VertexPCT const& vertex) const;
-};
-
-/// Vertex structure containing Position and Color (useful for lines or points)
-struct VertexPC
-{
-	VertexPC() = default;
-	VertexPC(glm::vec3 vertex, glm::vec3 vertexColor);
-
-	glm::vec3 pos;
-	glm::vec3 color;
-
-	static VkVertexInputBindingDescription					getBindingDescription();	///< Describes at which rate to load data from memory throughout the vertices (number of bytes between data entries and whether to move to the next data entry after each vertex or after each instance).
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();	///< Describe how to extract a vertex attribute from a chunk of vertex data originiating from a binding description. Two attributes here: position and color.
-	bool operator==(const VertexPC& other) const;										///< Overriding of operator ==. Required for doing comparisons in loadModel().
-};
-
-/// Hash function for VertexPCT. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
-template<> struct std::hash<VertexPC> {
-	size_t operator()(VertexPC const& vertex) const;
-};
-
-/// Vertex structure containing Position and Texture
-struct VertexPT
-{
-	VertexPT() = default;
-	VertexPT(glm::vec3 vertex, glm::vec2 textureCoordinates);
-
-	glm::vec3 pos;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription					getBindingDescription();	///< Describes at which rate to load data from memory throughout the vertices (number of bytes between data entries and whether to move to the next data entry after each vertex or after each instance).
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();	///< Describe how to extract a vertex attribute from a chunk of vertex data originiating from a binding description. Two attributes here: position and color.
-	bool operator==(const VertexPT& other) const;										///< Overriding of operator ==. Required for doing comparisons in loadModel().
-};
-
-/// Hash function for VertexPT. Implemented by specifying a template specialization for std::hash<T> (https://en.cppreference.com/w/cpp/utility/hash). Required for doing comparisons in loadModel().
-template<> struct std::hash<VertexPT> {
-	size_t operator()(VertexPT const& vertex) const;
-};
-
-/// Vertex structure containing Position, Texture, and Normals
-struct VertexPTN
-{
-	glm::vec3 pos;
-	glm::vec2 texCoord;
-	glm::vec3 normals;
 };
 
 #endif

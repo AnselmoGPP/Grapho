@@ -3,10 +3,11 @@
 #include "commons.hpp"
 
 
-ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
 	: name(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
+	vertexType(vertexType),
 	hasTransparencies(transparency),
 	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
 	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
@@ -20,7 +21,7 @@ ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
 	#endif
 
-	loadInfo = new ResourcesInfo(verticesInfo, shadersInfo, texturesInfo);
+	loadInfo = new ResourcesInfo(verticesLoader, shadersInfo, texturesInfo, e);
 }
 
 ModelData::~ModelData()
@@ -43,64 +44,29 @@ ModelData::~ModelData()
 		textures[i]->counter--;
 }
 
-ModelData& ModelData::fullConstruction(std::list<Shader>& shadersList, std::list<Texture>& texturesList, std::mutex& mutResources)
+ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::list<Texture>& loadedTextures, std::mutex& mutResources)
 {
 	#ifdef DEBUG_MODELS
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 
-	loadResources(shadersList, texturesList, mutResources);	// Load vertices, indices, shaders, textures
+	if (loadInfo)
+	{
+		loadInfo->loadResources(vert, shaders, loadedShaders, textures, loadedTextures, mutResources);
+		deleteLoader();
+	}
+	else std::cout << "Error: No loading info data" << std::endl;
 
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
-	
-	createVertexBuffer();
-	createIndexBuffer();
-	
+		
 	vsDynUBO.createUniformBuffers();
 	fsUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-	
-	deleteLoader();
 
 	//fullyConstructed = true;
 	return *this;
-}
-
-void ModelData::loadResources(std::list<Shader>& loadedShaders, std::list<Texture>& loadedTextures, std::mutex& mutResources)
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
-	#endif
-
-	if (loadInfo)
-	{
-		// Load vertices and indices
-		loadInfo->vertices.loadVertices(loadInfo);
-
-		{
-			const std::lock_guard<std::mutex> lock(mutResources);
-
-			// Load shaders
-			for (int i = 0; i < loadInfo->shaders.size(); i++)
-			{
-				shaderIter iter = loadInfo->shaders[i].loadShader(*e, loadedShaders);
-				iter->counter++;
-				shaders.push_back(iter);
-			}
-
-			// Load textures
-			for (int i = 0; i < loadInfo->textures.size(); i++)
-			{
-				texIter iter = loadInfo->textures[i].loadTexture(*e, loadedTextures);
-				iter->counter++;
-				textures.push_back(iter);
-			}
-		}
-	}
-	else
-		std::cout << "Error: No loading info data" << std::endl;
 }
 
 // (9)
@@ -220,10 +186,10 @@ void ModelData::createGraphicsPipeline()
 	// Vertex input: Describes format of the vertex data that will be passed to the vertex shader.
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	auto bindingDescription = loadInfo->vertices.vertices.Vtype.getBindingDescription();
+	auto bindingDescription = vertexType.getBindingDescription();
 	vertexInputInfo.vertexBindingDescriptionCount = 1;
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;							// Optional
-	auto attributeDescriptions = loadInfo->vertices.vertices.Vtype.getAttributeDescriptions();
+	auto attributeDescriptions = vertexType.getAttributeDescriptions();
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();				// Optional
 
@@ -376,6 +342,7 @@ void ModelData::createGraphicsPipeline()
 	//vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
 }
 
+/*
 VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 {
 	#ifdef DEBUG_MODELS
@@ -393,137 +360,7 @@ VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
 
 	return shaderModule;
 }
-
-// (19)
-void ModelData::createVertexBuffer()
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
-	#endif
-
-	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
-	VkDeviceSize   bufferSize = loadInfo->vertices.vertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
-	VkBuffer	   stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-
-	createBuffer(
-		e,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 											// VK_BUFFER_USAGE_ ... TRANSFER_SRC_BIT / TRANSFER_DST_BIT (buffer can be used as source/destination in a memory transfer operation).
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory);
-
-	// Fill the staging buffer (by mapping the buffer memory into CPU accessible memory: https://en.wikipedia.org/wiki/Memory-mapped_I/O)
-	void* data;
-	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);	// Access a memory region. Use VK_WHOLE_SIZE to map all of the memory.
-	memcpy(data, loadInfo->vertices.vertices.data(), (size_t)bufferSize);						// Copy the vertex data to the mapped memory.
-	vkUnmapMemory(e->c.device, stagingBufferMemory);							// Unmap memory.
-
-	/*
-		Note:
-		The driver may not immediately copy the data into the buffer memory (example: because of caching).
-		It is also possible that writes to the buffer are not visible in the mapped memory yet. Two ways to deal with that problem:
-		  - (Our option) Coherent memory heap: Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT. This ensures that the mapped memory always matches the contents of the allocated memory (this may lead to slightly worse performance than explicit flushing, but this doesn't matter since we will use a staging buffer).
-		  - Flushing memory: Call vkFlushMappedMemoryRanges after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory.
-		Either option means that the driver will be aware of our writes to the buffer, but it doesn't mean that they are actually visible on the GPU yet.
-		The transfer of data to the GPU happens in the background and the specification simply tells us that it is guaranteed to be complete as of the next call to vkQueueSubmit.
-	*/
-
-	// Create the actual vertex buffer (Device local buffer used as actual vertex buffer. Generally it doesn't allow to use vkMapMemory, but we can copy from stagingBuffer to vertexBuffer, though you need to specify the transfer source flag for stagingBuffer and the transfer destination flag for vertexBuffer).
-	// This makes vertex data to be loaded from high performance memory.
-	createBuffer(
-		e,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		vert.vertexBuffer,
-		vert.vertexBufferMemory);
-
-	vert.vertexCount = loadInfo->vertices.vertices.getNumVertex();
-
-	// Move the vertex data to the device local buffer
-	copyBuffer(stagingBuffer, vert.vertexBuffer, bufferSize);
-
-	// Clean up
-	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
-	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
-
-	//std::cout << "Vertex count: " << bufferSize/32 << std::endl;
-	//for (size_t i = 0; i < bufferSize/32; i++)
-	//	std::cout << i << ": " << ((float*)(vertices.data()))[i * 8 + 0] << ", " << ((float*)(vertices.data()))[i * 8 + 1] << ", " << ((float*)(vertices.data()))[i * 8 + 2] << ", " << ((float*)(vertices.data()))[i * 8 + 3] << ", " << ((float*)(vertices.data()))[i * 8 + 4] << ", " << ((float*)(vertices.data()))[i * 8 + 5] << ", " << ((float*)(vertices.data()))[i * 8 + 6] << ", " << ((float*)(vertices.data()))[i * 8 + 7] << std::endl;
-}
-
-/**
-	@brief Copies some amount of data (size) from srcBuffer into dstBuffer. Used in createVertexBuffer() and createIndexBuffer().
-
-	Memory transfer operations are executed using command buffers (like drawing commands), so we allocate a temporary command buffer. You may wish to create a separate command pool for these kinds of short-lived buffers, because the implementation could apply memory allocation optimizations. You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
 */
-void ModelData::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
-	#endif
-
-	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
-
-	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).
-	VkBufferCopy copyRegion{};
-	copyRegion.size = size;
-	copyRegion.srcOffset = 0;	// Optional
-	copyRegion.dstOffset = 0;	// Optional
-
-	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-	e->endSingleTimeCommands(commandBuffer);
-}
-
-// (20)
-void ModelData::createIndexBuffer()
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
-	#endif
-
-	if (loadInfo->vertices.indices.size() == 0) return;
-
-	// Create a staging buffer
-	VkDeviceSize   bufferSize = sizeof(loadInfo->vertices.indices[0]) * loadInfo->vertices.indices.size();
-	VkBuffer	   stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-
-	createBuffer(
-		e,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory);
-
-	// Fill the staging buffer
-	void* data;
-	vkMapMemory(e->c.device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, loadInfo->vertices.indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(e->c.device, stagingBufferMemory);
-
-	// Create the vertex buffer
-	createBuffer(
-		e,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		vert.indexBuffer,
-		vert.indexBufferMemory);
-
-	vert.indexCount = loadInfo->vertices.indices.size();
-
-	// Move the vertex data to the device local buffer
-	copyBuffer(stagingBuffer, vert.indexBuffer, bufferSize);
-
-	// Clean up
-	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
-	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
-}
 
 // (22)
 void ModelData::createDescriptorPool()
@@ -742,18 +579,17 @@ void ModelData::cleanup()
 	
 	// Descriptor set layout
 	vkDestroyDescriptorSetLayout(e->c.device, descriptorSetLayout, nullptr);
-	
+
 	// Index
 	if (vert.indexCount)
 	{
 		vkDestroyBuffer(e->c.device, vert.indexBuffer, nullptr);
 		vkFreeMemory(e->c.device, vert.indexBufferMemory, nullptr);
 	}
-	
+
 	// Vertex
 	vkDestroyBuffer(e->c.device, vert.vertexBuffer, nullptr);
 	vkFreeMemory(e->c.device, vert.vertexBufferMemory, nullptr);
-
 }
 
 void ModelData::deleteLoader()

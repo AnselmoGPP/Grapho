@@ -36,30 +36,55 @@ struct ResourcesInfo;
 
 // VERTICES --------------------------------------------------------
 
-class VerticesLoader
+/// Vulkan Vertex data (position, color, texture coordinates...) and Indices
+struct VertexData
 {
-public:
-	VerticesLoader(const VertexType& vertexType);
-	virtual ~VerticesLoader() { };
+	// Vertices
+	uint32_t					 vertexCount;
+	VkBuffer					 vertexBuffer;			//!< Opaque handle to a buffer object (here, vertex buffer).
+	VkDeviceMemory				 vertexBufferMemory;	//!< Opaque handle to a device memory object (here, memory for the vertex buffer).
 
-	virtual void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) = 0;
-	virtual VerticesLoader* clone() = 0;
-
-	const VertexType vertexType;
+	// Indices
+	uint32_t					 indexCount;
+	VkBuffer					 indexBuffer;			//!< Opaque handle to a buffer object (here, index buffer).
+	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 };
 
-class VerticesFromBuffer : public VerticesLoader
+
+class VerticesLoaderModule
 {
-	//size_t vertexCount;
+protected:
+	const size_t vertexSize;
+
+	virtual void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) = 0;					//!< Get raw vertex data (vertices & indices)
+	void createBuffers(VertexData& result, const VertexSet& rawVertices, const std::vector<uint16_t>& rawIndices, VulkanEnvironment* e);	//!< Upload raw vertex data to Vulkan (i.e., create Vulkan buffers)
+
+	void createVertexBuffer(const VertexSet& rawVertices, VertexData& result, VulkanEnvironment* e);									//!< Vertex buffer creation.
+	void createIndexBuffer(const std::vector<uint16_t>& rawIndices, VertexData& result, VulkanEnvironment* e);							//!< Index buffer creation
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VulkanEnvironment* e);
 
 public:
-	VerticesFromBuffer(const VertexType& vertexType, const void* verticesData, size_t vertexCount, const std::vector<uint16_t>& indices, VertexSet& destVertices, std::vector<uint16_t>& destIndices);
+	VerticesLoaderModule(size_t vertexSize);
+	virtual ~VerticesLoaderModule() { };
 
-	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) override;
-	VerticesLoader* clone() override;
+	void loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e);
+	virtual VerticesLoaderModule* clone() = 0;
 };
 
-class VerticesFromFile : public VerticesLoader
+class VLM_fromBuffer : public VerticesLoaderModule
+{
+	VertexSet rawVertices;
+	std::vector<uint16_t> rawIndices;
+
+	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) override;
+
+public:
+	VLM_fromBuffer(const void* verticesData, size_t vertexSize, size_t vertexCount, const std::vector<uint16_t>& indices);
+
+	VerticesLoaderModule* clone() override;
+};
+
+class VLM_fromFile : public VerticesLoaderModule
 {
 	std::string path;
 
@@ -70,40 +95,26 @@ class VerticesFromFile : public VerticesLoader
 	void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
 	void processMesh(aiMesh* mesh, const aiScene* scene);
 
-public:
-	VerticesFromFile(const VertexType& vertexType, std::string& filePath);
+	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesInfo& destResources) override;
 
-	void loadVertices(VertexSet& vertices, std::vector<uint16_t>& indices, ResourcesInfo* resourcesInfo) override;
-	VerticesLoader* clone() override;
+public:
+	VLM_fromFile(size_t vertexSize, std::string& filePath);
+
+	VerticesLoaderModule* clone() override;
 };
 
 
-class VerticesInfo
+class VerticesLoader
 {
-	//std::string path;
-
-	//std::vector<char> vertexData;
-	//std::vector<uint16_t> indices;
-
-	//void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
-	//void processMesh(aiMesh* mesh, const aiScene* scene);
+	VerticesLoaderModule* loader;
 
 public:
-	VerticesInfo(const VertexType& vertexType, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
-	VerticesInfo(const VertexType& vertexType, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< from buffers
-	VerticesInfo(const VerticesInfo& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
-	~VerticesInfo();
+	VerticesLoader(size_t vertexSize, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
+	VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< from buffers
+	VerticesLoader(const VerticesLoader& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
+	~VerticesLoader();
 
-	VertexSet vertices;
-	std::vector<uint16_t> indices;
-
-	VerticesLoader* loader;
-
-	void loadVertices(ResourcesInfo* resourcesInfo);
-
-	////const std::string id;
-	//const VertexType vertexType;
-	//size_t vertexCount;
+	void loadVertices(VertexData& result, ResourcesInfo* resources, VulkanEnvironment* e);
 };
 
 
@@ -183,6 +194,7 @@ public:
 	VkSampler			textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
 
+// Used for loading textures to Vulkan. You get Texture objects.
 class TextureInfo
 {
 	std::string filePath;
@@ -216,15 +228,18 @@ public:
 
 // RESOURCES --------------------------------------------------------
 
+// Encapsulates data required for loading resources (vertices, indices, shaders, textures) and loading methods.
 struct ResourcesInfo
 {
-	ResourcesInfo(VerticesInfo& verticesInfo, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo);
+	ResourcesInfo(VerticesLoader& verticesLoader, std::vector<ShaderInfo>& shadersInfo, std::vector<TextureInfo>& texturesInfo, VulkanEnvironment* e);
 
-	VerticesInfo vertices;
+	VulkanEnvironment* e;
+	VerticesLoader vertices;
 	std::vector<ShaderInfo> shaders;
 	std::vector<TextureInfo> textures;
 
-
+	/// Load resources (vertices, indices, shaders, textures) and upload them to Vulkan. If a shader or texture exists in Renderer, it just takes the iterator.
+	void loadResources(VertexData& destVertexData, std::vector<shaderIter>& destShaders, std::list<Shader>& loadedShaders, std::vector<texIter>& destTextures, std::list<Texture>& loadedTextures, std::mutex& mutResources);
 };
 
 

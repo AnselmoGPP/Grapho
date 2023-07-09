@@ -35,7 +35,7 @@ void DataFromUser_computed::loadVertex() { if (!immediateMode) loadData(); }
 
 void DataFromUser_computed::loadData()
 {
-	destVertices->reset(vertexType, sourceVertexCount, sourceVertices);
+	destVertices->reset(0.00, sourceVertexCount, sourceVertices);
 	*destIndices = sourceIndices;
 }
 
