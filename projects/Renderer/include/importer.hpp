@@ -58,7 +58,6 @@ struct VertexData
 	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 };
 
-
 /// Vertices loader module used in VerticesLoader for loading vertices from any source.
 class VLModule
 {
@@ -75,9 +74,9 @@ protected:
 public:
 	VLModule(size_t vertexSize);
 	virtual ~VLModule() { };
+	virtual VLModule* clone() = 0;
 
 	void loadVertices(VertexData& result, ResourcesLoader* resources, VulkanEnvironment* e);
-	virtual VLModule* clone() = 0;
 };
 
 class VLM_fromBuffer : public VLModule
@@ -89,7 +88,6 @@ class VLM_fromBuffer : public VLModule
 
 public:
 	VLM_fromBuffer(const void* verticesData, size_t vertexSize, size_t vertexCount, const std::vector<uint16_t>& indices);
-
 	VLModule* clone() override;
 };
 
@@ -112,7 +110,6 @@ public:
 	VLModule* clone() override;
 };
 
-
 /// Wrapper around VL_module for loading vertices from any source.
 class VerticesLoader
 {
@@ -120,7 +117,7 @@ class VerticesLoader
 
 public:
 	VerticesLoader(size_t vertexSize, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
-	VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< from buffers
+	VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< From buffers
 	VerticesLoader(const VerticesLoader& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
 	~VerticesLoader();
 
@@ -128,7 +125,7 @@ public:
 };
 
 
-// VERTICES --------------------------------------------------------
+// SHADER --------------------------------------------------------
 
 class Shader
 {
@@ -137,26 +134,61 @@ public:
 	~Shader();
 
 	VulkanEnvironment& e;
-	const std::string id;						//!< Used for checking whether the shader to load is already loaded.
+	const std::string id;						//!< Used for checking whether a shader to load is already loaded.
 	unsigned counter;							//!< Number of ModelData objects using this shader.
 
 	const VkShaderModule shaderModule;
 };
 
-class ShaderLoader
+class SLModule
+{
+protected:
+	std::string id;
+
+	virtual void getRawData(std::string& glslData) = 0;
+
+public:
+	SLModule(const std::string& id) : id(id) { };
+	virtual ~SLModule() { };
+
+	std::list<Shader>::iterator loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment* e);
+	virtual SLModule* clone() = 0;
+};
+
+class SLM_fromBuffer : public SLModule
+{
+	std::string data;
+
+	void getRawData(std::string& glslData) override;
+
+public:
+	SLM_fromBuffer(const std::string& id, const std::string& glslText);
+	SLModule* clone() override;
+};
+
+class SLM_fromFile : public SLModule
 {
 	std::string filePath;
 
-	std::vector<char> glslData;	// <<< pointer instead?
+	void getRawData(std::string& glslData) override;
 
 public:
-	ShaderLoader(std::string& filePath);
-	ShaderLoader(const std::string& id, std::string& text);
-	ShaderLoader& operator=(const ShaderLoader& obj);
+	SLM_fromFile(const std::string& filePath);
+	SLModule* clone() override;
+};
 
-	std::list<Shader>::iterator loadShader(VulkanEnvironment& e, std::list<Shader>& loadedShaders);
+class ShaderLoader
+{
+	SLModule* loader;
 
-	std::string id;
+public:
+	ShaderLoader(const std::string& filePath);						//!< From file
+	ShaderLoader(const std::string& id, const std::string& text);	//!< From buffer
+	//ShaderLoader& operator=(const ShaderLoader& obj);
+	ShaderLoader(const ShaderLoader& obj);							//!< Copy constructor (necessary because loader can be freed in destructor)
+	~ShaderLoader();
+
+	std::list<Shader>::iterator loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment& e);
 };
 
 /**
@@ -202,6 +234,28 @@ public:
 	VkSampler			textureSampler;			//!< Opaque handle to a sampler object (it applies filtering and transformations to a texture). It is a distinct object that provides an interface to extract colors from a texture. It can be applied to any image you want (1D, 2D or 3D).
 };
 
+class TLModule
+{
+protected:
+
+public:
+	TLModule() { };
+	virtual ~TLModule() { };
+
+	void loadTexture();
+	virtual TLModule* clone() = 0;
+};
+
+class TLM_fromBuffer : public TLModule
+{
+
+};
+
+class TLM_fromFile : public TLModule
+{
+
+};
+
 // Used for loading textures to Vulkan. You get Texture objects.
 class TextureLoader
 {
@@ -226,7 +280,7 @@ public:
 	TextureLoader& operator=(const TextureLoader& obj);
 	~TextureLoader();
 
-	std::list<Texture>::iterator loadTexture(VulkanEnvironment& e, std::list<Texture>& loadedTextures);
+	std::list<Texture>::iterator loadTexture(std::list<Texture>& loadedTextures, VulkanEnvironment& e);
 
 	std::string id;
 	VkFormat imageFormat;

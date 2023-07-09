@@ -1,4 +1,8 @@
 TODO:
+	Shader::e?
+	operator=?
+	Study implications of using square distances in shaders
+	Copy assignment operator for ShaderLoader and the others is necessary?
 	Create ShaderLoader & TextureLoader
 	Analyze std::hash (vertex.hpp)
 	How can be noPP model be loaded at the same time as skybox? Otherwise, error could happen.

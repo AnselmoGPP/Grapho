@@ -36,7 +36,7 @@ void ResourcesLoader::loadResources(VertexData& destVertexData, std::vector<shad
 		// Load shaders
 		for (unsigned i = 0; i < shaders.size(); i++)
 		{
-			shaderIter iter = shaders[i].loadShader(*e, loadedShaders);
+			shaderIter iter = shaders[i].loadShader(loadedShaders , *e);
 			iter->counter++;
 			destShaders.push_back(iter);
 		}
@@ -44,7 +44,7 @@ void ResourcesLoader::loadResources(VertexData& destVertexData, std::vector<shad
 		// Load textures
 		for (unsigned i = 0; i < textures.size(); i++)
 		{
-			texIter iter = textures[i].loadTexture(*e, loadedTextures);
+			texIter iter = textures[i].loadTexture(loadedTextures, *e);
 			iter->counter++;
 			destTextures.push_back(iter);
 		}
@@ -331,10 +331,8 @@ VerticesLoader::VerticesLoader(size_t vertexSize, const void* verticesData, size
 
 VerticesLoader::VerticesLoader(const VerticesLoader& obj)
 {
-	if (obj.loader)
-		loader = obj.loader->clone();
-	else 
-		loader = nullptr;
+	if (obj.loader) loader = obj.loader->clone();
+	else loader = nullptr;
 }
 
 VerticesLoader::~VerticesLoader() { if(loader) delete loader; }
@@ -356,38 +354,19 @@ Shader::Shader(VulkanEnvironment& e, const std::string id, VkShaderModule shader
 
 Shader::~Shader() { vkDestroyShaderModule(e.c.device, shaderModule, nullptr); }
 
-ShaderLoader::ShaderLoader(std::string& filePath)
-	: id(filePath), filePath(filePath) { }
-
-ShaderLoader::ShaderLoader(const std::string& id, std::string& text)
-	: id(id) 
-{ 
-	glslData.resize(text.size()); 
-	std::copy(text.begin(), text.end(), glslData.begin()); 
-}
-
-ShaderLoader& ShaderLoader::operator=(const ShaderLoader& obj)
-{
-	filePath = obj.filePath;
-	glslData = obj.glslData;
-	id = obj.id;
-
-	return *this;
-}
-
-std::list<Shader>::iterator ShaderLoader::loadShader(VulkanEnvironment& e, std::list<Shader>& loadedShaders)
+std::list<Shader>::iterator SLModule::loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment* e)
 {
 	#ifdef DEBUG_RESOURCES
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << this->id << std::endl;
 	#endif
 
 	// Look for it in loadedShaders
-	for(auto i = loadedShaders.begin(); i != loadedShaders.end(); i++)
+	for (auto i = loadedShaders.begin(); i != loadedShaders.end(); i++)
 		if (i->id == id) return i;
 
 	// Load shader (if not loaded yet)
-	if (filePath.size())				// from file
-		readFile(id.c_str(), glslData);
+	std::string glslData;
+	getRawData(glslData);
 
 	// Compile data (preprocessing > compilation):
 
@@ -418,12 +397,61 @@ std::list<Shader>::iterator ShaderLoader::loadShader(VulkanEnvironment& e, std::
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(spirv.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
 
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(e.c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule(e->c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create shader module!");
 
 	// Create and save shader object
-	loadedShaders.emplace(loadedShaders.end(), e, id, shaderModule);	//loadedShaders.push_back(Shader(e, id, shaderModule));
+	loadedShaders.emplace(loadedShaders.end(), *e, id, shaderModule);	//loadedShaders.push_back(Shader(e, id, shaderModule));
 	return (--loadedShaders.end());
+}
+
+SLM_fromBuffer::SLM_fromBuffer(const std::string& id, const std::string& glslText) 
+	: SLModule(id), data(glslText) { }
+
+SLModule* SLM_fromBuffer::clone() { return new SLM_fromBuffer(*this); }
+
+void SLM_fromBuffer::getRawData(std::string& glslData) { glslData = data; }
+
+SLM_fromFile::SLM_fromFile(const std::string& filePath) 
+	: SLModule(filePath), filePath(filePath) { };
+
+SLModule* SLM_fromFile::clone() { return new SLM_fromFile(*this); }
+
+void SLM_fromFile::getRawData(std::string& glslData) { readFile(filePath.c_str(), glslData); }
+
+ShaderLoader::ShaderLoader(const std::string& filePath)
+{
+	loader = new SLM_fromFile(filePath);
+}
+
+ShaderLoader::ShaderLoader(const std::string& id, const std::string& text)
+{
+	loader = new SLM_fromBuffer(id, text);
+}
+/*
+ShaderLoader& ShaderLoader::operator=(const ShaderLoader& obj)
+{
+	if (obj.loader) loader = obj.loader->clone();
+	else loader = nullptr;
+
+	return *this;
+}
+*/
+ShaderLoader::ShaderLoader(const ShaderLoader& obj)
+{
+	if (obj.loader) loader = obj.loader->clone();
+	else loader = nullptr;
+}
+
+ShaderLoader::~ShaderLoader() { if (loader) delete loader; }
+
+std::list<Shader>::iterator ShaderLoader::loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment& e)
+{
+	#ifdef DEBUG_RESOURCES
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << this->id << std::endl;
+	#endif
+
+	return loader->loadShader(loadedShaders, &e);
 }
 
 
@@ -478,7 +506,7 @@ TextureLoader::~TextureLoader()
 	if (!pixels) delete pixels;
 }
 
-std::list<Texture>::iterator TextureLoader::loadTexture(VulkanEnvironment& e, std::list<Texture>& loadedTextures)
+std::list<Texture>::iterator TextureLoader::loadTexture(std::list<Texture>& loadedTextures, VulkanEnvironment& e)
 {
 	#ifdef DEBUG_RESOURCES
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << this->id << std::endl;
