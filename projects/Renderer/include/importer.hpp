@@ -143,8 +143,6 @@ public:
 	const VkShaderModule shaderModule;
 };
 
-typedef std::list<Shader>::iterator shaderIter;
-
 class ShaderLoader
 {
 	std::string filePath;
