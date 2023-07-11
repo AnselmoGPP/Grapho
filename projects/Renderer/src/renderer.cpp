@@ -626,7 +626,7 @@ modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRend
 	#endif
 
 	const std::lock_guard<std::mutex> lock(worker.mutLoad);
-
+	
 	return modelsToLoad.emplace(
 		modelsToLoad.cend(),
 		modelName, e, 

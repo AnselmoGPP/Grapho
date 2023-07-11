@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 		
 		setSun(app);
 		//setReticule(app);
-
+		
 		app.renderLoop();		// Start rendering
 		if (0) throw "Test exception";
 	}
@@ -476,7 +476,7 @@ void setRoom(Renderer& app)
 	#ifdef DEBUG_MAIN
 		std::cout << "> " << __func__ << "()" << std::endl;
 	#endif
-
+	
 	VerticesLoader vertexData(vt_332.vertexSize, vertexDir + "viking_room.obj");
 	std::vector<ShaderLoader> shaders{ ShaderLoaders[6], ShaderLoaders[7] };
 	std::vector<TextureLoader> textures{ texInfos[2] };

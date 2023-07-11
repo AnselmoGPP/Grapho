@@ -1,5 +1,6 @@
 
 #include <fstream>
+#include <iostream>
 
 #include "commons.hpp"
 
@@ -21,7 +22,7 @@ void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags us
 	// Get buffer requirements.
 	VkMemoryRequirements memRequirements;		// Members: size (amount of memory in bytes. May differ from bufferInfo.size), alignment (offset in bytes where the buffer begins in the allocated region. Depends on bufferInfo.usage and bufferInfo.flags), memoryTypeBits (bit field of the memory types that are suitable for the buffer).
 	vkGetBufferMemoryRequirements(e->c.device, buffer, &memRequirements);
-
+	
 	// Allocate memory for the buffer.
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
