@@ -749,11 +749,12 @@ VkSurfaceFormatKHR VulkanEnvironment::chooseSwapSurfaceFormat(const std::vector<
 	for (const auto& availableFormat : availableFormats)
 	{
 		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&				// Format: Color channel and types (example: VK_FORMAT_B8G8R8A8_SRGB is BGRA channels with 8 bit unsigned integer)
-			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)	// Color space: Indicates if the sRGB color space is supported or not (https://stackoverflow.com/questions/12524623/what-are-the-practical-differences-when-working-with-colors-in-a-linear-vs-a-no).
+			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)	// Color space: Indicates if the sRGB color space is supported or not (https://stackoverflow.com/questions/12524623/what-are-the-practical-differences-when-working-with-colors-in-a-linear-vs-a-no) (https://stackoverflow.com/questions/66401081/vulkan-swapchain-format-unorm-vs-srgb).
 			return availableFormat;
 	}
 	
 	// Otherwise, return the first format founded (other ways: rank the available formats on how "good" they are)
+	std::cout << "Favorite surface format not found" << std::endl;
 	return availableFormats[0];
 }
 
@@ -916,7 +917,7 @@ uint32_t VulkanEnvironment::findMemoryType(uint32_t typeFilter, VkMemoryProperty
 }
 
 /**
-*	@brief Take a list of candidate formats in order from most desirable to least desirable, and checks which is the first one that is supported.
+*	@brief Take a list of candidate formats in order from most desirable to least desirable, and check which is the first one that is supported.
 * 
 *	@param candidates
 *	@param tiling The support of a format depends on the tiling mode.

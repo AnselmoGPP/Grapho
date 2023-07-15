@@ -618,7 +618,18 @@ void SphereChunk::computeTerrain(bool computeIndices)
 // DynamicGrid ----------------------------------------------------------------------
 
 DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency)
-    : camPos(camPos), lights(&lights), renderer(renderer), activeTree(activeTree), loadedChunks(0), rootCellSize(rootCellSize), numSideVertex(numSideVertex), numLevels(numLevels), minLevel(minLevel), distMultiplier(distMultiplier), transparency(transparency)
+    : camPos(camPos), 
+    lights(&lights), 
+    renderer(renderer), 
+    activeTree(activeTree), 
+    loadedChunks(0),
+    rootCellSize(rootCellSize), 
+    numSideVertex(numSideVertex), 
+    numLevels(numLevels), 
+    minLevel(minLevel), 
+    distMultiplier(distMultiplier),
+    distMultRemove(distMultiplier * 1.5),
+    transparency(transparency)
 {
     root[0] = root[1] = nullptr;
     Chunk::computeIndices(indices, numSideVertex, numSideVertex);
@@ -682,7 +693,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
         changeRenders(root[nonActiveTree], true);
         activeTree = nonActiveTree;
 
-        removeFarChunks(3, newCamPos);
+        removeFarChunks(distMultRemove, newCamPos);
     }
 }
 
@@ -732,7 +743,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     }
 }
 
-void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time)
+void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight)
 {
     this->view = view;
     this->proj = proj;
@@ -1146,22 +1157,22 @@ void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::v
     readyForUpdate = true;
 }
 
-void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime)
+void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float camHeight)
 {
     if (readyForUpdate)
     {
         planetGrid_pZ->updateTree(camPos);
-        planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
         planetGrid_nZ->updateTree(camPos);
-        planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
         planetGrid_pY->updateTree(camPos);
-        planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
         planetGrid_nY->updateTree(camPos);
-        planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
         planetGrid_pX->updateTree(camPos);
-        planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
         planetGrid_nX->updateTree(camPos);
-        planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime);
+        planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
     }
 }
 

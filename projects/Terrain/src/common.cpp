@@ -168,42 +168,42 @@ std::vector<TextureLoader> usedTextures
 	/*04*/ TextureLoader(texDir + "grass/grassDry_h.png"),
 
 	// Rocks
-	/*11*/ TextureLoader(texDir + "rock/bumpRock_a.png"),
-	/*12*/ TextureLoader(texDir + "rock/bumpRock_n.png"),
-	/*13*/ TextureLoader(texDir + "rock/bumpRock_s.png"),
-	/*14*/ TextureLoader(texDir + "rock/bumpRock_r.png"),
-	/*15*/ TextureLoader(texDir + "rock/bumpRock_h.png"),
+	/*05*/ TextureLoader(texDir + "rock/bumpRock_a.png"),
+	/*06*/ TextureLoader(texDir + "rock/bumpRock_n.png"),
+	/*07*/ TextureLoader(texDir + "rock/bumpRock_s.png"),
+	/*08*/ TextureLoader(texDir + "rock/bumpRock_r.png"),
+	/*09*/ TextureLoader(texDir + "rock/bumpRock_h.png"),
 
 	// Snow
-	/*29*/ TextureLoader(texDir + "snow/snow_a.png"),
-	/*30*/ TextureLoader(texDir + "snow/snow_n.png"),
-	/*31*/ TextureLoader(texDir + "snow/snow_s.png"),
-	/*32*/ TextureLoader(texDir + "snow/snow_r.png"),
-	/*33*/ TextureLoader(texDir + "snow/snow_h.png"),
+	/*10*/ TextureLoader(texDir + "snow/snow_a.png"),
+	/*11*/ TextureLoader(texDir + "snow/snow_n.png"),
+	/*12*/ TextureLoader(texDir + "snow/snow_s.png"),
+	/*13*/ TextureLoader(texDir + "snow/snow_r.png"),
+	/*14*/ TextureLoader(texDir + "snow/snow_h.png"),
 
-	/*34*/ TextureLoader(texDir + "snow/snow2_a.png"),
-	/*35*/ TextureLoader(texDir + "snow/snow2_n.png"),
-	/*36*/ TextureLoader(texDir + "snow/snow2_s.png"),
-	/*32*/ TextureLoader(texDir + "snow/snow_r.png"),		// repeated
-	/*33*/ TextureLoader(texDir + "snow/snow_h.png"),		// repeated
+	/*15*/ TextureLoader(texDir + "snow/snow2_a.png"),
+	/*16*/ TextureLoader(texDir + "snow/snow2_n.png"),
+	/*17*/ TextureLoader(texDir + "snow/snow2_s.png"),
+	/*18*/ TextureLoader(texDir + "snow/snow_r.png"),		// repeated
+	/*19*/ TextureLoader(texDir + "snow/snow_h.png"),		// repeated
 
 	// Soils
-	/*16*/ TextureLoader(texDir + "sand/sandDunes_a.png"),
-	/*17*/ TextureLoader(texDir + "sand/sandDunes_n.png"),
-	/*18*/ TextureLoader(texDir + "sand/sandDunes_s.png"),
-	/*19*/ TextureLoader(texDir + "sand/sandDunes_r.png"),
-	/*20*/ TextureLoader(texDir + "sand/sandDunes_h.png"),
+	/*20*/ TextureLoader(texDir + "sand/sandDunes_a.png"),
+	/*21*/ TextureLoader(texDir + "sand/sandDunes_n.png"),
+	/*22*/ TextureLoader(texDir + "sand/sandDunes_s.png"),
+	/*23*/ TextureLoader(texDir + "sand/sandDunes_r.png"),
+	/*24*/ TextureLoader(texDir + "sand/sandDunes_h.png"),
 
-	/*21*/ TextureLoader(texDir + "sand/sandWavy_a.png"),
-	/*22*/ TextureLoader(texDir + "sand/sandWavy_n.png"),
-	/*23*/ TextureLoader(texDir + "sand/sandWavy_s.png"),
-	/*24*/ TextureLoader(texDir + "sand/sandWavy_r.png"),
-	/*25*/ TextureLoader(texDir + "sand/sandWavy_h.png"),
+	/*25*/ TextureLoader(texDir + "sand/sandWavy_a.png"),
+	/*26*/ TextureLoader(texDir + "sand/sandWavy_n.png"),
+	/*27*/ TextureLoader(texDir + "sand/sandWavy_s.png"),
+	/*28*/ TextureLoader(texDir + "sand/sandWavy_r.png"),
+	/*29*/ TextureLoader(texDir + "sand/sandWavy_h.png"),
 
-	/*03*/ TextureLoader(texDir + "squares.png"),
+	/*30*/ TextureLoader(texDir + "squares.png"),
 
 	// Water
-	/*26*/ TextureLoader(texDir + "water/sea_n.png"),
-	/*27*/ TextureLoader(texDir + "water/sea_h.png"),
-	/*28*/ TextureLoader(texDir + "water/sea_foam_a.png")
+	/*31*/ TextureLoader(texDir + "water/sea_n.png"),
+	/*32*/ TextureLoader(texDir + "water/sea_h.png"),
+	/*33*/ TextureLoader(texDir + "water/sea_foam_a.png")
 };

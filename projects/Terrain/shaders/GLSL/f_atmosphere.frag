@@ -2,6 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #pragma shader_stage(fragment)
 
+#include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
+
 #define PLANET_CENTER vec3(0,0,0)
 #define PLANET_RADIUS 1400
 #define OCEAN_RADIUS 1			
@@ -122,13 +124,6 @@ vec4 sea()
 	}
 	
 	return originalColor();
-}
-
-// Get the angle between 2 unit vectors
-float getAngle(vec3 a, vec3 b)
-{
-	//return acos( dot(a, b) / ((length(a) * length(b)) );	// Non-unit vectors
-	return acos(dot(a, b));									// Unit vectors
 }
 
 vec4 toSRGB(vec4 vec)

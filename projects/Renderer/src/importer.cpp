@@ -803,29 +803,6 @@ TextureLoader::TextureLoader(const TextureLoader& obj)
 	else loader = nullptr;
 }
 
-/*
-TextureLoader& TextureLoader::operator=(const TextureLoader& obj)
-{
-	if (pixels)
-	{
-		size_t size = sizeof(float) * obj.texHeight * obj.texWidth;
-		pixels = new unsigned char[size];
-		std::copy(obj.pixels, obj.pixels + size, this->pixels);		//memcpy(this->pixels, pixels, size);
-	}
-	else pixels = nullptr;
-
-	filePath	= obj.filePath;
-	texWidth	= obj.texWidth;
-	texHeight	= obj.texHeight;
-	e			= obj.e;
-	mipLevels	= obj.mipLevels;
-	id			= obj.id;
-	imageFormat = obj.imageFormat;
-	addressMode = obj.addressMode;
-
-	return *this;
-}
-*/
 TextureLoader::~TextureLoader() { if (loader) delete loader; }
 
 std::list<Texture>::iterator TextureLoader::loadTexture(std::list<Texture>& loadedTextures, VulkanEnvironment& e)

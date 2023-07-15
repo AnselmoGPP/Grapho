@@ -1,11 +1,10 @@
 TODO:
-	Shader::e?
-	operator=?
-	Study implications of using square distances in shaders
-	Copy assignment operator for ShaderLoader and the others is necessary?
-	Create ShaderLoader & TextureLoader
-	Analyze std::hash (vertex.hpp)
-	How can be noPP model be loaded at the same time as skybox? Otherwise, error could happen.
+	Planet texture
+	Fix planet shader:
+		Specularity
+		Pass height
+	>Configurable UBOs for dynamic grids
+		Pass camera height param to sea shader
 	ModelData's flags fullyConstructed and inModels are necessary? Are they initialized in the correct places? 
 	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
 	Mutex for ShaderLoader::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
@@ -36,6 +35,7 @@ TODO:
 	Solve <<<, LOOK, ERROR (and MVS errors/warnings)
 	> typedef vec3size and co.
 	Waves:
+		Sea chunks borders doesn't fit due to waves.
 		Maybe, the more normal and sun light align (or cam dir), the more green water is.
 		Green with height
 		Black shadows when waves are too sharp (bad normals)
@@ -120,8 +120,10 @@ TODO:
 	learnopengl.com / SimonDev
 	Later: Readme.md
 
-Not important:
+Less important:
 
+	Study implications of using square distances in shaders
+	Analyze std::hash (vertex.hpp)
 	Optimize radius calculation (like just calculating sqrt(radius))
 
 Not required:

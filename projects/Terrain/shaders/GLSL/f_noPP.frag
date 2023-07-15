@@ -2,6 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #pragma shader_stage(fragment)
 
+#include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
+
 layout(set = 0, binding = 1) uniform sampler2D texSampler[2];			// Opt. depth, Density
 layout(set = 0, binding = 2) uniform sampler2DMS inputAttachments[2];	// Color, Depth (sampler2D for single-sample | sampler2DMS for multisampling)
 

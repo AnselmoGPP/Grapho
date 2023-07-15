@@ -134,7 +134,7 @@ public:
 	float getHorBaseSide()		{ return horBaseSize; };
 };
 
-
+/// Plain chunk with noise
 class PlainChunk : public Chunk
 {
 	Noiser* noiseGen;
@@ -161,7 +161,7 @@ public:
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
 };
 
-
+/// Sphere chunk with noise
 class PlanetChunk : public Chunk
 {
 protected:
@@ -183,7 +183,7 @@ public:
 };
 
 
-/// Plain sphere chunk without noise
+/// Sphere chunk without noise
 class SphereChunk : public PlanetChunk
 {
 public:
@@ -228,7 +228,7 @@ public:
 	//void addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader);	//!< Add shaders ids of already loaded shaders.
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight);
 	unsigned getTotalNodes() { return chunks.size(); }
 	unsigned getloadedChunks() { return loadedChunks; }
 	unsigned getRenderedChunks() { return renderedChunks; }
@@ -248,10 +248,11 @@ protected:
 
 	// Configuration data
 	float rootCellSize;
-	size_t numSideVertex;		// Number of vertex per square side
-	size_t numLevels;			// Number of LOD
-	size_t minLevel;			// Minimum level used(from 0 to numLevels-1) (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
-	float distMultiplier;		// Relative distance (when distance camera-node's center is <relDist, the node is subdivided.
+	size_t numSideVertex;		//!< Number of vertex per square side
+	size_t numLevels;			//!< Number of LOD
+	size_t minLevel;			//!< Minimum level used(from 0 to numLevels-1) (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
+	float distMultiplier;		//!< Relative distance (when distance camera-node's center is < relDist, the node is subdivided).
+	unsigned distMultRemove;	//!< Relative distance for removing chunks (when distance camera-node's center > 
 	bool transparency;
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
@@ -342,7 +343,7 @@ struct Planet
 	virtual ~Planet();
 
 	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
-	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime);	//!< Update tree and UBOs
+	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float camHeight);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area
 

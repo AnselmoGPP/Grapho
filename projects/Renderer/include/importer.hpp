@@ -133,7 +133,7 @@ public:
 	Shader(VulkanEnvironment& e, const std::string id, VkShaderModule shaderModule);
 	~Shader();
 
-	VulkanEnvironment& e;
+	VulkanEnvironment& e;						//!< Used in destructor.
 	const std::string id;						//!< Used for checking whether a shader to load is already loaded.
 	unsigned counter;							//!< Number of ModelData objects using this shader.
 	const VkShaderModule shaderModule;
@@ -223,7 +223,7 @@ public:
 	Texture(VulkanEnvironment& e, const std::string& id, VkImage textureImage, VkDeviceMemory textureImageMemory, VkImageView textureImageView, VkSampler textureSampler);
 	~Texture();
 
-	VulkanEnvironment& e;
+	VulkanEnvironment& e;						//!< Used in destructor.
 	const std::string id;						//!< Used for checking whether the texture to load is already loaded.
 	unsigned counter;							//!< Number of ModelData objects using this texture.
 

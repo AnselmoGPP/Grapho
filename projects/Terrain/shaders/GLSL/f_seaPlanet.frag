@@ -30,12 +30,8 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 
 // Declarations:
 
-vec3  getDryColor	  (vec3 color, float minHeight, float maxHeight);
-
+vec3  getDryColor (vec3 color, float minHeight, float maxHeight);
 vec3 getTex_Sea();
-vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed);
-float getTransparency(float minTransp, float minDist, float maxDist);
-float getRatio(float value, float min, float max);
 
 // Definitions:
 
@@ -54,7 +50,7 @@ vec3 getTex_Sea()
 	// Colors: https://www.color-hex.com/color-palette/101255
 
 	vec3 waterColor  = vec3(0.14, 0.30, 0.36);	// https://colorswall.com/palette/63192
-	vec3 specularity = vec3(0.5, 0.5, 0.5);
+	vec3 specularity = vec3(0.6, 0.6, 0.6);
 	float roughness  = 10;
 	float scale      = 150;
 	float speed      = 4;
@@ -65,14 +61,14 @@ vec3 getTex_Sea()
 		vec3 finalColor = waterColor;
 		
 		// Green water (depth)
-		vec3 depth = triplanarTexture_sea(texSampler[32], scale, speed, inTime).rgb;
-		if(depth.x > 0.13)
+		vec3 depth = triplanarNoColor_Sea(texSampler[32], scale, speed, inTime).rgb;
+		if(depth.x > 0.20)
 		{
-			float ratio = getRatio(depth.x, 0.15, 0.45);	// Mix ratio
+			float ratio = getRatio(depth.x, 0.35, 0.43);	// Mix ratio
 			finalColor = finalColor * (1 - ratio) + vec3(0.17, 0.71, 0.61) * ratio;
 		}
 		
-		// Green water (height)
+		// Green water (height from nucleus)
 		if(inGroundHeight > 2021) 
 		{
 			float ratio = getRatio(inGroundHeight, 2021, 2027);	// Mix ratio
@@ -80,10 +76,10 @@ vec3 getTex_Sea()
 		}
 	
 		// Foam
-		vec3 foam = triplanarTexture_sea(texSampler[33], scale, speed, inTime).rgb;
-		if(foam.x > 0.18) 
+		vec3 foam = triplanarTexture_Sea(texSampler[33], scale, speed, inTime).rgb;
+		if(foam.x > 0.17) 
 		{
-			float ratio = getRatio(foam.x, 0.18, 0.25);	// Mix ratio
+			float ratio = getRatio(foam.x, 0.17, 0.25);	// Mix ratio
 			finalColor = finalColor * (1 - ratio) + vec3(0.95, 0.95, 0.95) * ratio;
 			specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
 			roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<

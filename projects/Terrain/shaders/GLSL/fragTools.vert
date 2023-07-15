@@ -40,10 +40,12 @@
 		getTex
 	Triplanar:
 		triplanarTexture
+		triplanarNoColor
 		triplanarNormal
 		getGradients
-		triplanarTexture
-		triplanarNormal
+		triplanarTexture_Sea
+		triplanarNoColor_Sea
+		triplanarNormal_Sea
 	Others:
 		getTexScaling
 		applyParabolicFog
@@ -56,6 +58,7 @@
 #define PI 3.141592653589793238462
 #define E  2.718281828459045235360
 #define SR05 0.707106781	// == sqrt(0.5)     (vec2(SR05, SR05) has module == 1)
+#define GAMMA 2.2
 
 
 // Data structures ------------------------------------------------------------------------
@@ -155,10 +158,11 @@ vec3 getDirection(vec3 origin, vec3 end)
 	return normalize(end - origin);
 }
 
-// Get an angle given 2 directions.
-float getAngle(vec3 dir_1, vec3 dir_2)
+// Get angle between 2 unit vectors (directions).
+float getAngle(vec3 a, vec3 b)
 {
-	return acos(dot(dir_1, dir_2));
+	//return acos( dot(a, b) / ((length(a) * length(b)) );	// Non-unit vectors
+	return acos(dot(a, b));									// Unit vectors
 }
 
 // Get modulus(%) = a - (b * floor(a/b))
@@ -170,6 +174,8 @@ float getModulus(float dividend, float divider) { return dividend - (divider * f
 // Transforms non-linear sRGB color to linear RGB. Note: Usually, input is non-linear sRGB, but it's automatically converted to linear RGB in the shader, and output later in sRGB.
 vec3 toRGB(vec3 vec)
 {
+	//return pow(vec, vec3(1.0/GAMMA));
+	
 	vec3 linear;
 	
 	if (vec.x <= 0.04045) linear.x = vec.x / 12.92;
@@ -184,9 +190,31 @@ vec3 toRGB(vec3 vec)
 	return linear;
 }
 
+vec4 toRGB(vec4 vec)
+{
+	//return pow(vec, vec3(1.0/GAMMA));
+	
+	vec4 linear;
+	
+	if (vec.x <= 0.04045) linear.x = vec.x / 12.92;
+	else linear.x = pow((vec.x + 0.055) / 1.055, 2.4);
+	
+	if (vec.y <= 0.04045) linear.y = vec.y / 12.92;
+	else linear.y = pow((vec.y + 0.055) / 1.055, 2.4);
+	
+	if (vec.z <= 0.04045) linear.z = vec.z / 12.92;
+	else linear.z = pow((vec.z + 0.055) / 1.055, 2.4);
+	
+	linear.w = vec.w;
+	
+	return linear;
+}
+
 // Transforms linear RGB color to non-linear sRGB
 vec3 toSRGB(vec3 vec)
 {
+	//return pow(vec, vec3(GAMMA));
+	
 	vec3 nonLinear;
 	
 	if (vec.x <= 0.0031308) nonLinear.x = vec.x * 12.92;
@@ -201,22 +229,42 @@ vec3 toSRGB(vec3 vec)
 	return nonLinear;
 }
 
+vec4 toSRGB(vec4 vec)
+{
+	//return pow(vec, vec3(GAMMA));
+	
+	vec4 nonLinear;
+	
+	if (vec.x <= 0.0031308) nonLinear.x = vec.x * 12.92;
+	else nonLinear.x = 1.055 * pow(vec.x, 1.0/2.4) - 0.055;
+	
+	if (vec.y <= 0.0031308) nonLinear.y = vec.y * 12.92;
+	else nonLinear.y = 1.055 * pow(vec.y, 1.0/2.4) - 0.055;
+	
+	if (vec.z <= 0.0031308) nonLinear.z = vec.z * 12.92;
+	else nonLinear.z = 1.055 * pow(vec.z, 1.0/2.4) - 0.055;
+	
+	nonLinear.w = vec.w;
+	
+	return nonLinear;
+}
+
 // Invert Y axis and apply scale
 vec2 unpackUV(vec2 UV, float texFactor)
 {
 	return UV.xy * vec2(1, -1) / texFactor;
 }
 
-// Pass to SRGB, put in range [-1,1], and normalize
+// Correct color space (to linear), put in range [-1,1], and normalize
 vec3 unpackNormal(vec3 normal)
 {
-	return normalize(toSRGB(normal) * 2.f - 1.f);
+	return normalize(toSRGB(normal) * 2.f - 1.f);		// Color space correction is required to counter gamma correction.
 }
 
-// Pass to SRGB, put in range [-1,1], normalize, and adjust normal strength.
+// Correct color space (to linear), put in range [-1,1], normalize, and adjust normal strength.
 vec3 unpackNormal(vec3 normal, float multiplier)
 {
-	normal = normalize(toSRGB(normal) * 2.f - 1.f);
+	normal = normalize(toSRGB(normal) * 2.f - 1.f);		// Color space correction is required to counter gamma correction.
 
 	normal.z -= (1 - normal.z) * multiplier;
 	normal.z = clamp(normal.z, 0, 1);
@@ -421,6 +469,20 @@ vec4 triplanarTexture(sampler2D tex, float texFactor)
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
+// Non-coloring texture projected from 3 axes (x, y, z) and mixed. 
+vec4 triplanarNoColor(sampler2D tex, float texFactor)
+{
+	vec4 dx = toSRGB(texture(tex, unpackUV(fragPos.zy, texFactor)));	// Color space correction (textures are converted from sRGB to RGB, but non-coloring textures are in RGB already).
+	vec4 dy = toSRGB(texture(tex, unpackUV(fragPos.xz, texFactor)));
+	vec4 dz = toSRGB(texture(tex, unpackUV(fragPos.xy, texFactor)));
+	
+	vec3 weights = abs(normalize(normal));
+	weights *= weights;
+	weights = weights / (weights.x + weights.y + weights.z);
+
+	return dx * weights.x + dy * weights.y + dz * weights.z;
+}
+
 // Normal map projected from 3 axes (x,y,z) and mixed.
 // https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
 vec3 triplanarNormal(sampler2D tex, float texFactor)
@@ -448,24 +510,24 @@ vec3 triplanarNormal(sampler2D tex, float texFactor)
 }
 
 // Dynamic texture map projected from 3 axes (x,y,z) and mixed. 
-vec4 triplanarTexture_sea(sampler2D tex, float texFactor, float speed, float t)
+vec4 triplanarTexture_Sea(sampler2D tex, float texFactor, float speed, float t)
 {	
 	// Get normal map coordinates
 	float time = t * speed;
 	float offset = texFactor / 4;
 	const int n = 3;
 	
-	vec2 coordsXY[3] = { 
+	vec2 coordsXY[n] = { 
 		vec2(       fragPos.x, time + fragPos.y + offset),
 		vec2(time + fragPos.x,        fragPos.y - offset),
 		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.y) };
 
-	vec2 coordsZY[3] = {
+	vec2 coordsZY[n] = {
 		vec2(       fragPos.z, time + fragPos.y + offset),
 		vec2(time + fragPos.z,        fragPos.y - offset),
 		vec2(time * SR05 + fragPos.z, time * SR05 + fragPos.y) };
 		
-	vec2 coordsXZ[3] = {
+	vec2 coordsXZ[n] = {
 		vec2(       fragPos.x, time + fragPos.z + offset),
 		vec2(time + fragPos.x,        fragPos.z - offset),
 		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.z) };
@@ -477,7 +539,7 @@ vec4 triplanarTexture_sea(sampler2D tex, float texFactor, float speed, float t)
 	int i = 0;
 		
 	for(i = 0; i < n; i++) 
-		dx += texture(tex, unpackUV(coordsZY[i], texFactor));
+		dx += texture(tex, unpackUV(coordsZY[i], texFactor));	
 	dx = normalize(dx);
 
 	for(i = 0; i < n; i++) 
@@ -500,6 +562,60 @@ vec4 triplanarTexture_sea(sampler2D tex, float texFactor, float speed, float t)
 	return dx * weights.x + dy * weights.y + dz * weights.z;
 }
 
+// Dynamic texture map projected from 3 axes (x,y,z) and mixed. 
+vec4 triplanarNoColor_Sea(sampler2D tex, float texFactor, float speed, float t)
+{	
+	// Get normal map coordinates
+	float time = t * speed;
+	float offset = texFactor / 4;
+	const int n = 3;
+	
+	vec2 coordsXY[n] = { 
+		vec2(       fragPos.x, time + fragPos.y + offset),
+		vec2(time + fragPos.x,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.y) };
+
+	vec2 coordsZY[n] = {
+		vec2(       fragPos.z, time + fragPos.y + offset),
+		vec2(time + fragPos.z,        fragPos.y - offset),
+		vec2(time * SR05 + fragPos.z, time * SR05 + fragPos.y) };
+		
+	vec2 coordsXZ[n] = {
+		vec2(       fragPos.x, time + fragPos.z + offset),
+		vec2(time + fragPos.x,        fragPos.z - offset),
+		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.z) };
+		
+	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
+	vec4 dx = {0,0,0,0};
+	vec4 dy = {0,0,0,0};
+	vec4 dz = {0,0,0,0};
+	vec4 temp;
+	int i = 0;
+		
+	for(i = 0; i < n; i++) 
+		dx += toSRGB(texture(tex, unpackUV(coordsZY[i], texFactor)));		// Color space correction (textures are converted from sRGB to RGB, but non-coloring textures are in RGB already).
+	dx = normalize(dx);
+
+	for(i = 0; i < n; i++) 
+		dy += toSRGB(texture(tex, unpackUV(coordsXZ[i], texFactor)));
+	dy = normalize(dy);
+		
+	for(i = 0; i < n; i++)
+		dz += toSRGB(texture(tex, unpackUV(coordsXY[i], texFactor)));
+	dz = normalize(dz);
+	
+	//vec4 dx = texture(tex, unpackUV(fragPos.zy, texFactor));
+	//vec4 dy = texture(tex, unpackUV(fragPos.xz, texFactor));
+	//vec4 dz = texture(tex, unpackUV(fragPos.xy, texFactor));
+	
+	// Weighted average
+	vec3 weights = abs(normalize(normal));
+	weights *= weights;
+	weights = weights / (weights.x + weights.y + weights.z);
+
+	return dx * weights.x + dy * weights.y + dz * weights.z;
+}
+
 // Dynamic normal map projected from 3 axes (x,y,z) and mixed. 
 vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 {	
@@ -508,17 +624,17 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 	float offset = texFactor / 4;
 	const int n = 3;
 	
-	vec2 coordsXY[3] = { 
+	vec2 coordsXY[n] = { 
 		vec2(       fragPos.x, time + fragPos.y + offset),
 		vec2(time + fragPos.x,        fragPos.y - offset),
 		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.y) };
 
-	vec2 coordsZY[3] = {
+	vec2 coordsZY[n] = {
 		vec2(       fragPos.z, time + fragPos.y + offset),
 		vec2(time + fragPos.z,        fragPos.y - offset),
 		vec2(time * SR05 + fragPos.z, time * SR05 + fragPos.y) };
 		
-	vec2 coordsXZ[3] = {
+	vec2 coordsXZ[n] = {
 		vec2(       fragPos.x, time + fragPos.z + offset),
 		vec2(time + fragPos.x,        fragPos.z - offset),
 		vec2(time * SR05 + fragPos.x, time * SR05 + fragPos.z) };

@@ -2,6 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #pragma shader_stage(fragment)
 
+#include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
+
 layout(set = 0, binding  = 1) uniform sampler2D texSampler;		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0) in vec2 fragTexCoord;

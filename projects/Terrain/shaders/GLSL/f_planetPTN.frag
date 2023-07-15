@@ -58,15 +58,15 @@ void getTexture_Sand(inout vec3 result)
 		
 	vec3 dunes  = getFragColor(
 						triplanarTexture(texSampler[17], tf).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[18], tf).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[19], tf).rgb,
-						triplanarTexture(texSampler[20], tf).r * 255 );
+						triplanarNormal(texSampler[18], tf).rgb,
+						triplanarNoColor(texSampler[19], tf).rgb,
+						triplanarNoColor(texSampler[20], tf).r * 255 );
 						
 	vec3 plains = getFragColor(
 						triplanarTexture(texSampler[21], tf).rgb,
-						normalize(toSRGB(triplanarTexture(texSampler[22], tf).rgb) * 2.f - 1.f).rgb,
-						triplanarTexture(texSampler[23], tf).rgb,
-						triplanarTexture(texSampler[24], tf).r * 255 );
+						triplanarNormal(texSampler[22], tf).rgb,
+						triplanarNoColor(texSampler[23], tf).rgb,
+						triplanarNoColor(texSampler[24], tf).r * 255 );
 
 	result = (ratio) * plains + (1-ratio) * dunes;
 }
@@ -159,26 +159,26 @@ vec3 getTexture_GrassRock()
 				grassPar[i]  = getFragColor(
 					triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
 					triplanarNormal (texSampler[1], tf[i]),
-					triplanarTexture(texSampler[2], tf[i]).rgb,
-					triplanarTexture(texSampler[3], tf[i]).r * 255 );
+					triplanarNoColor(texSampler[2], tf[i]).rgb,
+					triplanarNoColor(texSampler[3], tf[i]).r * 255 );
 
 				rockPar[i] = getFragColor(
 					triplanarTexture(texSampler[5], tf[i]).rgb,
 					triplanarNormal (texSampler[6], tf[i]),
-					triplanarTexture(texSampler[7], tf[i]).rgb,
-					triplanarTexture(texSampler[8], tf[i]).r * 255 );
+					triplanarNoColor(texSampler[7], tf[i]).rgb,
+					triplanarNoColor(texSampler[8], tf[i]).r * 255 );
 
 				snow1Par[i] = getFragColor(
 					triplanarTexture(texSampler[15], tf[i]).rgb,
 					triplanarNormal (texSampler[16], tf[i]),
-					triplanarTexture(texSampler[17], tf[i]).rgb,
-					triplanarTexture(texSampler[18], tf[i]).r * 255 );
+					triplanarNoColor(texSampler[17], tf[i]).rgb,
+					triplanarNoColor(texSampler[18], tf[i]).r * 255 );
 					
 				snow2Par[i] = getFragColor(
 					triplanarTexture(texSampler[10], tf[i]).rgb,
 					triplanarNormal (texSampler[11], tf[i]),
-					triplanarTexture(texSampler[12], tf[i]).rgb,
-					triplanarTexture(texSampler[13], tf[i]).r * 255 );
+					triplanarNoColor(texSampler[12], tf[i]).rgb,
+					triplanarNoColor(texSampler[13], tf[i]).r * 255 );
 					
 			if(ratioMix == 1.f)
 			{
@@ -203,9 +203,9 @@ vec3 getTexture_GrassRock()
 
 	if(inDist < 5) 
 	{
-		float grassHeight  = triplanarTexture(texSampler[ 4], tf[0]).r;
+		float grassHeight  = triplanarNoColor(texSampler[ 4], tf[0]).r;
 		//float grass2Height = triplanarTexture(texSampler[ 4], tf[1]).r;
-		float rockHeight   = triplanarTexture(texSampler[ 9], tf[0]).r;
+		float rockHeight   = triplanarNoColor(texSampler[ 9], tf[0]).r;
 		//float rock2Height  = triplanarTexture(texSampler[ 9], tf[1]).r;
 		//float snowHeight   = triplanarTexture(texSampler[14], tf[0]).r;
 		//float snow2Height  = triplanarTexture(texSampler[14], tf[1]).r;
@@ -265,20 +265,20 @@ vec3 getTexture_GrassRock2()
 			grassPar[i]  = getFragColor(
 				triplanarTexture(texSampler[0], tf[i]).rgb,
 				triplanarNormal (texSampler[1], tf[i]),
-				triplanarTexture(texSampler[2], tf[i]).rgb,
-				triplanarTexture(texSampler[3], tf[i]).r * 255 );
+				triplanarNoColor(texSampler[2], tf[i]).rgb,
+				triplanarNoColor(texSampler[3], tf[i]).r * 255 );
 		
 			rockPar[i] = getFragColor(
 				triplanarTexture(texSampler[5], tf[i]).rgb,
 				triplanarNormal (texSampler[6], tf[i]),
-				triplanarTexture(texSampler[7], tf[i]).rgb,
-				triplanarTexture(texSampler[8], tf[i]).r * 255 );
+				triplanarNoColor(texSampler[7], tf[i]).rgb,
+				triplanarNoColor(texSampler[8], tf[i]).r * 255 );
 			
 			snowPar[i] = getFragColor(
 				triplanarTexture(texSampler[10], tf[i]).rgb,
 				triplanarNormal (texSampler[11], tf[i]),
-				triplanarTexture(texSampler[12], tf[i]).rgb,
-				triplanarTexture(texSampler[13], tf[i]).r * 255 );
+				triplanarNoColor(texSampler[12], tf[i]).rgb,
+				triplanarNoColor(texSampler[13], tf[i]).r * 255 );
 		}
 	
 	// Get material colors depending upon distance mixing resolution.
@@ -292,12 +292,12 @@ vec3 getTexture_GrassRock2()
 
 	if(inDist < 5) 
 	{
-		float grassHeight  = triplanarTexture(texSampler[ 4], tf[0]).r;
-		float grass2Height = triplanarTexture(texSampler[ 4], tf[1]).r;
-		float rockHeight   = triplanarTexture(texSampler[ 9], tf[0]).r;
-		float rock2Height  = triplanarTexture(texSampler[ 9], tf[1]).r;
-		float snowHeight   = triplanarTexture(texSampler[14], tf[0]).r;
-		float snow2Height  = triplanarTexture(texSampler[14], tf[1]).r;
+		float grassHeight  = triplanarNoColor(texSampler[ 4], tf[0]).r;
+		float grass2Height = triplanarNoColor(texSampler[ 4], tf[1]).r;
+		float rockHeight   = triplanarNoColor(texSampler[ 9], tf[0]).r;
+		float rock2Height  = triplanarNoColor(texSampler[ 9], tf[1]).r;
+		float snowHeight   = triplanarNoColor(texSampler[14], tf[0]).r;
+		float snow2Height  = triplanarNoColor(texSampler[14], tf[1]).r;
 		
 		float ma = max(rockHeight  + ratio, grassHeight + (1-ratio)) - 0.1;		// 0.1 = depth
 		float b1 = max(rockHeight  + ratio     - ma, 0);
@@ -309,291 +309,6 @@ vec3 getTexture_GrassRock2()
 	// Snow:
 	ratio = getSnowRatio(0.1, 100, 140);		// params: mixRange, minHeight, maxHeight
 	return result * (1 - ratio) + snow * (ratio);
-}
-
-vec3 getTexture_GrassRock_Test()
-{
-	// Get parameters for texture resolution
-	const int levels = 7;			// Number of resolution levels (4)
-	float baseDist   = 40;			// Maximum distance. Higher distances don't change texture resolution.
-	float texFactor  = 10;
-	float mixRange = 0.2;			// Percent of mixing distance
-	
-	float levelDist[levels];		// Distances from where resolution changes (0, 5, 10, 20)
-	float tf[levels];				// Texture factors for each level (1, 2, 4, 8)
-	uvGradient texCoord[levels][3];	// UV coords and gradients for each texture 
-	
-	float sqr;
-	int i;
-	for(i = 0; i < levels; i++)
-	{
-		sqr = pow(2, i);
-		levelDist[i] = baseDist * sqr;
-		
-		tf[i] = texFactor * sqr;
-		
-		texCoord[i][0] = getGradients(unpackUV(inPos.zy, tf[i]));
-		texCoord[i][1] = getGradients(unpackUV(inPos.xz, tf[i]));
-		texCoord[i][2] = getGradients(unpackUV(inPos.xy, tf[i]));
-	}
-	
-	for(i = levels - 1; i > 0; i--) levelDist[i] = levelDist[i-1];
-	levelDist[0] = 0;
-	
-	int lvl = 0;
-	for(i = levels - 1; i >= 0; i--)
-		if(inDist > levelDist[i]) 
-		{
-			lvl = i;
-			break;
-		}
-	
-	// Get textures
-	vec3 grass[2];
-	vec3 rock [2];
-	vec3 snow [2];
-			
-	for(i = 0; i < 2; i++)
-	{
-		snow[i] = getFragColor(
-			triplanarTexture(texSampler[10], texCoord[lvl+i][0], texCoord[lvl+i][1], texCoord[lvl+i][2]).rgb,
-			triplanarNormal (texSampler[11], texCoord[lvl+i][0], texCoord[lvl+i][1], texCoord[lvl+i][2]),
-			triplanarTexture(texSampler[12], texCoord[lvl+i][0], texCoord[lvl+i][1], texCoord[lvl+i][2]).rgb,
-			triplanarTexture(texSampler[13], texCoord[lvl+i][0], texCoord[lvl+i][1], texCoord[lvl+i][2]).r * 255 );
-			
-		if((lvl+1) == levels) 
-		{ 
-			snow[1] = snow[0]; 
-			break; 
-		};
-	}
-	
-	float ratio = 1;
-	if(lvl != (levels-1))
-		ratio = 1 - clamp((inDist - ((1 - mixRange) * levelDist[lvl + 1])) / (mixRange * levelDist[lvl + 1]), 0, 1); 
-
-	return snow[0] * ratio + snow[1] * (1 - ratio);
-}
-
-vec3 getTexture_GrassRock_Original(vec3 result)
-{
-	float tf[2];	// texture factors
-	float ratio = getTexScaling(inDist, 10, 40, 0.1, tf[0], tf[1]);	// initialTexFactor, baseDist, mixRange, resultingTFs[2]
-
-	vec3 grass;		vec3 grass2;
-	vec3 rock;		vec3 rock2;
-	vec3 snow;		vec3 snow2;
-	float grassHeight = 0;	float grass2Height = 0;
-	float rockHeight  = 0;	float rock2Height  = 0;
-	float snowHeight  = 0;	float snow2Height  = 0;
-
-	float lowResDist = inCamSqrHeight * inCamSqrHeight * 0.000000000018;	// (h^4 + b) Distance from where low resolution starts
-	
-	if(inDist > lowResDist * 1.2)
-	{
-		grass  = getFragColor(
-					triplanarTexture(texSampler[0], tf[0]).rgb,
-					inNormal,
-					vec3(0.06, 0.06, 0.06),
-					200 );
-		
-		grass2  = getFragColor(
-					triplanarTexture(texSampler[0], tf[1]).rgb,
-					inNormal,
-					vec3(0.06, 0.06, 0.06),
-					200 );
-			
-		rock = getFragColor(
-					triplanarTexture(texSampler[5], tf[0]).rgb,
-					inNormal,
-					vec3(0.7, 0.7, 0.7),
-					125 );
-				
-		rock2 = getFragColor(
-					triplanarTexture(texSampler[5], tf[1]).rgb,
-					inNormal,
-					vec3(0.7, 0.7, 0.7),
-					125 );
-		
-		snow = getFragColor(
-					triplanarTexture(texSampler[10], tf[0]).rgb,
-					inNormal,
-					vec3(1,1,1),
-					125 );
-						
-		snow2 = getFragColor(
-					triplanarTexture(texSampler[10], tf[1]).rgb,
-					inNormal,
-					vec3(1,1,1),
-					125 );
-	}
-	else if(inDist > lowResDist)
-	{
-		float ratio = clamp((inDist - lowResDist) / (lowResDist * 0.2), 0, 1);
-		
-		grass  = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[0], tf[0]).rgb,
-							inNormal,
-							vec3(0.06, 0.06, 0.06),
-							200 ) +
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[0], tf[0]).rgb,
-							triplanarNormal (texSampler[1], tf[0]),
-							triplanarTexture(texSampler[2], tf[0]).rgb,
-							triplanarTexture(texSampler[3], tf[0]).r * 255 );
-		
-		grass2  = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[0], tf[1]).rgb,
-							inNormal,
-							vec3(0.06, 0.06, 0.06),
-							200 ) +
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[0], tf[1]).rgb,
-							triplanarNormal (texSampler[1], tf[1]),
-							triplanarTexture(texSampler[2], tf[1]).rgb,
-							triplanarTexture(texSampler[3], tf[1]).r * 255 );
-
-		rock = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[5], tf[0]).rgb,
-							inNormal,
-							vec3(0.7, 0.7, 0.7),
-							125 ) +
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[5], tf[0]).rgb,
-							triplanarNormal (texSampler[6], tf[0]),
-							triplanarTexture(texSampler[7], tf[0]).rgb,
-							triplanarTexture(texSampler[8], tf[0]).r * 255 );
-		
-		rock2 = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[5], tf[1]).rgb,
-							inNormal,
-							vec3(0.7, 0.7, 0.7),
-							125 ) +
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[5], tf[1]).rgb,
-							triplanarNormal (texSampler[6], tf[1]),
-							triplanarTexture(texSampler[7], tf[1]).rgb,
-							triplanarTexture(texSampler[8], tf[1]).r * 255 );
-							
-		snow = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[10], tf[0]).rgb,
-							inNormal,
-							vec3(0.8, 0.8, 0.8),
-							125 ) +		
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[10], tf[0]).rgb,
-							triplanarNormal (texSampler[11], tf[0]),
-							triplanarTexture(texSampler[12], tf[0]).rgb,
-							triplanarTexture(texSampler[13], tf[0]).r * 255 );
-							
-		snow2 = 
-			ratio * getFragColor(
-							triplanarTexture(texSampler[10], tf[1]).rgb,
-							inNormal,
-							vec3(0.8, 0.8, 0.8),
-							125 ) +	
-			(1 - ratio) * getFragColor(
-							triplanarTexture(texSampler[10], tf[1]).rgb,
-							triplanarNormal (texSampler[11], tf[1]),
-							triplanarTexture(texSampler[12], tf[1]).rgb,
-							triplanarTexture(texSampler[13], tf[1]).r * 255 );
-	}
-	else
-	{
-		grass  = getFragColor(
-					triplanarTexture(texSampler[0], tf[0]).rgb,
-					triplanarNormal (texSampler[1], tf[0]),
-					triplanarTexture(texSampler[2], tf[0]).rgb,
-					triplanarTexture(texSampler[3], tf[0]).r * 255 );
-		
-		grass2  = getFragColor(
-					triplanarTexture(texSampler[0], tf[1]).rgb,
-					triplanarNormal (texSampler[1], tf[1]),
-					triplanarTexture(texSampler[2], tf[1]).rgb,
-					triplanarTexture(texSampler[3], tf[1]).r * 255 );
-	
-		rock = getFragColor(
-					triplanarTexture(texSampler[5], tf[0]).rgb,
-					triplanarNormal (texSampler[6], tf[0]),
-					triplanarTexture(texSampler[7], tf[0]).rgb,
-					triplanarTexture(texSampler[8], tf[0]).r * 255 );
-				
-		rock2 = getFragColor(
-					triplanarTexture(texSampler[5], tf[1]).rgb,
-					triplanarNormal (texSampler[6], tf[1]),
-					triplanarTexture(texSampler[7], tf[1]).rgb,
-					triplanarTexture(texSampler[8], tf[1]).r * 255 );
-		
-		snow = getFragColor(
-					triplanarTexture(texSampler[10], tf[0]).rgb,
-					triplanarNormal (texSampler[11], tf[0]),
-					triplanarTexture(texSampler[12], tf[0]).rgb,
-					triplanarTexture(texSampler[13], tf[0]).r * 255 );
-						
-		snow2 = getFragColor(
-					triplanarTexture(texSampler[10], tf[1]).rgb,
-					triplanarNormal (texSampler[11], tf[1]),
-					triplanarTexture(texSampler[12], tf[1]).rgb,
-					triplanarTexture(texSampler[13], tf[1]).r * 255 );	
-	
-		if(inDist < 5)
-		{
-			grassHeight  = triplanarTexture(texSampler[ 4], tf[0]).r;
-			grass2Height = triplanarTexture(texSampler[ 4], tf[1]).r;
-			rockHeight   = triplanarTexture(texSampler[ 9], tf[0]).r;
-			rock2Height  = triplanarTexture(texSampler[ 9], tf[1]).r;
-			snowHeight   = triplanarTexture(texSampler[14], tf[0]).r;
-			snow2Height  = triplanarTexture(texSampler[14], tf[1]).r;
-		}
-	}
-
-	grass = (ratio) * grass + (1-ratio) * grass2;
-	rock  = (ratio) * rock  + (1-ratio) * rock2;
-	snow  = (ratio) * snow  + (1-ratio) * snow2;	// <<< BUG: Artifact lines between textures of different scale. Possible cause: Textures are get with non-constant tf values, which determine the texture scale. Possible solutions: (1) Not using mipmaps (and maybe AntiAliasing & Anisotropic filthering); (2) Getting all textures of all scales that are being used; (3) Maybe using dFdx() & dFdy() properly (https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control). See more in: https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162
-
-	// Grass + Rock:
-
-	float slopeThreshold = 0.22;          // grass-rock slope threshold
-    float mixRange       = 0.02;          // threshold mixing range (slope range)
-	
-	ratio = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
-	//result = rock * (ratio) + grass * (1-ratio);
-	
-	if(inDist < 5) 
-	{
-		float ma = max(rockHeight  + ratio, grassHeight + (1-ratio)) - 0.1;		// 0.1 = depth
-		float b1 = max(rockHeight  + ratio     - ma, 0);
-		float b2 = max(grassHeight + (1-ratio) - ma, 0);
-		result = (rock * b1 + grass * b2) / (b1 + b2);
-	}
-	else result = rock * (ratio) + grass * (1-ratio);
-	
-	// Snow:
-
-	mixRange = 0.1;	// slope threshold mixing range
-
-	//		as function of slope
-	float lat    = atan(abs(inPos.z) / sqrt(inPos.x * inPos.x + inPos.y * inPos.y));
-	float minLat   = PI/3;	// Minimum latitude where snow appears
-	slopeThreshold = (lat - minLat) / ((PI/2) - minLat);	// Latitude ratio == Slope threshold
-	float ratio_1 = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
-
-	//		as function of height
-	float heightRange[2] = { 100, 150 };						// height range at equator
-	float height = inGroundHeight - RADIUS;
-	float decrement = heightRange[1] * (lat / (PI/2.f));	// height range decreases with latitude
-	heightRange[0] -= decrement;
-	heightRange[1] -= decrement;
-	slopeThreshold = (height - heightRange[0]) / (heightRange[1] - heightRange[0]);	// Height ratio == Slope threshold
-	float ratio_2 = clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
-
-	ratio = min(ratio_1, ratio_2);
-	return result * (ratio) + snow * (1 - ratio);
 }
 
 vec3 getDryColor(vec3 color, float minHeight, float maxHeight)

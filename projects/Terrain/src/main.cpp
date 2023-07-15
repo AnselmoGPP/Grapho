@@ -50,7 +50,7 @@ void setReticule(Renderer& app);		// --, PP
 void setNoPP(Renderer& app);			// --, PP
 
 // Models, textures, & shaders
-Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
@@ -78,8 +78,8 @@ SingleNoise noiser_2(	// Hills
 PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
 TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 
-Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2, 2000, { 0.f, 0.f, 0.f }, false);
-Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.2, 2020, { 0.f, 0.f, 0.f }, true);
+Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, false);
+Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -90,6 +90,7 @@ size_t fps, maxfps;
 glm::vec3 camPos, camDir, camUp, camRight;
 float aspectRatio, fov;
 glm::vec2 clipPlanes, screenSize;
+float camHeight;	// Distance camera-(0,0,0)
 
 
 // main ---------------------------------------------------------------------
@@ -119,12 +120,12 @@ int main(int argc, char* argv[])
 		setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
-		//planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
-		planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
+		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
 
-		setNoPP(app);
-		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
-		
+		setNoPP(app);		// In the same layer, the last drawn 
+		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+
 		setSun(app);
 		//setReticule(app);
 		
@@ -155,6 +156,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	camDir		  = rend.getCamera().getFront();
 	camUp		  = rend.getCamera().getCamUp();
 	camRight	  = rend.getCamera().getRight();
+	camHeight     = sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
 
 	aspectRatio	  = rend.getAspectRatio();
 	screenSize	  = rend.getScreenSize();
@@ -164,7 +166,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
-	//std::cout << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
+	std::cout << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
 
 	for(size_t i = 0; i < rend.loadedModels(); i++)
 
@@ -203,12 +205,12 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	{
 		//std::cout << "  Nodes: " << terrGrid.getRenderedChunks() << '/' << terrGrid.getloadedChunks() << '/' << terrGrid.getTotalNodes() << std::endl;
 		terrGrid.updateTree(camPos);
-		terrGrid.updateUBOs(view, proj, camPos, lights, frameTime);
+		terrGrid.updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
 	}
 	
-	planetGrid.updateState(camPos, view, proj, lights, frameTime);
+	planetGrid.updateState(camPos, view, proj, lights, frameTime, camHeight);
 	
-	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime);
+	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime, camHeight);
 	planetSeaGrid.toLastDraw();
 
 /*
@@ -638,7 +640,7 @@ void setNoPP(Renderer& app)
 
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
-	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
+	getScreenQuad(v_quad, i_quad, 1.f, 0.5);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
 	std::vector<ShaderLoader> shaders{ ShaderLoaders[22], ShaderLoaders[23] };
