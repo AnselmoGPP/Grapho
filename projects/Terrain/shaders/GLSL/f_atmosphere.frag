@@ -126,43 +126,6 @@ vec4 sea()
 	return originalColor();
 }
 
-vec4 toSRGB(vec4 vec)
-{
-	vec4 nonLinear;
-	
-	if (vec.x <= 0.0031308) nonLinear.x = vec.x * 12.92;
-	else nonLinear.x = 1.055 * pow(vec.x, 1.0/2.4) - 0.055;
-	
-	if (vec.y <= 0.0031308) nonLinear.y = vec.y * 12.92;
-	else nonLinear.y = 1.055 * pow(vec.y, 1.0/2.4) - 0.055;
-	
-	if (vec.z <= 0.0031308) nonLinear.z = vec.z * 12.92;
-	else nonLinear.z = 1.055 * pow(vec.z, 1.0/2.4) - 0.055;
-	
-	nonLinear.a = vec.a;
-	
-	return nonLinear;
-}
-
-vec4 toRGB(vec4 vec)
-{
-	vec4 linear;
-	
-	if (vec.x <= 0.04045) linear.x = vec.x / 12.92;
-	else linear.x = pow((vec.x + 0.055) / 1.055, 2.4);
-	
-	if (vec.y <= 0.04045) linear.y = vec.y / 12.92;
-	else linear.y = pow((vec.y + 0.055) / 1.055, 2.4);
-	
-	if (vec.z <= 0.04045) linear.z = vec.z / 12.92;
-	else linear.z = pow((vec.z + 0.055) / 1.055, 2.4);
-	
-	linear.a = vec.a;
-	
-	return linear;
-}
-
-
 // Returns vector(distToSphere, distThroughSphere). 
 //		If rayOrigin is inside sphere, distToSphere = 0. 
 //		If ray misses sphere, distToSphere = maxValue; distThroughSphere = 0.

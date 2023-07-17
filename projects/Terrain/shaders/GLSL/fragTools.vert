@@ -20,6 +20,7 @@
 		toSRGB
 		unpackUV
 		unpackNormal
+		mixByHeight
 	Save:
 		saveP
 		saveTB3
@@ -140,13 +141,13 @@ float getDist(vec3 a, vec3 b)
 	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
 }
 
-// Get the ratio of a given "value" within a range [min, max]. Result's range: [0, 1].
+// Get the ratio for a given "value" within a range [min, max]. Result's range: [0, 1].
 float getRatio(float value, float min, float max)
 {
 	return clamp((value - min) / (max - min), 0, 1);
 }
 
-// Get the ratio of a given a ratio within a range. Result's range: [0, 1]. 
+// Get the value within a range for a given ratio. 
 float getScaleRatio(float ratio, float min, float max)
 {
 	return (max - min) * ratio + min;
@@ -287,6 +288,15 @@ vec3 unpackNormal(vec3 normal, float multiplier)
 				sin(theta) * cos(phi),
 				sin(theta) * sin(phi),
 				cos(theta) ));
+}
+
+// Mix 2 textures based on their height maps.
+vec3 mixByHeight(vec3 tex_A, vec3 tex_B, float height_A, float height_B, float ratio, float depth)
+{
+	float ma = max(height_B  + ratio, height_A + (1-ratio)) - depth;
+	float b1 = max(height_B  + ratio     - ma, 0);
+	float b2 = max(height_A + (1-ratio) - ma, 0);
+	return (tex_B * b1 + tex_A * b2) / (b1 + b2);
 }
 
 

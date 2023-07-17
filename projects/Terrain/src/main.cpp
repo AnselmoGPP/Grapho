@@ -50,7 +50,7 @@ void setReticule(Renderer& app);		// --, PP
 void setNoPP(Renderer& app);			// --, PP
 
 // Models, textures, & shaders
-Renderer app(update, &camera_2, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
@@ -83,15 +83,7 @@ Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, 
 
 bool updateChunk = false, updateChunkGrid = false;
 
-// Data to update
-float frameTime;
-long double frameTimeLD;
-size_t fps, maxfps;
-glm::vec3 camPos, camDir, camUp, camRight;
-float aspectRatio, fov;
-glm::vec2 clipPlanes, screenSize;
-float camHeight;	// Distance camera-(0,0,0)
-
+dataForUpdates d;
 
 // main ---------------------------------------------------------------------
 
@@ -121,10 +113,10 @@ int main(int argc, char* argv[])
 		//setChunk(app);
 		//setChunkGrid(app);
 		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
-		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
 
-		setNoPP(app);		// In the same layer, the last drawn 
-		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+		//setNoPP(app);		// In the same layer, the last drawn 
+		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
 
 		setSun(app);
 		//setReticule(app);
@@ -146,27 +138,23 @@ int main(int argc, char* argv[])
 
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 {
-	// Parameters
-	fps			  = rend.getTimer().getFPS();
-	maxfps		  = rend.getTimer().getMaxPossibleFPS();
-	frameTimeLD   = rend.getTimer().getTime();
-	frameTime	  = (float)frameTimeLD;
+	d.frameTime = (float)(rend.getTimer().getTime());
+	d.aspectRatio = rend.getAspectRatio();
+	d.fov = rend.getCamera().fov;
+	d.clipPlanes[0] = rend.getCamera().nearViewPlane;
+	d.clipPlanes[1] = rend.getCamera().farViewPlane;
+	d.screenSize = rend.getScreenSize();
+	d.fps = rend.getTimer().getFPS();
+	d.maxfps = rend.getTimer().getMaxPossibleFPS();
+	d.camPos = rend.getCamera().camPos;
+	d.camDir = rend.getCamera().getFront();
+	d.camUp = rend.getCamera().getCamUp();
+	d.camRight = rend.getCamera().getRight();
+	d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 
-	camPos		  = rend.getCamera().camPos;
-	camDir		  = rend.getCamera().getFront();
-	camUp		  = rend.getCamera().getCamUp();
-	camRight	  = rend.getCamera().getRight();
-	camHeight     = sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
-
-	aspectRatio	  = rend.getAspectRatio();
-	screenSize	  = rend.getScreenSize();
-
-	fov			  = rend.getCamera().fov;
-	clipPlanes[0] = rend.getCamera().nearViewPlane;
-	clipPlanes[1] = rend.getCamera().farViewPlane;
 	size_t i;
 	
-	std::cout << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
+	std::cout << d.fps << ") " << d.groundHeight << " / " << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
 
 	for(size_t i = 0; i < rend.loadedModels(); i++)
 
@@ -177,15 +165,15 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	#endif
 
 	// Time
-	sun.updateTime(frameTime);
+	sun.updateTime(d.frameTime);
 
 	// Light
 	lights.posDir[0].direction = sun.lightDirection();	// Directional (sun)
 
 	lights.posDir[1].direction = -sun.lightDirection();	// Directional (night)
 
-	lights.posDir[2].position  = camPos;
-	lights.posDir[2].direction = camDir;
+	lights.posDir[2].position  = d.camPos;
+	lights.posDir[2].direction = d.camDir;
 
 	//std::cout
 	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
@@ -199,18 +187,18 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.ge65Camera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
 
 	// Chunks
-	if (updateChunk) singleChunk.updateUBOs(view, proj, camPos, lights, frameTime);
+	if (updateChunk) singleChunk.updateUBOs(view, proj, d.camPos, lights, d.frameTime, d.groundHeight);
 
 	if(updateChunkGrid)
 	{
 		//std::cout << "  Nodes: " << terrGrid.getRenderedChunks() << '/' << terrGrid.getloadedChunks() << '/' << terrGrid.getTotalNodes() << std::endl;
-		terrGrid.updateTree(camPos);
-		terrGrid.updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+		terrGrid.updateTree(d.camPos);
+		terrGrid.updateUBOs(view, proj, d.camPos, lights, d.frameTime, d.groundHeight);
 	}
 	
-	planetGrid.updateState(camPos, view, proj, lights, frameTime, camHeight);
+	planetGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
 	
-	planetSeaGrid.updateState(camPos, view, proj, lights, frameTime, camHeight);
+	planetSeaGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
 	planetSeaGrid.toLastDraw();
 
 /*
@@ -248,21 +236,21 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	if (assets.find("reticule") != assets.end())
 		for (i = 0; i < assets["reticule"]->vsDynUBO.numDynUBOs; i++)
-			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &aspectRatio, sizeof(aspectRatio));
+			memcpy(assets["reticule"]->vsDynUBO.getUBOptr(i), &d.aspectRatio, sizeof(d.aspectRatio));
 
 	if (assets.find("atmosphere") != assets.end())
 		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
 		{
 			dest = assets["atmosphere"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * size.vec4, &fov, sizeof(fov));
-			memcpy(dest + 1 * size.vec4, &aspectRatio, sizeof(aspectRatio));
-			memcpy(dest + 2 * size.vec4, &camPos, sizeof(camPos));
-			memcpy(dest + 3 * size.vec4, &camDir, sizeof(camDir));
-			memcpy(dest + 4 * size.vec4, &camUp, sizeof(camUp));
-			memcpy(dest + 5 * size.vec4, &camRight, sizeof(camRight));
+			memcpy(dest + 0 * size.vec4, &d.fov, sizeof(d.fov));
+			memcpy(dest + 1 * size.vec4, &d.aspectRatio, sizeof(d.aspectRatio));
+			memcpy(dest + 2 * size.vec4, &d.camPos, sizeof(d.camPos));
+			memcpy(dest + 3 * size.vec4, &d.camDir, sizeof(d.camDir));
+			memcpy(dest + 4 * size.vec4, &d.camUp, sizeof(d.camUp));
+			memcpy(dest + 5 * size.vec4, &d.camRight, sizeof(d.camRight));
 			memcpy(dest + 6 * size.vec4, &lights.posDir[0].direction, sizeof(glm::vec3));
-			memcpy(dest + 7 * size.vec4, &clipPlanes, sizeof(glm::vec2));
-			memcpy(dest + 8 * size.vec4, &screenSize, sizeof(glm::vec2));
+			memcpy(dest + 7 * size.vec4, &d.clipPlanes, sizeof(glm::vec2));
+			memcpy(dest + 8 * size.vec4, &d.screenSize, sizeof(glm::vec2));
 			memcpy(dest + 9 * size.vec4, &view, sizeof(view));
 			memcpy(dest + 9 * size.vec4 + 1 * size.mat4, &proj, sizeof(proj));
 		}
@@ -284,7 +272,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("grid") != assets.end())
 		for (i = 0; i < assets["grid"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["grid"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)camPos.x / gridStep), gridStep * ((int)camPos.y / gridStep), 0.0f)), size.mat4);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(gridStep * ((int)d.camPos.x / gridStep), gridStep * ((int)d.camPos.y / gridStep), 0.0f)), size.mat4);
 			memcpy(dest + 1 * size.mat4, &view, size.mat4);
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
@@ -292,7 +280,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("skyBox") != assets.end())
 		for (i = 0; i < assets["skyBox"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["skyBox"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(600.f, 600.f, 600.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(camPos.x, camPos.y, camPos.z)), size.mat4);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(600.f, 600.f, 600.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(d.camPos.x, d.camPos.y, d.camPos.z)), size.mat4);
 			memcpy(dest + 1 * size.mat4, &view, size.mat4);
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
@@ -300,7 +288,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("cottage") != assets.end())
 		for (i = 0; i < assets["cottage"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["cottage"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(pi/2, frameTime * pi/2, 0.f), glm::vec3(0.f, 0.f, 0.f)), size.mat4);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1.f, 1.f, 1.f), glm::vec3(pi/2, d.frameTime * pi/2, 0.f), glm::vec3(0.f, 0.f, 0.f)), size.mat4);
 			memcpy(dest + 1 * size.mat4, &view, size.mat4);
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
@@ -315,7 +303,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	if (assets.find("sun") != assets.end())
 		for (i = 0; i < assets["sun"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["sun"]->vsDynUBO.getUBOptr(i);
-			memcpy(dest + 0 * size.mat4, &sun.MM(camPos), size.mat4);
+			memcpy(dest + 0 * size.mat4, &sun.MM(d.camPos), size.mat4);
 			memcpy(dest + 1 * size.mat4, &view, size.mat4);
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
@@ -326,15 +314,15 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		for (i = 0; i < assets["sea"]->vsDynUBO.numDynUBOs; i++) 
 		{
 			dest = assets["sea"]->vsDynUBO.getUBOptr(0);
-			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(camPos.x, camPos.y, 0)), size.mat4);
+			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(d.camPos.x, d.camPos.y, 0)), size.mat4);
 			memcpy(dest + 1 * size.mat4, &view, size.mat4);
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 			memcpy(dest + 3 * size.mat4, &modelMatrixForNormals(modelMatrix()), size.mat4);
-			memcpy(dest + 4 * size.mat4, &camPos, size.vec3);
+			memcpy(dest + 4 * size.mat4, &d.camPos, size.vec3);
 			memcpy(dest + 4 * size.mat4 + size.vec4, lights.posDir, lights.posDirBytes);
 
 			dest = assets["sea"]->fsUBO.getUBOptr(0);					// << Add to dest when advancing pointer
-			memcpy(dest + 0 * size.vec4, &frameTime, sizeof(frameTime));
+			memcpy(dest + 0 * size.vec4, &d.frameTime, sizeof(d.frameTime));
 			memcpy(dest + 1 * size.vec4, lights.props, lights.propsBytes);
 		}
 	}

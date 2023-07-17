@@ -125,7 +125,7 @@ public:
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
 	void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter = glm::vec3(0,0,0));
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
 	glm::vec3 getGroundCenter()	{ return groundCenter; }
@@ -218,17 +218,19 @@ public:
 	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 	virtual ~DynamicGrid();
 
+	unsigned char* ubo;
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::vec3 camPos;
 	LightSet* lights;
 	float time;
+	float groundHeight;
 
-	//void addTextures(const std::vector<TextureLoader>& textures);							//!< Add textures ids of already loaded textures.
+	//void addTextures(const std::vector<TextureLoader>& textures);								//!< Add textures ids of already loaded textures.
 	//void addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader);	//!< Add shaders ids of already loaded shaders.
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
 	unsigned getTotalNodes() { return chunks.size(); }
 	unsigned getloadedChunks() { return loadedChunks; }
 	unsigned getRenderedChunks() { return renderedChunks; }
@@ -343,9 +345,10 @@ struct Planet
 	virtual ~Planet();
 
 	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
-	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float camHeight);	//!< Update tree and UBOs
+	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float groundHeight);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area
+	float getGroundHeight(const glm::vec3& camPos);
 
 	const float radius;
 	const glm::vec3 nucleus;

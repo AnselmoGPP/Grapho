@@ -48,7 +48,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
         1, 1, primitiveTopology::triangle, vt_333,
         *vertexData, shaders, textures,
         1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
-        numLights * sizeof(LightProps),                                     // n * LightProps (6*vec4)
+        numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
         transparency);
 
     uint8_t* dest;
@@ -80,7 +80,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     modelOrdered = true;
 }
 
-void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, glm::vec3 planetCenter)
+void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter)
 {
     if (!modelOrdered) return;
 
@@ -88,18 +88,20 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         dest = model->vsDynUBO.getUBOptr(i);
-        //memcpy(dest, &modelMatrix(), mat4size);
+        //memcpy(dest, &modelMatrix(), size.mat4);
         dest += size.mat4;
         memcpy(dest, &view, size.mat4);
         dest += size.mat4;
         memcpy(dest, &proj, size.mat4);
         dest += size.mat4;
-        //memcpy(dest, &modelMatrixForNormals(modelMatrix()), mat4size);
+        //memcpy(dest, &modelMatrixForNormals(modelMatrix()), size.mat4);
         dest += size.mat4;
         memcpy(dest, &camPos, size.vec3);
         dest += size.vec4;
         memcpy(dest, &time, sizeof(float));
-        dest += size.vec4;
+        dest += sizeof(float);
+        memcpy(dest, &camHeight, sizeof(float));
+        dest += 3 * sizeof(float);
         memcpy(dest, &sideDepths, size.vec4);
         dest += size.vec4;
         memcpy(dest, lights.posDir, lights.posDirBytes);
@@ -743,13 +745,14 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     }
 }
 
-void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight)
+void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight)
 {
     this->view = view;
     this->proj = proj;
     this->camPos = camPos;
     this->lights = &lights;
     this->time = time;
+    this->groundHeight = groundHeight;
 
     //preorder<Chunk*, void (QuadNode<Chunk*>*)>(root, nodeVisitor);
     updateUBOs_help(root[activeTree]);  // Preorder traversal
@@ -761,7 +764,7 @@ void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
 
     if (node->isLeaf())
     {
-        node->getElement()->updateUBOs(view, proj, camPos, *lights, time);
+        node->getElement()->updateUBOs(view, proj, camPos, *lights, time, groundHeight);
         return;
     }
     else
@@ -1157,22 +1160,22 @@ void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::v
     readyForUpdate = true;
 }
 
-void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float camHeight)
+void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float groundHeight)
 {
     if (readyForUpdate)
     {
         planetGrid_pZ->updateTree(camPos);
-        planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
         planetGrid_nZ->updateTree(camPos);
-        planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
         planetGrid_pY->updateTree(camPos);
-        planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
         planetGrid_nY->updateTree(camPos);
-        planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
         planetGrid_pX->updateTree(camPos);
-        planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
         planetGrid_nX->updateTree(camPos);
-        planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime, camHeight);
+        planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
     }
 }
 
@@ -1187,6 +1190,17 @@ void Planet::toLastDraw()
 }
 
 float Planet::getSphereArea() { return 4 * pi * radius * radius; }
+
+float Planet::getGroundHeight(const glm::vec3& camPos)
+{
+    if (readyForUpdate)
+    {
+        glm::vec3 ground = glm::normalize(camPos - nucleus) * radius;
+        return radius + noiseGen->GetNoise(ground.x, ground.y, ground.z);
+    }
+
+    return 0;
+}
 
 float Planet::callBack_getFloorHeight(const glm::vec3& pos)
 {

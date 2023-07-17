@@ -1,11 +1,11 @@
 TODO:
+	Plain coasts
+	seaPlanet VS: outCamSqrHeight & 
+	Don't load non-visible chunks
 	Planet texture
-	Fix planet shader:
-		Specularity
-		Pass height
 	>Configurable UBOs for dynamic grids
 		Pass camera height param to sea shader
-	ModelData's flags fullyConstructed and inModels are necessary? Are they initialized in the correct places? 
+	ModelData's flags fullyConstructed or inModels are necessary? Are they initialized in the correct places? 
 	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
 	Mutex for ShaderLoader::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
 

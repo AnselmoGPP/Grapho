@@ -29,4 +29,14 @@ extern TextureLoader texInfos[];
 
 extern std::vector<TextureLoader> usedTextures;	// Package of textures
 
+struct dataForUpdates
+{
+	float frameTime;
+	float aspectRatio, fov;
+	glm::vec2 clipPlanes, screenSize;
+	size_t fps, maxfps;
+	glm::vec3 camPos, camDir, camUp, camRight;
+	float groundHeight = 0;					// Distance (0,0,0)-groundUnderCam
+};
+
 #endif

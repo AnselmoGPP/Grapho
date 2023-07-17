@@ -31,7 +31,7 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 proj;
     mat4 normalMatrix;			// mat3
 	vec4 camPos;				// vec3
-	vec4 time;					// float
+	vec4 time_height;			// float, float (dist nucleus-soilUnderCam)
 	vec4 sideDepthsDiff;
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
@@ -47,10 +47,12 @@ layout(location = 3)  		out float	outSlope;		// Ground slope
 layout(location = 4)  		out float	outDist;		// Distace vertex-camera
 layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
 layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
-layout(location = 7) flat   out float   outTime;
-layout(location = 8)  		out TB3		outTB3;				// Tangents & Bitangents
-layout(location = 14) flat	out LightPD outLight[NUMLIGHTS];
+layout(location = 7)  flat  out float   outTime;
+layout(location = 8)  flat  out float   outSoilHeight;	// Dist nucleus-soilUnderCam<<<<
+layout(location = 9)  		out TB3		outTB3;			// Tangents & Bitangents
+layout(location = 15) flat	out LightPD outLight[NUMLIGHTS];
 
+void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude);	// Adjust amplitude based on soil depth under camera. Waves are max. when soilHeight < (RADIUS - maxDepth) and min. when soilHeight > (RADIUS - minDepth)
 vec3 getSeaOptimized(inout vec3 normal, float min, float max);
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal);			// Gerstner waves standard (https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models)
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal);		// Gerstner waves projected along the sphere surface.
@@ -58,9 +60,11 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves proje
 
 void main()
 {
+	//adjustWavesAmplitude(15, 1, 0.1);
+	for(int i = 0; i < WAVES; i++) A[i] *= 0.3;
+	
 	vec3 normal     = inNormal;
 	vec3 pos        = getSeaOptimized(normal, MIN, MAX);
-	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;
@@ -69,7 +73,9 @@ void main()
 	outGroundHeight = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
 	outSlope        = 1. - dot(outNormal, normalize(pos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
 	outCamPos       = ubo.camPos.xyz;
-	outTime         = ubo.time[0];
+	outTime         = ubo.time_height[0];
+	outSoilHeight	= ubo.time_height[1];
+	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1);
 	
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
@@ -78,6 +84,12 @@ void main()
 	}
 	
 	outTB3 = getTB3(normal);
+}
+
+void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude)
+{
+	float ratio = minAmplitude + 1.f - getRatio(ubo.time_height[1], RADIUS - maxDepth, RADIUS - minDepth);
+	for(int i = 0; i < WAVES; i++) A[i] *= ratio;
 }
 
 vec3 getSeaOptimized(inout vec3 normal, float min, float max)
@@ -131,7 +143,7 @@ vec3 getSphereDir(vec3 planeDir, vec3 normal)
 // Gerstner waves applied over a sphere, perpendicular to normal
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 {
-	float time       = ubo.time[0];
+	float time       = ubo.time_height[0];
 		
 	vec3 newPos      = pos;
 	vec3 newNormal   = normal;
@@ -173,6 +185,7 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 	normal = newNormal;
 	return newPos;
 }
+
 /*
 // Gerstner waves applied over a sphere, perpendicular to direction
 vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
@@ -182,7 +195,7 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 	float A          = AMPLITUDE;				// Amplitude
 	float steepness  = STEEPNESS;				// [0,1]
 	float Q          = steepness * 1 / (w * A);	// Steepness [0, 1/(w·A)] (bigger values produce loops)
-	float time       = ubo.time[0];
+	float time       = ubo.time_height[0];
 	const int count  = 6;
 		
 	vec3 dir[count]  = { vec3(1,0,0), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(-SR05, 0, SR05) };
@@ -222,7 +235,7 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 // Gerstner waves applied over a 2D surface
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal)
 {
-	float time      = ubo.time[0];
+	float time      = ubo.time_height[0];
 	float speed     = 3;
 	float w         = 0.010;			// Frequency (number of cycles in 2π)
 	float A         = 100;				// Amplitude

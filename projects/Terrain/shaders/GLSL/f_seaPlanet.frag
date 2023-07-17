@@ -22,8 +22,9 @@ layout(location = 4)  		in float	inDist;
 layout(location = 5)  flat	in float	inCamSqrHeight;
 layout(location = 6)		in float	inGroundHeight;
 layout(location = 7)  flat  in float    inTime;
-layout(location = 8)  		in TB3	 	inTB3;
-layout(location = 14) flat	in LightPD	inLight[NUMLIGHTS];
+layout(location = 8)  flat  in float    inSoilHeight;
+layout(location = 9)  		in TB3	 	inTB3;
+layout(location = 15) flat	in LightPD	inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -32,6 +33,7 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 
 vec3  getDryColor (vec3 color, float minHeight, float maxHeight);
 vec3 getTex_Sea();
+float getTransparency(float minAlpha, float maxDist, float minHeight, float maxHeight);
 
 // Definitions:
 
@@ -40,8 +42,7 @@ void main()
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	savePNT(inPos, inNormal, inTB3);
 	
-	outColor = vec4(getTex_Sea(), 1);
-	//outColor = vec4(color, getTransparency(0.1, 20, 40));
+	outColor = vec4(getTex_Sea(), getTransparency(0.3, 50, RADIUS - 10, RADIUS - 3));
 }
 
 vec3 getTex_Sea()
@@ -62,9 +63,9 @@ vec3 getTex_Sea()
 		
 		// Green water (depth)
 		vec3 depth = triplanarNoColor_Sea(texSampler[32], scale, speed, inTime).rgb;
-		if(depth.x > 0.20)
+		if(depth.x > 0.32)
 		{
-			float ratio = getRatio(depth.x, 0.35, 0.43);	// Mix ratio
+			float ratio = getRatio(depth.x, 0.32, 0.45);	// Mix ratio
 			finalColor = finalColor * (1 - ratio) + vec3(0.17, 0.71, 0.61) * ratio;
 		}
 		
@@ -80,7 +81,7 @@ vec3 getTex_Sea()
 		if(foam.x > 0.17) 
 		{
 			float ratio = getRatio(foam.x, 0.17, 0.25);	// Mix ratio
-			finalColor = finalColor * (1 - ratio) + vec3(0.95, 0.95, 0.95) * ratio;
+			finalColor = finalColor * (1 - ratio) + vec3(0.98, 0.98, 0.98) * ratio;
 			specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
 			roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<
 		}
@@ -105,7 +106,7 @@ vec3 getTex_Sea()
 	if(inDist < 300)	// Mix area (close and far normals)
 	{
 		vec3 normal  = triplanarNormal_Sea(texSampler[31], scale, speed, inTime);
-		vec3 normal2 = triplanarNormal_Sea(texSampler[31], scale * 5, speed, inTime);
+		vec3 normal2 = triplanarNormal_Sea(texSampler[31], scale * 5, speed * 1.5, inTime);
 		float ratio  = getRatio(inDist, 150, 200);
 		normal       = normal * (1 - ratio) + normal2 * ratio;
 		
@@ -118,26 +119,9 @@ vec3 getTex_Sea()
 	
 	return getFragColor( 	// Far normals
 			waterColor,
-			triplanarNormal_Sea(texSampler[31], scale * 5, speed, inTime),
+			triplanarNormal_Sea(texSampler[31], scale * 5, speed * 1.5, inTime),
 			specularity,
 			roughness );
-}
-
-float getTransparency(float minTransp, float minDist, float maxDist) 
-{
-	return 1;
-	float ratio_1;		// The closer, the more transparent
-	float ratio_2;		// The lower the camera-normal angle is, the more transparent
-	float ratio_3;		// The larger distance, the less transparent
-	
-	ratio_1 = getRatio(inDist, minDist, maxDist);				// [0,1]
-	ratio_1 = getScaleRatio(ratio_1, minTransp, 1);				// [minTransp, 1]
-	
-	ratio_2 = getAngle(inNormal, getDirection(inPos, inCamPos));// angle normal-vertex-camera
-	ratio_2 = getRatio(ratio_2, 0, PI/2);						// [0,1]
-	ratio_2 = getScaleRatio(ratio_2, minTransp, 1);				// [minTransp, 1]
-	
-	return ratio_2;
 }
 
 vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
@@ -147,3 +131,11 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 	return color + increment * ratio;
 }
 
+float getTransparency(float minAlpha, float maxDist, float minHeight, float maxHeight)
+{
+	float ratio = getRatio(inDist, 0, maxDist);
+	ratio = getScaleRatio(
+				1.f - getRatio(inSoilHeight, minHeight, maxHeight), 
+				ratio, 1.f);
+	return ratio + minAlpha;
+}
