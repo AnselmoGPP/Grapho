@@ -40,7 +40,6 @@ void setSun(Renderer& app);				// L0, T
 void setPoints(Renderer& app);			// L1, P
 void setAxis(Renderer& app);			// L1, L
 void setGrid(Renderer& app);			// L1, L
-void setSea(Renderer& app);				// L1, T
 void setCottage(Renderer& app);			// L1, M
 void setRoom(Renderer& app);			// L1, M
 void setChunk(Renderer& app);			// L1, T
@@ -48,9 +47,11 @@ void setChunkGrid(Renderer& app);		// L1, T
 void setAtmosphere(Renderer& app);		// --, PP
 void setReticule(Renderer& app);		// --, PP
 void setNoPP(Renderer& app);			// --, PP
+// <<< Add 3D grid
+void tests();
 
 // Models, textures, & shaders
-Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_1, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
@@ -81,6 +82,8 @@ TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, false);
 Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
 
+GrassSystem grass(app, lights);
+
 bool updateChunk = false, updateChunkGrid = false;
 
 dataForUpdates d;
@@ -97,6 +100,8 @@ int main(int argc, char* argv[])
 		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 	#endif
 	
+	//tests(); return 0;
+
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
 	{
 		camera_4.camParticle.setCallback(getFloorHeight);
@@ -105,20 +110,20 @@ int main(int argc, char* argv[])
 		
 		//setPoints(app);
 		setAxis(app);
-		setGrid(app);
-		//setSea(app);
-		setSkybox(app);
+		//setGrid(app);
+		//setSkybox(app);
 		//setCottage(app);
-		setRoom(app);
+		//setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
-		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
-		planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		//planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
+		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
 
-		//setNoPP(app);		// In the same layer, the last drawn 
-		setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hiden by reticule's transparent pixels
+		setNoPP(app);			// In the same layer, the last drawn 
+		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
 
-		setSun(app);
+		//setSun(app);
 		//setReticule(app);
 		
 		app.renderLoop();		// Start rendering
@@ -154,9 +159,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 	size_t i;
 	
-	std::cout << d.fps << ") " << d.groundHeight << " / " << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
-
-	for(size_t i = 0; i < rend.loadedModels(); i++)
+	//std::cout << d.fps << ") " << d.groundHeight << " / " << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
+	//for(size_t i = 0; i < rend.loadedModels(); i++)
 
 	#ifdef DEBUG_MAIN
 		std::cout << rend.getFrameCount() << ") " << std::endl;
@@ -200,6 +204,8 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	
 	planetSeaGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
 	planetSeaGrid.toLastDraw();
+
+	grass.updateGrass(d.camPos, planetGrid, view, proj, d.frameTime);
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -488,35 +494,6 @@ void setRoom(Renderer& app)
 	//memcpy(assets["room"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  pi), glm::vec3(30.f, -50.f, 3.f)), size.mat4);
 }
 
-void setSea(Renderer& app)
-{
-	#ifdef DEBUG_MAIN
-		std::cout << "> " << __func__ << "()" << std::endl;
-	#endif
-
-	//std::vector<texIterator> usedTextures = { textures0["sea_n"] };
-
-	float extent = 2000, height = 0;
-	float v_sea[4 * 6] = {
-		-extent, extent, height,  0, 0, 1,
-		-extent,-extent, height,  0, 0, 1,
-		 extent,-extent, height,  0, 0, 1,
-		 extent, extent, height,  0, 0, 1 };
-	std::vector<uint16_t> i_sea = { 0,1,3, 1,2,3 };
-
-	VerticesLoader vertexData(vt_33.vertexSize, v_sea, 4, i_sea);
-	std::vector<ShaderLoader> shaders{ ShaderLoaders[8], ShaderLoaders[9] };
-	std::vector<TextureLoader> textures{ texInfos[26] };
-
-	assets["sea"] = app.newModel(
-		"plainSea",
-		1, 1, primitiveTopology::triangle, vt_33,
-		vertexData, shaders, textures,
-		1, 4 * size.mat4 + size.vec4 + lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos, Light
-		size.vec4 + lights.numLights * sizeof(LightProps),						// Time, 2 * LightProps (6*vec4)
-		true);
-}
-
 void setChunk(Renderer& app)
 {
 	#ifdef DEBUG_MAIN
@@ -642,4 +619,31 @@ void setNoPP(Renderer& app)
 		0,
 		false,
 		1);
+}
+
+void tests()
+{
+	std::cout << __func__ << std::endl;
+
+	std::vector<glm::vec3> vec = {
+		glm::vec3(9, 0, 0),
+		glm::vec3(9, 0, 0),
+		glm::vec3(5, 0, 0),
+		glm::vec3(8, 0, 0),
+		glm::vec3(4, 0, 0),
+		glm::vec3(22, 0, 0),
+		glm::vec3(3, 0, 0),
+		glm::vec3(6, 0, 0),
+		glm::vec3(2, 0, 0),
+		glm::vec3(10, 0, 0),
+		glm::vec3(7, 0, 0),
+		glm::vec3(9, 0, 0),
+		glm::vec3(9, 0, 0)
+	};
+	
+	Quicksort_distVec3 sorter;
+	sorter.sort(vec.begin(), vec.end() - 1, glm::vec3(0,0,0));
+
+	for (int i = 0; i < vec.size(); i++) std::cout << vec[i].x << ", ";
+	std::cout << std::endl;
 }

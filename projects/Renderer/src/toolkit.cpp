@@ -404,3 +404,146 @@ bool isBigEndian()
 	else return true;
 }
 
+void Quicksort_distVec3::sort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high, const glm::vec3& camPos)
+{
+	this->camPos = camPos;
+	this->begin = low;
+	quickSort(low, high);
+}
+
+void Quicksort_distVec3::quickSort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high)
+{
+	if (low < high)		//(low >= 0 && high >= 0 && low < high)
+	{
+		std::vector<glm::vec3>::iterator p = partition(low, high);
+		quickSort(low, p);
+		quickSort(p + 1, high);
+	}
+}
+
+std::vector<glm::vec3>::iterator Quicksort_distVec3::partition(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high)
+{
+	glm::vec3 pivot = *(low + ((high - low) / 2));
+
+	std::vector<glm::vec3>::iterator i = low - 1;
+	std::vector<glm::vec3>::iterator j = high + 1;
+
+	while (1)
+	{
+		do i++;
+		while (isFurther(*i, pivot));		// (arr[i] < pivot)
+
+		do j--;
+		while (isCloser(*j, pivot));		// (arr[j] > pivot)
+
+		if (i >= j) return j;
+
+		swap(*i, *j);
+	}
+}
+
+void Quicksort_distVec3::swap(glm::vec3& a, glm::vec3& b)
+{
+	temp = a;
+	a = b;
+	b = temp;
+}
+
+bool Quicksort_distVec3::isFurther(const glm::vec3& pos1, const glm::vec3& pos2)
+{
+	vec1 = pos1 - camPos;
+	vec2 = pos2 - camPos;
+	sqrDist1 = vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z;
+	sqrDist2 = vec2.x * vec2.x + vec2.y * vec2.y + vec2.z * vec2.z;
+
+	if (sqrDist1 > sqrDist2) return true;
+	else return false;
+}
+
+bool Quicksort_distVec3::isCloser(const glm::vec3& pos1, const glm::vec3& pos2)
+{
+	vec1 = pos1 - camPos;
+	vec2 = pos2 - camPos;
+	sqrDist1 = vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z;
+	sqrDist2 = vec2.x * vec2.x + vec2.y * vec2.y + vec2.z * vec2.z;
+
+	if (sqrDist1 < sqrDist2) return true;
+	else return false;
+}
+
+int Quicksort_distVec3::pos(std::vector<glm::vec3>::iterator iter) { return iter - begin; }
+
+
+void Quicksort_distVec3_index::sort(std::vector<glm::vec3>& positions, std::vector<int>& indexVals, const glm::vec3& camPos, int low, int high)
+{
+	// <<< what if high < low?
+
+	int size = high - low + 1;
+	indexVals.resize(size);
+	for (int i = 0; i < size; i++) indexVals[i] = i;
+
+	this->camPos = camPos;
+	this->pos = &positions;
+
+	quickSort(indexVals, low, high);
+}
+
+void Quicksort_distVec3_index::quickSort(std::vector<int>& idx, int low, int high)
+{
+	if (low < high)		//(low >= 0 && high >= 0 && low < high)
+	{
+		int p = partition(idx, low, high);
+		quickSort(idx, low, p);
+		quickSort(idx, p + 1, high);
+	}
+}
+
+int Quicksort_distVec3_index::partition(std::vector<int>& idx, int low, int high)
+{
+	int pivot = idx[low + (high - low) / 2];		// glm::vec3 pivot = *(low + ((high - low) / 2));
+
+	int i = low - 1;
+	int j = high + 1;
+
+	while (1)
+	{
+		do i++;
+		while (isFurther(idx[i], pivot));		// (arr[i] < pivot)
+
+		do j--;
+		while (isCloser(idx[j], pivot));		// (arr[j] > pivot)
+
+		if (i >= j) return j;
+
+		swap(idx[i], idx[j]);
+	}
+}
+
+void Quicksort_distVec3_index::swap(int& a, int& b)
+{
+	temp = a;
+	a = b;
+	b = temp;
+}
+
+bool Quicksort_distVec3_index::isFurther(int idx1, int idx2)
+{
+	vec1 = (*pos)[idx1] - camPos;
+	vec2 = (*pos)[idx2] - camPos;
+	sqrDist1 = vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z;
+	sqrDist2 = vec2.x * vec2.x + vec2.y * vec2.y + vec2.z * vec2.z;
+
+	if (sqrDist1 > sqrDist2) return true;
+	else return false;
+}
+
+bool Quicksort_distVec3_index::isCloser(int idx1, int idx2)
+{
+	vec1 = (*pos)[idx1] - camPos;
+	vec2 = (*pos)[idx2] - camPos;
+	sqrDist1 = vec1.x * vec1.x + vec1.y * vec1.y + vec1.z * vec1.z;
+	sqrDist2 = vec2.x * vec2.x + vec2.y * vec2.y + vec2.z * vec2.z;
+
+	if (sqrDist1 < sqrDist2) return true;
+	else return false;
+}

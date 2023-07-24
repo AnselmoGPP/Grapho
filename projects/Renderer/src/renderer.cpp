@@ -619,7 +619,7 @@ void Renderer::cleanup()
 	#endif
 }
 
-modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
@@ -636,7 +636,8 @@ modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRend
 		VerticesLoader, shadersInfo, texturesInfo,
 		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
 		transparency,
-		renderPassIndex);
+		renderPassIndex,
+		cullMode);
 }
 
 void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowing the iterator (no need to check lists)?
@@ -655,8 +656,8 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 	{
 		{
 			const std::lock_guard<std::mutex> lock_1(worker.mutModels);
-			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 			const std::lock_guard<std::mutex> lock_3(worker.mutLoad);
+			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 
 			for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)		// found in Renderer::models
 				if (it == model)
@@ -674,9 +675,11 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 					modelsToDelete.splice(modelsToDelete.cend(), modelsToLoad, model);
 					return;
 				}
+
+			if (!worker.isBeingProcessed(model)) break;		// If model is being processed, continue in loop until until it has been loaded and delete it.
 		}
 
-		if (!worker.isBeingProcessed(model)) break;		// If model is being processed, continue in loop until until it has been loaded and delete it.
+		std::this_thread::sleep_for(std::chrono::milliseconds(3));
 	}
 
 	std::cout << "Model to delete not found" << std::endl;

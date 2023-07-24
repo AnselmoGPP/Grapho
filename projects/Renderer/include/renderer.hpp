@@ -170,7 +170,7 @@ public:
 	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers);
 	~Renderer();
 	
-	void		renderLoop();	//!< Create command buffer and start render loop.
+	void renderLoop();	//!< Create command buffer and start render loop.
 
 	/**
 		@brief Insert a partially initialized model object in modelsToLoad list.The loadModels_Thread() thread will fully initialize it as soon as possible.
@@ -187,7 +187,7 @@ public:
 		@param transparency
 	*/
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
-	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0);
+	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0, VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT);
 
 	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes.
 	void deleteModel(modelIter model);

@@ -26,6 +26,24 @@
 class ModelData;
 typedef std::list<ModelData>::iterator modelIter;
 
+struct ModelDataConfig
+{
+	const char* modelName;
+	//VulkanEnvironment& environment;
+	size_t layer = 0;
+	size_t activeRenders = 0;
+	VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	const VertexType& vertexType;
+	//VerticesLoader& verticesLoader;
+	//std::vector<ShaderLoader>& shadersInfo;
+	//std::vector<TextureLoader>& texturesInfo;
+	size_t numDynUBOs_vs;
+	size_t dynUBOsize_vs;
+	size_t dynUBOsize_fs;
+	bool transparency = false;
+	uint32_t renderPassIndex = 0;
+	VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT;
+};
 
 /**
 	@class ModelData
@@ -40,6 +58,7 @@ class ModelData
 	VertexType vertexType;
 	std::vector<shaderIter> shaders;		//!< Vertex shader (0), Fragment shader (1)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
+	VkCullModeFlagBits cullMode;			//!< VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_NONE, ...
 
 	// Main methods:
 
@@ -80,7 +99,7 @@ class ModelData
 
 public:
 	/// Construct an object for rendering
-	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex);
+	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode);
 
 	virtual ~ModelData();
 
@@ -108,12 +127,12 @@ public:
 
 	const uint32_t				 renderPassIndex;		//!< Index of the renderPass used (0 for rendering geometry, 1 for post processing)
 	size_t						 layer;					//!< Layer where this model will be drawn (Painter's algorithm).
-	size_t						 activeRenders;			//!< Number of renderings (>= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
+	size_t						 activeRenders;			//!< Number of renderings (<= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
 	ResourcesLoader* resLoader;							//!< Info used for loading resources (vertices, indices, shaders, textures). When resources are loaded, this is set to nullptr.
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
-	std::string name;									//!< For debugging purposes.
+	const std::string name;								//!< For debugging purposes.
 
 	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
 	void setRenderCount(size_t numRenders);

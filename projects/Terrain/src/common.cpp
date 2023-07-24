@@ -30,8 +30,8 @@
 // Cameras --------------------------------------------------
 
 FreePolarCam camera_1(
-	glm::vec3(0.f, 0.f, 20.0f),		// camera position
-	50.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
+	glm::vec3(0.f, 0.f, 5.0f),		// camera position
+	2.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(90.f, 0.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)
 	0.2f, 4000.f,					// near & far view planes
@@ -64,35 +64,35 @@ PlanetFPcam camera_4(
 
 ShaderLoader ShaderLoaders[]
 {
-	/*00*/ ShaderLoader(shadersDir + "v_pointPC.vert"),
-	/*01*/ ShaderLoader(shadersDir + "f_pointPC.frag"),
+	/*00*/ ShaderLoader(shadersDir + "v_points.vert"),
+	/*01*/ ShaderLoader(shadersDir + "f_points.frag"),
 
-	/*02*/ ShaderLoader(shadersDir + "v_linePC.vert"),
-	/*03*/ ShaderLoader(shadersDir + "f_linePC.frag"),
+	/*02*/ ShaderLoader(shadersDir + "v_lines.vert"),
+	/*03*/ ShaderLoader(shadersDir + "f_lines.frag"),
 
-	/*04*/ ShaderLoader(shadersDir + "v_trianglePT.vert"),
-	/*05*/ ShaderLoader(shadersDir + "f_trianglePT.frag"),
+	/*04*/ ShaderLoader(shadersDir + "v_skybox.vert"),
+	/*05*/ ShaderLoader(shadersDir + "f_skybox.frag"),
 
-	/*06*/ ShaderLoader(shadersDir + "v_trianglePCT.vert"),
-	/*07*/ ShaderLoader(shadersDir + "f_trianglePCT.frag"),
+	/*06*/ ShaderLoader(shadersDir + "v_basicModel.vert"),
+	/*07*/ ShaderLoader(shadersDir + "f_basicModel.frag"),
 
-	/*08*/ ShaderLoader(shadersDir + "v_sea.vert"),
-	/*09*/ ShaderLoader(shadersDir + "f_sea.frag"),
+	/*08*/ ShaderLoader(shadersDir + "v_grass.vert"),
+	/*09*/ ShaderLoader(shadersDir + "f_grass.frag"),
 
 	/*10*/ ShaderLoader(shadersDir + "v_seaPlanet.vert"),
 	/*11*/ ShaderLoader(shadersDir + "f_seaPlanet.frag"),
 
-	/*12*/ ShaderLoader(shadersDir + "v_terrainPTN.vert"),
-	/*13*/ ShaderLoader(shadersDir + "f_terrainPTN.frag"),
+	/*12*/ ShaderLoader(shadersDir + "v_plainChunk.vert"),
+	/*13*/ ShaderLoader(shadersDir + "f_plainChunk.frag"),
 
-	/*14*/ ShaderLoader(shadersDir + "v_planetPTN.vert"),
-	/*15*/ ShaderLoader(shadersDir + "f_planetPTN.frag"),
+	/*14*/ ShaderLoader(shadersDir + "v_planetChunk.vert"),
+	/*15*/ ShaderLoader(shadersDir + "f_planetChunk.frag"),
 
-	/*16*/ ShaderLoader(shadersDir + "v_sunPT.vert"),
-	/*17*/ ShaderLoader(shadersDir + "f_sunPT.frag"),
+	/*16*/ ShaderLoader(shadersDir + "v_sun.vert"),
+	/*17*/ ShaderLoader(shadersDir + "f_sun.frag"),
 
-	/*18*/ ShaderLoader(shadersDir + "v_hudPT.vert"),
-	/*19*/ ShaderLoader(shadersDir + "f_hudPT.frag"),
+	/*18*/ ShaderLoader(shadersDir + "v_hud.vert"),
+	/*19*/ ShaderLoader(shadersDir + "f_hud.frag"),
 
 	/*20*/ ShaderLoader(shadersDir + "v_atmosphere.vert"),
 	/*21*/ ShaderLoader(shadersDir + "f_atmosphere.frag"),
@@ -100,8 +100,8 @@ ShaderLoader ShaderLoaders[]
 	/*22*/ ShaderLoader(shadersDir + "v_noPP.vert"),
 	/*23*/ ShaderLoader(shadersDir + "f_noPP.frag"),
 
-	/*24*/ ShaderLoader(shadersDir + "v_linePC_PP.vert"),
-	/*25*/ ShaderLoader(shadersDir + "f_linePC_PP.frag"),
+	/*24*/ ShaderLoader(shadersDir + "v_XXX.vert"),
+	/*25*/ ShaderLoader(shadersDir + "f_XXX.frag")
 };
 
 TextureLoader texInfos[]
@@ -147,6 +147,7 @@ TextureLoader texInfos[]
 	/*28*/ TextureLoader(texDir + "water/sea_foam_a.png"),
 	//TextureLoader(texDir + "bubbles_a.png"),
 
+	// Snow
 	/*29*/ TextureLoader(texDir + "snow/snow_a.png"),
 	/*30*/ TextureLoader(texDir + "snow/snow_n.png"),
 	/*31*/ TextureLoader(texDir + "snow/snow_s.png"),
@@ -156,6 +157,12 @@ TextureLoader texInfos[]
 	/*34*/ TextureLoader(texDir + "snow/snow2_a.png"),
 	/*35*/ TextureLoader(texDir + "snow/snow2_n.png"),
 	/*36*/ TextureLoader(texDir + "snow/snow2_s.png"),
+
+	// Others
+	/*37*/ TextureLoader(texDir + "grass/grass0.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT),
+	/*38*/ TextureLoader(texDir + "grass/grass1.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT),
+	/*39*/ TextureLoader(texDir + "grass/grass2.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT),
+	/*40*/ TextureLoader(texDir + "grass/whiteNoise.png"),
 };
 
 std::vector<TextureLoader> usedTextures

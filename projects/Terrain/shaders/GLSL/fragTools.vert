@@ -19,6 +19,7 @@
 		toRGB
 		toSRGB
 		unpackUV
+		unpackUVmirror
 		unpackNormal
 		mixByHeight
 	Save:
@@ -28,6 +29,7 @@
 		savePrecalcLightValues
 	Math:
 		getDist
+		getSqrDist
 		getRatio
 		getScaleRatio
 		getDirection
@@ -50,6 +52,7 @@
 	Others:
 		getTexScaling
 		applyParabolicFog
+		rand
 */
 
 
@@ -138,7 +141,14 @@ struct uvGradient
 float getDist(vec3 a, vec3 b) 
 {
 	vec3 diff = a - b;
-	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
+	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z); 
+}
+
+// Get square distance between two 3D points
+float getSqrDist(vec3 a, vec3 b) 
+{
+	vec3 diff = a - b;
+	return diff.x * diff.x + diff.y * diff.y + diff.z * diff.z; 
 }
 
 // Get the ratio for a given "value" within a range [min, max]. Result's range: [0, 1].
@@ -250,10 +260,16 @@ vec4 toSRGB(vec4 vec)
 	return nonLinear;
 }
 
-// Invert Y axis and apply scale
+// Invert Y axis (for address mode == repeat) and apply scale
 vec2 unpackUV(vec2 UV, float texFactor)
 {
 	return UV.xy * vec2(1, -1) / texFactor;
+}
+
+// Invert Y axis (for address mode == mirror) and apply scale
+vec2 unpackUVmirror(vec2 UV, float texFactor)
+{
+	return (vec2(0, 1) + UV.xy * vec2(1, -1)) / texFactor;
 }
 
 // Correct color space (to linear), put in range [-1,1], and normalize
@@ -783,4 +799,9 @@ vec3 applyParabolicFog(vec3 fragColor, vec3 fogColor, float minDist, float maxDi
 		
 	return fragColor * (1-ratio) + fogColor * ratio;
 	//return fragColor * attenuation + fogColor * (1. - attenuation);
+}
+
+float rand(vec2 co)
+{
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }

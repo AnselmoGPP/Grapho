@@ -3,12 +3,13 @@
 #include "commons.hpp"
 
 
-ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex)
+ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
 	: name(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
 	vertexType(vertexType),
 	hasTransparencies(transparency),
+	cullMode(cullMode),
 	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
 	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
 	renderPassIndex(renderPassIndex),
@@ -50,12 +51,10 @@ ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::li
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 
-	if (resLoader)
-	{
+	if (resLoader) {
 		resLoader->loadResources(vert, shaders, loadedShaders, textures, loadedTextures, mutResources);
 		deleteLoader();
-	}
-	else std::cout << "Error: No loading info data" << std::endl;
+	} else std::cout << "Error: No loading info data" << std::endl;
 
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
@@ -224,16 +223,16 @@ void ModelData::createGraphicsPipeline()
 	// Rasterizer: It takes the geometry shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader. It also performs depth testing, face culling and the scissor test, and can be configured to output fragments that fill entire polygons or just the edges (wireframe rendering).
 	VkPipelineRasterizationStateCreateInfo rasterizer{};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable = VK_FALSE;							// If VK_TRUE, fragments that are beyond the near and far planes are clamped to them (requires enabling a GPU feature), as opposed to discarding them.
-	rasterizer.rasterizerDiscardEnable = VK_FALSE;							// If VK_TRUE, geometry never passes through the rasterizer stage (disables any output to the framebuffer).
+	rasterizer.depthClampEnable = VK_FALSE;						// If VK_TRUE, fragments that are beyond the near and far planes are clamped to them (requires enabling a GPU feature), as opposed to discarding them.
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;				// If VK_TRUE, geometry never passes through the rasterizer stage (disables any output to the framebuffer).
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;				// How fragments are generated for geometry (VK_POLYGON_MODE_ ... FILL, LINE, POINT). Any mode other than FILL requires enabling a GPU feature.
-	rasterizer.lineWidth = LINE_WIDTH;								// Thickness of lines in terms of number of fragments. The maximum line width supported depends on the hardware. Lines thicker than 1.0f requires enabling the `wideLines` GPU feature.
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;			// Type of face culling (disable culling, cull front faces, cull back faces, cull both).
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// Vertex order for faces to be considered front-facing (clockwise, counterclockwise). If we draw vertices clockwise, because of the Y-flip we did in the projection matrix, the vertices are now drawn counter-clockwise.
-	rasterizer.depthBiasEnable = VK_FALSE;							// If VK_TRUE, it allows to alter the depth values (sometimes used for shadow mapping).
-	rasterizer.depthBiasConstantFactor = 0.0f;								// [Optional] 
-	rasterizer.depthBiasClamp = 0.0f;								// [Optional] 
-	rasterizer.depthBiasSlopeFactor = 0.0f;								// [Optional] 
+	rasterizer.lineWidth = LINE_WIDTH;							// Thickness of lines in terms of number of fragments. The maximum line width supported depends on the hardware. Lines thicker than 1.0f requires enabling the `wideLines` GPU feature.
+	rasterizer.cullMode = cullMode;								// (VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_NONE...) Type of face culling (disable culling, cull front faces, cull back faces, cull both).
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;		// Vertex order for faces to be considered front-facing (clockwise, counterclockwise). If we draw vertices clockwise, because of the Y-flip we did in the projection matrix, the vertices are now drawn counter-clockwise.
+	rasterizer.depthBiasEnable = VK_FALSE;						// If VK_TRUE, it allows to alter the depth values (sometimes used for shadow mapping).
+	rasterizer.depthBiasConstantFactor = 0.0f;					// [Optional] 
+	rasterizer.depthBiasClamp = 0.0f;							// [Optional] 
+	rasterizer.depthBiasSlopeFactor = 0.0f;						// [Optional] 
 
 	// Multisampling: One way to perform anti-aliasing. Combines the fragment shader results of multiple polygons that rasterize to the same pixel. Requires enabling a GPU feature.
 	VkPipelineMultisampleStateCreateInfo multisampling{};

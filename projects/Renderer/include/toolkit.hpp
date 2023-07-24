@@ -176,5 +176,103 @@ struct Icosahedron
 /// Returns true (big endian) or false (little endian).
 bool isBigEndian();
 
+/// QuickSort algorithm template (using Hoare partition scheme) for element types that support > and < comparison operators.
+template <typename T>
+class Quicksort_Hoare
+{
+	// This function takes middle element as pivot, places the pivot element at its correct position in sorted array, and places all smaller elements to left of pivot and all greater to right.
+	int partition(T arr[], int low, int high)
+	{
+		T pivot = arr[((high - low) / 2) + low];	// The value in the middle of the array
+
+		int i = low - 1;
+		int j = high + 1;
+
+		while (1)
+		{
+			do i++;
+			while (arr[i] < pivot);
+
+			do j--;
+			while (arr[j] > pivot);
+
+			if (i >= j) return j;
+
+			swap(arr[i], arr[j]);
+		}
+	}
+
+	void swap(T& a, T& b)
+	{
+		T temp = a;
+		a = b;
+		b = temp;
+	}
+
+public:
+	// QuickSort implementation. Parameters: arr[] (array to be sorted), low (starting index), high (ending index).
+	void quickSort(T arr[], int low, int high)
+	{
+		if (low >= 0 && high >= 0 && low < high)
+		{
+			int p = partition(arr, low, high);
+			quickSort(arr, low, p);				// Note: the pivot is now included
+			quickSort(arr, p + 1, high);
+		}
+	}
+};
+
+/// QuickSort algorithm (using Hoare partition scheme) for glm::vec3 (positions) that compares distances to camPos.
+class Quicksort_distVec3
+{
+    // Sorting
+	void quickSort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high);
+	std::vector<glm::vec3>::iterator partition(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high);
+
+    // Swap
+	void swap(glm::vec3& a, glm::vec3& b);
+	glm::vec3 temp;
+
+	// Comparison
+	bool isFurther(const glm::vec3& pos1, const glm::vec3& pos2);		//!< Equivalent to (a > b) (if pos1 is further than pos2 to camPos, it's true; false otherwise)
+    bool isCloser(const glm::vec3& pos1, const glm::vec3& pos2);		//!< Equivalent to (a < b) (if pos1 is closer than pos2 to camPos, it's true; false otherwise))
+    glm::vec3 camPos;
+	glm::vec3 vec1;
+	glm::vec3 vec2;
+	float sqrDist1;
+	float sqrDist2;
+
+    // Testing
+    int pos(std::vector<glm::vec3>::iterator iter);                     //!< Get vector index
+    std::vector<glm::vec3>::iterator begin;
+
+public:
+	void sort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high, const glm::vec3& camPos);
+};
+
+/// QuickSort algorithm (using Hoare partition scheme). It only sorts a vector<int> that represents indices for a vector<vec3> representing positions. During comparisons, the underlying positions are taken, and compares distances to camPos.
+class Quicksort_distVec3_index
+{
+    // Sorting
+    void quickSort(std::vector<int>& idx, int low, int high);
+    int partition(std::vector<int>& idx, int low, int high);
+    std::vector<glm::vec3>* pos;
+
+    // Swap
+    void swap(int& a, int& b);
+    int temp;
+
+    // Comparison
+    bool isFurther(int idx1, int idx2);		//!< Equivalent to (a > b) (if pos1 is further than pos2 to camPos, it's true; false otherwise)
+    bool isCloser(int idx1, int idx2);		//!< Equivalent to (a < b) (if pos1 is closer than pos2 to camPos, it's true; false otherwise))
+    glm::vec3 camPos;
+    glm::vec3 vec1;
+    glm::vec3 vec2;
+    float sqrDist1;
+    float sqrDist2;
+
+public:
+    void sort(std::vector<glm::vec3>& positions, std::vector<int>& indexVals, const glm::vec3& camPos, int low, int high);
+};
 
 #endif

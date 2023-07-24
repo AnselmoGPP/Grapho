@@ -45,7 +45,7 @@ void main()
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
 		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
 	}
 	
 	outTB3 = getTB3(inNormal);

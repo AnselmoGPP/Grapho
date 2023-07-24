@@ -82,9 +82,9 @@ struct LightSet
 	LightPosDir* posDir;	// To vertex & fragment shader
 	LightProps* props;		// To fragment shader
 
-	int numLights;
-	size_t posDirBytes;
-	size_t propsBytes;
+	const int numLights;
+	const size_t posDirBytes;
+	const size_t propsBytes;
 };
 
 enum lightProps { pos = 0, dir = 1, lightType = 0, ambient, diffuse, specular, degree, cutOff };

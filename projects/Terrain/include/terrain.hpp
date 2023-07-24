@@ -365,6 +365,8 @@ protected:
 	bool readyForUpdate;
 
 	virtual float callBack_getFloorHeight(const glm::vec3& pos);	//!< Callback example
+
+	//friend GrassSystem;
 };
 
 
@@ -375,6 +377,31 @@ struct Sphere : public Planet
 public:
 	Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	~Sphere();
+};
+
+
+// Grass ----------------------------------------------------------------------
+
+class GrassSystem
+{
+public:
+	GrassSystem(Renderer& renderer, LightSet& lights);
+	~GrassSystem();
+
+	void createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures);
+	void updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time);
+
+private:
+	Renderer& renderer;
+	modelIter grassModel;
+	LightSet& lights;
+	Quicksort_distVec3_index sorter;
+	float whiteNoise[30][30];
+	bool modelOrdered;
+	glm::vec3 camPos;
+	float pi;
+
+	void getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index);
 };
 
 

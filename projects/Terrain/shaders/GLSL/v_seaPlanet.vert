@@ -61,7 +61,7 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves proje
 void main()
 {
 	//adjustWavesAmplitude(15, 1, 0.1);
-	for(int i = 0; i < WAVES; i++) A[i] *= 0.3;
+	//for(int i = 0; i < WAVES; i++) A[i] *= 0.3;
 	
 	vec3 normal     = inNormal;
 	vec3 pos        = getSeaOptimized(normal, MIN, MAX);
@@ -80,7 +80,7 @@ void main()
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
 		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
 	}
 	
 	outTB3 = getTB3(normal);

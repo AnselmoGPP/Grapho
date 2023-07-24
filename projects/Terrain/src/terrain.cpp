@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <random>
+
 #include "terrain.hpp"
 #include "ubo.hpp"
 
@@ -1240,4 +1243,137 @@ float Sphere::callBack_getFloorHeight(const glm::vec3& pos)
     glm::vec3 nucleus(0.f, 0.f, 0.f);
     float radius = planetGrid_pZ->getRadius();
     return 1.70 + radius;
+}
+
+
+// Grass ----------------------------------------------------------------------
+
+GrassSystem::GrassSystem(Renderer& renderer, LightSet& lights)
+    : renderer(renderer), lights(lights), modelOrdered(false), camPos(0,0,0), pi(3.141592653589793238462)
+{
+    std::mt19937_64 engine(38572);
+    std::uniform_real_distribution<float> distributor(0, 2 * pi);
+
+    for (int i = 0; i < 30; i++)
+        for (int j = 0; j < 30; j++)
+            whiteNoise[i][j] = distributor(engine);
+}
+
+GrassSystem::~GrassSystem()
+{
+    if (renderer.getModelsCount() && modelOrdered)
+        renderer.deleteModel(grassModel);
+}
+
+void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures)
+{
+    std::vector<float> vertices =       // plane XZ
+    { 
+        -0.5, 0, -0.5,   0, 0, 1,   0, 0,
+         0.5, 0, -0.5,   0, 0, 1,   1, 0,
+         0.5, 0,  0.5,   0, 0, 1,   1, 1,
+        -0.5, 0,  0.5,   0, 0, 1,   0, 1
+    };
+
+    std::vector<uint16_t> indices = { 0, 1, 2,  0, 2, 3 };
+    
+    VerticesLoader vertexData(vt_332.vertexSize, vertices.data(), 8, indices);
+    //std::vector<ShaderLoader> shaders{ ShaderLoaders[8], ShaderLoaders[9] };
+    //std::vector<TextureLoader> textures{ texInfos[37] };
+
+    grassModel = renderer.newModel(
+        "grass",
+        1, 100, primitiveTopology::triangle, vt_332,
+        vertexData, shaders, textures,
+        110, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, (camPos, time), centerPos, lights
+        lights.propsBytes,                                          // lights, centerPos
+        true,
+        0,
+        VK_CULL_MODE_NONE);
+    
+    modelOrdered = true;
+}
+
+void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time)
+{ 
+    if (!modelOrdered) return;
+    //if (this->camPos == camPos) return;     // <<< bug: doesn't apply to camera spin
+    this->camPos = camPos;
+
+    // Get sorted grass parameters
+    std::vector<glm::vec3> pos;     // position
+    std::vector<glm::vec3> rot;     // rotation
+    std::vector<int> index;         // Indices (to sort)
+
+    getGrassBouquets(pos, rot, index);
+
+    // Update UBOs
+    uint8_t* dest;
+    float rotation;
+    glm::mat4 model, modelNormals;
+
+    for (int i = 0; i < pos.size(); i++)
+    {
+        model = modelMatrix(glm::vec3(1, 1, 1), rot[index[i]], pos[index[i]]);
+        modelNormals = modelMatrixForNormals(model);
+
+        dest = grassModel->vsDynUBO.getUBOptr(i);
+
+        memcpy(dest, &model, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &view, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &proj, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &modelNormals, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &camPos, size.vec3);
+        dest += size.vec3;
+        memcpy(dest, &time, sizeof(float));
+        dest += sizeof(float);
+        memcpy(dest, &pos[index[i]], size.vec3);
+        dest += size.vec4;
+        memcpy(dest, lights.posDir, lights.posDirBytes);
+    }
+    
+    dest = grassModel->fsUBO.getUBOptr(0);
+    memcpy(dest, lights.props, lights.propsBytes);
+}
+
+void GrassSystem::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
+{
+    int count = 100;    // Number of grass bouquets
+    float step = 0.4;
+    glm::vec3 pos0 = { step * round(camPos.x / step) - step * 4,   step * round(camPos.y / step) - step * 4,   0 };
+    glm::vec3 gPos;     // grass bouquet position
+    unsigned nIdx[2];   // noise index
+
+    pos.reserve(count);
+    rot.reserve(count);
+
+    // Central grass
+    for (int i = 0; i < 10; i++)
+        for (int j = 0; j < 10; j++)
+        {
+            gPos.x = pos0.x + i * step;
+            gPos.y = pos0.y + j * step;
+            gPos.z = 0.5;
+            pos.push_back(gPos);
+
+            nIdx[0] = unsigned(round(abs(gPos.x / 0.4))) % 30U;
+            nIdx[1] = unsigned(round(abs(gPos.y / 0.4))) % 30U;
+            rot.push_back(glm::vec3(0, 0, whiteNoise[nIdx[0]][nIdx[1]]));   // whiteNoise[abs(i % 30)][abs(j % 30)]));
+
+            //pos.push_back(glm::vec3(i * 0.5, j * 0.5, 0));                // Add another 100 for double billboard per grass
+            //rot.push_back(glm::vec3(0, 0, whiteNoise[i][j] + pi / 2));
+        }
+
+    // Surrounding grass
+    for (int i = -10; i < 20; i++)
+        for (int j = -10; j < 20; j++)
+        {
+            
+        }
+
+    sorter.sort(pos, index, camPos, 0, count - 1);
 }

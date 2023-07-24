@@ -1,4 +1,5 @@
 TODO:
+	Optimize shaders
 	Plain coasts
 	seaPlanet VS: outCamSqrHeight & 
 	Don't load non-visible chunks
@@ -16,7 +17,7 @@ TODO:
 		Single sample for PP performed in subpass?
 		Single sample for all PP
 	
-	Diffuse sea foam with distance
+	Compute atmosphere in a subpass
 	ModelData::vertexType doesn't exist / Use modules in VerticesLoader and so / Keep data in VerticesLoader and so and delete it when not necessary (use modules).
 	ModelSet doesn't work if there is no dynUBO_vs
 
