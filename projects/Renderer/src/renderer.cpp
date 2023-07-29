@@ -690,9 +690,7 @@ void Renderer::setRenders(modelIter model, size_t numberOfRenders)
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
 	
-
 	if (numberOfRenders != model->activeRenders)
 	{
 		model->setRenderCount(numberOfRenders);
@@ -725,7 +723,7 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	{
 		const std::lock_guard<std::mutex> lock(worker.mutModels);
-
+		
 		while (lastModelsToDraw.size())		// Move the modelIter to last position in models and update 
 		{
 			if (lastModelsToDraw[0]->inModels)

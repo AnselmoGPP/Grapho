@@ -51,7 +51,7 @@ void setNoPP(Renderer& app);			// --, PP
 void tests();
 
 // Models, textures, & shaders
-Renderer app(update, &camera_1, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
@@ -76,13 +76,13 @@ SingleNoise noiser_2(	// Hills
 	0, 0, 0,							// XYZ offsets
 	4952);								// Seed
 
-PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 25, 0), 5, 41, 11);
+PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 29, 0), 5, 41, 11);
 TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 
 Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, false);
 Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
 
-GrassSystem grass(app, lights);
+GrassSystem_XY grass(app, lights);
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -111,14 +111,14 @@ int main(int argc, char* argv[])
 		//setPoints(app);
 		setAxis(app);
 		//setGrid(app);
-		//setSkybox(app);
+		setSkybox(app);
 		//setCottage(app);
 		//setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
-		//planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
+		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
 		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
-		grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
+		//grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
 
 		setNoPP(app);			// In the same layer, the last drawn 
 		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
@@ -161,6 +161,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	
 	//std::cout << d.fps << ") " << d.groundHeight << " / " << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
 	//for(size_t i = 0; i < rend.loadedModels(); i++)
+	//std::cout << d.fps << ')' << std::endl,
 
 	#ifdef DEBUG_MAIN
 		std::cout << rend.getFrameCount() << ") " << std::endl;

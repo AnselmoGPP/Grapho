@@ -605,9 +605,9 @@ void ModelData::setRenderCount(size_t numRenders)
 	#ifdef DEBUG_MODELS
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
-
-	this->activeRenders = numRenders;
 	
+	this->activeRenders = numRenders;
+
 	if (numRenders > vsDynUBO.numDynUBOs)
 	{
 		vsDynUBO.resizeUBO(numRenders);

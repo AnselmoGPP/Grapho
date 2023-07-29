@@ -8,7 +8,7 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), vertexData(nullptr), depth(depth), modelOrdered(false), chunkID(chunkID)
+    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), vertexData(nullptr), depth(depth), modelOrdered(false), isVisible(true), chunkID(chunkID)
 {
     baseCenter = center;
     groundCenter = baseCenter;
@@ -81,6 +81,8 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     //dest += lights.propsBytes;
 
     modelOrdered = true;
+
+    
 }
 
 void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter)
@@ -88,9 +90,11 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
     if (!modelOrdered) return;
 
     uint8_t* dest;
+
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         dest = model->vsDynUBO.getUBOptr(i);
+
         //memcpy(dest, &modelMatrix(), size.mat4);
         dest += size.mat4;
         memcpy(dest, &view, size.mat4);
@@ -432,6 +436,8 @@ void PlanetChunk::getSubBaseCenters(std::tuple<float, float, float>* centers)
     centers[3] = std::tuple(vecs[3].x, vecs[3].y, vecs[3].z);
 }
 
+float PlanetChunk::getRadius() { return radius; }
+
 void PlanetChunk::computeSizes()
 {
     horBaseSize = stride * (numHorVertex - 1);
@@ -627,13 +633,12 @@ DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer,
     lights(&lights), 
     renderer(renderer), 
     activeTree(activeTree), 
-    loadedChunks(0),
     rootCellSize(rootCellSize), 
     numSideVertex(numSideVertex), 
     numLevels(numLevels), 
     minLevel(minLevel), 
     distMultiplier(distMultiplier),
-    distMultRemove(distMultiplier * 1.5),
+    distMultRemove(distMultiplier * 2),
     transparency(transparency)
 {
     root[0] = root[1] = nullptr;
@@ -650,14 +655,7 @@ DynamicGrid::~DynamicGrid()
 
     chunks.clear();
 }
-/*
-void DynamicGrid::addTextures(const std::vector<TextureLoader>& textures) { this->textures = textures; }
 
-void DynamicGrid::addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader) 
-{ 
-    this->shaders = std::vector<ShaderLoader>{ vertexShader, fragmentShader };
-}
-*/
 void DynamicGrid::addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo)
 {
     this->shaders = shadersInfo;
@@ -677,52 +675,49 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     if (!root[nonActiveTree])
     {
         camPos = newCamPos;
+        updateVisibilityState();
 
-        std::tuple<float, float, float> center = closestCenter();
-        root[nonActiveTree] = getNode(center, rootCellSize, 0, 1);
-
-        renderedChunks = 0;
+        root[nonActiveTree] = getNode(closestCenter(), rootCellSize, 0, 1);
         createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
     // <<< Why is executed each time I move? Why is only executed in one plane for fixing gaps?
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
-    if (fullConstChunks(root[nonActiveTree]))   // <<< Can this process be improved by setting a flag when tree is fully constructed?
+    if (fullConstChunks(root[nonActiveTree]))
     {
         updateChunksSideDepths(root[nonActiveTree]);
-
+        
         changeRenders(root[activeTree], false);
         if (root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;
-
+        
         changeRenders(root[nonActiveTree], true);
         activeTree = nonActiveTree;
-
+        
         removeFarChunks(distMultRemove, newCamPos);
+
+        resetVisibility(root[nonActiveTree]);
     }
 }
 
 void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
 {
     Chunk* chunk = node->getElement();
-    glm::vec3 gCenter = chunk->getGroundCenter();
-    float chunkLength = chunk->getHorChunkSide();
-    float sqrSide = chunkLength * chunkLength;
-    float sqrDist = (camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z);
-    
-    //std::cout << node->getElement()->chunkID << std::endl;
+    glm::vec3 gCenter = chunk->getGroundCenter();   // <<<<<< Modify chunk center location for computing cam-chunk dists
+    float dist = sqrt((camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z));
 
     // Is leaf node > Compute terrain > Children are nullptr by default
-    if (depth >= minLevel && (sqrDist > sqrSide * distMultiplier || depth == numLevels - 1))
+    if (depth >= minLevel && (dist > chunk->getHorChunkSide() * distMultiplier || depth == numLevels - 1))// <<<<<<< squaring distances is correct here?
     {
-        renderedChunks++;
-        if (chunk->modelOrdered == false)
-        {
-            chunk->computeTerrain(false);       //, std::pow(2, numLevels - 1 - depth));
+        if (!isVisible(chunk)) { 
+            node->getElement()->isVisible = false; 
+            return; 
+        }
+
+        if (chunk->modelOrdered == false) {
+            chunk->computeTerrain(false);
             chunk->render(shaders, textures, &indices, lights->numLights, transparency);
-            //chunk->updateUBOs(camPos, view, proj);
             renderer->setRenders(chunk->model, 0);
-            loadedChunks++;
         }
     }
     // Is not leaf node > Create children > Recursion
@@ -733,7 +728,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         chunk->getSubBaseCenters(subBaseCenters);
         float halfSide = chunk->getHorBaseSide() / 2;
         glm::vec4 chunkIDs = getChunkIDs(chunk->chunkID, depth);
-
+        
         node->setA(getNode(subBaseCenters[0], halfSide, depth, chunkIDs[0]));    // - x + y
         createTree(node->getA(), depth);
 
@@ -745,6 +740,150 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
 
         node->setD(getNode(subBaseCenters[3], halfSide, depth, chunkIDs[3]));    // + x - y
         createTree(node->getD(), depth);
+    }
+}
+
+bool DynamicGrid::fullConstChunks(QuadNode<Chunk*>* node)
+{
+    if (!node) return false;
+
+    if (node->isLeaf())
+    {
+        if (!node->getElement()->isVisible || node->getElement()->model->fullyConstructed)
+            return true;
+        else
+            return false;
+    }
+    else
+    {
+        char full[4];
+        full[0] = fullConstChunks(node->getA());
+        full[1] = fullConstChunks(node->getB());
+        full[2] = fullConstChunks(node->getC());
+        full[3] = fullConstChunks(node->getD());
+
+        return full[0] && full[1] && full[2] && full[3];
+    }
+}
+
+void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
+{
+    restartSideDepths(node);                                    // Set nodes' side depths to 0
+    node->getElement()->setSideDepths(1000, 1000, 1000, 1000);  // Initialize root side depths to 1000 (flag for grid boundaries). The rest of nodes have side depths of 0 (set previously). 
+
+    QuadNode<Chunk*>* currentNode;
+    std::list<Chunk*> allLeaves;
+    std::list<QuadNode<Chunk*>*> queue;
+    queue.push_back(node);
+
+    // Get depths of neighbour chunks (breadth-first traversal) (result = depth each side should keep to make its borders fit)
+    while (queue.size())
+    {
+        // Dequeue firt element
+        currentNode = queue.front();
+        queue.pop_front();
+
+        // Modify data
+        updateChunksSideDepths_help(queue, currentNode);
+        if (currentNode->isLeaf())
+            allLeaves.push_back(currentNode->getElement());
+
+        // Enqueue childs
+        if (!currentNode->isLeaf())
+        {
+            queue.push_back(currentNode->getA());
+            queue.push_back(currentNode->getB());
+            queue.push_back(currentNode->getC());
+            queue.push_back(currentNode->getD());
+        }
+    }
+
+    // Get depth differences of neigbour leaves and pass them as UBO
+    for (auto& it : allLeaves)
+    {
+        if (it->sideDepths[0] != 1000) it->sideDepths[0] = it->depth - it->sideDepths[0];
+        if (it->sideDepths[1] != 1000) it->sideDepths[1] = it->depth - it->sideDepths[1];
+        if (it->sideDepths[2] != 1000) it->sideDepths[2] = it->depth - it->sideDepths[2];
+        if (it->sideDepths[3] != 1000) it->sideDepths[3] = it->depth - it->sideDepths[3];
+
+        //uint8_t* ubo = it->model->vsDynUBO.getUBOptr(0);
+        //ubo += 4 * mat4size + vec4size;
+        //memcpy(ubo, &it->sideDepths, vec4size);
+    }
+}
+
+void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
+{
+    if (!node) return;
+
+    //if (node->isLeaf()) renderer->setRenders(node->getElement()->model, (renderMode ? 1 : 0));
+    if (node->isLeaf())
+    {
+        if (renderMode && node->getElement()->modelOrdered && node->getElement()->isVisible)
+            renderer->setRenders(node->getElement()->model, 1);
+        else if (!renderMode && node->getElement()->modelOrdered)
+            renderer->setRenders(node->getElement()->model, 0);
+    }
+    else
+    {
+        changeRenders(node->getA(), renderMode);
+        changeRenders(node->getB(), renderMode);
+        changeRenders(node->getC(), renderMode);
+        changeRenders(node->getD(), renderMode);
+    }
+}
+
+void DynamicGrid::resetVisibility(QuadNode<Chunk*>* node)
+{
+    if (!node) return;
+
+    if (node->isLeaf())
+        node->getElement()->isVisible = true;
+    else
+    {
+        resetVisibility(node->getA());
+        resetVisibility(node->getB());
+        resetVisibility(node->getC());
+        resetVisibility(node->getD());
+    }
+}
+
+void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
+{
+    glm::vec3 center;
+    glm::vec3 distVec;
+    float targetDist;
+    float targetSqrDist;
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator it = chunks.begin();
+    std::map<std::tuple<float, float, float>, Chunk*>::iterator nextIt;
+    Chunk* chunk;
+
+    while (it != chunks.end())
+    {
+        nextIt = it;
+        nextIt++;
+        targetDist = it->second->getHorChunkSide() * relDist;
+        chunk = it->second;
+
+        if ( chunk->modelOrdered &&
+             chunk->model->fullyConstructed && 
+            !chunk->model->activeRenders && 
+             chunk->isVisible )
+        {
+            center = it->second->getGroundCenter();
+            distVec.x = center.x - camPosNow.x;
+            distVec.y = center.y - camPosNow.y;
+            distVec.z = center.z - camPosNow.z;
+            targetSqrDist = targetDist * targetDist;
+
+            if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
+            {
+                delete chunks[it->first];
+                chunks.erase(it->first);
+            }
+        }
+
+        it = nextIt;
     }
 }
 
@@ -766,10 +905,7 @@ void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
     if (!node) return;
 
     if (node->isLeaf())
-    {
         node->getElement()->updateUBOs(view, proj, camPos, *lights, time, groundHeight);
-        return;
-    }
     else
     {
         updateUBOs_help(node->getA());
@@ -794,90 +930,6 @@ void DynamicGrid::putToLastDraw(QuadNode<Chunk*>* node)
         putToLastDraw(node->getB());
         putToLastDraw(node->getC());
         putToLastDraw(node->getD());
-    }
-}
-
-bool DynamicGrid::fullConstChunks(QuadNode<Chunk*>* node)
-{
-    if (!node) return false;
-
-    if (node->isLeaf())
-    {
-        if (node->getElement()->model->fullyConstructed)
-            return true;
-        else
-            return false;
-    }
-    else
-    {
-        char full[4];
-        full[0] = fullConstChunks(node->getA());
-        full[1] = fullConstChunks(node->getB());
-        full[2] = fullConstChunks(node->getC());
-        full[3] = fullConstChunks(node->getD());
-
-        return full[0] && full[1] && full[2] && full[3];
-    }
-}
-
-void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
-{
-    if (!node) return;
-
-    if (node->isLeaf())
-        renderer->setRenders(node->getElement()->model, (renderMode ? 1 : 0));
-    else
-    {
-        changeRenders(node->getA(), renderMode);
-        changeRenders(node->getB(), renderMode);
-        changeRenders(node->getC(), renderMode);
-        changeRenders(node->getD(), renderMode);
-    }
-}
-
-void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
-{
-    restartSideDepths(node);                                    // Set nodes' side depths to 0
-    node->getElement()->setSideDepths(1000, 1000, 1000, 1000);  // Initialize root side depths to 1000 (flag for grid boundaries). The rest of nodes have side depths of 0 (set previously). 
-
-    QuadNode<Chunk*>* currentNode;
-    std::list<Chunk*> allLeaves;
-    std::list<QuadNode<Chunk*>*> queue;
-    queue.push_back(node);
-    
-    // Get depths of neighbour chunks (breadth-first traversal) (result = depth each side should keep to make its borders fit)
-    while (queue.size())
-    {
-        // Dequeue firt element
-        currentNode = queue.front();
-        queue.pop_front();
-
-        // Modify data
-        updateChunksSideDepths_help(queue, currentNode);
-        if(currentNode->isLeaf()) 
-            allLeaves.push_back(currentNode->getElement());
-
-        // Enqueue childs
-        if (!currentNode->isLeaf())
-        {
-            queue.push_back(currentNode->getA());
-            queue.push_back(currentNode->getB());
-            queue.push_back(currentNode->getC());
-            queue.push_back(currentNode->getD());
-        }
-    }
-
-    // Get depth differences of neigbour leaves and pass them as UBO
-    for (auto& it : allLeaves)
-    {
-        if (it->sideDepths[0] != 1000) it->sideDepths[0] = it->depth - it->sideDepths[0];
-        if (it->sideDepths[1] != 1000) it->sideDepths[1] = it->depth - it->sideDepths[1];
-        if (it->sideDepths[2] != 1000) it->sideDepths[2] = it->depth - it->sideDepths[2];
-        if (it->sideDepths[3] != 1000) it->sideDepths[3] = it->depth - it->sideDepths[3];
-
-        //uint8_t* ubo = it->model->vsDynUBO.getUBOptr(0);
-        //ubo += 4 * mat4size + vec4size;
-        //memcpy(ubo, &it->sideDepths, vec4size);
     }
 }
 
@@ -979,41 +1031,6 @@ void DynamicGrid::restartSideDepths(QuadNode<Chunk*>* node)
     restartSideDepths(node->getD());
 }
 
-void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
-{
-    glm::vec3 center;
-    glm::vec3 distVec;
-    float targetDist;
-    float targetSqrDist;
-    std::map<std::tuple<float, float, float>, Chunk*>::iterator it = chunks.begin();
-    std::map<std::tuple<float, float, float>, Chunk*>::iterator nextIt;
-
-    while (it != chunks.end())
-    {
-        nextIt = it;
-        nextIt++;
-        targetDist = it->second->getHorChunkSide() * relDist;
-
-        if (it->second->modelOrdered && it->second->model->fullyConstructed && !it->second->model->activeRenders)
-        {
-            center = it->second->getGroundCenter();
-            distVec.x = center.x - camPosNow.x;
-            distVec.y = center.y - camPosNow.y;
-            distVec.z = center.z - camPosNow.z;
-            targetSqrDist = targetDist * targetDist;
-
-            if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
-            {
-                delete chunks[it->first];
-                chunks.erase(it->first);
-                loadedChunks--;
-            }
-        }
-
-        it = nextIt;
-    }
-}
-
 glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
 {
     unsigned sideLength = pow(2, depth);
@@ -1027,6 +1044,27 @@ glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
     chunksIDs[2] = basicID + 0 + (parentRows + 1) * sideLength;
     chunksIDs[3] = basicID + 1 + (parentRows + 1) * sideLength;
     return chunksIDs;
+}
+
+void DynamicGrid::updateVisibilityState() { }
+
+bool DynamicGrid::isVisible(const Chunk* chunk) { return true; }
+
+void DynamicGrid::getActiveChunks(std::vector<Chunk*>& dest, float depth)
+{
+    // <<< FILL THIS
+
+    //if (!node) return;
+    //
+    //if (node->isLeaf())
+    //    node->getElement()->updateUBOs(view, proj, camPos, *lights, time, groundHeight);
+    //else
+    //{
+    //    updateUBOs_help(node->getA());
+    //    updateUBOs_help(node->getB());
+    //    updateUBOs_help(node->getC());
+    //    updateUBOs_help(node->getD());
+    //}
 }
 
 //void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
@@ -1099,6 +1137,31 @@ QuadNode<Chunk*>* PlanetGrid::getNode(std::tuple<float, float, float> center, fl
 std::tuple<float, float, float> PlanetGrid::closestCenter()
 {
     return std::tuple<float, float, float>(cubeSideCenter.x, cubeSideCenter.y, cubeSideCenter.z);
+}
+
+void PlanetGrid::updateVisibilityState()
+{
+    float camDist = glm::length(camPos - nucleus);
+    camDist += 0.15 * radius;               // Small addition for ensuring minimal rendering
+    if (camDist < radius) { dotHorizon = 1; return; }
+
+    float angle = acos(radius / camDist);
+    float relX = cos(angle) * radius;
+    float relY = sqrt(radius * radius - relX * relX);   //sin(angle) * radius;
+
+    dotHorizon = glm::dot(
+        glm::normalize(glm::vec3(relX, relY, 0)),
+        glm::normalize(glm::vec3(camDist, 0, 0)));
+}
+
+bool PlanetGrid::isVisible(const Chunk* chunk)
+{
+    float dotChunk = glm::dot(
+        glm::normalize(((PlanetChunk*)chunk)->getGroundCenter()),
+        glm::normalize(camPos - nucleus));
+
+    if (dotChunk > dotHorizon) return true;
+    else return false;
 }
 
 // SphereGrid ------------------------------------------------------------------
@@ -1249,15 +1312,7 @@ float Sphere::callBack_getFloorHeight(const glm::vec3& pos)
 // Grass ----------------------------------------------------------------------
 
 GrassSystem::GrassSystem(Renderer& renderer, LightSet& lights)
-    : renderer(renderer), lights(lights), modelOrdered(false), camPos(0,0,0), pi(3.141592653589793238462)
-{
-    std::mt19937_64 engine(38572);
-    std::uniform_real_distribution<float> distributor(0, 2 * pi);
-
-    for (int i = 0; i < 30; i++)
-        for (int j = 0; j < 30; j++)
-            whiteNoise[i][j] = distributor(engine);
-}
+    : renderer(renderer), lights(lights), modelOrdered(false), camPos(0,0,0), bouquetCount(0), pi(3.141592653589793238462) { }
 
 GrassSystem::~GrassSystem()
 {
@@ -1267,12 +1322,12 @@ GrassSystem::~GrassSystem()
 
 void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures)
 {
-    std::vector<float> vertices =       // plane XZ
+    std::vector<float> vertices =       // plane XZ (pos, normal, UV)
     { 
-        -0.5, 0, -0.5,   0, 0, 1,   0, 0,
-         0.5, 0, -0.5,   0, 0, 1,   1, 0,
-         0.5, 0,  0.5,   0, 0, 1,   1, 1,
-        -0.5, 0,  0.5,   0, 0, 1,   0, 1
+        -0.5, 0, -0.5,   1, 0, 0,   0, 0,
+         0.5, 0, -0.5,   1, 0, 0,   1, 0,
+         0.5, 0,  0.5,   1, 0, 0,   1, 1,
+        -0.5, 0,  0.5,   1, 0, 0,   0, 1
     };
 
     std::vector<uint16_t> indices = { 0, 1, 2,  0, 2, 3 };
@@ -1283,9 +1338,9 @@ void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vect
 
     grassModel = renderer.newModel(
         "grass",
-        1, 100, primitiveTopology::triangle, vt_332,
+        1, 400, primitiveTopology::triangle, vt_332,
         vertexData, shaders, textures,
-        110, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, (camPos, time), centerPos, lights
+        410, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, (camPos, time), centerPos, lights
         lights.propsBytes,                                          // lights, centerPos
         true,
         0,
@@ -1306,6 +1361,9 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
     std::vector<int> index;         // Indices (to sort)
 
     getGrassBouquets(pos, rot, index);
+    
+    if(bouquetCount != pos.size()) renderer.setRenders(grassModel, pos.size());
+    bouquetCount = pos.size();
 
     // Update UBOs
     uint8_t* dest;
@@ -1340,40 +1398,79 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
     memcpy(dest, lights.props, lights.propsBytes);
 }
 
-void GrassSystem::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
-{
-    int count = 100;    // Number of grass bouquets
-    float step = 0.4;
-    glm::vec3 pos0 = { step * round(camPos.x / step) - step * 4,   step * round(camPos.y / step) - step * 4,   0 };
-    glm::vec3 gPos;     // grass bouquet position
-    unsigned nIdx[2];   // noise index
 
-    pos.reserve(count);
-    rot.reserve(count);
+GrassSystem_XY::GrassSystem_XY(Renderer& renderer, LightSet& lights)
+    : GrassSystem(renderer, lights)
+{
+    std::mt19937_64 engine(38572);
+    std::uniform_real_distribution<float> distributor(0, 2 * pi);
+
+    for (int i = 0; i < 30; i++)
+        for (int j = 0; j < 30; j++)
+            whiteNoise[i][j] = distributor(engine);
+}
+
+GrassSystem_XY::~GrassSystem_XY() { }
+
+void GrassSystem_XY::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
+{
+    glm::vec3 gPos;     // grass bouquet position
+    glm::ivec2 nIdx;    // noise index
+    float dist;
+    glm::vec3 distVec;
+
+    pos.reserve(1300);
+    rot.reserve(1300);
 
     // Central grass
-    for (int i = 0; i < 10; i++)
-        for (int j = 0; j < 10; j++)
+    float step = 0.4;       // step size
+    float side = 40;        // steps per side
+    float minDist = 0;
+    float maxDist = 8;
+    glm::vec3 pos0 = { step * round(camPos.x / step) - step * side/2,   step * round(camPos.y / step) - step * side/2,   0 };
+
+    for (int i = 0; i < side + 1; i++)
+        for (int j = 0; j < side + 1; j++)
         {
+            // Position
             gPos.x = pos0.x + i * step;
             gPos.y = pos0.y + j * step;
             gPos.z = 0.5;
+
+            distVec = gPos - glm::vec3(camPos.x, camPos.y, 0);
+            dist = sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
+            if (dist < minDist || dist > maxDist) continue;
+
             pos.push_back(gPos);
 
-            nIdx[0] = unsigned(round(abs(gPos.x / 0.4))) % 30U;
-            nIdx[1] = unsigned(round(abs(gPos.y / 0.4))) % 30U;
-            rot.push_back(glm::vec3(0, 0, whiteNoise[nIdx[0]][nIdx[1]]));   // whiteNoise[abs(i % 30)][abs(j % 30)]));
+            // Spin (noise)
+            nIdx.x = unsigned(round(abs(gPos.x / 0.4))) % 30U;
+            nIdx.y = unsigned(round(abs(gPos.y / 0.4))) % 30U;
+            rot.push_back(glm::vec3(0, 0, whiteNoise[nIdx.x][nIdx.y]));   // whiteNoise[abs(i % 30)][abs(j % 30)]));
 
-            //pos.push_back(glm::vec3(i * 0.5, j * 0.5, 0));                // Add another 100 for double billboard per grass
-            //rot.push_back(glm::vec3(0, 0, whiteNoise[i][j] + pi / 2));
+            // Spin (lookAt camPos)
+            //rot.push_back(glm::vec3(0, 0, 2*pi - atan((gPos.x - camPos.x) / (gPos.y - camPos.y))));
         }
 
-    // Surrounding grass
-    for (int i = -10; i < 20; i++)
-        for (int j = -10; j < 20; j++)
-        {
-            
-        }
+    sorter.sort(pos, index, camPos, 0, pos.size() - 1);
+}
 
-    sorter.sort(pos, index, camPos, 0, count - 1);
+
+GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet)
+    : GrassSystem(renderer, lights), planet(planet)
+{
+    std::mt19937_64 engine(38572);
+    std::uniform_real_distribution<float> distributor(0, 2 * pi);
+
+    for (int i = 0; i < 15; i++)
+        for (int j = 0; j < 15; j++)
+            for (int k = 0; k < 15; k++)
+                whiteNoise[i][j][k] = distributor(engine);
+}
+
+void GrassSystem_planet::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
+{
+    // Get planet::PlanetGrids > Get chunks > Get std::vector<float> vertex
+    // Put grass on the vertices while distance < X
+    // Sort
 }

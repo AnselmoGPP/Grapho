@@ -40,7 +40,7 @@ template<typename T>
 class QuadNode
 {
 public:
-	QuadNode() { };
+	//QuadNode() { };
 	QuadNode(const T& element, QuadNode* a = nullptr, QuadNode* b = nullptr, QuadNode* c = nullptr, QuadNode* d = nullptr) : element(element), a(a), b(b), c(c), d(d) { };
 	~QuadNode() { if (a) delete a; if (b) delete b; if (c) delete c; if (d) delete d; };
 
@@ -56,7 +56,8 @@ public:
 	QuadNode<T>* getC() { return c; }
 	QuadNode<T>* getD() { return d; }
 
-	bool isLeaf() { return !(a || b || c || d); }
+	bool isLeaf() { return !(a || b || c || d); }	//!< Is leaf if all subnodes are null; otherwise, it's not. Full binary tree: Every node either has zero children [leaf node] or two children. All leaf nodes have an element associated. There are no nodes with only one child. Each internal node has exactly two children.
+	//bool isLeaf_BST() { return (a); }	//!< For simple Binary Trees (BT).
 
 private:
 	// Ways to deal with keys and comparing records: (1) Key / value pairs (our choice), (2) Especial comparison method, (3) Passing in a comparator function.
@@ -115,6 +116,7 @@ public:
 
 	modelIter model;				//!< Model iterator. It has to be created with render(), which calls app->newModel()
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
+	bool isVisible;					//!< Used during tree construction and loading for not rendering non-visible chunks in DynamicGrid.
 
 	const unsigned depth;			//!< Range: [0, x]. Depth of this chunk. Useful in a grid of chunks with different lod.
 	glm::vec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighbors' chunks.
@@ -124,7 +126,7 @@ public:
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 
-	void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
+	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
@@ -132,6 +134,7 @@ public:
 	unsigned getNumVertex()		{ return numHorVertex * numVertVertex; }
 	float getHorChunkSide()		{ return horChunkSize; };
 	float getHorBaseSide()		{ return horBaseSize; };
+	std::vector<float>* getVertices() { return &vertex; }
 };
 
 /// Plain chunk with noise
@@ -180,6 +183,7 @@ public:
 
 	virtual void computeTerrain(bool computeIndices) override;
 	void getSubBaseCenters(std::tuple<float, float, float>* centers) override;
+	float getRadius();
 };
 
 
@@ -197,8 +201,9 @@ public:
 
 /**
 	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks in order to present 
-	higher resolution Chunks near the camera. To make chunks' vertices fit other chunks of different depth (up to n 
-	depths), then number of side vertices must be = X·2^n + 1
+	higher resolution. The number of side vertices should be odd if you want to make them fit with an equivalent chunk but 
+	twice its size. Chunks near the camera. To make chunks' vertices fit other chunks of different depth (up to n depths), 
+	then number of side vertices must be = X·2^n + 1 (Examples for n=2: 21, 25, 29, 33, 37)
 	Process:
 		1. Constructor()
 			- Chunk::computeIndices()
@@ -226,35 +231,29 @@ public:
 	float time;
 	float groundHeight;
 
-	//void addTextures(const std::vector<TextureLoader>& textures);								//!< Add textures ids of already loaded textures.
-	//void addShaders(const ShaderLoader& vertexShader, const ShaderLoader& fragmentShader);	//!< Add shaders ids of already loaded shaders.
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
 	unsigned getTotalNodes() { return chunks.size(); }
-	unsigned getloadedChunks() { return loadedChunks; }
-	unsigned getRenderedChunks() { return renderedChunks; }
 	void toLastDraw() { putToLastDraw(root[activeTree]); };					//!< Call it after updateTree(), so the correct tree is put last to draw
-	
+	void getActiveChunks(std::vector<Chunk*>& dest);
+
 protected:
 	QuadNode<Chunk*>* root[2];
-	std::map<std::tuple<float, float, float>, Chunk*> chunks;
+	std::map<std::tuple<float, float, float>, Chunk*> chunks;				//!< Stores the chunks
 	Renderer* renderer;
 	std::vector<uint16_t> indices;
 	std::vector<ShaderLoader> shaders;
 	std::vector<TextureLoader> textures;
-
 	unsigned activeTree;
-	unsigned loadedChunks;
-	unsigned renderedChunks;
 
 	// Configuration data
 	float rootCellSize;
-	size_t numSideVertex;		//!< Number of vertex per square side
+	size_t numSideVertex;		//!< Number of vertices per square side. More information in class description.
 	size_t numLevels;			//!< Number of LOD
 	size_t minLevel;			//!< Minimum level used(from 0 to numLevels-1) (actual levels used = numLevels - minLevel) (example: 7-3=4 -> 800,400,200,100)
 	float distMultiplier;		//!< Relative distance (when distance camera-node's center is < relDist, the node is subdivided).
-	unsigned distMultRemove;	//!< Relative distance for removing chunks (when distance camera-node's center > 
+	unsigned distMultRemove;	//!< Relative distance for removing chunks (when distance camera-node's center > distMultRemove, the node is deleted)
 	bool transparency;
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
@@ -270,6 +269,10 @@ protected:
 
 	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) = 0;
 	virtual std::tuple<float, float, float> closestCenter() = 0;	//!< Find closest center to the camera of the biggest chunk (i.e. lowest level chunk).
+
+	void resetVisibility(QuadNode<Chunk*>* node);					//!< Traverse tree and set all leaves (chunks) as visible.
+	virtual void updateVisibilityState();							//!< Update some parameters used in isVisible().
+	virtual bool isVisible(const Chunk* chunk);						//!< Check if a given chunk is visible (if not, it's not rendered).
 };
 
 
@@ -308,9 +311,12 @@ protected:
 	glm::vec3 nucleus;
 	glm::vec3 cubePlane;
 	glm::vec3 cubeSideCenter;
+	float dotHorizon;			// Minimum dot product. Chunks with lower dotHorizon aren't rendered
 
 	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 	std::tuple<float, float, float> closestCenter() override;
+	void updateVisibilityState() override;
+	bool isVisible(const Chunk* chunk) override;
 };
 
 
@@ -329,7 +335,6 @@ public:
 
 /**
 	Six PlanetGrid objects that make up a planet and update the internal SphericalChunk objects depending upon camera position.
-	The number of side vertices should be odd if you want to make them fit with an equivalent chunk but twice its size.
 	1. Constructor
 		- DynamicGrid.constructor()
 	2. addResources() (once)
@@ -391,17 +396,43 @@ public:
 	void createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures);
 	void updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time);
 
-private:
+protected:
 	Renderer& renderer;
-	modelIter grassModel;
 	LightSet& lights;
+	modelIter grassModel;
+
 	Quicksort_distVec3_index sorter;
-	float whiteNoise[30][30];
+	unsigned bouquetCount;
 	bool modelOrdered;
 	glm::vec3 camPos;
 	float pi;
 
-	void getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index);
+	virtual void getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index) = 0;
+};
+
+class GrassSystem_XY : public GrassSystem
+{
+public:
+	GrassSystem_XY(Renderer& renderer, LightSet& lights);
+	~GrassSystem_XY();
+
+protected:
+	float whiteNoise[30][30];
+
+	void getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index) override;
+};
+
+class GrassSystem_planet : public GrassSystem
+{
+public:
+	GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet);
+	~GrassSystem_planet();
+
+protected:
+	Planet& planet;
+	float whiteNoise[15][15][15];
+
+	void getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index) override;
 };
 
 

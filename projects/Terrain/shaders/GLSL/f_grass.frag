@@ -30,7 +30,7 @@ void main()
 	
 	// Choose texture
 	vec4 noise = texture(texSampler[3], inCenterPos.xy/100.f);
-		
+	
 	if(noise.x < 0.2)       albedo = texture(texSampler[0], unpackUVmirror(inUVs, 1));
 	else if (noise.x > 0.4) albedo = texture(texSampler[1], unpackUVmirror(inUVs, 1));
 	else                    albedo = texture(texSampler[2], unpackUVmirror(inUVs, 1));
@@ -38,6 +38,7 @@ void main()
 	// Transparency (distance to camPos)
 	float dist = getDist(inPos, inCamPos);
 	if(dist < 1) albedo.a *= getRatio(dist, 0.4, 1);
+	if(dist > 7) albedo.a *= 1.f - getRatio(dist, 7, 8);
 	
 	// Transparency (roots)
 	albedo.a *= getRatio(inUVs.y, 0, 0.1);

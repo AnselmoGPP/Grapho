@@ -27,8 +27,11 @@ layout(location = 5) flat out LightPD outLight[NUMLIGHTS];	// light positions & 
 
 void main()
 {
-	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
-	outPos      = (ubo.model * vec4(inPos, 1.0)).xyz;
+	vec3 pos = inPos;
+	pos += getRatio(inPos.y, -0.5, 0.5) * inNormal * sin(3 * ubo.camPos_time.a) * 0.02;		// speed (2), amplitude (0.01)
+	
+	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
+	outPos      = (ubo.model * vec4(pos, 1.0)).xyz;
 	outNormal   = mat3(ubo.normalMatrix) * inNormal;
 	outUVs      = inUVs;
 	outCamPos = ubo.camPos_time.xyz;

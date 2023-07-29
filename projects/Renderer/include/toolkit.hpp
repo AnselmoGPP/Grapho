@@ -250,7 +250,7 @@ public:
 	void sort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high, const glm::vec3& camPos);
 };
 
-/// QuickSort algorithm (using Hoare partition scheme). It only sorts a vector<int> that represents indices for a vector<vec3> representing positions. During comparisons, the underlying positions are taken, and compares distances to camPos.
+/// QuickSort algorithm (using Hoare partition scheme). It only sorts a vector<int> that represents indices for a vector<vec3> representing positions. During comparisons, the underlying positions are taken, and compares distances to camPos. Only sorts the vector<int> (index values).
 class Quicksort_distVec3_index
 {
     // Sorting
