@@ -1,15 +1,12 @@
 TODO:
-	How to know correct vertices per side (for fitting chunks)
-	int numAttribs;	necessary?
-	PlanetGrid::isVisible > getActiveChunks
+	DynamicGrid::chunks requires lookup and delete elements. Is there a better DS for this than std::map?
+	PlanetGrid::isVisible & modelOrdered & fullyConstructed necessary?
 	Don't try to create grass if ... (find condition)
 	Chunks don't empty their buffers after construction of Model. However, this is useful for grass positioning.
-	Don't render non-visible chunks
 
 	Optimize shaders
 	Plain coasts
 	seaPlanet VS: outCamSqrHeight & 
-	Don't load non-visible chunks
 	Planet texture
 	>Configurable UBOs for dynamic grids
 		Pass camera height param to sea shader

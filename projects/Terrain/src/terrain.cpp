@@ -8,11 +8,19 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : renderer(renderer), stride(stride), numHorVertex(numHorVertex), numVertVertex(numVertVertex), numAttribs(9), vertexData(nullptr), depth(depth), modelOrdered(false), isVisible(true), chunkID(chunkID)
-{
-    baseCenter = center;
-    groundCenter = baseCenter;
-}
+    : renderer(renderer), 
+    baseCenter(center),
+    geoideCenter(center),
+    groundCenter(center),   // defined more precisely in subclass' constructor
+    stride(stride), 
+    numHorVertex(numHorVertex), 
+    numVertVertex(numVertVertex), 
+    numAttribs(9), 
+    vertexData(nullptr), 
+    depth(depth), 
+    modelOrdered(false), 
+    isVisible(true), 
+    chunkID(chunkID) { }
 
 Chunk::~Chunk()
 {
@@ -147,6 +155,8 @@ void Chunk::setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d)
     sideDepths[3] = d;
 }
 
+glm::vec3 Chunk::getCenter() { return groundCenter; }
+
 // PlainChunk ----------------------------------------------------------------------
 
 PlainChunk::PlainChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
@@ -275,8 +285,8 @@ PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 c
     : Chunk(renderer, cubeSideCenter, stride, numHorVertex, numVertVertex, depth, chunkID), noiseGen(noiseGenerator), nucleus(nucleus), radius(radius)
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
-    glm::vec3 sphere = unitVec * radius;
-    if(noiseGenerator) groundCenter = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
+    geoideCenter = unitVec * radius;
+    if(noiseGenerator) groundCenter = geoideCenter + unitVec * noiseGen->GetNoise(geoideCenter.x, geoideCenter.y, geoideCenter.z);  // if added due to SphereChunk
 
     // Set relative axes of the cube face (needed for computing indices in good order)
      if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
@@ -575,7 +585,8 @@ void PlanetChunk::computeGapFixes()
 SphereChunk::SphereChunk(Renderer& renderer, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
     : PlanetChunk(renderer, nullptr, cubeSideCenter, stride, numHorVertex, numVertVertex, radius, nucleus, cubePlane, depth, chunkID)
 {
-    groundCenter = glm::normalize(baseCenter - nucleus) * radius;
+    geoideCenter = glm::normalize(baseCenter - nucleus) * radius;
+    groundCenter = geoideCenter;
 }
 
 void SphereChunk::computeTerrain(bool computeIndices)
@@ -586,7 +597,7 @@ void SphereChunk::computeTerrain(bool computeIndices)
     unsigned tempNumHorV = numHorVertex + 2;
     unsigned tempNumVerV = numVertVertex + 2;
     vertex.resize(tempNumHorV * tempNumVerV * numAttribs);
-    glm::vec3 unitVec, cube, sphere, ground;
+    glm::vec3 unitVec, cube, ground;
     size_t index;
 
     for (size_t v = 0; v < tempNumVerV; v++)
@@ -632,7 +643,8 @@ DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer,
     : camPos(camPos), 
     lights(&lights), 
     renderer(renderer), 
-    activeTree(activeTree), 
+    activeTree(activeTree),
+    nonActiveTree((activeTree + 1) % 2),
     rootCellSize(rootCellSize), 
     numSideVertex(numSideVertex), 
     numLevels(numLevels), 
@@ -667,43 +679,46 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     if (!numLevels) return;
 
     // Return if CamPos has not changed, Active tree exists, and Non-active tree is nullptr.
-    unsigned nonActiveTree = (activeTree + 1) % 2;
     if (root[activeTree] && !root[nonActiveTree] && camPos.x == newCamPos.x && camPos.y == newCamPos.y && camPos.z == newCamPos.z)
         return;  // ERROR: When updateTree doesn't run in each frame (i.e., when command buffer isn't created each frame), no validation error appears after resizing window
     
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
     {
+        std::cout << glm::length(camPos) - 2000.f << std::endl;
+        
         camPos = newCamPos;
         updateVisibilityState();
 
+        visibleLeafChunks[nonActiveTree].clear();
         root[nonActiveTree] = getNode(closestCenter(), rootCellSize, 0, 1);
         createTree(root[nonActiveTree], 0);                         // Build tree and load leaf-chunks
     }
 
     // <<< Why is executed each time I move? Why is only executed in one plane for fixing gaps?
     // Check whether non-active tree has fully constructed leaf-chunks. If so, switch trees
-    if (fullConstChunks(root[nonActiveTree]))
+    if (fullConstChunks(nonActiveTree))
     {
         updateChunksSideDepths(root[nonActiveTree]);
         
-        changeRenders(root[activeTree], false);
+        changeRenders(activeTree, false);
         if (root[activeTree]) delete root[activeTree];
         root[activeTree] = nullptr;
         
-        changeRenders(root[nonActiveTree], true);
-        activeTree = nonActiveTree;
-        
+        changeRenders(nonActiveTree, true);
+
         removeFarChunks(distMultRemove, newCamPos);
 
         resetVisibility(root[nonActiveTree]);
+
+        std::swap(activeTree, nonActiveTree);
     }
 }
 
 void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
 {
     Chunk* chunk = node->getElement();
-    glm::vec3 gCenter = chunk->getGroundCenter();   // <<<<<< Modify chunk center location for computing cam-chunk dists
+    glm::vec3 gCenter = getChunkCenter(chunk);
     float dist = sqrt((camPos.x - gCenter.x) * (camPos.x - gCenter.x) + (camPos.y - gCenter.y) * (camPos.y - gCenter.y) + (camPos.z - gCenter.z) * (camPos.z - gCenter.z));
 
     // Is leaf node > Compute terrain > Children are nullptr by default
@@ -719,6 +734,8 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
             chunk->render(shaders, textures, &indices, lights->numLights, transparency);
             renderer->setRenders(chunk->model, 0);
         }
+
+        visibleLeafChunks[nonActiveTree].push_back(node->getElement());
     }
     // Is not leaf node > Create children > Recursion
     else
@@ -743,27 +760,13 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
     }
 }
 
-bool DynamicGrid::fullConstChunks(QuadNode<Chunk*>* node)
+bool DynamicGrid::fullConstChunks(unsigned treeIndex)
 {
-    if (!node) return false;
-
-    if (node->isLeaf())
-    {
-        if (!node->getElement()->isVisible || node->getElement()->model->fullyConstructed)
-            return true;
-        else
+    for (Chunk* chunk : visibleLeafChunks[treeIndex])
+        if (!chunk->model->fullyConstructed)
             return false;
-    }
-    else
-    {
-        char full[4];
-        full[0] = fullConstChunks(node->getA());
-        full[1] = fullConstChunks(node->getB());
-        full[2] = fullConstChunks(node->getC());
-        full[3] = fullConstChunks(node->getD());
 
-        return full[0] && full[1] && full[2] && full[3];
-    }
+    return true;
 }
 
 void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
@@ -805,32 +808,13 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
         if (it->sideDepths[1] != 1000) it->sideDepths[1] = it->depth - it->sideDepths[1];
         if (it->sideDepths[2] != 1000) it->sideDepths[2] = it->depth - it->sideDepths[2];
         if (it->sideDepths[3] != 1000) it->sideDepths[3] = it->depth - it->sideDepths[3];
-
-        //uint8_t* ubo = it->model->vsDynUBO.getUBOptr(0);
-        //ubo += 4 * mat4size + vec4size;
-        //memcpy(ubo, &it->sideDepths, vec4size);
     }
 }
 
-void DynamicGrid::changeRenders(QuadNode<Chunk*>* node, bool renderMode)
+void DynamicGrid::changeRenders(unsigned treeIndex, bool renderMode)
 {
-    if (!node) return;
-
-    //if (node->isLeaf()) renderer->setRenders(node->getElement()->model, (renderMode ? 1 : 0));
-    if (node->isLeaf())
-    {
-        if (renderMode && node->getElement()->modelOrdered && node->getElement()->isVisible)
-            renderer->setRenders(node->getElement()->model, 1);
-        else if (!renderMode && node->getElement()->modelOrdered)
-            renderer->setRenders(node->getElement()->model, 0);
-    }
-    else
-    {
-        changeRenders(node->getA(), renderMode);
-        changeRenders(node->getB(), renderMode);
-        changeRenders(node->getC(), renderMode);
-        changeRenders(node->getD(), renderMode);
-    }
+    for (Chunk*& chunk : visibleLeafChunks[treeIndex])
+        renderer->setRenders(chunk->model, renderMode);
 }
 
 void DynamicGrid::resetVisibility(QuadNode<Chunk*>* node)
@@ -865,12 +849,9 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
         targetDist = it->second->getHorChunkSide() * relDist;
         chunk = it->second;
 
-        if ( chunk->modelOrdered &&
-             chunk->model->fullyConstructed && 
-            !chunk->model->activeRenders && 
-             chunk->isVisible )
+        if(chunk->isVisible && (!chunk->modelOrdered || !chunk->model->activeRenders))    // traverse chunks that are not in the active tree
         {
-            center = it->second->getGroundCenter();
+            center = getChunkCenter(it->second);    // it->second->getGroundCenter();
             distVec.x = center.x - camPosNow.x;
             distVec.y = center.y - camPosNow.y;
             distVec.z = center.z - camPosNow.z;
@@ -889,48 +870,19 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 
 void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight)
 {
-    this->view = view;
-    this->proj = proj;
     this->camPos = camPos;
     this->lights = &lights;
-    this->time = time;
-    this->groundHeight = groundHeight;
 
-    //preorder<Chunk*, void (QuadNode<Chunk*>*)>(root, nodeVisitor);
-    updateUBOs_help(root[activeTree]);  // Preorder traversal
+    for (Chunk* chunk : visibleLeafChunks[activeTree])
+        chunk->updateUBOs(view, proj, camPos, lights, time, groundHeight);
 }
 
-void DynamicGrid::updateUBOs_help(QuadNode<Chunk*>* node)
+void DynamicGrid::toLastDraw() { putToLastDraw(activeTree); }
+
+void DynamicGrid::putToLastDraw(unsigned treeIndex)
 {
-    if (!node) return;
-
-    if (node->isLeaf())
-        node->getElement()->updateUBOs(view, proj, camPos, *lights, time, groundHeight);
-    else
-    {
-        updateUBOs_help(node->getA());
-        updateUBOs_help(node->getB());
-        updateUBOs_help(node->getC());
-        updateUBOs_help(node->getD());
-    }
-}
-
-void DynamicGrid::putToLastDraw(QuadNode<Chunk*>* node)
-{
-    if (!node) return;
-
-    if (node->isLeaf())
-    {
-        renderer->toLastDraw(node->getElement()->model);
-        return;
-    }
-    else
-    {
-        putToLastDraw(node->getA());
-        putToLastDraw(node->getB());
-        putToLastDraw(node->getC());
-        putToLastDraw(node->getD());
-    }
+    for (Chunk* chunk : visibleLeafChunks[treeIndex])
+        renderer->toLastDraw(chunk->model);
 }
 
 void DynamicGrid::updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queue, QuadNode<Chunk*>* currentNode)
@@ -1031,6 +983,8 @@ void DynamicGrid::restartSideDepths(QuadNode<Chunk*>* node)
     restartSideDepths(node->getD());
 }
 
+glm::vec3 DynamicGrid::getChunkCenter(Chunk* chunk) { return chunk->getGroundCenter(); }
+
 glm::vec4 DynamicGrid::getChunkIDs(unsigned parentID, unsigned depth)
 {
     unsigned sideLength = pow(2, depth);
@@ -1050,28 +1004,12 @@ void DynamicGrid::updateVisibilityState() { }
 
 bool DynamicGrid::isVisible(const Chunk* chunk) { return true; }
 
-void DynamicGrid::getActiveChunks(std::vector<Chunk*>& dest, float depth)
+void DynamicGrid::getActiveLeafChunks(std::vector<Chunk*>& dest, float depth)
 {
-    // <<< FILL THIS
-
-    //if (!node) return;
-    //
-    //if (node->isLeaf())
-    //    node->getElement()->updateUBOs(view, proj, camPos, *lights, time, groundHeight);
-    //else
-    //{
-    //    updateUBOs_help(node->getA());
-    //    updateUBOs_help(node->getB());
-    //    updateUBOs_help(node->getC());
-    //    updateUBOs_help(node->getD());
-    //}
+    for (Chunk* chunk : visibleLeafChunks[activeTree])
+        if (chunk->depth >= depth)
+            dest.push_back(chunk);
 }
-
-//void updateUBOs_visitor(QuadNode<PlainChunk*>* node, const TerrainGrid& terrGrid)
-//{
-//    if (node->isLeaf())
-//        node->getElement()->updateUBOs(terrGrid.camPos, terrGrid.view, terrGrid.proj);
-//}
 
 
 // TerrainGrid ----------------------------------------------------------------------
@@ -1162,6 +1100,15 @@ bool PlanetGrid::isVisible(const Chunk* chunk)
 
     if (dotChunk > dotHorizon) return true;
     else return false;
+}
+
+glm::vec3 PlanetGrid::getChunkCenter(Chunk* chunk)
+{
+    float height = glm::length(camPos) - radius;
+    float range  = 200;
+    float ratio  = glm::clamp(height/range, 0.f, 1.f);
+
+    return chunk->getGeoideCenter() + glm::normalize(chunk->getGeoideCenter()) * range * ratio;
 }
 
 // SphereGrid ------------------------------------------------------------------

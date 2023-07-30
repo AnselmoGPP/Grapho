@@ -39,13 +39,13 @@ void main()
 	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 	outCamSqrHeight = ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z;	// Assuming vec3(0,0,0) == planetCenter
 	outGroundHeight = sqrt(inPos.x * inPos.x + inPos.y * inPos.y + inPos.z * inPos.z);
-	outSlope     = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
-	outCamPos    = ubo.camPos.xyz;
+	outSlope        = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
+	outCamPos       = ubo.camPos.xyz;
 	
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
-		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
+		outLight[i].position.xyz  = ubo.light[i].position.xyz;							// for point & spot light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);				// for directional & spot light
 	}
 	
 	outTB3 = getTB3(inNormal);

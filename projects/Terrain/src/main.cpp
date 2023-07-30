@@ -70,7 +70,7 @@ SingleNoise noiser_1(	// Desert
 
 SingleNoise noiser_2(	// Hills
 	FastNoiseLite::NoiseType_Perlin,	// Noise type
-	3, 7.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+	3, 6.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 	3, 120,								// Scale, Multiplier
 	1,									// Curve degree
 	0, 0, 0,							// XYZ offsets
@@ -79,7 +79,7 @@ SingleNoise noiser_2(	// Hills
 PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 29, 0), 5, 41, 11);
 TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 
-Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, false);
+Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
 Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
 
 GrassSystem_XY grass(app, lights);
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 		//setPoints(app);
 		setAxis(app);
 		//setGrid(app);
-		setSkybox(app);
+		//setSkybox(app);
 		//setCottage(app);
 		//setRoom(app);
 		//setChunk(app);

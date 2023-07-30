@@ -94,12 +94,14 @@ class Chunk
 protected:
 	Renderer& renderer;
 	glm::vec3 baseCenter;
+	glm::vec3 geoideCenter;
 	glm::vec3 groundCenter;
+	glm::vec3 center;			//!< Alternative center defined by 
 
 	float stride;
 	unsigned numHorVertex, numVertVertex;
 	float horBaseSize, vertBaseSize;		//!< Base surface from which computation starts (plane)
-	float horChunkSize, vertChunkSize;		//!< Surface from where noise is applied (sphere section)
+	float horChunkSize, vertChunkSize;		//!< Surface where noise is applied (sphere section)
 	int numAttribs;							//!< Number of attributes per vertex (9)
 
 	VerticesLoader* vertexData;
@@ -125,12 +127,14 @@ public:
 	virtual void computeTerrain(bool computeIndices) = 0;
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
+	virtual glm::vec3 getCenter();
 
 	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
-	glm::vec3 getGroundCenter()	{ return groundCenter; }
+	glm::vec3 getGeoideCenter() { return geoideCenter; }
+	glm::vec3 getGroundCenter() { return groundCenter; }
 	unsigned getNumVertex()		{ return numHorVertex * numVertVertex; }
 	float getHorChunkSide()		{ return horChunkSize; };
 	float getHorBaseSide()		{ return horBaseSize; };
@@ -171,7 +175,7 @@ protected:
 	Noiser* noiseGen;
 	glm::vec3 nucleus;
 	float radius;
-	glm::vec3 xAxis, yAxis;		// Vectors representing the relative XY coordinate system of the cube side plane.
+	glm::vec3 xAxis, yAxis;			//!< Vectors representing the relative XY coordinate system of the cube side plane.
 
 	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV);
 	void computeGapFixes();
@@ -224,28 +228,24 @@ public:
 	virtual ~DynamicGrid();
 
 	unsigned char* ubo;
-	glm::mat4 view;
-	glm::mat4 proj;
 	glm::vec3 camPos;
 	LightSet* lights;
-	float time;
-	float groundHeight;
 
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
-	unsigned getTotalNodes() { return chunks.size(); }
-	void toLastDraw() { putToLastDraw(root[activeTree]); };					//!< Call it after updateTree(), so the correct tree is put last to draw
-	void getActiveChunks(std::vector<Chunk*>& dest);
+	void toLastDraw();												//!< Call it after updateTree(), so the correct tree is put last to draw
+	void getActiveLeafChunks(std::vector<Chunk*>& dest, float depth);		//!< Get active chunks with depth >= X in the active tree 
 
 protected:
-	QuadNode<Chunk*>* root[2];
-	std::map<std::tuple<float, float, float>, Chunk*> chunks;				//!< Stores the chunks
+	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
+	std::map<std::tuple<float, float, float>, Chunk*> chunks;		//!< All chunks
+	std::vector<Chunk*> visibleLeafChunks[2];						//!< Visible leaf chunks of each tree
 	Renderer* renderer;
 	std::vector<uint16_t> indices;
 	std::vector<ShaderLoader> shaders;
 	std::vector<TextureLoader> textures;
-	unsigned activeTree;
+	unsigned activeTree, nonActiveTree;
 
 	// Configuration data
 	float rootCellSize;
@@ -257,20 +257,21 @@ protected:
 	bool transparency;
 
 	void createTree(QuadNode<Chunk*>* node, size_t depth);			//!< Recursive
-	bool fullConstChunks(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
-	void changeRenders(QuadNode<Chunk*>* node, bool renderMode);	//!< Recursive (Preorder traversal)
-	void updateUBOs_help(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal)
-	void putToLastDraw(QuadNode<Chunk*>* node);						//!< Recursive (Preorder traversal)
-	void updateChunksSideDepths(QuadNode<Chunk*>* node);			//!< Breath-first search for computing the depth that each side of the chunk must fit.
-	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*> &queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
-	void restartSideDepths(QuadNode<Chunk*>* node);					//!< Set side depths of all nodes in the tree to 0.
+	bool fullConstChunks(unsigned treeIndex);						//!< Check that visible nodes in a tree are ready (loaded).
+	void changeRenders(unsigned treeIndex, bool renderMode);		//!< Change number of renders of all visible chunks in a tree.
+	void putToLastDraw(unsigned treeIndex);							//!< Draw last all visible leaf chunks in a tree
 	void removeFarChunks(unsigned relDist, glm::vec3 camPosNow);	//!< Remove those chunks that are too far from camera
 	glm::vec4 getChunkIDs(unsigned parentID, unsigned depth);
 
+	virtual glm::vec3 getChunkCenter(Chunk* chunk);					//!< Get chunk's center
 	virtual QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) = 0;
 	virtual std::tuple<float, float, float> closestCenter() = 0;	//!< Find closest center to the camera of the biggest chunk (i.e. lowest level chunk).
 
-	void resetVisibility(QuadNode<Chunk*>* node);					//!< Traverse tree and set all leaves (chunks) as visible.
+	void restartSideDepths(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal). Set side depths of all nodes in the tree to 0.
+	void updateChunksSideDepths(QuadNode<Chunk*>* node);			//!< Breath-first search for computing the depth that each side of the chunk must fit.
+	void updateChunksSideDepths_help(std::list<QuadNode<Chunk*>*>& queue, QuadNode<Chunk*>* currentNode); //!< Helper method. Computes the depth of each side of a chunk based on adjacent chunks (right and down).
+
+	void resetVisibility(QuadNode<Chunk*>* node);					//!< Recursive (Preorder traversal). Traverse tree and set all leaves (chunks) as visible.
 	virtual void updateVisibilityState();							//!< Update some parameters used in isVisible().
 	virtual bool isVisible(const Chunk* chunk);						//!< Check if a given chunk is visible (if not, it's not rendered).
 };
@@ -317,6 +318,7 @@ protected:
 	std::tuple<float, float, float> closestCenter() override;
 	void updateVisibilityState() override;
 	bool isVisible(const Chunk* chunk) override;
+	glm::vec3 getChunkCenter(Chunk* chunk) override;
 };
 
 
