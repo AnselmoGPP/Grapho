@@ -1,8 +1,14 @@
 TODO:
+	Bug: If I don't move, chuncks may not appear ever.
+	Chunks rendering based on distance makes no difference between chunks types (see planet from afar).
+	Spot light not working as spot
+
+	Grass inverts texture when pov changes
 	DynamicGrid::chunks requires lookup and delete elements. Is there a better DS for this than std::map?
-	PlanetGrid::isVisible & modelOrdered & fullyConstructed necessary?
+	PlanetGrid::isVisible & modelOrdered & fullyConstructed & inModels necessary?
 	Don't try to create grass if ... (find condition)
 	Chunks don't empty their buffers after construction of Model. However, this is useful for grass positioning.
+	Optimization: Grass transparencies computed in CPU
 
 	Optimize shaders
 	Plain coasts

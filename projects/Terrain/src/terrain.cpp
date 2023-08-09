@@ -1,4 +1,4 @@
-#include <algorithm>
+﻿#include <algorithm>
 #include <random>
 
 #include "terrain.hpp"
@@ -685,8 +685,6 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     // Build tree if the non-active tree is nullptr
     if (!root[nonActiveTree])
     {
-        std::cout << glm::length(camPos) - 2000.f << std::endl;
-        
         camPos = newCamPos;
         updateVisibilityState();
 
@@ -1105,7 +1103,7 @@ bool PlanetGrid::isVisible(const Chunk* chunk)
 glm::vec3 PlanetGrid::getChunkCenter(Chunk* chunk)
 {
     float height = glm::length(camPos) - radius;
-    float range  = 200;
+    float range  = 200;                                 // if cam is below range height, chunk center is at same height as cam. 
     float ratio  = glm::clamp(height/range, 0.f, 1.f);
 
     return chunk->getGeoideCenter() + glm::normalize(chunk->getGeoideCenter()) * range * ratio;
@@ -1215,6 +1213,16 @@ float Planet::getGroundHeight(const glm::vec3& camPos)
     return 0;
 }
 
+void Planet::getActiveLeafChunks(std::vector<Chunk*>& dest, float depth)
+{
+    planetGrid_pZ->getActiveLeafChunks(dest, depth);
+    planetGrid_nZ->getActiveLeafChunks(dest, depth);
+    planetGrid_pY->getActiveLeafChunks(dest, depth);
+    planetGrid_nY->getActiveLeafChunks(dest, depth);
+    planetGrid_pX->getActiveLeafChunks(dest, depth);
+    planetGrid_nX->getActiveLeafChunks(dest, depth);
+}
+
 float Planet::callBack_getFloorHeight(const glm::vec3& pos)
 {
     glm::vec3 nucleus(0.f, 0.f, 0.f);
@@ -1258,8 +1266,9 @@ float Sphere::callBack_getFloorHeight(const glm::vec3& pos)
 
 // Grass ----------------------------------------------------------------------
 
-GrassSystem::GrassSystem(Renderer& renderer, LightSet& lights)
-    : renderer(renderer), lights(lights), modelOrdered(false), camPos(0,0,0), bouquetCount(0), pi(3.141592653589793238462) { }
+GrassSystem::GrassSystem(Renderer& renderer, LightSet& lights, float minDist, float maxDist)
+    : renderer(renderer), lights(lights), modelOrdered(false), camPos(0,0,0), pi(3.141592653589793238462), minDist(minDist), maxDist(maxDist)
+{ }
 
 GrassSystem::~GrassSystem()
 {
@@ -1269,12 +1278,12 @@ GrassSystem::~GrassSystem()
 
 void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures)
 {
-    std::vector<float> vertices =       // plane XZ (pos, normal, UV)
+    std::vector<float> vertices =       // plane XY (pos, normal, UV) centered at X axis
     { 
-        -0.5, 0, -0.5,   1, 0, 0,   0, 0,
-         0.5, 0, -0.5,   1, 0, 0,   1, 0,
-         0.5, 0,  0.5,   1, 0, 0,   1, 1,
-        -0.5, 0,  0.5,   1, 0, 0,   0, 1
+         0,  0.5, 0,   1, 0, 0,   0, 0,
+         0, -0.5, 0,   1, 0, 0,   1, 0,
+         1, -0.5, 0,   1, 0, 0,   1, 1,
+         1,  0.5, 0,   1, 0, 0,   0, 1
     };
 
     std::vector<uint16_t> indices = { 0, 1, 2,  0, 2, 3 };
@@ -1285,9 +1294,9 @@ void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vect
 
     grassModel = renderer.newModel(
         "grass",
-        1, 400, primitiveTopology::triangle, vt_332,
+        1, 500, primitiveTopology::triangle, vt_332,
         vertexData, shaders, textures,
-        410, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, (camPos, time), centerPos, lights
+        510, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, camPos + time, centerPos, lights
         lights.propsBytes,                                          // lights, centerPos
         true,
         0,
@@ -1303,15 +1312,10 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
     this->camPos = camPos;
 
     // Get sorted grass parameters
-    std::vector<glm::vec3> pos;     // position
-    std::vector<glm::vec3> rot;     // rotation
-    std::vector<int> index;         // Indices (to sort)
-
-    getGrassBouquets(pos, rot, index);
+    getGrassItems(pos, rot, index);
     
-    if(bouquetCount != pos.size()) renderer.setRenders(grassModel, pos.size());
-    bouquetCount = pos.size();
-
+    renderer.setRenders(grassModel, pos.size());
+    
     // Update UBOs
     uint8_t* dest;
     float rotation;
@@ -1319,7 +1323,7 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
 
     for (int i = 0; i < pos.size(); i++)
     {
-        model = modelMatrix(glm::vec3(1, 1, 1), rot[index[i]], pos[index[i]]);
+        model = modelMatrix2(sca[index[i]], rot[index[i]], pos[index[i]]);
         modelNormals = modelMatrixForNormals(model);
 
         dest = grassModel->vsDynUBO.getUBOptr(i);
@@ -1345,9 +1349,15 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
     memcpy(dest, lights.props, lights.propsBytes);
 }
 
+void GrassSystem::toLastDraw() 
+{ 
+    if(modelOrdered && grassModel->fullyConstructed)
+        renderer.toLastDraw(grassModel); 
+}
 
-GrassSystem_XY::GrassSystem_XY(Renderer& renderer, LightSet& lights)
-    : GrassSystem(renderer, lights)
+
+GrassSystem_XY::GrassSystem_XY(Renderer& renderer, LightSet& lights, float step, float side, float minDist, float maxDist)
+    : GrassSystem(renderer, lights, minDist, maxDist), step(step), side(side)
 {
     std::mt19937_64 engine(38572);
     std::uniform_real_distribution<float> distributor(0, 2 * pi);
@@ -1359,21 +1369,17 @@ GrassSystem_XY::GrassSystem_XY(Renderer& renderer, LightSet& lights)
 
 GrassSystem_XY::~GrassSystem_XY() { }
 
-void GrassSystem_XY::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
+void GrassSystem_XY::getGrassItems(std::vector<glm::vec3>& pos, std::vector<glm::vec4>& rot, std::vector<int>& index)
 {
     glm::vec3 gPos;     // grass bouquet position
     glm::ivec2 nIdx;    // noise index
-    float dist;
+    float sqrDist;
     glm::vec3 distVec;
 
-    pos.reserve(1300);
-    rot.reserve(1300);
+    pos.clear();
+    rot.clear();
+    sca.clear();
 
-    // Central grass
-    float step = 0.4;       // step size
-    float side = 40;        // steps per side
-    float minDist = 0;
-    float maxDist = 8;
     glm::vec3 pos0 = { step * round(camPos.x / step) - step * side/2,   step * round(camPos.y / step) - step * side/2,   0 };
 
     for (int i = 0; i < side + 1; i++)
@@ -1385,26 +1391,30 @@ void GrassSystem_XY::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<g
             gPos.z = 0.5;
 
             distVec = gPos - glm::vec3(camPos.x, camPos.y, 0);
-            dist = sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
-            if (dist < minDist || dist > maxDist) continue;
+            sqrDist = distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z;
+            if (sqrDist < minDist* minDist || sqrDist > maxDist* maxDist) continue;
 
             pos.push_back(gPos);
 
-            // Spin (noise)
-            nIdx.x = unsigned(round(abs(gPos.x / 0.4))) % 30U;
-            nIdx.y = unsigned(round(abs(gPos.y / 0.4))) % 30U;
-            rot.push_back(glm::vec3(0, 0, whiteNoise[nIdx.x][nIdx.y]));   // whiteNoise[abs(i % 30)][abs(j % 30)]));
+            // Rotation (noise)
+            nIdx.x = unsigned(round(abs(gPos.x / step))) % 30U;
+            nIdx.y = unsigned(round(abs(gPos.y / step))) % 30U;
+            rot.push_back(getRotQuat(zAxis, whiteNoise[nIdx.x][nIdx.y]));
+            //rot.push_back(glm::vec3(0, 0, whiteNoise[nIdx.x][nIdx.y]));
 
-            // Spin (lookAt camPos)
+            // Rotation (lookAt camPos)
             //rot.push_back(glm::vec3(0, 0, 2*pi - atan((gPos.x - camPos.x) / (gPos.y - camPos.y))));
+
+            // Scaling
+            sca.push_back(glm::vec3(1, 1, 1));
         }
 
     sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
 
-GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet)
-    : GrassSystem(renderer, lights), planet(planet)
+GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet, float minDist, float maxDist)
+    : GrassSystem(renderer, lights, minDist, maxDist), planet(planet)
 {
     std::mt19937_64 engine(38572);
     std::uniform_real_distribution<float> distributor(0, 2 * pi);
@@ -1415,9 +1425,111 @@ GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Pla
                 whiteNoise[i][j][k] = distributor(engine);
 }
 
-void GrassSystem_planet::getGrassBouquets(std::vector<glm::vec3>& pos, std::vector<glm::vec3>& rot, std::vector<int>& index)
+GrassSystem_planet::~GrassSystem_planet() { }
+
+void GrassSystem_planet::getGrassItems(std::vector<glm::vec3>& pos, std::vector<glm::vec4>& rot, std::vector<int>& index)
 {
-    // Get planet::PlanetGrids > Get chunks > Get std::vector<float> vertex
-    // Put grass on the vertices while distance < X
-    // Sort
+    // Reserved memory variables
+    glm::vec3 gPos;     // grass bouquet position
+    glm::ivec3 nIdx;    // noise indices
+    float dist;
+    glm::vec3 distVec;
+    std::vector<float>* vert;
+
+    // Precalculations
+    float step = 0.5;   // <<< this is arbitrary
+    glm::vec3 normal = glm::normalize(camPos - planet.nucleus);
+    glm::vec4 finalQuat, latLonQuat = getLatLonRotQuat(normal);
+    glm::vec3 front = rotatePoint(latLonQuat, zAxis);
+    glm::vec3 right = glm::normalize(glm::cross(front, normal));     //glm::normalize(glm::cross(front, zAxis));
+    glm::vec3 dirToCam, dirToCamXY;
+    float angle;
+
+    // Get vertices for grass
+    chunks.clear();
+    planet.getActiveLeafChunks(chunks, 7);
+
+    // Fill parameters for each grass bunch
+    pos.clear();
+    rot.clear();
+    sca.clear();
+
+    for (int i = 0; i < chunks.size(); i++)
+    {
+        vert = chunks[i]->getVertices();
+
+        for (int j = 0; j < vert->size(); j += 9)
+        {
+            // Position
+            gPos = glm::vec3((*vert)[j+0], (*vert)[j+1], (*vert)[j+2]);
+            distVec = gPos - camPos;
+            dist = sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
+
+            if (dist < minDist || dist > maxDist) continue;
+            
+            pos.push_back(gPos);
+            
+            // Rotations
+            
+            if (dist < maxDist * 0)     // Noise
+            {
+                nIdx.x = unsigned(round(abs(gPos.x / step))) % 15U;
+                nIdx.y = unsigned(round(abs(gPos.y / step))) % 15U;
+                nIdx.z = unsigned(round(abs(gPos.z / step))) % 15U;
+                finalQuat = productQuat(getRotQuat(xAxis, whiteNoise[nIdx.x][nIdx.y][nIdx.z]), latLonQuat);
+            }
+            else    // Face camPos
+            {
+                dirToCam = glm::normalize(camPos - gPos);
+                dirToCamXY = getProjectionOnPlane(normal, dirToCam);
+                angle = angleBetween(front, dirToCamXY);
+                if (glm::dot(dirToCam, right) > 0) angle *= -1;
+                finalQuat = productQuat(getRotQuat(xAxis, angle), latLonQuat);
+            }
+
+            rot.push_back(finalQuat);
+
+            // Scaling
+            sca.push_back(glm::vec3(2.2, 2.2, 2.2));
+        }
+    }
+
+    sorter.sort(pos, index, camPos, 0, pos.size() - 1);
+
+    // <<< Move grass with your body
+    // <<< light system (grass too dark at evening)
+    // <<< wind movement dependent of noise
+    // <<< grass only on grass floor (callback)
+    // <<< step size
+    // <<< number of samples (at create model > at samples creation)
+    // <<< render grass inside fov
+    // <<< why this angles work fine? 
+}
+
+glm::vec4 GrassSystem_planet::getLatLonRotQuat(glm::vec3& normal)
+{
+    glm::vec3 normalXY = { normal.x, normal.y, 0 };
+
+    float longitude = angleBetween(xAxis, normalXY);
+    if (normalXY.y < 0) longitude *= -1.f;
+
+    float latitude = angleBetween(normalXY, normal);
+    if (normal.z < 0) latitude *= -1.f;
+
+    return productQuat(
+        getRotQuat(yAxis, -latitude),
+        getRotQuat(zAxis,  longitude) );
+}
+
+glm::vec3 GrassSystem_planet::getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec)
+{
+    // B × (X × Y) / ||(X × Y)||^2
+
+    // Proj(on Normal) = ((Vec · Normal) / ||Normal||^2) Normal
+    // Vec = Proj(on Plane) + Proj(on Normal)
+    // Proj(on Plane) = Vec - Proj(on Normal)
+
+    glm::vec3 projOnNormal = glm::dot(vec, normal) * normal;
+
+    return vec - projOnNormal;
 }

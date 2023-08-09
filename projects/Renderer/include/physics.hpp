@@ -106,8 +106,14 @@ public:
 
 // Maths ----------------------------------------------------------
 
+extern glm::vec3 xAxis;
+extern glm::vec3 yAxis;
+extern glm::vec3 zAxis;
+extern glm::vec3 zero;
+
 /// Get angle (radians) between 2 vectors from arbitrary origin
 float angleBetween(glm::vec3 a, glm::vec3 b, glm::vec3 origin);
+float angleBetween(glm::vec3 a, glm::vec3 b);
 
 /// Get rotation quaternion. Quaternions are a 4 dimensional extension of complex numbers. Useful for rotations, and more efficient than Rotation matrices (Euler angles) (https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html).
 glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle);
@@ -115,13 +121,15 @@ glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle);
 /// Use a rotation quaternion for rotating a 3D point. Active rotation (point rotated with respect to coordinate system). 
 glm::vec3 rotatePoint(const glm::vec4& rotQuat, const glm::vec3& point);
 
-/// Get the Hamilton product of 2 quaternions (result = q1 * q2). The product of two rotation quaternions (A * B) will be equivalent to rotation B followed by rotation A (around the rotation axes the object has at the beginning).
+/// Get the Hamilton product of 2 or 3 quaternions (q1 rotation first, then q2, then q3). The product of two rotation quaternions (A * B) will be equivalent to rotation B followed by rotation A (around the rotation axes the object has at the beginning).
 glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2, const glm::vec4& q3);
 glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2);
 
-/// Get rotation matrix. Use it to rotate a point (result = rotMatrix * point) (http://answers.google.com/answers/threadview/id/361441.html)
+/// Get rotation matrix. Use it to rotate a point (result = rotMatrix * point) (http://answers.google.com/answers/threadview/id/361441.html).
 glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle);
 
+/// Get rotation matrix from a rotation quaternion (https://www.mathworks.com/help/nav/ref/quaternion.rotmat.html).
+glm::mat4 getRotationMatrix(glm::vec4 quat);
 
 // Others ----------------------------------------------------------
 

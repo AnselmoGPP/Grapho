@@ -140,7 +140,7 @@ private:
 };
 
 
-/// Class for detecting when a key has been began to be pressed.
+/// Class for detecting when a key has began to be pressed.
 class PressBegin
 {
     int GLFW_KEY;

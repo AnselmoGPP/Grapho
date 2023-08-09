@@ -82,7 +82,7 @@ TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
 Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
 
-GrassSystem_XY grass(app, lights);
+GrassSystem_planet grass(app, lights, planetGrid, 0, 15);
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 		TimerSet time;
 		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
 	#endif
-	
+
 	//tests(); return 0;
 
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
@@ -111,19 +111,19 @@ int main(int argc, char* argv[])
 		//setPoints(app);
 		setAxis(app);
 		//setGrid(app);
-		//setSkybox(app);
+		setSkybox(app);
 		//setCottage(app);
 		//setRoom(app);
 		//setChunk(app);
 		//setChunkGrid(app);
 		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
 		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
-		//grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
+		grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
 
 		setNoPP(app);			// In the same layer, the last drawn 
 		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
 
-		//setSun(app);
+		setSun(app);
 		//setReticule(app);
 		
 		app.renderLoop();		// Start rendering
@@ -158,10 +158,6 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 
 	size_t i;
-	
-	//std::cout << d.fps << ") " << d.groundHeight << " / " << rend.loadedModels() << ", " << rend.loadedShaders() << ", " << rend.loadedTextures() << std::endl;
-	//for(size_t i = 0; i < rend.loadedModels(); i++)
-	//std::cout << d.fps << ')' << std::endl,
 
 	#ifdef DEBUG_MAIN
 		std::cout << rend.getFrameCount() << ") " << std::endl;
@@ -207,6 +203,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	planetSeaGrid.toLastDraw();
 
 	grass.updateGrass(d.camPos, planetGrid, view, proj, d.frameTime);
+	grass.toLastDraw();
 
 /*
 	if (check.ifBigger(frameTime, 5))
@@ -345,7 +342,7 @@ void setLights()
 	//lightss.turnOff(0);
 	lights.setDirectional(0,  sun.lightDirection(), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));						// Sun
 	lights.setDirectional(1, -sun.lightDirection(), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));	// Night
-	lights.setSpot(2, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1, 0.09, 0.032, 0., 0.);	// Flashlight
+	lights.setSpot(2, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
 	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
 	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
 }
@@ -392,7 +389,7 @@ void setAxis(Renderer& app)
 
 	std::vector<float> v_axis;
 	std::vector<uint16_t> i_axis;
-	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);
+	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);		// getAxis(), getLongAxis()
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
 	std::vector<ShaderLoader> shaders{ ShaderLoaders[2], ShaderLoaders[3] };
@@ -624,27 +621,42 @@ void setNoPP(Renderer& app)
 
 void tests()
 {
-	std::cout << __func__ << std::endl;
+	glm::vec3 pos = { 1, 0, 0 };
+	float latRot = pi / 4;
+	float lonRot = pi / 4;
 
-	std::vector<glm::vec3> vec = {
-		glm::vec3(9, 0, 0),
-		glm::vec3(9, 0, 0),
-		glm::vec3(5, 0, 0),
-		glm::vec3(8, 0, 0),
-		glm::vec3(4, 0, 0),
-		glm::vec3(22, 0, 0),
-		glm::vec3(3, 0, 0),
-		glm::vec3(6, 0, 0),
-		glm::vec3(2, 0, 0),
-		glm::vec3(10, 0, 0),
-		glm::vec3(7, 0, 0),
-		glm::vec3(9, 0, 0),
-		glm::vec3(9, 0, 0)
-	};
-	
-	Quicksort_distVec3 sorter;
-	sorter.sort(vec.begin(), vec.end() - 1, glm::vec3(0,0,0));
+	glm::vec4 latQuat = getRotQuat(yAxis, -latRot);
+	glm::vec4 lonQuat = getRotQuat(zAxis, lonRot);
 
-	for (int i = 0; i < vec.size(); i++) std::cout << vec[i].x << ", ";
-	std::cout << std::endl;
+	glm::vec3 pos1 = rotatePoint(latQuat, pos);
+	printVec(pos1);			// 0.707107  0  0.707107
+
+	glm::vec3 pos2 = rotatePoint(lonQuat, pos);
+	printVec(pos2);			// 0.707107  0.707107  0
+
+	glm::vec4 finalQuat = productQuat(latQuat, lonQuat);
+	glm::vec3 pos3 = rotatePoint(finalQuat, pos);
+	printVec(pos3);			// (lon, lat) 0.5  0.707107  0.5  (0.577, 0.577, 0.707)
+							// (lat, lon) 0.5  0.5  0.707107  (0.577, 0.577, 0.707)
+
+	std::cout << "--------------------------------------" << std::endl;
+
+	glm::vec3 gPos    = { sqrt(1 / 2), 0, sqrt(1 / 2) };
+	glm::vec3 camPos  = { sqrt(1/2), -1, sqrt(1/2) };	
+	glm::vec4 rotQuat = getRotQuat(yAxis, -pi / 4);
+	glm::vec3 front, right, dirToCam, dirToCamXY;
+	float angle;
+
+	front = rotatePoint(rotQuat, zAxis);	// rotate front & get new front
+	printVec(front);
+	right = glm::normalize(glm::cross(front, zAxis));
+	printVec(right);
+	dirToCam = glm::normalize(camPos - gPos);
+	printVec(dirToCam);
+	dirToCamXY = dirToCam * right + dirToCam * front;
+	printVec(dirToCamXY);
+	angle = angleBetween(front, dirToCamXY);
+	std::cout << angle << std::endl;
+	//if (glm::dot(dirToCam, right) > 0) angle *= -1;
+	rotQuat = productQuat(rotQuat, getRotQuat(xAxis, angle));
 }

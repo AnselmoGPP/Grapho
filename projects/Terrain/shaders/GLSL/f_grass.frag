@@ -23,25 +23,29 @@ layout(location = 0) out vec4 outColor;								// layout(location=0) specifies t
 
 void main()
 {
-	//savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
-		
-	vec4 albedo;
-	//albedo = texture(texSampler[0], unpackUVmirror(inUVs, 1));
+	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	
 	// Choose texture
+	vec4 albedo;
 	vec4 noise = texture(texSampler[3], inCenterPos.xy/100.f);
 	
-	if(noise.x < 0.2)       albedo = texture(texSampler[0], unpackUVmirror(inUVs, 1));
-	else if (noise.x > 0.4) albedo = texture(texSampler[1], unpackUVmirror(inUVs, 1));
-	else                    albedo = texture(texSampler[2], unpackUVmirror(inUVs, 1));
+	if(noise.x < 0.2)       albedo = texture(texSampler[0], unpackUVmirror(inUVs, 1));		// vec4(1, 0, 0, 1);//
+	else if (noise.x > 0.4) albedo = texture(texSampler[1], unpackUVmirror(inUVs, 1));		// vec4(0, 1, 0, 1);//
+	else                    albedo = texture(texSampler[2], unpackUVmirror(inUVs, 1));		// vec4(0, 0, 1, 1);//
 
 	// Transparency (distance to camPos)
 	float dist = getDist(inPos, inCamPos);
 	if(dist < 1) albedo.a *= getRatio(dist, 0.4, 1);
-	if(dist > 7) albedo.a *= 1.f - getRatio(dist, 7, 8);
+	//if(dist > 12) albedo.a *= 1.f - getRatio(dist, 12, 16);
 	
 	// Transparency (roots)
 	albedo.a *= getRatio(inUVs.y, 0, 0.1);
+	
+	// Color filter
+	albedo.xyz *= vec3(0.4, 0.4, 0.4);
+	
+	// Light
+	albedo.xyz = getFragColor(albedo.xyz, inNormal, vec3(0.1, 0.1, 0.1), 0.8);
 	
 	//outColor.xyz = getFragColor(albedo.xyz, inNormal, vec3(0, 0, 0), 0.f);
 	//outColor.w = albedo.w;

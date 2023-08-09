@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include "physics.hpp"
 
 // BulletPhysics ----------------------------------------------------------
@@ -169,12 +169,25 @@ void PlanetParticle::updateState(float deltaTime)
 
 // Maths ----------------------------------------------------------
 
+glm::vec3 xAxis(1, 0, 0);
+glm::vec3 yAxis(0, 1, 0);
+glm::vec3 zAxis(0, 0, 1);
+glm::vec3 zero (0, 0, 0);
+
 float angleBetween(glm::vec3 a, glm::vec3 b, glm::vec3 origin)
 {
-	float dotP = glm::dot(glm::normalize(a - origin), glm::normalize(b - origin));
+	// A·B = |A|*|B|*cos(θ);   θ = acos( (A·B)/(|A|*|B|) )     (|X| is the length of vector X)
 
-	if (dotP > 1)		dotP =  1;
-	else if (dotP < -1)	dotP = -1;
+	float dotP = glm::dot(glm::normalize(a - origin), glm::normalize(b - origin));
+	dotP = glm::clamp(dotP, -1.f, 1.f);			// if (dotP > 1) dotP =  1; else if (dotP < -1) dotP = -1;
+
+	return glm::acos(dotP);
+}
+
+float angleBetween(glm::vec3 a, glm::vec3 b)
+{
+	float dotP = glm::dot(glm::normalize(a), glm::normalize(b));
+	dotP = glm::clamp(dotP, -1.f, 1.f);			// if (dotP > 1) dotP =  1; else if (dotP < -1) dotP = -1;
 
 	return glm::acos(dotP);
 }
@@ -196,7 +209,7 @@ glm::vec3 rotatePoint(const glm::vec4& rotQuat, const glm::vec3& point)
 
 glm::vec4 productQuat(const glm::vec4 &q1, const glm::vec4 &q2)
 {
-	return glm::vec4(
+	return glm::vec4(	// q1 * q2
 		q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
 		q1[0] * q2[1] + q1[1] * q2[0] - q1[2] * q2[3] + q1[3] * q2[2],
 		q1[0] * q2[2] + q1[1] * q2[3] + q1[2] * q2[0] - q1[3] * q2[1],
@@ -206,7 +219,7 @@ glm::vec4 productQuat(const glm::vec4 &q1, const glm::vec4 &q2)
 
 glm::vec4 productQuat(const glm::vec4& q1, const glm::vec4& q2, const glm::vec4& q3)
 {
-	return productQuat(productQuat(q1, q2), q3);	
+	return productQuat(productQuat(q1, q2), q3);	// q1 * q2 * q3
 }
 
 glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle)
@@ -229,6 +242,47 @@ glm::mat3 getRotationMatrix(glm::vec3 rotAxis, float angle)
 		2 * (q3 * q2 + q0 * q1),
 		q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3
 	);
+}
+
+glm::mat4 getRotationMatrix(glm::vec4 quat)
+{
+	// Frame rotation matrix
+	return glm::mat4(
+		2 * (quat[0] * quat[0] + quat[1] * quat[1]) - 1,
+		2 * (quat[1] * quat[2] + quat[0] * quat[3]),
+		2 * (quat[1] * quat[3] - quat[0] * quat[2]),
+		0,
+
+		2 * (quat[1] * quat[2] - quat[0] * quat[3]),
+		2 * (quat[0] * quat[0] + quat[2] * quat[2]) - 1,
+		2 * (quat[2] * quat[3] + quat[0] * quat[1]),
+		0,
+
+		2 * (quat[1] * quat[3] + quat[0] * quat[2]),
+		2 * (quat[2] * quat[3] - quat[0] * quat[1]),
+		2 * (quat[0] * quat[0] + quat[3] * quat[3]) - 1,
+		0,
+
+		0, 0, 0, 1);
+
+	// Point rotation matrix (transpose of frame rotation matrix)
+	return glm::mat4(
+		2 * (quat[0] * quat[0] + quat[1] * quat[1]) - 1,
+		2 * (quat[1] * quat[2] - quat[0] * quat[3]),
+		2 * (quat[1] * quat[3] + quat[0] * quat[2]),
+		0,
+
+		2 * (quat[1] * quat[2] + quat[0] * quat[3]),
+		2 * (quat[0] * quat[0] + quat[2] * quat[2]) - 1,
+		2 * (quat[2] * quat[3] - quat[0] * quat[1]),
+		0,
+
+		2 * (quat[1] * quat[3] - quat[0] * quat[2]),
+		2 * (quat[2] * quat[3] + quat[0] * quat[1]),
+		2 * (quat[0] * quat[0] + quat[3] * quat[3]) - 1,
+		0,
+
+		0, 0, 0, 1 );
 }
 
 

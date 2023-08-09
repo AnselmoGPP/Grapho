@@ -20,6 +20,7 @@ glm::mat4 modelMatrix();
 
 /// Get a user-defined Model Matrix 
 glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const glm::vec3& translation);
+glm::mat4 modelMatrix2(const glm::vec3& scale, const glm::vec4& rotQuat, const glm::vec3& translation);
 
 /// Model matrix for Normals (it's really a mat3, but a mat4 is returned because it is easier to pass to shader since mat4 is aligned with 16 bytes). Normals are passed to fragment shader in world coordinates, so they have to be multiplied by the model matrix (MM) first (this MM should not include the translation part, so we just take the upper-left 3x3 part). However, non-uniform scaling can distort normals, so we have to create a specific MM especially tailored for normal vectors: mat3(transpose(inverse(model))) * vec3(normal).
 glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix);
@@ -75,6 +76,7 @@ void printVec(const T& vec)
 
 /// Get the XYZ axis as 3 RGB lines
 size_t getAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float lengthFromCenter, float colorIntensity);
+size_t getLongAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float lengthFromCenter, float colorIntensity);
 
 /// Get a set of lines that form a grid
 size_t getGrid(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color);
@@ -111,6 +113,8 @@ public:
 
 extern double pi;
 
+float dist(glm::vec3& a, glm::vec3& b);
+float sqrDist(glm::vec3& a, glm::vec3& b);
 glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal);
 
 /// This class checks if argument X (float) is bigger than argument Y (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
@@ -250,7 +254,7 @@ public:
 	void sort(std::vector<glm::vec3>::iterator low, std::vector<glm::vec3>::iterator high, const glm::vec3& camPos);
 };
 
-/// QuickSort algorithm (using Hoare partition scheme). It only sorts a vector<int> that represents indices for a vector<vec3> representing positions. During comparisons, the underlying positions are taken, and compares distances to camPos. Only sorts the vector<int> (index values).
+/// QuickSort algorithm (using Hoare partition scheme). It only sorts a vector<int> (index values) based on a vector<vec3> (positions). During comparisons, the underlying positions are taken to get distances, which are compared to camPos.
 class Quicksort_distVec3_index
 {
     // Sorting

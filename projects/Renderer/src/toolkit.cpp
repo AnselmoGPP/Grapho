@@ -4,9 +4,22 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "toolkit.hpp"
+#include "physics.hpp"
 
 
 double pi = 3.141592653589793238462;
+
+float dist(glm::vec3& a, glm::vec3& b)
+{
+	glm::vec3 vec = a - b;
+	return std::sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
+float sqrDist(glm::vec3& a, glm::vec3& b)
+{
+	glm::vec3 vec = a - b;
+	return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
+}
 
 glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal)
 {
@@ -32,6 +45,19 @@ glm::mat4 modelMatrix(const glm::vec3& scale, const glm::vec3& rotation, const g
 
 	return mm;
 }
+
+glm::mat4 modelMatrix2(const glm::vec3& scale, const glm::vec4& rotQuat, const glm::vec3& translation)
+{
+	glm::mat4 mm(1.0f);
+
+	// Execution order: Scale > X rot > Y rot > Z rot > Translation
+	mm = glm::translate(mm, translation);
+	mm *= getRotationMatrix(rotQuat);
+	mm = glm::scale(mm, scale);
+
+	return mm;
+}
+
 
 glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix)
 {
@@ -99,6 +125,27 @@ size_t getAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& ind
 	// Total number of vertex
 	return 6;
 }
+
+size_t getLongAxis(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, float lengthFromCenter, float colorIntensity)
+{
+	// Vertex buffer
+	vertexDestination = 
+	{
+		-lengthFromCenter, 0, 0,   colorIntensity, 0, 0,
+		 lengthFromCenter, 0, 0,   colorIntensity, 0, 0,
+		0, -lengthFromCenter, 0,   0, colorIntensity, 0,
+		0,  lengthFromCenter, 0,   0, colorIntensity, 0,
+		0, 0, -lengthFromCenter,   0, 0, colorIntensity,
+		0, 0,  lengthFromCenter,   0, 0, colorIntensity 
+	};
+
+	// Indices buffer
+	indicesDestination = std::vector<uint16_t>{ 0, 1,  2, 3,  4, 5 };
+
+	// Total number of vertex
+	return 6;
+}
+
 
 size_t getGrid(std::vector<float>& vertexDestination, std::vector<uint16_t>& indicesDestination, int stepSize, size_t stepsPerSide, float height, glm::vec3 color)
 {
