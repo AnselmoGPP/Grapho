@@ -98,8 +98,8 @@ float getRockRatio(float slopeThreshold, float mixRange)
 vec3 getTexture_GrassRock()
 {	
 	// Texture resolution and Ratios.
-	float tf[2];												// texture factors
-	float ratioMix  = getTexScaling(inDist, 15, 40, 0.2, tf[0], tf[1]);	// params: initialTexFactor, baseDist, mixRange, minHeight, maxHeight
+	float tf[2];														// texture factors
+	float ratioMix  = getTexScaling(inDist, 10, 40, 0.2, tf[0], tf[1]);	// params: fragDist, initialTexFactor, baseDist, mixRange, texFactor1, texFactor2
 
 	// Get textures
 	vec3 grassPar[2];
