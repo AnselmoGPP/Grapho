@@ -9,19 +9,19 @@
 
 double pi = 3.141592653589793238462;
 
-float dist(glm::vec3& a, glm::vec3& b)
+float getDist(const glm::vec3& a, const glm::vec3& b)
 {
 	glm::vec3 vec = a - b;
 	return std::sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
-float sqrDist(glm::vec3& a, glm::vec3& b)
+float getSqrDist(const glm::vec3& a, const glm::vec3& b)
 {
 	glm::vec3 vec = a - b;
 	return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
 }
 
-glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal)
+glm::vec3 reflect(const glm::vec3& lightRay, const glm::vec3& normal)
 {
 	//normal = glm::normalize(normal);
 	return lightRay - 2 * glm::dot(lightRay, normal) * normal;
@@ -525,9 +525,9 @@ void Quicksort_distVec3_index::sort(std::vector<glm::vec3>& positions, std::vect
 {
 	// <<< what if high < low?
 
-	int size = high - low + 1;
-	indexVals.resize(size);
-	for (int i = 0; i < size; i++) indexVals[i] = i;
+	//int size = high - low + 1;
+	//indexVals.resize(size);
+	//for (int i = 0; i < size; i++) indexVals[i] = i;
 
 	this->camPos = camPos;
 	this->pos = &positions;

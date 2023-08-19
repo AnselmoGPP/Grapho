@@ -4,7 +4,7 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
-#define RADIUS 2020
+#define RADIUS 2010
 
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
@@ -54,26 +54,26 @@ vec3 getTex_Sea()
 	vec3 specularity = vec3(0.6, 0.6, 0.6);
 	float roughness  = 10;
 	float scale      = 150;
-	float speed      = 4;
+	float speed      = 2;
 
 	// Green and foam colors
 	if(inDist < 200)
 	{
 		vec3 finalColor = waterColor;
 		
-		// Green water (depth)
+		// Green water (depth map)
 		vec3 depth = triplanarNoColor_Sea(texSampler[32], scale, speed, inTime).rgb;
 		if(depth.x > 0.32)
 		{
-			float ratio = getRatio(depth.x, 0.32, 0.45);	// Mix ratio
-			finalColor = finalColor * (1 - ratio) + vec3(0.17, 0.71, 0.61) * ratio;
+			float ratio = getRatio(depth.x, 0.32, 0.70);	// Mix ratio
+			finalColor = mix(finalColor, vec3(0.17, 0.71, 0.61), ratio);
 		}
 		
 		// Green water (height from nucleus)
 		if(inGroundHeight > 2021) 
 		{
 			float ratio = getRatio(inGroundHeight, 2021, 2027);	// Mix ratio
-			finalColor = finalColor * (1 - ratio) + vec3(0.17, 0.71, 0.61) * ratio;
+			finalColor = mix(finalColor, vec3(0.17, 0.71, 0.61), ratio);
 		}
 	
 		// Foam
@@ -81,7 +81,7 @@ vec3 getTex_Sea()
 		if(foam.x > 0.17) 
 		{
 			float ratio = getRatio(foam.x, 0.17, 0.25);	// Mix ratio
-			finalColor = finalColor * (1 - ratio) + vec3(0.98, 0.98, 0.98) * ratio;
+			finalColor = mix(finalColor, vec3(0.98, 0.98, 0.98), ratio);
 			specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
 			roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<
 		}
@@ -89,7 +89,7 @@ vec3 getTex_Sea()
 		if(inDist > 100)	// Mix area (
 		{
 			float ratio = getRatio(inDist, 100, 200);
-			finalColor = finalColor * (1 - ratio) + waterColor * ratio;
+			finalColor = mix(finalColor, waterColor, ratio);
 		}
 		
 		waterColor = finalColor;
@@ -108,13 +108,13 @@ vec3 getTex_Sea()
 		vec3 normal  = triplanarNormal_Sea(texSampler[31], scale, speed, inTime);
 		vec3 normal2 = triplanarNormal_Sea(texSampler[31], scale * 5, speed * 1.5, inTime);
 		float ratio  = getRatio(inDist, 150, 200);
-		normal       = normal * (1 - ratio) + normal2 * ratio;
+		normal       = mix(normal, normal2, ratio);
 		
 		return getFragColor( 
-			waterColor,
-			normal,
-			specularity,
-			roughness );
+				waterColor,
+				normal,
+				specularity,
+				roughness );
 	}
 	
 	return getFragColor( 	// Far normals

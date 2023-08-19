@@ -51,7 +51,7 @@ void setNoPP(Renderer& app);			// --, PP
 void tests();
 
 // Models, textures, & shaders
-Renderer app(update, &camera_3, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+Renderer app(update, &camera_4, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 std::map<std::string, modelIter> assets;		// Model iterators
 
 // Others
@@ -80,9 +80,9 @@ PlainChunk singleChunk(app, &noiser_1, glm::vec3(100, 29, 0), 5, 41, 11);
 TerrainGrid terrGrid(&app, &noiser_1, lights, 6400, 29, 8, 2, 1.2, false);
 
 Planet planetGrid   (&app, &noiser_2, lights, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
-Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2020, { 0.f, 0.f, 0.f }, true);
+Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
 
-GrassSystem_planet grass(app, lights, planetGrid, 0, 15);
+GrassSystem_planet grass(app, lights, planetGrid, 20, 6);
 
 bool updateChunk = false, updateChunkGrid = false;
 
@@ -117,11 +117,11 @@ int main(int argc, char* argv[])
 		//setChunk(app);
 		//setChunkGrid(app);
 		planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
-		//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
 		grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
 
-		setNoPP(app);			// In the same layer, the last drawn 
-		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
+		//setNoPP(app);			// In the same layer, the last drawn 
+		setAtmosphere(app);		// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
 
 		setSun(app);
 		//setReticule(app);
@@ -156,7 +156,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	d.camUp = rend.getCamera().getCamUp();
 	d.camRight = rend.getCamera().getRight();
 	d.groundHeight = planetGrid.getGroundHeight(d.camPos);
-
+	
 	size_t i;
 
 	#ifdef DEBUG_MAIN
@@ -202,7 +202,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	planetSeaGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
 	planetSeaGrid.toLastDraw();
 
-	grass.updateGrass(d.camPos, planetGrid, view, proj, d.frameTime);
+	grass.updateGrass(d.camPos, planetGrid, view, proj, d.frameTime, d.fov, d.camDir);
 	grass.toLastDraw();
 
 /*

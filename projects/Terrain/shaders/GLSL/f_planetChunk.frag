@@ -5,6 +5,9 @@
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
 #define RADIUS 2000
+#define SEALEVEL 2010
+#define DIST_1 5
+#define DIST_2 8
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
@@ -28,7 +31,7 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 // Declarations:
 
 vec3  getDryColor (vec3 color, float minHeight, float maxHeight);	
-vec3  getBlack(vec3 color, float min, float max);
+float getBlackRatio(float min, float max);
 void getTexture_Sand(inout vec3 result);
 vec3 getTexture_GrassRock();
 
@@ -39,8 +42,10 @@ void main()
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	savePNT(inPos, inNormal, inTB3);
 
-	vec3 color = getTexture_GrassRock();
-	color = getBlack(color, 2015, 2020);
+	float blackRatio = getBlackRatio(2005, 2010);
+	if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
+		
+	vec3 color = mix(getTexture_GrassRock(), vec3(0,0,0), blackRatio);
 	outColor = vec4(color, 1.0);
 }
 
@@ -65,20 +70,23 @@ void getTexture_Sand(inout vec3 result)
 						triplanarNoColor(texSampler[23], tf).rgb,
 						triplanarNoColor(texSampler[24], tf).r * 255 );
 
-	result = (ratio) * plains + (1-ratio) * dunes;
+	result = mix(dunes, plains, ratio);
 }
 
 // Get ratio of snow given a slope threshold mixing range (mixRange), and a snow height range at equator (minHeight, maxHeight).
-float getSnowRatio(float mixRange, float minHeight, float maxHeight)
+float getSnowRatio_Poles(float mixRange, float minHeight, float maxHeight)
 {
 	float lat    = atan(abs(inPos.z) / sqrt(inPos.x * inPos.x + inPos.y * inPos.y));
-	float height = inGroundHeight - RADIUS;
 	float decrement = maxHeight * (lat / (PI/2.f));				// height range decreases with latitude
-	minHeight -= decrement;
-	maxHeight -= decrement;
-	float slopeThreshold = (height - minHeight) / (maxHeight - minHeight);	// Height ratio == Slope threshold
+	float slopeThreshold = ((inGroundHeight-RADIUS) - (minHeight-decrement)) / ((maxHeight-decrement) - (minHeight-decrement));	// Height ratio == Slope threshold
 	
-	return 1 - clamp((inSlope - (slopeThreshold - mixRange)) / (2 * mixRange), 0.f, 1.f);
+	return getRatio(inSlope, slopeThreshold + mixRange, slopeThreshold - mixRange);
+}
+
+float getSnowRatio_Height(float mixRange, float minHeight, float maxHeight)
+{
+	float slopeRatio = getRatio(inGroundHeight - RADIUS, maxHeight, minHeight);
+	return getRatio(inSlope, slopeRatio - mixRange, slopeRatio + mixRange);
 }
 
 // Get ratio of rock given a slope threshold (slopeThreshold) and a slope mixing range (mixRange).
@@ -100,15 +108,13 @@ vec3 getTexture_GrassRock()
 	vec3 snow2Par[2];
 	vec3 sandPar [2];
 
-	float lowResDist = sqrt(inCamSqrHeight - RADIUS * RADIUS);	// Distance from where low resolution starts
-	if(lowResDist < 700) lowResDist = 700;						// Minimum low res. distance
+	float lowResDist = getLowResDist(inCamSqrHeight, RADIUS, 700);
 	
 	vec3 dryColor = getDryColor(vec3(0.9, 0.6, 0), RADIUS + 15, RADIUS + 70);
-
-	int i;
-	if(inDist > lowResDist * 1.0)	// Low resolution distance (far)
+	
+	if(false && inDist > lowResDist * 1.0)	// Low resolution distance (far)
 	{
-		for(i = 0; i < 2; i++)
+		for(int i = 0; i < 2; i++)
 		{
 			grassPar[i]  = getFragColor( 
 				triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
@@ -151,21 +157,21 @@ vec3 getTexture_GrassRock()
 			}
 		}
 	}
-	else							// High resolution distance (close)
+	else									// High resolution distance (close)
 	{
-		for(i = 0; i < 2; i++)
+		for(int i = 0; i < 2; i++)
 		{
 				grassPar[i]  = getFragColor(
-					triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
-					triplanarNormal (texSampler[1], tf[i]),
-					triplanarNoColor(texSampler[2], tf[i]).rgb,
-					triplanarNoColor(texSampler[3], tf[i]).r * 255 );
+					triplanarTexture(texSampler[0],  tf[i]).rgb * dryColor,
+					triplanarNormal (texSampler[16], tf[i] * 1.1),
+					triplanarNoColor(texSampler[2],  tf[i]).rgb,
+					triplanarNoColor(texSampler[3],  tf[i]).r * 255 );
 
 				rockPar[i] = getFragColor(
-					triplanarTexture(texSampler[5], tf[i]).rgb,
-					triplanarNormal (texSampler[6], tf[i]),
-					triplanarNoColor(texSampler[7], tf[i]).rgb,
-					triplanarNoColor(texSampler[8], tf[i]).r * 255 );
+					triplanarTexture(texSampler[5],  tf[i]).rgb,
+					triplanarNormal (texSampler[6],  tf[i]),
+					triplanarNoColor(texSampler[7],  tf[i]).rgb,
+					triplanarNoColor(texSampler[8],  tf[i]).r * 255 );
 
 				snow1Par[i] = getFragColor(
 					triplanarTexture(texSampler[15], tf[i]).rgb,
@@ -204,38 +210,54 @@ vec3 getTexture_GrassRock()
 	vec3 snowR = mix(snow2Par [1], snow2Par [0], ratioMix);		// rough snow
 	vec3 sand  = mix(sandPar  [1], sandPar  [0], ratioMix);
 
-	// Grass + Rock:
+	// Grass:
+	if(inDist < DIST_2)		// Close grass use different normals (snow normals Vs grass normals)
+	{	
+		float closeRatio = getRatio(inDist, 0.2 * DIST_2, DIST_2);
+		
+		grass = mix( getFragColor(
+							triplanarTexture(texSampler[0], tf[0]).rgb * dryColor,
+							triplanarNormal (texSampler[1], tf[0]),
+							triplanarNoColor(texSampler[2], tf[0]).rgb,
+							triplanarNoColor(texSampler[3], tf[0]).r * 255 ),
+					 grass,
+					 closeRatio );
+	}
 
+	// Grass + Rock:
 	vec3 result;
 	float ratioRock = getRockRatio(0.22, 0.02);					// params: slopeThreshold, mixRange
-	float ratioSnow = getSnowRatio(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
-	float ratioCoast = 1.f - getRatio(inGroundHeight, 2020, 2021);
+	float ratioCoast = 1.f - getRatio(inGroundHeight, SEALEVEL, SEALEVEL + 1);
 
-	if(inDist < 5) 
-	{
+	if(inDist < DIST_1)		// Very close range
+	{		
 		// Rock & grass
-		float grassHeight  = triplanarNoColor(texSampler[ 4], tf[0]).r;
-		float rockHeight   = triplanarNoColor(texSampler[ 9], tf[0]).r;
-		//float sandHeight  = triplanarTexture(texSampler[29], tf[1]).r;
-		result = mixByHeight(grass, rock, grassHeight, rockHeight, ratioRock, 0.1);
+		float grassHeight = triplanarNoColor(texSampler[4], tf[0]).r;
+		float rockHeight  = triplanarNoColor(texSampler[9], tf[0]).r;
+		if(inDist > DIST_1 - 2)
+			result  = mix(mixByHeight(grass, rock, grassHeight, rockHeight, ratioRock, 0.1),
+						  mix(grass, rock, ratioRock),
+						  getRatio(inDist, DIST_1 - 1, DIST_1));
+		else result = mixByHeight(grass, rock, grassHeight, rockHeight, ratioRock, 0.1);
 		
 		// Rocky coast
-		if(inGroundHeight < 2022)	// Rocky coast
+		if(inGroundHeight < (SEALEVEL + 2))	// Rocky coast
 			result = mixByHeight(result, rock, grassHeight, rockHeight, ratioCoast, 0.1);
 	}
 	else
 	{
 		result = mix(grass, rock, ratioRock);
-		if(inGroundHeight < 2021) result = mix(result, rock, ratioCoast);
+		if(inGroundHeight < (SEALEVEL + 1)) result = mix(result, rock, ratioCoast);
 	}
 	
 	// Sand:
-	float maxSlope = 1.f - getRatio(inGroundHeight, 1990, 2025);
+	float maxSlope = 1.f - getRatio(inGroundHeight, SEALEVEL - 60, SEALEVEL + 5);
 	float sandRatio = 1.f - getRatio(inSlope, maxSlope - 0.05, maxSlope);
 	result = mix(result, sand, sandRatio);
 	
 	// Snow:
-	
+	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
+	float ratioSnow = getSnowRatio_Height(0.1, 90, 120);
 	vec3 snow = mix(snowP, snowR, ratioRock);
 	result = mix(result, snow, ratioSnow);
 	
@@ -249,9 +271,8 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 	return color + increment * ratio;
 }
 
-vec3 getBlack(vec3 color, float min, float max)
+float getBlackRatio(float min, float max)
 {
-	float ratio = getRatio(inGroundHeight, min, max);	
-	return vec3(0,0,0) * (1.f - ratio) + color * ratio;
+	return 1.f - getRatio(inGroundHeight, min, max);	
 }
 

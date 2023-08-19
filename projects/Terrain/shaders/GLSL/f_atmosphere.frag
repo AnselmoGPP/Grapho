@@ -158,10 +158,6 @@ vec2 raySphere(vec3 planetCentre, float atmRadius, vec3 rayOrigin, vec3 rayDir)
 //		https://github.com/SebLague/Solar-System/blob/Development/Assets/Scripts/Celestial/Shaders/PostProcessing/Atmosphere.shader
 //		https://www.youtube.com/watch?v=DxfEbulyFcY
 
-float lerp(float v1, float v2, float ratio) { return v1 + (v2 - v1) * ratio; }
-
-vec3 lerp(vec3 v1, vec3 v2, float ratio) { return v1 + (v2 - v1) * ratio; }
-
 // Atmosphere's density at one point. The closer to the surface, the denser it is.
 float densityAtPoint(vec3 point)
 {

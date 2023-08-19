@@ -4,16 +4,16 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
-#define RADIUS 2020
-#define MIN 100
-#define MAX 200
+#define RADIUS 2010
+#define MIN 100			// min. dist.
+#define MAX 200			// max. dist.
 #define WAVES 6
 #define COUNT 6
 
 vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
 float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
 float w        [WAVES] = { 0.05, 0.06, 0.1, 0.15, 0.2, 0.25 };	// Frequency (number of cycles in 2π)
-float A        [WAVES] = { 1.5,  1.4,  0.9, 0.8,  0.5, 0.4 };	// Amplitude
+float A        [WAVES] = { 0.4,  0.4,  0.4, 0.4,  0.4, 0.4 };	// Amplitude
 float steepness[WAVES] = { 0.1,  0.1,  0.2, 0.2,  0.3, 0.3 };	// [0,1]
 float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/(w·A)] (bigger values produce loops)
 

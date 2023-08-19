@@ -105,7 +105,7 @@ protected:
 	int numAttribs;							//!< Number of attributes per vertex (9)
 
 	VerticesLoader* vertexData;
-	std::vector<float> vertex;				//!< VBO[n][6] (vertex position[3], normals[3])
+	std::vector<float> vertex;				//!< VBO[n][9] (vertex position[3], normals[3], gap-fix data[3])
 	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
 
 	glm::vec3 getVertex(size_t position) const;
@@ -235,7 +235,7 @@ public:
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
 	void toLastDraw();												//!< Call it after updateTree(), so the correct tree is put last to draw
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, float depth);		//!< Get active chunks with depth >= X in the active tree 
+	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);		//!< Get active chunks with depth >= X in the active tree 
 
 protected:
 	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
@@ -356,7 +356,7 @@ struct Planet
 	void toLastDraw();
 	float getSphereArea();																										//!< Given planet radius, get sphere's area
 	float getGroundHeight(const glm::vec3& camPos);
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, float depth);
+	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);
 
 	const float radius;
 	const glm::vec3 nucleus;
@@ -390,14 +390,16 @@ public:
 
 // Grass ----------------------------------------------------------------------
 
+bool grassSupported_callback(const glm::vec3& pos, float groundSlope);
+
 class GrassSystem
 {
 public:
-	GrassSystem(Renderer& renderer, LightSet& lights, float minDist, float maxDist);
+	GrassSystem(Renderer& renderer, LightSet& lights, float maxDist, bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope) = grassSupported_callback);
 	~GrassSystem();
 
 	void createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures);
-	void updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time);
+	void updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time, float fov, glm::vec3& camDir);
 	void toLastDraw();
 
 protected:
@@ -408,23 +410,28 @@ protected:
 	std::vector<glm::vec3> pos;     //!< position
 	std::vector<glm::vec4> rot;     //!< rotation quaternions
 	std::vector<glm::vec3> sca;		//!< scaling
-	std::vector<int> index;			// Indices (to sort)
+	std::vector<float> slp;			//!< ground slope
+	std::vector<int> index;			//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
 
 	Quicksort_distVec3_index sorter;
 	bool modelOrdered;
-	glm::vec3 camPos;
-	float pi;
+	glm::vec3 camPos, camDir;
+	float pi, fov;
 
-	float minDist;			//!< Min. rendering distance
-	float maxDist;			//!< Max. rendering distance
+	float maxDist;							//!< Max. rendering distance
 
-	virtual void getGrassItems(std::vector<glm::vec3>& pos, std::vector<glm::vec4>& rot, std::vector<int>& index) = 0;
+	virtual void getGrassItems(bool toSort)  = 0;
+	virtual bool renderRequired() = 0;									//!< Evaluated each frame. Function used by this class for evaluating sub-class related conditions and forcing grass rendering.
+	bool(*grassSupported) (const glm::vec3& pos, float groundSlope);	//!< Evaluated each grass. Callback used by the client for evaluating world-related conditions and forcing grass rendering.
+
+	bool withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov);
 };
+
 
 class GrassSystem_XY : public GrassSystem
 {
 public:
-	GrassSystem_XY(Renderer& renderer, LightSet& lights, float step, float side, float minDist, float maxDist);
+	GrassSystem_XY(Renderer& renderer, LightSet& lights, float step, float side, float maxDist);
 	~GrassSystem_XY();
 
 protected:
@@ -432,25 +439,31 @@ protected:
 	float step;				//!< step size
 	float side;				//!< steps per side
 
-	void getGrassItems(std::vector<glm::vec3>& pos, std::vector<glm::vec4>& rot, std::vector<int>& index) override;
+	void getGrassItems(bool toSort) override;
+	bool renderRequired() override;
 };
 
 class GrassSystem_planet : public GrassSystem
 {
 public:
-	GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet, float minDist, float maxDist);
+	GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet, float maxDist, unsigned minDepth);
 	~GrassSystem_planet();
 
 protected:
 	float whiteNoise[15][15][15];	// Rotation angles for grass bunchs to be randomly rotated
 	std::vector<Chunk*> chunks;
 	Planet& planet;
+	unsigned minDepth;				//!< Used chunks have this depth or more
+	unsigned chunksCount;			//!< Number of chunks used in the last grass rendering
 
-	void getGrassItems(std::vector<glm::vec3>& pos, std::vector<glm::vec4>& rot, std::vector<int>& index) override;
 	glm::vec4 getLatLonRotQuat(glm::vec3& normal);		//!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
 	glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);
+	bool renderRequired() override;						//!< Detect whether new chunks are available. If so, render the grass of these chunks.
+	void getGrassItems(bool toSort) override;
+	void getGrassItems_fullGrass(bool toSort);
+	void getGrassItems_average(bool toSort);
 
-	float time = 0;
+	unsigned maxPosSize = 0;	// for testing 
 };
 
 

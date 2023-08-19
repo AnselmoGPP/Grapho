@@ -186,6 +186,8 @@ float angleBetween(glm::vec3 a, glm::vec3 b, glm::vec3 origin)
 
 float angleBetween(glm::vec3 a, glm::vec3 b)
 {
+	// A·B = |A|*|B|*cos(θ);   θ = acos( (A·B)/(|A|*|B|) )     (|X| is the length of vector X)
+
 	float dotP = glm::dot(glm::normalize(a), glm::normalize(b));
 	dotP = glm::clamp(dotP, -1.f, 1.f);			// if (dotP > 1) dotP =  1; else if (dotP < -1) dotP = -1;
 

@@ -26,15 +26,19 @@
 		saveP
 		saveTB3
 		savePN
+		savePNT
 		savePrecalcLightValues
 	Math:
 		getDist
 		getSqrDist
+		getLength
+		getSqrLength
 		getRatio
 		getScaleRatio
 		getDirection
 		getAngle
 		getModulus
+		lerp
 	Lightning:
 		directionalLightColor
 		PointLightColor
@@ -51,8 +55,10 @@
 		triplanarNormal_Sea
 	Others:
 		getTexScaling
+		getLowResDist
 		applyParabolicFog
 		rand
+		applyOrderedDithering
 */
 
 
@@ -151,10 +157,27 @@ float getSqrDist(vec3 a, vec3 b)
 	return diff.x * diff.x + diff.y * diff.y + diff.z * diff.z; 
 }
 
+float getLength(vec3 a)
+{
+	return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+float getSqrLength(vec3 a)
+{
+	return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
 // Get the ratio for a given "value" within a range [min, max]. Result's range: [0, 1].
 float getRatio(float value, float min, float max)
 {
 	return clamp((value - min) / (max - min), 0, 1);
+}
+
+// Get the ratio for a given "value" within a range [min, max]. Result's range: [minR, maxR].
+float getRatio(float value, float min, float max, float minR, float maxR)
+{
+	float ratio = clamp((value - min) / (max - min), 0, 1);
+	return minR + ratio * (maxR - minR);
 }
 
 // Get the value within a range for a given ratio. 
@@ -176,9 +199,12 @@ float getAngle(vec3 a, vec3 b)
 	return acos(dot(a, b));									// Unit vectors
 }
 
-// Get modulus(%) = a - (b * floor(a/b))
+// Get modulus(%) = a - (b * floor(a/b)) (https://registry.khronos.org/OpenGL-Refpages/gl4/html/mod.xhtml)
 float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
 
+// Linear interpolation. Position between A and B located at ratio t [0,1]
+vec3 lerp(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
+float lerp(float a, float b, float t) { return a + (b - a) * t; }
 
 // Graphic functions ------------------------------------------------------------------------
 
@@ -786,6 +812,15 @@ float getTexScaling(float fragDist, float initialTexFactor, float baseDist, floa
 	return clamp((maxDist - fragDist) / mixRange, 0.f, 1.f);
 }
 
+// Get a distance that increases with the distance between cam and center of a sphere. Useful for getting a distance from which non-visible things can be poorly rendered.
+float getLowResDist(float camSqrHeight, float radius, float minDist)
+{
+	float lowResDist = sqrt(camSqrHeight - radius * radius);
+	
+	if(lowResDist > minDist) return lowResDist;
+	else return minDist;
+}
+
 // Apply a fogColor to the fragment depending upon distance.
 vec3 applyParabolicFog(vec3 fragColor, vec3 fogColor, float minDist, float maxDist, vec3 fragPos, vec3 camPos)
 {
@@ -804,4 +839,20 @@ vec3 applyParabolicFog(vec3 fragColor, vec3 fogColor, float minDist, float maxDi
 float rand(vec2 co)
 {
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+const mat4 thresholdMap = {		// for dithering
+	{0.,     8/16.,  2/16.,  10/16.}, 
+	{12/16., 4/16.,  14/16., 6/16.}, 
+	{3/16.,  11/16., 1/16.,  9/16.}, 
+	{15/16., 7/16.,  13/16., 5/16.}
+};
+
+bool applyOrderedDithering(float sqrDist, float minDist, float maxDist)
+{
+	float ratio = getRatio(sqrDist, minDist*minDist, maxDist*maxDist);
+	ivec2 index = { int(mod(gl_FragCoord.x, 4)), int(mod(gl_FragCoord.y, 4)) };
+	
+	if(ratio > thresholdMap[index.x][index.y]) return true;
+	return false;
 }

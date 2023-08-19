@@ -14,7 +14,13 @@
 		getTB3
 	Math:
 		getDist
+		getSqrDist
+		getLength
+		getRatio
+		getScaleRatio
+		getDirection
 		getAngle
+		getModulus
 		geo2cart
 		cart2geo
 		rotationMatrix2
@@ -122,10 +128,29 @@ float getDist(vec3 a, vec3 b)
 	return sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) ; 
 }
 
+// Get square distance between two 3D points
+float getSqrDist(vec3 a, vec3 b) 
+{
+	vec3 diff = a - b;
+	return diff.x * diff.x + diff.y * diff.y + diff.z * diff.z; 
+}
+
+float getLength(vec3 a)
+{
+	return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
 // Get the ratio of a given "value" within a range [min, max]. Result's range: [0, 1].
 float getRatio(float value, float min, float max)
 {
 	return clamp((value - min) / (max - min), 0, 1);
+}
+
+// Get the ratio for a given "value" within a range [min, max]. Result's range: [minR, maxR].
+float getRatio(float value, float min, float max, float minR, float maxR)
+{
+	float ratio = clamp((value - min) / (max - min), 0, 1);
+	return minR + ratio * (maxR - minR);
 }
 
 // Get the ratio of a given a ratio within a range. Result's range: [0, 1]. 

@@ -113,9 +113,9 @@ public:
 
 extern double pi;
 
-float dist(glm::vec3& a, glm::vec3& b);
-float sqrDist(glm::vec3& a, glm::vec3& b);
-glm::vec3 reflect(glm::vec3 lightRay, glm::vec3 normal);
+float getDist(const glm::vec3& a, const glm::vec3& b);
+float getSqrDist(const glm::vec3& a, const glm::vec3& b);
+glm::vec3 reflect(const glm::vec3& lightRay, const glm::vec3& normal);
 
 /// This class checks if argument X (float) is bigger than argument Y (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
 class ifOnce

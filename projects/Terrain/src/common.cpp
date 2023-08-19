@@ -47,19 +47,19 @@ SphereCam camera_2(
 	45.f, 45.f );					// latitude & longitude
 
 PlaneCam camera_3(
-	glm::vec3(0.f, 2040.f, 0.f),	// camera position
+	glm::vec3(1450.f, 1450.f, 0.f),	// camera position
 	100.f, 0.001f, 0.1f,			// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	glm::vec3(0.f, -90.f, 0.f),		// Yaw (z), Pitch (x), Roll (y)
 	0.2f, 4000.f );					// near & far view planes
 
 PlanetFPcam camera_4(
-	10.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
+	3.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	0.2f, 4000,						// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus
 	1000,							// radius
-	0.f, 90.f );					// latitude & longitude
+	0.f, 47.f );					// latitude & longitude
 
 
 ShaderLoader ShaderLoaders[]

@@ -1,7 +1,18 @@
 TODO:
-	Bug: If I don't move, chuncks may not appear ever.
+	lerp
+	getSqrDist / getDist / ...
+
+	Grass:
+		X - quit alpha channel so bbs don't need to be sorted
+		X - double face grass
+		X - too sided (and close?) billboards are deleted (dithering?)
+		light system (grass too dark at evening)
+		step size
+		dithering
+	
+	Bug: If I don't move, chunks may not appear ever.
 	Chunks rendering based on distance makes no difference between chunks types (see planet from afar).
-	Spot light not working as spot
+	Don't render chunks if [out of cam view angle (fov)] / [you don't move camera]
 
 	Grass inverts texture when pov changes
 	DynamicGrid::chunks requires lookup and delete elements. Is there a better DS for this than std::map?
