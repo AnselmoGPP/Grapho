@@ -14,6 +14,7 @@
 
 #include "renderer.hpp"
 #include "toolkit.hpp"
+#include "ECSarch.hpp"
 
 #include "terrain.hpp"
 #include "common.hpp"

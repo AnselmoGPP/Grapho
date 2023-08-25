@@ -41,6 +41,7 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	src/toolkit.cpp
 	src/physics.cpp
 	src/commons.cpp
+	src/ECSarch.cpp
 
 	include/renderer.hpp
 	include/environment.hpp
@@ -54,6 +55,7 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	include/toolkit.hpp
 	include/physics.hpp
 	include/commons.hpp
+	include/ECSarch.hpp
 
 	../../Readme.md
 	TODO.txt

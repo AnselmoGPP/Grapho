@@ -109,6 +109,7 @@ public:
     static float sideFromRadius(float radius);  //!< Get the side of a square fitting inside a circle
 };
 
+
 // Others -----------------------------------------------------------------
 
 extern double pi;

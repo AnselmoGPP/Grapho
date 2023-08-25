@@ -54,7 +54,7 @@ PlaneCam camera_3(
 	0.2f, 4000.f );					// near & far view planes
 
 PlanetFPcam camera_4(
-	3.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
+	2.f, 0.001f, 0.1f,				// keyboard/mouse/scroll speed
 	60.f, 10.f, 100.f,				// FOV, minFOV, maxFOV
 	0.2f, 4000,						// near & far view planes
 	{ 0.f, 0.f, 0.f },				// nucleus

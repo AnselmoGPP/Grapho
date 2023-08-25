@@ -1,5 +1,10 @@
 TODO:
-	lerp
+	Influences:
+		Arma III: Realism
+		MGS: Tactical action espionage
+		Dynasty Warriors: Bases wars & officer orders
+		Apache Vs Havoc: Ongoing war
+
 	getSqrDist / getDist / ...
 
 	Grass:

@@ -59,8 +59,8 @@ void main()
 	// Final position
 	if(sqrDist < 4)		//  <<< Displace grass when too close
 	{		
-		float ratio = 1.f - getRatio(sqrDist, 0, 2*2);	// 2: distance from where cam moves grass
-		ratio *= inPos.x; 								// don't move roots
+		float ratio = 1.f - getRatio(sqrDist, 0, 2*2);	// 2*X: max distance from where cam moves grass
+		ratio *= pos.x; 								// don't move roots
 		
 		vec3 displacementDir = normalize(modelPos - ubo.camPos_time.xyz);
 		vec3 sphereNormal = normalize(modelPos);
