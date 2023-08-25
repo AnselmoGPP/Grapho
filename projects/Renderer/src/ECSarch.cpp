@@ -8,17 +8,23 @@ Component::Component(std::string& type) : type(type) { }
 Component::Component(const char*  type) : type(type) { }
 Component::~Component() { }
 
-Entity::Entity(uint32_t id, std::initializer_list<Component*> components)
-	: id(id), components(components), resourceHandle(this) { };
+Entity::Entity(uint32_t id, std::initializer_list<Component*>& components)
+	: id(id), resourceHandle(this) 
+{ 
+	for (std::initializer_list<Component*>::iterator it = components.begin(); it != components.end(); it++)
+		this->components.push_back(std::shared_ptr<Component>(*it));
+};
 
-const std::vector<Component*>& Entity::getComponents() { return components; };
+Entity::~Entity() { }
 
-void Entity::addComponent(Component* component) { components.push_back(component); };
+const std::vector<std::shared_ptr<Component>>& Entity::getComponents() { return components; };
+
+void Entity::addComponent(Component* component) { components.push_back(std::shared_ptr<Component>(component)); };
 
 Component* Entity::getComponentOfType(std::string& type)
 { 
 	for (unsigned i = 0; i < components.size(); i++)
-		if (type == components[i]->type) return components[i];
+		if (type == components[i]->type) return components[i].get();
 
 	return nullptr;
 }
@@ -26,9 +32,20 @@ Component* Entity::getComponentOfType(std::string& type)
 Component* Entity::getComponentOfType(const char* type)
 {
 	for (unsigned i = 0; i < components.size(); i++)
-		if (type == components[i]->type) return components[i];
+		if (type == components[i]->type) return components[i].get();
 
 	return nullptr;
+}
+
+EntityManager::EntityManager(std::initializer_list<Entity*> entities, std::initializer_list<Component*> sComponents, std::initializer_list<System*> systems)
+{
+	for (std::initializer_list<Entity*>::iterator it = entities.begin(); it != entities.end(); it++)
+		this->entities[(*it)->id] = * it;
+
+	for (std::initializer_list<Component*>::iterator it = sComponents.begin(); it != sComponents.end(); it++)
+		this->sComponents.push_back(std::shared_ptr<Component>(*it));
+
+	this->systems = systems;
 }
 
 EntityManager::EntityManager() { }
@@ -53,33 +70,40 @@ void EntityManager::update(float timeStep)
 		s->update(timeStep);
 }
 
-void EntityManager::addEntity(Entity* newEntity)
+void EntityManager::addSingletonComponent(Component* component)
 {
-	entities[getNewId()] = newEntity;
+	sComponents.push_back(std::shared_ptr<Component>(component));
 }
 
-void EntityManager::removeEntity(Entity* entity)
+uint32_t EntityManager::addEntity(std::initializer_list<Component*>& components)
 {
-	if (entities.find(entity->id) != entities.end())
+	uint32_t newId = getNewId();
+	entities[newId] = new Entity(newId, components);
+	return newId;
+}
+
+void EntityManager::removeEntity(uint32_t entityId)
+{
+	if (entities.find(entityId) != entities.end())
 	{
-		delete entities[entity->id];
-		entities.erase(entity->id);
+		delete entities[entityId];
+		entities.erase(entityId);
 	}
 }
 
-void EntityManager::addComponentToEntity(Entity* entity, Component* component)
+void EntityManager::addComponentToEntity(uint32_t entityId, Component* component)
 {
-	entity->addComponent(component);
+	entities[entityId]->addComponent(component);
 }
 
-Component* EntityManager::getComponentOfType(std::string& type, Entity* entity)
+Component* EntityManager::getComponentOfType(std::string& type, uint32_t entityId)
 {
-	return entity->getComponentOfType(type);
+	return entities[entityId]->getComponentOfType(type);
 }
 
-Component* EntityManager::getComponentOfType(const char* type, Entity* entity)
+Component* EntityManager::getComponentOfType(const char* type, uint32_t entityId)
 {
-	return entity->getComponentOfType(type);
+	return entities[entityId]->getComponentOfType(type);
 }
 
 void EntityManager::getAllEntitiesPossesingComponentsOfType(std::string& type, std::vector<Entity*> dest)

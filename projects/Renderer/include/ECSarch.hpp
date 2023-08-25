@@ -2,8 +2,10 @@
 #define ECSARCH_HPP
 
 #include <map>
+//#include <list>
 #include <string>
 #include <vector>
+#include <memory>
 #include <initializer_list>
 
 
@@ -27,11 +29,13 @@ struct Component
 /// An ID associated with a set of components.
 class Entity
 {
-    std::vector<Component*> components;
+    std::vector<std::shared_ptr<Component>> components;
 
 public:
-    Entity(uint32_t id, std::initializer_list<Component*> components);
-    const std::vector<Component*>& getComponents();
+    Entity(uint32_t id, std::initializer_list<Component*>& components);
+    ~Entity();
+
+    const std::vector<std::shared_ptr<Component>>& getComponents();
     void addComponent(Component* component);
     Component* getComponentOfType(std::string& type);
     Component* getComponentOfType(const char*  type);
@@ -55,44 +59,28 @@ public:
 
 
 /// Acts as a "database", where you look up entities and get their list of components.
-class EntityManager0
-{
-    //NSMutableArray* entities;
-    //NSMutableDictionary* componentsByClass;
-    //uint32_t lowestUnassignedId = 1;
-
-public:
-    //EntityManager(NSMutableArray* entities, NSMutableDictionary* componentsByClass);
-    //void generateNewId(uint32_t newId);
-    //void createEntity(Entity* newEntity);
-    //void addComponentToEntity(Entity* entity, Component* component);
-    //Component* getComponentOfClass(Class class, Entity* entity);
-    //void removeEntity(Entity* entity);
-    //NSArray* getAllEntitiesPossesingComponentsOfClass(Class class); // helper method
-};
-
-
 class EntityManager
 {
     //std::vector<Component> m_componentPool;
     uint32_t getNewId();
     uint32_t lowestUnassignedId = 1;
 
+    std::map<uint32_t, Entity*> entities;
+    std::vector<std::shared_ptr<Component>> sComponents;     // singleton components. Type shared_ptr prevents singleton components to be deleted during entity destruction.
+    std::vector<System*> systems;
+
 public:
+    EntityManager(std::initializer_list<Entity*> entities, std::initializer_list<Component*> sComponents, std::initializer_list<System*> systems);
     EntityManager();
     ~EntityManager();
 
-    std::map<uint32_t, Entity*> entities;
-    std::vector<Component*> components;
-    std::vector<System*> systems;
-
     void update(float timeStep);
-    //EntityManager(NSMutableArray* entities, NSMutableDictionary* componentsByClass);
-    void addEntity(Entity* newEntity);
-    void removeEntity(Entity* entity);
-    void addComponentToEntity(Entity* entity, Component* component);
-    Component* getComponentOfType(std::string& type, Entity* entity);
-    Component* getComponentOfType(const char*  type, Entity* entity);
+    void addSingletonComponent(Component* component);
+    uint32_t addEntity(std::initializer_list<Component*>& components);
+    void removeEntity(uint32_t entityId);
+    void addComponentToEntity(uint32_t entityId, Component* component);
+    Component* getComponentOfType(std::string& type, uint32_t entityId);
+    Component* getComponentOfType(const char*  type, uint32_t entityId);
     void getAllEntitiesPossesingComponentsOfType(std::string& type, std::vector<Entity*> dest); // helper method
     void getAllEntitiesPossesingComponentsOfType(const char*  type, std::vector<Entity*> dest); // helper method
 };
