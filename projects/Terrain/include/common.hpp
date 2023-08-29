@@ -6,10 +6,12 @@
 #include "ubo.hpp"
 #include "camera.hpp"
 #include "importer.hpp"
+#include "ECSarch.hpp"
 
 // MVS executable's path        == Grapho\_BUILD\projects\Terrain (Terrain.sln)
 // Standalone executable's path == Grapho\_BUILD\projects\Terrain\Release (Terrain.exe)
 #define STANDALONE_EXECUTABLE false
+
 
 // File's paths
 extern const std::string shadersDir;

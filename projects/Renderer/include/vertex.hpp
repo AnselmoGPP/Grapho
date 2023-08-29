@@ -3,8 +3,8 @@
 
 #include <array>
 
-//#include <vulkan/vulkan.h>		// From LunarG SDK. Used for off-screen rendering
-#define GLFW_INCLUDE_VULKAN			// Makes GLFW load the Vulkan header with it
+#include <vulkan/vulkan.h>			// From LunarG SDK. Used for off-screen rendering
+//#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"
 
 #define GLM_FORCE_RADIANS

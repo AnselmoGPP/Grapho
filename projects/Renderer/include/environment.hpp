@@ -97,6 +97,7 @@ public:
 	SwapChainSupportDetails	querySwapChainSupport();
 	QueueFamilyIndices findQueueFamilies();
 	void destroy();
+	GLFWwindow* getWindowManager();
 
 private:
 
@@ -142,6 +143,7 @@ public:
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 	VkFormat		findDepthFormat();
+	GLFWwindow*		getWindowManager();
 
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();

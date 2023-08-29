@@ -544,6 +544,8 @@ void VulkanCore::destroy()
 	glfwTerminate();														// GLFW
 }
 
+GLFWwindow* VulkanCore::getWindowManager() { return window; }
+
 /**
 	Check whether all the required device extensions are supported.
 	@param device Device to evaluate
@@ -890,6 +892,8 @@ VkFormat VulkanEnvironment::findDepthFormat()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
+
+GLFWwindow* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
 
 /**
 * 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.

@@ -209,6 +209,7 @@ public:
 	size_t		loadedModels();		//!< Returns number of models in Renderer:models
 	size_t		loadedShaders();		//!< Returns number of shaders in Renderer:shaders
 	size_t		loadedTextures();	//!< Returns number of textures in Renderer:textures
+	GLFWwindow* getWindowManager();
 };
 
 #endif

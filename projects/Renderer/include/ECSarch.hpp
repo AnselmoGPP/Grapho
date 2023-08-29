@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <initializer_list>
+//#include <initializer_list>
 
 
 struct Component;
@@ -32,13 +32,13 @@ class Entity
     std::vector<std::shared_ptr<Component>> components;
 
 public:
-    Entity(uint32_t id, std::initializer_list<Component*>& components);
+    Entity(uint32_t id, std::vector<Component*>& components);
     ~Entity();
 
-    const std::vector<std::shared_ptr<Component>>& getComponents();
     void addComponent(Component* component);
-    Component* getComponentOfType(std::string& type);
-    Component* getComponentOfType(const char*  type);
+    const std::vector<std::shared_ptr<Component>>& getComponents();
+    Component* getSingleComponent(const char*  type);
+    std::vector<Component*> getAllComponents();
 
     const uint32_t id;
     const Entity* resourceHandle;
@@ -48,11 +48,11 @@ public:
 /// It has behavior (methods) and have no state data (no fields). To each system corresponds a set of components. The systems iterate through their components performing operations (behavior) on their state.
 class System
 {
-    EntityManager* entityManager;
-
 public:
-    System(EntityManager* entityManager) : entityManager(entityManager) { };
+    System(EntityManager* entityManager = nullptr) : em(entityManager) { };
     virtual ~System() { };
+
+    EntityManager* em;
 
     virtual void update(float timeStep) = 0;
 };
@@ -66,32 +66,40 @@ class EntityManager
     uint32_t lowestUnassignedId = 1;
 
     std::map<uint32_t, Entity*> entities;
-    std::vector<std::shared_ptr<Component>> sComponents;     // singleton components. Type shared_ptr prevents singleton components to be deleted during entity destruction.
     std::vector<System*> systems;
+    //std::vector<std::shared_ptr<Component>> sComponents;     // singleton components. Type shared_ptr prevents singleton components to be deleted during entity destruction.
 
 public:
-    EntityManager(std::initializer_list<Entity*> entities, std::initializer_list<Component*> sComponents, std::initializer_list<System*> systems);
     EntityManager();
     ~EntityManager();
 
     void update(float timeStep);
-    void addSingletonComponent(Component* component);
-    uint32_t addEntity(std::initializer_list<Component*>& components);
+    void printInfo();
+
+    // Entity methods
+    uint32_t addEntity(std::vector<Component*>& components);  //!< Add new entity by defining its components.
+    std::vector<uint32_t> getEntitySet(const char* type);                //!< Get set of entities containing component of type X.
+
+    // Component methods
+    Component* getSComponent(const char* type);                    //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.
+    Component* getComponent(const char* type, uint32_t entityId); //!< Get the first component found of type X in a given entity.
+
+    // System methods
+    void addSystem(System* system);                                     //!< Add new system
+
+    // Others
     void removeEntity(uint32_t entityId);
     void addComponentToEntity(uint32_t entityId, Component* component);
-    Component* getComponentOfType(std::string& type, uint32_t entityId);
-    Component* getComponentOfType(const char*  type, uint32_t entityId);
-    void getAllEntitiesPossesingComponentsOfType(std::string& type, std::vector<Entity*> dest); // helper method
-    void getAllEntitiesPossesingComponentsOfType(const char*  type, std::vector<Entity*> dest); // helper method
 };
 
 
-class EntityFactory
+class MainEntityFactory
 {
-    EntityManager* entityManager;
+    //EntityManager* entityManager;
 
 public:
-    EntityFactory(EntityManager* entityManager) : entityManager(entityManager) { };
+    MainEntityFactory() { };
+    //MainEntityFactory(EntityManager* entityManager) : entityManager(entityManager) { };
 
     //Entity* createHumanPlayer();
     //Entity* createAIPlayer();

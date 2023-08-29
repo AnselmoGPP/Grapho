@@ -8,6 +8,7 @@
 
 
 double pi = 3.141592653589793238462;
+double e  = 2.718281828459045235360;
 
 float getDist(const glm::vec3& a, const glm::vec3& b)
 {

@@ -4,7 +4,7 @@
 #include <vector>
 #include <list>
 
-#include "vertex.hpp"
+//#include "vertex.hpp"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE			// GLM uses OpenGL depth range [-1.0, 1.0]. This macro forces GLM to use Vulkan range [0.0, 1.0].
@@ -113,6 +113,7 @@ public:
 // Others -----------------------------------------------------------------
 
 extern double pi;
+extern double e;
 
 float getDist(const glm::vec3& a, const glm::vec3& b);
 float getSqrDist(const glm::vec3& a, const glm::vec3& b);

@@ -1,11 +1,3 @@
-/*
-	Renderer	< VulkanEnvironment
-				< ModelData		< VulkanEnvironment
-								< modelConfig	< VulkanEnvironment
-												< getModelMatrix callbacks
-								< Input			< Camera
-*/
-
 #include <filesystem>
 #include <iostream>
 #include <cstdlib>				// EXIT_SUCCESS, EXIT_FAILURE
@@ -18,17 +10,11 @@
 
 #include "terrain.hpp"
 #include "common.hpp"
+#include "entities.hpp"
+#include "components.hpp"
+#include "systems.hpp"
 
 //#define DEBUG_MAIN 
-
-/*
-	Load model X:
-		- Create setX() and call it in main()
-		- Load required texture in loadTextures()
-		- Load required shader in loadShaders()
-		- Create required lights in setLights()
-		- Update model each frame in update()
-*/
 
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
@@ -89,9 +75,79 @@ bool updateChunk = false, updateChunkGrid = false;
 
 dataForUpdates d;
 
+EntityManager world;
+
 // main ---------------------------------------------------------------------
 
 int main(int argc, char* argv[])
+{
+	#ifdef DEBUG_MAIN
+		//std::cout << std::setprecision(7);
+		std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
+		std::cout << "PlanetGrid area: " << planetGrid.getSphereArea() << std::endl;
+		TimerSet time;
+		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
+	#endif
+
+	//tests(); return 0;
+
+	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
+	{
+		EntityFactory eFact(app);
+		
+		world.addEntity(std::vector<Component*>{ new c_Engine(app), new c_Input, new c_Camera });	// Singleton components.
+		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
+		world.addEntity(eFact.createAxes(ShaderLoaders[2], ShaderLoaders[3], { }));
+		world.addEntity(eFact.createNoPP(ShaderLoaders[22], ShaderLoaders[23], { texInfos[4], texInfos[5] }));
+		
+		world.addSystem(new s_Engine);
+		world.addSystem(new s_Input);
+		world.addSystem(new s_PlaneCam);
+		world.addSystem(new s_Position);
+		world.addSystem(new s_ModelMatrix);
+		world.addSystem(new s_UBO);
+
+		//world.printInfo();
+		//return 0;
+
+		//camera_4.camParticle.setCallback(getFloorHeight);
+
+		//setLights();
+
+		//setPoints(app);
+		//--setAxis(app);
+		//setGrid(app);
+		//--setSkybox(app);
+		//setCottage(app);
+		//setRoom(app);
+		//setChunk(app);
+		//setChunkGrid(app);
+		 //planetGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[14], ShaderLoaders[15]}, usedTextures);
+		 //planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+		 //grass.createGrassModel(std::vector<ShaderLoader>{ShaderLoaders[8], ShaderLoaders[9]}, std::vector<TextureLoader>{ texInfos[37], texInfos[38], texInfos[39], texInfos[40] });
+
+		//--setNoPP(app);			// In the same layer, the last drawn 
+		//setAtmosphere(app);	// Draw atmosphere first and reticule second, so atmosphere isn't hidden by reticule's transparent pixels
+
+		//setSun(app);
+		//setReticule(app);
+
+		app.renderLoop();		// Start rendering
+		if (0) throw "Test exception";
+	}
+	catch (std::exception e) { std::cout << e.what() << std::endl; }
+	catch (const char* msg) { std::cout << msg << std::endl; }
+
+	#ifdef DEBUG_MAIN
+		std::cout << "main() end" << std::endl;
+	#endif
+
+	if (STANDALONE_EXECUTABLE) system("pause");
+	return EXIT_SUCCESS;
+}
+
+
+int main2(int argc, char* argv[])
 {
 	#ifdef DEBUG_MAIN
 		//std::cout << std::setprecision(7);
@@ -157,8 +213,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	d.camUp = rend.getCamera().getCamUp();
 	d.camRight = rend.getCamera().getRight();
 	d.groundHeight = planetGrid.getGroundHeight(d.camPos);
-	
 	size_t i;
+
+	world.update(rend.getTimer().getDeltaTime());
 
 	#ifdef DEBUG_MAIN
 		std::cout << rend.getFrameCount() << ") " << std::endl;
@@ -282,7 +339,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 			memcpy(dest + 2 * size.mat4, &proj, size.mat4);
 		}
 
-	if (assets.find("skyBox") != assets.end())
+	if (0)//(assets.find("skyBox") != assets.end())
 		for (i = 0; i < assets["skyBox"]->vsDynUBO.numDynUBOs; i++) {
 			dest = assets["skyBox"]->vsDynUBO.getUBOptr(i);
 			memcpy(dest + 0 * size.mat4, &modelMatrix(glm::vec3(600.f, 600.f, 600.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(d.camPos.x, d.camPos.y, d.camPos.z)), size.mat4);
@@ -622,42 +679,5 @@ void setNoPP(Renderer& app)
 
 void tests()
 {
-	glm::vec3 pos = { 1, 0, 0 };
-	float latRot = pi / 4;
-	float lonRot = pi / 4;
 
-	glm::vec4 latQuat = getRotQuat(yAxis, -latRot);
-	glm::vec4 lonQuat = getRotQuat(zAxis, lonRot);
-
-	glm::vec3 pos1 = rotatePoint(latQuat, pos);
-	printVec(pos1);			// 0.707107  0  0.707107
-
-	glm::vec3 pos2 = rotatePoint(lonQuat, pos);
-	printVec(pos2);			// 0.707107  0.707107  0
-
-	glm::vec4 finalQuat = productQuat(latQuat, lonQuat);
-	glm::vec3 pos3 = rotatePoint(finalQuat, pos);
-	printVec(pos3);			// (lon, lat) 0.5  0.707107  0.5  (0.577, 0.577, 0.707)
-							// (lat, lon) 0.5  0.5  0.707107  (0.577, 0.577, 0.707)
-
-	std::cout << "--------------------------------------" << std::endl;
-
-	glm::vec3 gPos    = { sqrt(1 / 2), 0, sqrt(1 / 2) };
-	glm::vec3 camPos  = { sqrt(1/2), -1, sqrt(1/2) };	
-	glm::vec4 rotQuat = getRotQuat(yAxis, -pi / 4);
-	glm::vec3 front, right, dirToCam, dirToCamXY;
-	float angle;
-
-	front = rotatePoint(rotQuat, zAxis);	// rotate front & get new front
-	printVec(front);
-	right = glm::normalize(glm::cross(front, zAxis));
-	printVec(right);
-	dirToCam = glm::normalize(camPos - gPos);
-	printVec(dirToCam);
-	dirToCamXY = dirToCam * right + dirToCam * front;
-	printVec(dirToCamXY);
-	angle = angleBetween(front, dirToCamXY);
-	std::cout << angle << std::endl;
-	//if (glm::dot(dirToCam, right) > 0) angle *= -1;
-	rotQuat = productQuat(rotQuat, getRotQuat(xAxis, angle));
 }

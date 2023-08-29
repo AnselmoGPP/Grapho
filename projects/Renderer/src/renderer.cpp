@@ -810,4 +810,4 @@ size_t Renderer::loadedShaders() { return shaders.size(); }
 
 size_t Renderer::loadedTextures() { return textures.size(); }
 
-
+GLFWwindow* Renderer::getWindowManager() { return e.getWindowManager(); }

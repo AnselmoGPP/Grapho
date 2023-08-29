@@ -32,10 +32,16 @@ ADD_EXECUTABLE( ${PROJECT_NAME}
 	src/noise.cpp
 	src/terrain.cpp
 	src/common.cpp
+	src/entities.cpp
+	src/components.cpp
+	src/systems.cpp
 
 	include/noise.hpp
 	include/terrain.hpp
 	include/common.hpp
+	include/entities.hpp
+	include/components.hpp
+	include/systems.hpp
 
 	../../Readme.md
 	TODO.txt

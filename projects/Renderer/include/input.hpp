@@ -7,7 +7,7 @@
 	@brief The purpose of this class is mainly to serve as windowUserPointer and to hold all the callbacks. 
 	Furthermore, it is a layer between loopManager and other classes that require input (like cameras).
 	windowUserPointer: Pointer accessible from callbacks. Each window has one, this can be used for any 
-	purpose you need, and GLFW will not modifY it throughout the life-time of the window.
+	purpose you need, and GLFW will not modify it throughout the life-time of the window.
 */
 class Input
 {

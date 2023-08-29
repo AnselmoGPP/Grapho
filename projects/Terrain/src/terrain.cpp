@@ -1457,6 +1457,7 @@ void GrassSystem_planet::getGrassItems(bool toSort)
     getGrassItems_average(toSort);
 
     if (pos.size() > maxPosSize) maxPosSize = pos.size();
+
     std::cout << maxPosSize << " / " << pos.size() << std::endl;
 }
 

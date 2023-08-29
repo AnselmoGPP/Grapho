@@ -1,9 +1,18 @@
 TODO:
+EntityManager::getEntitySet
+
 	Influences:
 		Arma III: Realism
 		MGS: Tactical action espionage
 		Dynasty Warriors: Bases wars & officer orders
 		Apache Vs Havoc: Ongoing war
+
+	ECS:
+		Use only entities id
+		modelMatrix2() (take 2 out)
+		Make systems safer (update()) (like using const) (are components/entities being found?) (method names from factory & entity classes)
+		Improve c_ModelMatrix construction parameters
+		s_Engine::update
 
 	getSqrDist / getDist / ...
 
