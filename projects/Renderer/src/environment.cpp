@@ -38,7 +38,7 @@ void SwapChain::destroy(VkDevice device)
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
-//VkSwapchainKHR								swapChain;				//!< Swap chain object.
+//VkSwapchainKHR							swapChain;				//!< Swap chain object.
 //std::vector<VkImage>						swapChainImages;		//!< List. Opaque handle to an image object.
 //std::vector<VkImageView>					swapChainImageViews;	//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 //std::vector<std::array<VkFramebuffer, 2>>	swapChainFramebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
@@ -47,13 +47,13 @@ void SwapChain::destroy(VkDevice device)
 //VkExtent2D									swapChainExtent;
 
 VulkanCore::VulkanCore()
-	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT)
+	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT), io(width, height)
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
-	initWindow();
+	//initWindow();
 	createInstance();
 	setupDebugMessenger();
 	createSurface();
@@ -93,7 +93,7 @@ void VulkanCore::initWindow()
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
+/*
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);	// Tell GLFW not to create an OpenGL context
@@ -104,6 +104,7 @@ void VulkanCore::initWindow()
 	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// This callback has been set in Input
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
+	*/
 }
 
 // (1) 
@@ -379,8 +380,10 @@ void VulkanCore::createSurface()
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create window surface!");
+	io.createWindowSurface(instance, nullptr, &surface);
+
+	//if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+	//	throw std::runtime_error("Failed to create window surface!");
 }
 
 // (4)
@@ -540,11 +543,10 @@ void VulkanCore::destroy()
 
 	vkDestroySurfaceKHR(instance, surface, nullptr);						// Surface KHR
 	vkDestroyInstance(instance, nullptr);									// Instance
-	glfwDestroyWindow(window);												// GLFW window
-	glfwTerminate();														// GLFW
+	io.destroy();
 }
 
-GLFWwindow* VulkanCore::getWindowManager() { return window; }
+IOmanager* VulkanCore::getWindowManager() { return &io; }
 
 /**
 	Check whether all the required device extensions are supported.
@@ -772,7 +774,7 @@ VkExtent2D VulkanEnvironment::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& c
 	else
 	{
 		int width, height;
-		glfwGetFramebufferSize(c.window, &width, &height);
+		c.io.getFramebufferSize(&width, &height);
 
 		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 
@@ -893,7 +895,7 @@ VkFormat VulkanEnvironment::findDepthFormat()
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-GLFWwindow* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
+IOmanager* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
 
 /**
 * 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.
@@ -2214,3 +2216,53 @@ VkBool32 VulkanCore::wideLinesSupported()
 }
 
 
+IOmanager::IOmanager(int width, int height)
+{
+	initWindow(width, height);
+}
+
+IOmanager::~IOmanager() { }
+
+void IOmanager::initWindow(int width, int height)
+{
+	glfwInit();
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);	// Tell GLFW not to create an OpenGL context
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);		// Enable resizable window (default)
+
+	window = glfwCreateWindow((int)width, (int)height, "Grapho", nullptr, nullptr);
+	//glfwSetWindowUserPointer(window, this);								// Input class has been set as windowUserPointer
+	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// This callback has been set in Input
+
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
+}
+
+void IOmanager::createWindowSurface(VkInstance instance, VkAllocationCallbacks* allocator, VkSurfaceKHR* surface)
+{
+	if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create window surface!");
+}
+
+void IOmanager::getFramebufferSize(int* width, int* height) { glfwGetFramebufferSize(window, width, height); }
+
+void IOmanager::setWindowShouldClose(bool b) { return glfwSetWindowShouldClose(window, b); }
+
+bool IOmanager::windowShouldClose() { return glfwWindowShouldClose(window); }
+
+void IOmanager::destroy()
+{
+	glfwDestroyWindow(window);		// GLFW window
+	glfwTerminate();				// GLFW
+}
+
+int IOmanager::getKey(int key) { return glfwGetKey(window, key); }
+
+int IOmanager::getMouseButton(int button) { return glfwGetMouseButton(window, button); }
+
+void IOmanager::getCursorPos(double* xpos, double* ypos) { glfwGetCursorPos(window, xpos, ypos); }
+
+void IOmanager::setInputMode(int mode, int value) { glfwSetInputMode(window, mode, value); }
+
+void IOmanager::pollEvents() { glfwPollEvents(); }
+
+void IOmanager::waitEvents() { glfwWaitEvents(); }

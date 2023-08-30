@@ -39,7 +39,7 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR>	presentModes;		// Available presentation modes
 };
 
-// Image used as attachment in a render pass. One per render pass.
+/// Image used as attachment in a render pass. One per render pass.
 struct Image
 {
 	Image();
@@ -64,6 +64,57 @@ struct SwapChain
 	VkExtent2D									extent;
 };
 
+/// Input/Output manager for input (controls) and output (window) operations.
+class IOmanager
+{
+	void initWindow(int width, int height);
+
+public:
+	IOmanager(int width, int height);
+	~IOmanager();
+
+	GLFWwindow* window;				//!< Opaque window object.
+
+	// Output (window)
+	void createWindowSurface(VkInstance instance, VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
+	void getFramebufferSize(int* width, int* height);
+	void setWindowShouldClose(bool b);
+	bool windowShouldClose();
+	void destroy();
+
+	// Input (keys, mouse)
+	int getKey(int key);
+	int getMouseButton(int button);
+	void getCursorPos(double* xpos, double* ypos);
+	void setInputMode(int mode, int value);
+	void pollEvents();							//!< Check for events (processes only those events that have already been received and then returns immediately)
+	void waitEvents();
+};
+
+/*
+/// Input manager
+class Imanager
+{
+public:
+	Imanager();
+	~Imanager();
+
+	GLFWwindow* win;				//!< Opaque window object.
+
+};
+
+/// Out manager
+class Omanager
+{
+public:
+	Omanager(GLFWwindow* window) : win(window);
+	~Omanager();
+
+	GLFWwindow* win;				//!< Opaque window object.
+
+};
+*/
+
 class VulkanCore
 {
 	const std::vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -79,7 +130,7 @@ public:
 	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
-	GLFWwindow*					window;				//!< Opaque window object.
+	IOmanager					io;
 	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	debugMessenger;		//!< Opaque handle to a debug messenger object (the debug callback is part of it).
 	VkSurfaceKHR				surface;			//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
@@ -97,7 +148,7 @@ public:
 	SwapChainSupportDetails	querySwapChainSupport();
 	QueueFamilyIndices findQueueFamilies();
 	void destroy();
-	GLFWwindow* getWindowManager();
+	IOmanager* getWindowManager();
 
 private:
 
@@ -143,7 +194,7 @@ public:
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 	VkFormat		findDepthFormat();
-	GLFWwindow*		getWindowManager();
+	IOmanager*		getWindowManager();
 
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();

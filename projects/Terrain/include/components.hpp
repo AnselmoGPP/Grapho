@@ -28,7 +28,7 @@ struct c_Engine : public Component
 	void printInfo() const;
 
 	Renderer& r;
-	GLFWwindow* window;
+	IOmanager* io;
 
 	uint32_t width;		//!< pixels width  (1920/2)
 	uint32_t height;	//!< pixels height (1080/2)

@@ -33,8 +33,8 @@ public:
 
 class s_Input : public System
 {
-    void getKeyboardInput(GLFWwindow* window, c_Input* c_input, float deltaTime);
-    void getMouseInput(GLFWwindow* window, c_Input* c_input, float deltaTime);
+    void getKeyboardInput(IOmanager* io, c_Input* c_input, float deltaTime);
+    void getMouseInput(IOmanager* io, c_Input* c_input, float deltaTime);
 
 public:
     s_Input() : System() { };

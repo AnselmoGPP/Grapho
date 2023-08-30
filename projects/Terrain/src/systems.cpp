@@ -28,53 +28,53 @@ void s_Input::update(float timeStep)
 
     if (c_input && c_engine)
     {
-        getKeyboardInput(c_engine->window, c_input, timeStep);
-        getMouseInput(c_engine->window, c_input, timeStep);
+        getKeyboardInput(c_engine->io, c_input, timeStep);
+        getMouseInput(c_engine->io, c_input, timeStep);
     }
     else
         std::cout << "No input component found: " << typeid(this).name() << std::endl;
 }
 
-void s_Input::getKeyboardInput(GLFWwindow* window, c_Input* c_input, float timeStep)
+void s_Input::getKeyboardInput(IOmanager* io, c_Input* c_input, float timeStep)
 {
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) c_input->W_press = true;
+    if (io->getKey(GLFW_KEY_W) == GLFW_PRESS) c_input->W_press = true;
     else c_input->W_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) c_input->S_press = true;
+    if (io->getKey(GLFW_KEY_S) == GLFW_PRESS) c_input->S_press = true;
     else c_input->S_press = false;
         
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) c_input->A_press = true;
+    if (io->getKey(GLFW_KEY_A) == GLFW_PRESS) c_input->A_press = true;
     else c_input->A_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) c_input->D_press = true;
+    if (io->getKey(GLFW_KEY_D) == GLFW_PRESS) c_input->D_press = true;
     else c_input->D_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) c_input->Q_press = true;
+    if (io->getKey(GLFW_KEY_Q) == GLFW_PRESS) c_input->Q_press = true;
     else c_input->Q_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) c_input->E_press = true;
+    if (io->getKey(GLFW_KEY_E) == GLFW_PRESS) c_input->E_press = true;
     else c_input->E_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) c_input->up_press = true;
+    if (io->getKey(GLFW_KEY_UP) == GLFW_PRESS) c_input->up_press = true;
     else c_input->up_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) c_input->down_press = true;
+    if (io->getKey(GLFW_KEY_DOWN) == GLFW_PRESS) c_input->down_press = true;
     else c_input->down_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) c_input->left_press = true;
+    if (io->getKey(GLFW_KEY_LEFT) == GLFW_PRESS) c_input->left_press = true;
     else c_input->left_press = false;
 
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) c_input->right_press = true;
+    if (io->getKey(GLFW_KEY_RIGHT) == GLFW_PRESS) c_input->right_press = true;
     else c_input->right_press = false;
 }
 
-void s_Input::getMouseInput(GLFWwindow* window, c_Input* c_input, float timeStep)
+void s_Input::getMouseInput(IOmanager* io, c_Input* c_input, float timeStep)
 {
     c_input->LMB_justPressed = false;
     c_input->RMB_justPressed = false;
     c_input->MMB_justPressed = false;
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    if (io->getMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         if (c_input->LMB_pressed == false)
             c_input->LMB_justPressed = true;
@@ -84,7 +84,7 @@ void s_Input::getMouseInput(GLFWwindow* window, c_Input* c_input, float timeStep
     else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
         c_input->LMB_pressed = false;
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+    if (io->getMouseButton(GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
     {
         if (c_input->RMB_pressed == false)
             c_input->RMB_justPressed = true;
@@ -94,7 +94,7 @@ void s_Input::getMouseInput(GLFWwindow* window, c_Input* c_input, float timeStep
     else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
         c_input->RMB_pressed = false;
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+    if (io->getMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
     {
         if (c_input->MMB_pressed == false)
             c_input->MMB_justPressed = true;
@@ -106,7 +106,7 @@ void s_Input::getMouseInput(GLFWwindow* window, c_Input* c_input, float timeStep
     
     c_input->lastX = c_input->xpos;
     c_input->lastY = c_input->ypos;
-    glfwGetCursorPos(window, &c_input->xpos, &c_input->ypos);
+    io->getCursorPos(&c_input->xpos, &c_input->ypos);
 
     c_input->yScrollOffset;     //!< Set in a callback (windowUserPointer)
 }
@@ -164,10 +164,10 @@ void s_PlaneCam::update(float timeStep)
     
     // Cursor modes
     if (c_input->LMB_justPressed)
-        glfwSetInputMode(c_engine->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
     if (!c_input->LMB_pressed)
-        glfwSetInputMode(c_engine->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     
     // Mouse scroll
     std::cout << c_input->yScrollOffset << std::endl;

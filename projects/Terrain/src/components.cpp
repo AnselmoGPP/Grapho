@@ -3,7 +3,7 @@
 c_Engine::c_Engine(Renderer& renderer)
 	: Component("engine"), 
 	r(renderer),
-	window(renderer.getWindowManager()),
+	io(renderer.getWindowManager()),
 	width(renderer.getScreenSize().x),
 	height(renderer.getScreenSize().y)
 { };

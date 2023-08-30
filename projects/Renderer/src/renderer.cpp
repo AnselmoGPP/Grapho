@@ -179,7 +179,7 @@ void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
 
 Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers)
 	:
-	input(e.c.window, camera), 
+	input(e.c.io.window, camera), 
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
@@ -369,15 +369,15 @@ void Renderer::renderLoop()
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
 
-	while (!glfwWindowShouldClose(e.c.window))
+	while (!e.c.io.windowShouldClose())
 	{
 		++frameCount;
 
-		glfwPollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
+		e.c.io.pollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
 		drawFrame();
 
-		if (glfwGetKey(e.c.window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-			glfwSetWindowShouldClose(e.c.window, true);
+		if (e.c.io.getKey(GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			e.c.io.setWindowShouldClose(true);
 	}
 
 	worker.stop();
@@ -506,11 +506,11 @@ void Renderer::recreateSwapChain()
 
 	// Get window size
 	int width = 0, height = 0;
-	glfwGetFramebufferSize(e.c.window, &width, &height);
+	e.c.io.getFramebufferSize(&width, &height);
 	while (width == 0 || height == 0) 
 	{
-		glfwGetFramebufferSize(e.c.window, &width, &height);
-		glfwWaitEvents();
+		e.c.io.getFramebufferSize(&width, &height);
+		e.c.io.waitEvents();
 	}
 	e.c.width = width;
 	e.c.height = height;
@@ -810,4 +810,4 @@ size_t Renderer::loadedShaders() { return shaders.size(); }
 
 size_t Renderer::loadedTextures() { return textures.size(); }
 
-GLFWwindow* Renderer::getWindowManager() { return e.getWindowManager(); }
+IOmanager* Renderer::getWindowManager() { return e.getWindowManager(); }
