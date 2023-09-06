@@ -13,6 +13,8 @@ void s_Engine::update(float timeStep)
         //c_eng->window = c_eng->r.getWindowManager();    // <<< Necessary to update each frame???
         c_eng->width = c_eng->r.getScreenSize().x;
         c_eng->height = c_eng->r.getScreenSize().y;
+        c_eng->time += timeStep;
+        std::cout << c_eng->width << ", " << c_eng->height << std::endl;
     }
     else std::cout << "No input component found: " << typeid(this).name() << std::endl;
 }
@@ -123,6 +125,179 @@ glm::mat4 s_Camera::getProjectionMatrix(float aspectRatio, float fov, float near
     return proj;
 }
 
+void s_Camera::updateAxes(c_Camera* c_cam, glm::vec4& rotQuat)
+{
+    // Rotate
+    c_cam->front = rotatePoint(rotQuat, c_cam->front);
+    c_cam->right = rotatePoint(rotQuat, c_cam->right);
+    c_cam->camUp = rotatePoint(rotQuat, c_cam->camUp);
+
+    // Normalize & make perpendicular
+    c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->camUp));
+    c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
+    c_cam->front = glm::normalize(c_cam->front);
+}
+
+void s_SphereCam::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Input const* c_input = (c_Input*)em->getSComponent("input");
+    c_Engine const* c_engine = (c_Engine*)em->getSComponent("engine");
+    c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
+
+    if (!c_input || !c_engine || !c_cam) {
+        std::cout << "No input component found: " << typeid(this).name() << std::endl;
+        return;
+    }
+    //printVec(c_cam->camPos);
+    std::cout << c_cam->radius << std::endl;
+
+    // Cursor modes
+    if (c_input->LMB_justPressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    if (!c_input->LMB_pressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // Keyboard moves
+    float velocity = c_cam->keysSpeed * timeStep;
+    float& yaw = c_cam->euler.z;				//!< cam yaw       Y|  R
+    float& pitch = c_cam->euler.x;				//!< cam pitch      | /
+    //float& roll = c_cam->euler.z;				//!< cam roll       |/____P
+
+    if (c_input->W_press || c_input->up_press) c_cam->radius -= velocity;
+    if (c_input->S_press || c_input->down_press) c_cam->radius += velocity;
+    if (c_input->A_press || c_input->left_press) c_cam->center -= c_cam->right * velocity;
+    if (c_input->D_press || c_input->right_press) c_cam->center += c_cam->right * velocity;
+    if (c_input->Q_press) c_cam->center -= c_cam->camUp * velocity;
+    if (c_input->E_press) c_cam->center += c_cam->camUp * velocity;
+
+    // constrain Radius
+    if (c_cam->radius < c_cam->minRadius) c_cam->radius = c_cam->minRadius;
+    if (c_cam->radius > c_cam->maxRadius) c_cam->radius = c_cam->maxRadius;
+
+    // Mouse moves
+    if (c_input->LMB_pressed) {
+        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+    }
+    
+    // constrain Pitch
+    if (abs(pitch) > c_cam->maxPitch)
+        pitch > 0 ? pitch =  c_cam->maxPitch : pitch = -c_cam->maxPitch;
+
+    // Mouse scroll
+    if (c_input->yScrollOffset)
+    {
+        c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
+        if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
+        if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
+
+        //c_input->yScrollOffset() = 0;     // <<<
+    }
+
+    // Update cam vectors
+    c_cam->front  = glm::vec3(-1, 0, 0);
+    c_cam->right  = glm::vec3( 0, 1, 0);
+    c_cam->camUp  = glm::vec3( 0, 0, 1);
+
+    glm::vec4 rotQuat = productQuat(
+        //getRotQuat(c_cam->front, roll),
+        getRotQuat(c_cam->right, pitch),
+        getRotQuat(c_cam->worldUp, yaw)
+    );
+    updateAxes(c_cam, rotQuat);
+
+    // Update camPos
+    c_cam->camPos = rotatePoint(rotQuat, glm::vec3(c_cam->radius, 0, 0));
+    c_cam->camPos += c_cam->center;
+
+    // Prevent error propagation
+    c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->worldUp));
+    c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
+
+    // Update View & Projection transformation matrices
+    c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
+    c_cam->proj = getProjectionMatrix(c_engine->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+}
+
+void s_PolarCam::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Input const* c_input = (c_Input*)em->getSComponent("input");
+    c_Engine const* c_engine = (c_Engine*)em->getSComponent("engine");
+    c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
+
+    if (!c_input || !c_engine || !c_cam) {
+        std::cout << "No input component found: " << typeid(this).name() << std::endl;
+        return;
+    }
+
+    // Cursor modes
+    if (c_input->LMB_justPressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    if (!c_input->LMB_pressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // Keyboard moves
+    float velocity = c_cam->keysSpeed * timeStep;
+    float& yaw = c_cam->euler.z;				//!< cam yaw       Y|  R
+    float& pitch = c_cam->euler.x;				//!< cam pitch      | /
+    //float& roll = c_cam->euler.z;				//!< cam roll       |/____P
+
+    if (c_input->W_press || c_input->up_press) c_cam->camPos += c_cam->front * velocity;
+    if (c_input->S_press || c_input->down_press) c_cam->camPos -= c_cam->front * velocity;
+    if (c_input->A_press || c_input->left_press) c_cam->camPos -= c_cam->right * velocity;
+    if (c_input->D_press || c_input->right_press) c_cam->camPos += c_cam->right * velocity;
+    if (c_input->Q_press) c_cam->camPos -= c_cam->worldUp * velocity;
+    if (c_input->E_press) c_cam->camPos += c_cam->worldUp * velocity;
+
+    // Mouse moves
+    if (c_input->LMB_pressed) {
+        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+    }
+
+    if (abs(pitch) > 1.3) pitch > 0 ? pitch = 1.3 : pitch = -1.3;
+    
+    // Mouse scroll
+    if (c_input->yScrollOffset)
+    {
+        c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
+        if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
+        if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
+
+        //c_input->yScrollOffset() = 0;     // <<<
+    }
+
+    // Update cam vectors
+    c_cam->front = glm::vec3(1, 0, 0);
+    c_cam->right = glm::vec3(0,-1, 0);
+    c_cam->camUp = glm::vec3(0, 0, 1);
+
+    glm::vec4 rotQuat = productQuat(
+        //getRotQuat(c_cam->front, roll),
+        getRotQuat(glm::vec3(0, -1, 0), pitch),
+        getRotQuat(c_cam->worldUp, yaw)
+    );
+    updateAxes(c_cam, rotQuat);
+    
+    // Prevent error propagation
+    c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->worldUp));
+    c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
+
+    // Update View & Projection transformation matrices
+    c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
+    c_cam->proj = getProjectionMatrix(c_engine->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+}
+
 void s_PlaneCam::update(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
@@ -133,47 +308,41 @@ void s_PlaneCam::update(float timeStep)
     c_Engine const* c_engine = (c_Engine*)em->getSComponent("engine");
     c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
 
-    //if (c_input->LMB_pressed) std::cout << "X" << std::endl;
-    //else std::cout << "." << std::endl;
-    //if (c_input->LMB_justPressed) std::cout << "X<<<" << std::endl;
-
-    if (!c_input || !c_engine || !c_cam)
-    {
+    if (!c_input || !c_engine || !c_cam) {
         std::cout << "No input component found: " << typeid(this).name() << std::endl;
         return;
     }
-    
-    float velocity = c_input->keysSpeed * timeStep;
+
+    // Cursor modes
+    if (c_input->LMB_justPressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    if (!c_input->LMB_pressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // Keyboard moves
+    float velocity = c_cam->keysSpeed * timeStep;
     float yaw   = 0;					//!< cam yaw       Y|  R
     float pitch = 0;				    //!< cam pitch      | /
     float roll  = 0;					//!< cam roll       |/____P
     
-    // Keyboard moves
     if (c_input->W_press || c_input->up_press   ) c_cam->camPos += c_cam->front * velocity;
     if (c_input->S_press || c_input->down_press ) c_cam->camPos -= c_cam->front * velocity;
-    if (c_input->A_press || c_input->left_press ) roll = -0.05 * velocity;
-    if (c_input->D_press || c_input->right_press) roll =  0.05 * velocity;
-    if (c_input->Q_press) yaw =  0.05 * velocity;
-    if (c_input->E_press) yaw = -0.05 * velocity;
+    if (c_input->A_press || c_input->left_press ) roll = -c_cam->spinSpeed * velocity;
+    if (c_input->D_press || c_input->right_press) roll =  c_cam->spinSpeed * velocity;
+    if (c_input->Q_press) yaw =  c_cam->spinSpeed * velocity;
+    if (c_input->E_press) yaw = -c_cam->spinSpeed * velocity;
     
     // Mouse moves
     if (c_input->LMB_pressed) {
-        yaw -= c_input->xOffset() * c_input->mouseSpeed;
-        pitch -= c_input->yOffset() * c_input->mouseSpeed;
+        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
     }
     
-    // Cursor modes
-    if (c_input->LMB_justPressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
-    if (!c_input->LMB_pressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    
     // Mouse scroll
-    std::cout << c_input->yScrollOffset << std::endl;
     if (c_input->yScrollOffset)
     {
-        c_cam->fov -= (float)c_input->yScrollOffset * c_input->scrollSpeed;
+        c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
         if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
     
@@ -186,14 +355,78 @@ void s_PlaneCam::update(float timeStep)
         getRotQuat(c_cam->camUp, yaw),
         getRotQuat(c_cam->right, pitch)
     );
-    c_cam->front = rotatePoint(rotQuat, c_cam->front);
-    c_cam->right = rotatePoint(rotQuat, c_cam->right);
-    c_cam->camUp = rotatePoint(rotQuat, c_cam->camUp);
+    updateAxes(c_cam, rotQuat);
     
-    c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->camUp));
+    // Update View & Projection transformation matrices
+    c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
+    c_cam->proj = getProjectionMatrix(c_engine->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+}
+
+void s_FPCam::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Input const* c_input = (c_Input*)em->getSComponent("input");
+    c_Engine const* c_engine = (c_Engine*)em->getSComponent("engine");
+    c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
+
+    if (!c_input || !c_engine || !c_cam) {
+        std::cout << "No input component found: " << typeid(this).name() << std::endl;
+        return;
+    }
+
+    // Cursor modes
+    if (c_input->LMB_justPressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    if (!c_input->LMB_pressed)
+        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // Keyboard moves
+    float velocity = c_cam->keysSpeed * timeStep;
+    float& yaw = c_cam->euler.z;				//!< cam yaw       Y|  R
+    float& pitch = c_cam->euler.x;				//!< cam pitch      | /
+    //float& roll = c_cam->euler.z;				//!< cam roll       |/____P
+
+    if (c_input->W_press || c_input->up_press) c_cam->camPos += c_cam->front * velocity;
+    if (c_input->S_press || c_input->down_press) c_cam->camPos -= c_cam->front * velocity;
+    if (c_input->A_press || c_input->left_press) c_cam->camPos -= c_cam->right * velocity;
+    if (c_input->D_press || c_input->right_press) c_cam->camPos += c_cam->right * velocity;
+    if (c_input->Q_press) c_cam->camPos -= c_cam->worldUp * velocity;
+    if (c_input->E_press) c_cam->camPos += c_cam->worldUp * velocity;
+
+    // Mouse moves
+    if (c_input->LMB_pressed) {
+        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+    }
+
+    if (abs(pitch) > 1.3) pitch > 0 ? pitch = 1.3 : pitch = -1.3;
+
+    // Mouse scroll
+    if (c_input->yScrollOffset)
+    {
+        c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
+        if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
+        if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
+
+        //c_input->yScrollOffset() = 0;     // <<<
+    }
+
+    // Update cam vectors
+    glm::vec4 rotQuat = productQuat(
+        //getRotQuat(c_cam->front, roll),
+        getRotQuat(glm::vec3(0, -1, 0), pitch),
+        getRotQuat(c_cam->worldUp, yaw)
+    );
+    updateAxes(c_cam, rotQuat);
+
+    // Prevent error propagation
+    c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->worldUp));
     c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
-    c_cam->front = glm::normalize(c_cam->front);
-    
+
     // Update View & Projection transformation matrices
     c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
     c_cam->proj = getProjectionMatrix(c_engine->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
@@ -205,6 +438,16 @@ void s_Model::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
+    return;
+
+    std::vector<uint32_t> entities = em->getEntitySet("model");
+    c_Model* c_model;
+
+    for (uint32_t eId : entities)
+    {
+        c_model = (c_Model*)em->getComponent("model", eId);
+
+    }
 }
 
 void s_ModelMatrix::update(float timeStep)
@@ -215,37 +458,62 @@ void s_ModelMatrix::update(float timeStep)
 
     std::vector<uint32_t> entities = em->getEntitySet("mm");
     c_ModelMatrix* c_mm;
-    c_Position* c_pos;
+    c_Move* c_mov;
 
     for (uint32_t eId : entities)
     {
         c_mm = (c_ModelMatrix*)em->getComponent("mm", eId);
-        c_pos = (c_Position*)em->getComponent("position", eId);
-        if (c_pos) c_mm->translation = c_pos->pos;
+        c_mov = (c_Move*)em->getComponent("move", eId);
+        if (c_mov) c_mm->translation = c_mov->pos;
         c_mm->modelMatrix = modelMatrix2(c_mm->scaling, c_mm->rotQuat, c_mm->translation);
     }
 }
 
-void s_Position::update(float timeStep)
+void s_Move::update(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    std::vector<uint32_t> entities = em->getEntitySet("position");
-    c_Position* c_pos;
-    c_Camera* c_cam;
+    std::vector<uint32_t> entities = em->getEntitySet("move");
+    const c_Camera* c_cam;
+    const c_Engine* c_eng;
+    c_Move* c_mov;
 
     for (uint32_t eId : entities)
     {
-        c_pos = (c_Position*)em->getComponent("position", eId);
+        c_mov = (c_Move*)em->getComponent("move", eId);
         
-        if(c_pos)
-            if (c_pos->followCam)
-            {
-                c_cam = (c_Camera*)em->getSComponent("camera");
-                c_pos->pos = c_cam->camPos;
-            }
+        if (c_mov)
+        {
+            c_cam = (c_Camera*)em->getSComponent("camera");
+
+            if (c_cam)
+                switch (c_mov->moveType)
+                {
+                case followCam:             // follow cam
+                    c_mov->pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
+                    break;
+
+                case followCamXY:           // follow cam on axis XY
+                    c_mov->pos = glm::vec3(
+                        c_cam->camPos.x - safeMod(c_cam->camPos.x, c_mov->jumpStep),
+                        c_cam->camPos.y - safeMod(c_cam->camPos.y, c_mov->jumpStep),
+                        c_mov->pos.z );
+                    break;
+
+                case followRotateCam:       // rotate around cam
+                    c_eng = (c_Engine*)em->getComponent("engine", eId);
+                    if(c_eng)
+                        c_mov->pos = glm::vec3(
+                            c_cam->camPos.x + c_mov->dist * cos(c_mov->speed * c_eng->time),
+                            c_cam->camPos.y - c_mov->dist * sin(c_mov->speed * c_eng->time),
+                            c_cam->camPos.z );
+                    break;
+                default:
+                    break;
+                }
+        }
     }
 }
 
@@ -279,3 +547,17 @@ void s_UBO::update(float timeStep)
             }
     }
 }
+/*
+void s_Sun::update(float timeStep)
+{
+    float frameTime;
+
+    c_Sun* c_sun = (c_Sun*)em->getSComponent("sun");
+
+    if (c_sun)
+    {
+        c_sun->dayTime = c_sun->initialDayTime + frameTime * c_sun->speed;
+        c_sun->dayTime = c_sun->dayTime - (24 * (((int)c_sun->dayTime) / 24));
+    }
+}
+*/

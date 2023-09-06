@@ -76,7 +76,7 @@ class Renderer
 
 	// Main parameters
 	VulkanEnvironment			e;
-	Input						input;						//!< Input data
+	//Input						input;						//!< Input data
 	TimerSet					timer;						//!< Time control
 
 	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass). [0] for main colors. [1] for post processing.
@@ -167,7 +167,7 @@ class Renderer
 public:
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers);
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers);
 	~Renderer();
 	
 	void renderLoop();	//!< Create command buffer and start render loop.
@@ -198,8 +198,8 @@ public:
 	void toLastDraw(modelIter model);
 
 	TimerSet&	getTimer();		//!< Returns the timer object (provides access to time data).
-	Camera&		getCamera();	//!< Returns the camera object (provides access to camera data).
-	Input&		getInput();
+	//Camera&		getCamera();	//!< Returns the camera object (provides access to camera data).
+	//Input&		getInput();
 	size_t		getRendersCount(modelIter model);
 	size_t		getFrameCount();
 	size_t		getModelsCount();

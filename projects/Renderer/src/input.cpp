@@ -1,25 +1,75 @@
-
 #include "glm/gtc/type_ptr.hpp"
-#include "GLFW/glfw3.h"
 
 #include "input.hpp"
 
-Input::Input(GLFWwindow* window, Camera* cam)
-	: window(window), cam(cam)
+
+IOmanager::IOmanager(int width, int height)
+{
+	initWindow(width, height);
+	setCallbacks();
+}
+
+IOmanager::~IOmanager() { }
+
+void IOmanager::initWindow(int width, int height)
+{
+	glfwInit();
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);	// Tell GLFW not to create an OpenGL context
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);		// Enable resizable window (default)
+
+	window = glfwCreateWindow((int)width, (int)height, "Grapho", nullptr, nullptr);
+	//glfwSetWindowUserPointer(window, this);								// Input class has been set as windowUserPointer
+	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// This callback has been set in Input
+
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
+}
+
+void IOmanager::setCallbacks()
 {
 	glfwSetWindowUserPointer(window, this);								// Set this class as windowUserPointer (for making it accessible from callbacks)
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);	// Set callback (signals famebuffer resizing)
 	glfwSetScrollCallback(window, mouseScroll_callback);				// Set callback (get mouse scrolling)
 }
 
-void Input::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+void IOmanager::createWindowSurface(VkInstance instance, VkAllocationCallbacks* allocator, VkSurfaceKHR* surface)
 {
-	auto windowUserPointer = reinterpret_cast<Input*>(glfwGetWindowUserPointer(window));
+	if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create window surface!");
+}
+
+void IOmanager::getFramebufferSize(int* width, int* height) { glfwGetFramebufferSize(window, width, height); }
+
+void IOmanager::setWindowShouldClose(bool b) { return glfwSetWindowShouldClose(window, b); }
+
+bool IOmanager::windowShouldClose() { return glfwWindowShouldClose(window); }
+
+void IOmanager::destroy()
+{
+	glfwDestroyWindow(window);		// GLFW window
+	glfwTerminate();				// GLFW
+}
+
+int IOmanager::getKey(int key) { return glfwGetKey(window, key); }
+
+int IOmanager::getMouseButton(int button) { return glfwGetMouseButton(window, button); }
+
+void IOmanager::getCursorPos(double* xpos, double* ypos) { glfwGetCursorPos(window, xpos, ypos); }
+
+void IOmanager::setInputMode(int mode, int value) { glfwSetInputMode(window, mode, value); }
+
+void IOmanager::pollEvents() { glfwPollEvents(); }
+
+void IOmanager::waitEvents() { glfwWaitEvents(); }
+
+void IOmanager::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+	auto windowUserPointer = reinterpret_cast<IOmanager*>(glfwGetWindowUserPointer(window));
 	windowUserPointer->framebufferResized = true;
 }
 
-void Input::mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void IOmanager::mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	auto windowUserPointer = reinterpret_cast<Input*>(glfwGetWindowUserPointer(window));
-	windowUserPointer->cam->setYScrollOffset(yoffset);
+	auto windowUserPointer = reinterpret_cast<IOmanager*>(glfwGetWindowUserPointer(window));
+	windowUserPointer->YscrollOffset = yoffset;
 }

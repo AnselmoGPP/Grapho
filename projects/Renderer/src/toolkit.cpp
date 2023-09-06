@@ -595,3 +595,28 @@ bool Quicksort_distVec3_index::isCloser(int idx1, int idx2)
 	if (sqrDist1 < sqrDist2) return true;
 	else return false;
 }
+
+float safeMod(int a, int b)
+{
+	if (!b) return 0;	// division by 0 is not safe
+
+	return a - (a / b) * b;
+}
+
+float safeMod(float a, float b)
+{
+	if (!b) return 0;	// division by 0 is not safe
+
+	return a - ((int)a / (int)b) * (int)b;
+}
+
+glm::vec3 safeMod(const glm::vec3& a, float b)
+{
+	if (!b) return glm::vec3(0,0,0);	// division by 0 is not safe
+
+	return glm::vec3(
+		a.x - ((int)a.x / (int)b) * (int)b,
+		a.y - ((int)a.y / (int)b) * (int)b,
+		a.z - ((int)a.z / (int)b) * (int)b
+	);
+}

@@ -19,10 +19,10 @@ extern const std::string vertexDir;
 extern const std::string texDir;
 
 // Camera
-extern FreePolarCam camera_1;
-extern SphereCam camera_2;
-extern PlaneCam camera_3;
-extern PlanetFPcam camera_4;
+//extern FreePolarCam camera_1;
+//extern SphereCam camera_2;
+//extern PlaneCam camera_3;
+//extern PlanetFPcam camera_4;
 
 // Resources
 
@@ -30,15 +30,5 @@ extern ShaderLoader ShaderLoaders[];
 extern TextureLoader texInfos[];
 
 extern std::vector<TextureLoader> usedTextures;	// Package of textures
-
-struct dataForUpdates
-{
-	float frameTime;
-	float aspectRatio, fov;
-	glm::vec2 clipPlanes, screenSize;
-	size_t fps, maxfps;
-	glm::vec3 camPos, camDir, camUp, camRight;
-	float groundHeight = 0;					// Distance (0,0,0)-groundUnderCam
-};
 
 #endif

@@ -5,9 +5,11 @@
 #include <optional>					// std::optional<uint32_t> (Wrapper that contains no value until you assign something to it. Contains member has_value())
 #include <mutex>
 
-#include "vulkan/vulkan.h"			// From LunarG SDK. Can be used for off-screen rendering
+//#include "vulkan/vulkan.h"		// From LunarG SDK. Can be used for off-screen rendering
 //#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
-#include "GLFW/glfw3.h"
+//#include "GLFW/glfw3.h"
+
+#include "input.hpp"
 
 //#define DEBUG_ENV_INFO			// Basic info
 //#define DEBUG_ENV_CORE			// Standards: NDEBUG, _DEBUG
@@ -64,32 +66,6 @@ struct SwapChain
 	VkExtent2D									extent;
 };
 
-/// Input/Output manager for input (controls) and output (window) operations.
-class IOmanager
-{
-	void initWindow(int width, int height);
-
-public:
-	IOmanager(int width, int height);
-	~IOmanager();
-
-	GLFWwindow* window;				//!< Opaque window object.
-
-	// Output (window)
-	void createWindowSurface(VkInstance instance, VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
-	void getFramebufferSize(int* width, int* height);
-	void setWindowShouldClose(bool b);
-	bool windowShouldClose();
-	void destroy();
-
-	// Input (keys, mouse)
-	int getKey(int key);
-	int getMouseButton(int button);
-	void getCursorPos(double* xpos, double* ypos);
-	void setInputMode(int mode, int value);
-	void pollEvents();							//!< Check for events (processes only those events that have already been received and then returns immediately)
-	void waitEvents();
-};
 
 /*
 /// Input manager

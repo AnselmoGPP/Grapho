@@ -177,14 +177,12 @@ void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
 
 // Renderer ---------------------------------------------------------------------
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), Camera* camera, size_t layers)
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers)
 	:
-	input(e.c.io.window, camera), 
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
-	//runThread(false),
 	frameCount(0),
 	commandsCount(0),
 	worker(500, models, modelsToLoad, modelsToDelete, textures, shaders, updateCommandBuffer)
@@ -484,10 +482,10 @@ void Renderer::drawFrame()
 		result = vkQueuePresentKHR(e.c.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
 	}
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || input.framebufferResized) 
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || e.c.io.framebufferResized) 
 	{
 		std::cout << "Out-of-date/Suboptimal KHR or window resized" << std::endl;
-		input.framebufferResized = false;
+		e.c.io.framebufferResized = false;
 		recreateSwapChain();
 	}
 	else if (result != VK_SUCCESS)
@@ -710,9 +708,11 @@ void Renderer::updateStates(uint32_t currentImage)
 	timer.computeDeltaTime();
 
 	//    Compute transformation matrix
-	input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
-	glm::mat4 view = input.cam->GetViewMatrix();
-	glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChain.extent.width / (float)e.swapChain.extent.height);
+	//input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
+	//glm::mat4 view = input.cam->GetViewMatrix();
+	//glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChain.extent.width / (float)e.swapChain.extent.height);
+	glm::mat4 view;
+	glm::mat4 proj;
 
 	//    Update model matrices and other things (user defined)
 	userUpdate(*this, view, proj);
@@ -787,10 +787,6 @@ void Renderer::toLastDraw(modelIter model)
 }
 
 TimerSet& Renderer::getTimer() { return timer; }
-
-Camera& Renderer::getCamera() { return *input.cam; }
-
-Input& Renderer::getInput() { return input; }
 
 size_t Renderer::getRendersCount(modelIter model) { return model->activeRenders; }
 

@@ -1,4 +1,5 @@
 #include "entities.hpp"
+#include "terrain.hpp"
 
 
 EntityFactory::EntityFactory(Renderer& renderer) : MainEntityFactory(), renderer(renderer) { };
@@ -25,6 +26,17 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*> { new c_Model(model) };
 }
 
+std::vector<Component*> EntityFactory::createSeaPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	//Sphere planetSeaGrid(&renderer, lights, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
+	
+	//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+
+	//planetSeaGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
+	//planetSeaGrid.toLastDraw();
+	return std::vector<Component*>();
+}
+
 std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
 	VerticesLoader vertexData(vt_32.vertexSize, v_cube.data(), 14, i_inCube);
@@ -39,7 +51,57 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 		0,
 		false);
 
-	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(600), new c_Position(true) };
+	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
+}
+
+std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	std::vector<float> v_sun;	// [4 * 5]
+	std::vector<uint16_t> i_sun;
+	size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
+
+	VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	modelIter model = renderer.newModel(
+		"sun",
+		0, 1, primitiveTopology::triangle, vt_32,
+		vertexData, shaders, textureSet,
+		1, 3 * size.mat4,	// M, V, P
+		0,
+		true);
+
+	return std::vector<Component*> { 
+		new c_Model(model), 
+		new c_ModelMatrix(10),
+		new c_Move(followRotateCam) };
+	
+	//SunSystem sun(0.00, 0.0, 3.14 / 10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
+	//sun.MM(d.camPos);	// model matrix position
+}
+
+std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	float gridStep = 50;
+
+	std::vector<float> v_grid;
+	std::vector<uint16_t> i_grid;
+	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 10, glm::vec3(0.5, 0.5, 0.5));
+
+	VerticesLoader vertexData(vt_33.vertexSize, v_grid.data(), numVertex, i_grid);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	modelIter model = renderer.newModel(
+		"grid",
+		1, 1, primitiveTopology::line, vt_33,
+		vertexData, shaders, textureSet,
+		1, 3 * size.mat4,	// M, V, P
+		0,
+		false);
+
+	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(), new c_Move(followCamXY, gridStep) };
 }
 
 std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -50,11 +112,31 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
 
 	modelIter model = renderer.newModel(
 		"axis",
 		1, 1, primitiveTopology::line, vt_33,
-		vertexData, shaders, noTextures,
+		vertexData, shaders, textureSet,
+		1, 3 * size.mat4,	// M, V, P
+		0,
+		false);
+
+	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix() };
+}
+
+std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	Icosahedron icos(400.f);	// Just created for calling destructor, which applies a multiplier.
+
+	VerticesLoader vertexData(vt_33.vertexSize, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	modelIter model = renderer.newModel(
+		"points",
+		1, 1, primitiveTopology::point, vt_33,
+		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
 		0,
 		false);

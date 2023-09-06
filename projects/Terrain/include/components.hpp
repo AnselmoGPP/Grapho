@@ -19,6 +19,11 @@
 #include "ECSarch.hpp"
 
 
+// enumerations --------------------------------------
+
+enum MoveType { followCam, followCamXY, followRotateCam };
+
+
 // Singletons --------------------------------------
 
 struct c_Engine : public Component
@@ -32,7 +37,11 @@ struct c_Engine : public Component
 
 	uint32_t width;		//!< pixels width  (1920/2)
 	uint32_t height;	//!< pixels height (1080/2)
+	uint32_t getWidth() { return r.getScreenSize().x; };
+	uint32_t getHeight() { return r.getScreenSize().y; };
 	float aspectRatio() const { return (float)width / height; };
+
+	float time;
 };
 
 struct c_Input : public Component
@@ -67,34 +76,75 @@ struct c_Input : public Component
 	double lastX = 0, lastY = 0;		//!< Mouse positions in the previous frame.
 	double xOffset() const { return xpos - lastX; };
 	double yOffset() const { return ypos - lastY; };
-	
-	// Speed
-	float keysSpeed   = 50.f;	///< camera speed
-	float mouseSpeed  = 0.001f;	///< Mouse sensitivity
-	float scrollSpeed = 0.1f;	///< Scroll speed
 };
 
 struct c_Camera : public Component
 {
-	c_Camera() : Component("camera") { };
+	c_Camera(unsigned mode);
 	~c_Camera() { };
 	void printInfo() const;
 
-	glm::vec3 camPos  = { 1450.f, 1450.f, 0.f };
-	glm::vec3 front   = { 1,0,0 };		//!< cam front vector
-	glm::vec3 right   = { 0,-1,0 };		//!< cam right vector
-	glm::vec3 camUp   = { 0,0,1 };		//!< cam up vector (used in lookAt()) (computed from cross(right, front))
-	glm::vec3 worldUp = { 0,0,1 };		//!< World up vector (used for elevating/descending to/from the sky)
+	// Position & orientation
+	glm::vec3 camPos  = { 0, 0, 0 };
+	glm::vec3 front   = { 1, 0, 0 };		//!< cam front vector
+	glm::vec3 right   = { 0,-1, 0 };		//!< cam right vector
+	glm::vec3 camUp   = { 0, 0, 1 };		//!< cam up vector (used in lookAt()) (computed from cross(right, front))
+	glm::vec3 worldUp = { 0, 0, 1 };		//!< World up vector (used for elevating/descending to/from the sky)
+	glm::vec3 euler   = { 0, 0, 0 };		//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
+
+	// View
+	glm::mat4 view;		//!< Model transformation matrix
+	glm::mat4 proj;		//!< Model transformation matrix
 
 	float fov = 1.f, minFov = 0.1f, maxFov = 2.f;	//!< FOV (rad)
 	float nearViewPlane = 0.2f;						//!< Near view plane
 	float farViewPlane = 4000.f;					//!< Near view plane
 
-	glm::mat4 view;		//!< Model transformation matrix
-	glm::mat4 proj;		//!< Model transformation matrix
+	// Sphere cam
+	glm::vec3 center = { 0, 0, 0 };
+	float maxPitch = 0;
+	float radius = 0;
+	float minRadius = 0;
+	float maxRadius = 0;
+
+	// Cam speed
+	float keysSpeed = 50.f;		//!< camera speed
+	float spinSpeed = 0.05f;	//!< Spinning speed
+	float mouseSpeed = 0.001f;	//!< Mouse sensitivity
+	float scrollSpeed = 0.1f;	//!< Scroll speed
 };
 
+struct c_Lights : public Component
+{
+	c_Lights(unsigned count);
+	~c_Lights() { };
+	void printInfo() const;
 
+	LightSet lights;
+};
+/*
+struct c_Sun : public Component
+{
+	/
+	@brief Constructor
+	@param initialTime Range [0.0, 24.0).
+	@param speed Orbital speed.
+	@param mode Orbit mode: 1 (XZ plane) or 2 (XY plane).
+	/
+	c_Sun(float initialDayTime, float speed, float angularWidth, float dist, unsigned mode);
+	~c_Sun() { };
+	void printInfo() const;
+
+	const unsigned mode;        //!< Orbit mode: 1 (XZ plane) or 2 (XY plane)
+	const float angularWidth;   //!< Angular sun width
+	const float speed;          //!< Orbital speed
+	const float distance;       //!< Distance to camera
+	const float initialDayTime;	//!< Range [0.0, 24.0)
+
+	float dayTime;              //!< Range [0.0, 24.0)
+	float radius;				//!< Distance sun-camera
+};
+*/
 // Non-Singletons --------------------------------------
 
 struct c_Model : public Component
@@ -106,15 +156,44 @@ struct c_Model : public Component
 	modelIter model;
 };
 
-struct c_Position : public Component
+/// Determines the scaling for the Model matrix 
+struct c_Scale : public Component
 {
-	c_Position(bool followCam = false, glm::vec3 position = { 0, 0, 0 }) 
-		: Component("position"), pos(position), followCam(followCam) { };
-	~c_Position() { };
+	c_Scale() : Component("scale") { };
+	c_Scale(glm::vec3 scale) : Component("scale"), scale(scale) { };
+	c_Scale(float scale) : Component("scale"), scale(scale, scale, scale) { };
+	~c_Scale() { };
+	void printInfo() const;
+
+	glm::vec3 scale = { 1, 1, 1 };
+};
+
+/// Determines the rotation (rotation quaternion) for the Model matrix 
+struct c_Rotation : public Component
+{
+	c_Rotation() : Component("rotation") { };
+	c_Rotation(glm::vec4 rotQuat) : Component("rotation"), rotQuat(rotQuat) { };
+	~c_Rotation() { };
+	void printInfo() const;
+
+	glm::vec4 rotQuat = { 1, 0, 0, 0 };
+};
+
+/// Determines the translation for the Model matrix 
+struct c_Move : public Component
+{
+	c_Move(MoveType moveType, float jumpStep = 0, glm::vec3 position = { 0, 0, 0 });
+	c_Move(MoveType moveType, float dist, float speed, glm::vec3 position = { 0, 0, 0 });
+	~c_Move() { };
 	void printInfo() const;
 
 	glm::vec3 pos;
-	bool followCam;
+	MoveType moveType;
+
+	float jumpStep;			//!< Used in discrete moves, not uniform moves.
+
+	float speed;
+	float dist;
 };
 
 /*
@@ -138,11 +217,13 @@ struct c_Scale : public Component
 
 struct c_ModelMatrix : public Component
 {
-	c_ModelMatrix(float scaleFactor = 1);
+	c_ModelMatrix();
+	c_ModelMatrix(glm::vec4 rotQuat);
+	c_ModelMatrix(float scaleFactor);
 	~c_ModelMatrix() { };
 	void printInfo() const;
 
-	glm::vec3 scaling;
+	glm::vec3 scaling	  = { 1, 1, 1 };
 	glm::vec4 rotQuat     = { 1, 0, 0, 0 };
 	glm::vec3 translation = { 0, 0, 0 };
 	glm::mat4 modelMatrix;			//!< Model transformation matrix

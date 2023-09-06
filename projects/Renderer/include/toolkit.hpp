@@ -134,7 +134,7 @@ class SunSystem
     const float angularWidth;   //!< Angular sun width
     const float speed;          //!< Orbital speed
     const float distance;       //!< Distance to camera
-    const float initialDayTime;       //!< Range [0.0, 24.0)
+    const float initialDayTime; //!< Range [0.0, 24.0)
     float dayTime;              //!< Range [0.0, 24.0)
 
 public:
@@ -280,5 +280,9 @@ class Quicksort_distVec3_index
 public:
     void sort(std::vector<glm::vec3>& positions, std::vector<int>& indexVals, const glm::vec3& camPos, int low, int high);
 };
+
+float safeMod(int a, int b);
+float safeMod(float a, float b);
+glm::vec3 safeMod(const glm::vec3& a, float b);
 
 #endif

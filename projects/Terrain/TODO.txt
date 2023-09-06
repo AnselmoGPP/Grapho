@@ -1,6 +1,11 @@
 TODO:
 EntityManager::getEntitySet
 
+c_move
+c_scale
+c_pos
+c_rotations
+
 	Influences:
 		Arma III: Realism
 		MGS: Tactical action espionage
@@ -35,6 +40,7 @@ EntityManager::getEntitySet
 	Chunks don't empty their buffers after construction of Model. However, this is useful for grass positioning.
 	Optimization: Grass transparencies computed in CPU
 
+	Log
 	Optimize shaders
 	Plain coasts
 	seaPlanet VS: outCamSqrHeight & 

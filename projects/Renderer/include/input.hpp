@@ -3,24 +3,47 @@
 
 #include "camera.hpp"
 
+#include "vulkan/vulkan.h"			// From LunarG SDK. Can be used for off-screen rendering
+//#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
+#include "GLFW/glfw3.h"
+
 /**
-	@brief The purpose of this class is mainly to serve as windowUserPointer and to hold all the callbacks. 
-	Furthermore, it is a layer between loopManager and other classes that require input (like cameras).
-	windowUserPointer: Pointer accessible from callbacks. Each window has one, this can be used for any 
-	purpose you need, and GLFW will not modify it throughout the life-time of the window.
+	@brief Input/Output manager for input (controls) and output (window) operations. 
+	This holds input callbacks and serves as windowUserPointer (pointer accessible from callbacks). 
+	Each window has a windowUserPointer, which can be used for any purpose, and GLFW will not modify 
+	it throughout the life-time of the window.
 */
-class Input
+class IOmanager
 {
+	void initWindow(int width, int height);
+	void setCallbacks();
+
 public:
-	Input(GLFWwindow* window, Camera* cam);
+	IOmanager(int width, int height);
+	~IOmanager();
 
-	GLFWwindow* window;
-	Camera* cam;
+	GLFWwindow* window;				//!< Opaque window object.
 
+	// Output (window)
+	void createWindowSurface(VkInstance instance, VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
+	void getFramebufferSize(int* width, int* height);
+	void setWindowShouldClose(bool b);
+	bool windowShouldClose();
+	void destroy();
+
+	// Input (keys, mouse)
+	int getKey(int key);
+	int getMouseButton(int button);
+	void getCursorPos(double* xpos, double* ypos);
+	void setInputMode(int mode, int value);
+	void pollEvents();							//!< Check for events (processes only those events that have already been received and then returns immediately)
+	void waitEvents();
+
+	// Callbacks
+	float YscrollOffset = false;
 	bool framebufferResized = false;	///< Many drivers/platforms trigger VK_ERROR_OUT_OF_DATE_KHR after window resize, but it's not guaranteed. This variable handles resizes explicitly.
-
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);		///< Callback for window resizing.
-	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);	///< Callback for mouse scroll.
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);		///< Callback for window resizing (called when window is resized).
+	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);	///< Callback for mouse scroll (called when mouse is scrolled).
 };
 
 #endif
