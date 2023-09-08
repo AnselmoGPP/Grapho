@@ -3,7 +3,7 @@
 c_Engine::c_Engine(Renderer& renderer)
 	: Component("engine"), 
 	r(renderer),
-	io(renderer.getWindowManager()),
+	io(r.getIOManager()),
 	width(renderer.getScreenSize().x),
 	height(renderer.getScreenSize().y),
 	time(0)
@@ -141,40 +141,58 @@ void c_Rotation::printInfo() const
 }
 
 c_Move::c_Move(MoveType moveType, float jumpStep, glm::vec3 position)
-	: Component("move"), pos(position), moveType(moveType), jumpStep(jumpStep), speed(0), dist(0) { };
+	: Component("move"), pos(position), moveType(moveType), jumpStep(jumpStep) { };
 
-c_Move::c_Move(MoveType moveType, float dist, float speed, glm::vec3 position)
-	: Component("move"), pos(position), moveType(moveType), jumpStep(0), speed(speed), dist(dist) { };
+c_Move::c_Move(MoveType moveType)
+	: Component("move"), moveType(moveType) { };
 
 void c_Move::printInfo() const
 {
-	std::cout << "pos = "; printVec(pos);
-	std::cout << "followCam = " << followCam << std::endl;
+	std::cout << "moveType: " << moveType << std::endl;
+	std::cout << "pos: "; printVec(pos);
+	std::cout << "rotQuat: "; printVec(rotQuat);
+	std::cout << "jumpStep: " << jumpStep << std::endl;
 
 	std::cout << "----------" << std::endl;
 }
 
 c_ModelMatrix::c_ModelMatrix()
-	: Component("mm"), modelMatrix(modelMatrix2(scaling, rotQuat, translation)) { };
+	: Component("mm"), modelMatrix(modelMatrix2(glm::vec3(1,1,1), glm::vec4(1,0,0,0), glm::vec3(0,0,0))) { };
 
 c_ModelMatrix::c_ModelMatrix(glm::vec4 rotQuat)
-	: Component("mm"), rotQuat(rotQuat), modelMatrix(modelMatrix2(scaling, rotQuat, translation)) { };
+	: Component("mm"), modelMatrix(modelMatrix2(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
 
-c_ModelMatrix::c_ModelMatrix(float scaleFactor)
-	: Component("mm"), 
-	scaling(scaleFactor, scaleFactor, scaleFactor), 
-	modelMatrix(modelMatrix2(scaling, rotQuat, translation)) { };
+c_ModelMatrix::c_ModelMatrix(float scale)
+	: Component("mm"), scale(scale, scale, scale), modelMatrix(modelMatrix2(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
+
+c_ModelMatrix::c_ModelMatrix(float scale, glm::vec4 rotQuat)
+	: Component("mm"), scale(scale, scale, scale), modelMatrix(modelMatrix2(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
 
 void c_ModelMatrix::printInfo() const
 {
-	std::cout << "Scaling = "; printVec(scaling);
-	std::cout << "Rotation = "; printVec(rotQuat);
-	std::cout << "Translation = "; printVec(translation);
+	std::cout << "Scale = "; printVec(scale);
+	//std::cout << "Rotation = "; printVec(rotQuat);
+	//std::cout << "Translation = "; printVec(translation);
 
 	std::cout << "----------" << std::endl;
 }
 
-c_Lights::c_Lights(unsigned count) : Component("lights"), lights(count) { }
+c_Lights::c_Lights(unsigned count) : Component("lights"), lights(count) 
+{ 
+	unsigned i = 0;
+
+	//lights.turnOff(0);
+
+	// Sun (day & night):
+	if (i < count) lights.setDirectional(i++,  glm::vec3(-1,0,0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	if (i < count) lights.setDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
+
+	// Flashlight:
+	if (i < count) lights.setSpot(i++, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
+
+	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
+	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
+}
 
 void c_Lights::printInfo() const
 {
@@ -190,17 +208,20 @@ void c_Lights::printInfo() const
 		std::cout << "   Degree: "; printVec(lights.props->degree);
 		std::cout << "   CutOff: "; printVec(lights.props->cutOff);	}
 }
-/*
-c_Sun::c_Sun(float initialDayTime, float speed, float angularWidth, float distance, unsigned mode)
-	: Component("sun"), mode(mode == 1 ? 1 : 2), angularWidth(angularWidth), speed(speed), distance(distance), initialDayTime(initialDayTime), dayTime(initialDayTime) { }
 
-void c_Sun::printInfo() const
+c_Sky::c_Sky(float skySpeed, float skyAngle, float sunSpeed, float sunAngle, float sunDist)
+	: Component("sky"), 
+	eclipticAngle(0.41), 
+	skySpeed(skySpeed), sunSpeed(sunSpeed), 
+	skyAngle_0(skyAngle), sunAngle_0(sunAngle),
+	sunDist(sunDist),
+	skyAngle(0), sunAngle(0), 
+	sunDir(0,0,0) { }
+
+void c_Sky::printInfo() const
 {
-	std::cout << "mode: " << mode << std::endl;
-	std::cout << "angularWidth: " << angularWidth << std::endl;
-	std::cout << "speed: " << speed << std::endl;
-	std::cout << "distance: " << distance << std::endl;
-	std::cout << "initialDayTime: " << initialDayTime << std::endl;
-	std::cout << "dayTime: " << dayTime << std::endl;
+	std::cout << "skySpeed: " << skySpeed << std::endl;
+	std::cout << "skyAngle: " << skyAngle << std::endl;
+	std::cout << "sunSpeed: " << sunSpeed << std::endl;
+	std::cout << "sunAngle: " << sunAngle << std::endl;
 }
-*/

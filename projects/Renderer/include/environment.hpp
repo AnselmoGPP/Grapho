@@ -67,37 +67,10 @@ struct SwapChain
 };
 
 
-/*
-/// Input manager
-class Imanager
-{
-public:
-	Imanager();
-	~Imanager();
-
-	GLFWwindow* win;				//!< Opaque window object.
-
-};
-
-/// Out manager
-class Omanager
-{
-public:
-	Omanager(GLFWwindow* window) : win(window);
-	~Omanager();
-
-	GLFWwindow* win;				//!< Opaque window object.
-
-};
-*/
-
 class VulkanCore
 {
-	const std::vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-	const std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };	//!< Swap chain: Queue of images that are waiting to be presented to the screen. Our application will acquire such an image to draw to it, and then return it to the queue. Its general purpose is to synchronize the presentation of images with the refresh rate of the screen.
-
 public:
-	VulkanCore();
+	VulkanCore(IOmanager& io);
 
 	uint32_t width = 1920 / 2;			// <<< Does this change when recreating swap chain?
 	uint32_t height = 1080 / 2;
@@ -106,7 +79,6 @@ public:
 	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
-	IOmanager					io;
 	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	debugMessenger;		//!< Opaque handle to a debug messenger object (the debug callback is part of it).
 	VkSurfaceKHR				surface;			//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
@@ -124,9 +96,13 @@ public:
 	SwapChainSupportDetails	querySwapChainSupport();
 	QueueFamilyIndices findQueueFamilies();
 	void destroy();
-	IOmanager* getWindowManager();
+	//IOmanager* getWindowManager();
 
 private:
+	IOmanager& io;
+
+	const std::vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+	const std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };	//!< Swap chain: Queue of images that are waiting to be presented to the screen. Our application will acquire such an image to draw to it, and then return it to the queue. Its general purpose is to synchronize the presentation of images with the refresh rate of the screen.
 
 	void initWindow();
 	void createInstance();
@@ -157,8 +133,10 @@ private:
 
 class VulkanEnvironment
 {
+	IOmanager& io;
+
 public:
-	VulkanEnvironment();
+	VulkanEnvironment(IOmanager& io);
 	~VulkanEnvironment();
 
 	VulkanCore c;
@@ -170,7 +148,7 @@ public:
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 	VkFormat		findDepthFormat();
-	IOmanager*		getWindowManager();
+	//IOmanager*		getWindowManager();
 
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();

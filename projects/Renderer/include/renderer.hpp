@@ -76,7 +76,7 @@ class Renderer
 
 	// Main parameters
 	VulkanEnvironment			e;
-	//Input						input;						//!< Input data
+	IOmanager&					io;							//!< Input data
 	TimerSet					timer;						//!< Time control
 
 	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass). [0] for main colors. [1] for post processing.
@@ -167,7 +167,7 @@ class Renderer
 public:
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), size_t layers);
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, size_t layers);
 	~Renderer();
 	
 	void renderLoop();	//!< Create command buffer and start render loop.
@@ -209,7 +209,7 @@ public:
 	size_t		loadedModels();		//!< Returns number of models in Renderer:models
 	size_t		loadedShaders();	//!< Returns number of shaders in Renderer:shaders
 	size_t		loadedTextures();	//!< Returns number of textures in Renderer:textures
-	IOmanager*  getWindowManager();
+	IOmanager&  getIOManager();
 };
 
 #endif

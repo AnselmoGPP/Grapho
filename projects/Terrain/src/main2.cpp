@@ -234,17 +234,6 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	lights.posDir[2].position  = d.camPos;
 	lights.posDir[2].direction = d.camDir;
 
-	//std::cout
-	//	<< "camPos: " << pos.x << ", " << pos.y << ", " << pos.z << " | "
-	//	<< "moveSpeed: " << rend.getCamera().moveSpeed << " | "
-	//	<< "mouseSensitivity: " << rend.getCamera().mouseSensitivity << " | "
-	//	<< "scrollSpeed: " << rend.getCamera().scrollSpeed << " | "
-	//	<< "fov: " << rend.getCamera().fov << " | "
-	//	<< "YPR: " << rend.getCamera().yaw << ", " << rend.getCamera().pitch << ", " << rend.getCamera().roll << " | "
-	//	<< "N/F planes: " << rend.getCamera().nearViewPlane << ", " << rend.getCamera().farViewPlane << " | "
-	//	<< "yScrollOffset: " << rend.getCamera().yScrollOffset << " | "
-	//	<< "worldUp: " << rend.getCamera().worldUp.x << ", " << rend.ge65Camera().worldUp.y << ", " << rend.getCamera().worldUp.z << std::endl;
-
 	// Chunks
 	if (updateChunk) singleChunk.updateUBOs(view, proj, d.camPos, lights, d.frameTime, d.groundHeight);
 

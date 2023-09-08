@@ -14,7 +14,6 @@ void s_Engine::update(float timeStep)
         c_eng->width = c_eng->r.getScreenSize().x;
         c_eng->height = c_eng->r.getScreenSize().y;
         c_eng->time += timeStep;
-        std::cout << c_eng->width << ", " << c_eng->height << std::endl;
     }
     else std::cout << "No input component found: " << typeid(this).name() << std::endl;
 }
@@ -37,46 +36,46 @@ void s_Input::update(float timeStep)
         std::cout << "No input component found: " << typeid(this).name() << std::endl;
 }
 
-void s_Input::getKeyboardInput(IOmanager* io, c_Input* c_input, float timeStep)
+void s_Input::getKeyboardInput(IOmanager& io, c_Input* c_input, float timeStep)
 {
-    if (io->getKey(GLFW_KEY_W) == GLFW_PRESS) c_input->W_press = true;
+    if (io.getKey(GLFW_KEY_W) == GLFW_PRESS) c_input->W_press = true;
     else c_input->W_press = false;
 
-    if (io->getKey(GLFW_KEY_S) == GLFW_PRESS) c_input->S_press = true;
+    if (io.getKey(GLFW_KEY_S) == GLFW_PRESS) c_input->S_press = true;
     else c_input->S_press = false;
         
-    if (io->getKey(GLFW_KEY_A) == GLFW_PRESS) c_input->A_press = true;
+    if (io.getKey(GLFW_KEY_A) == GLFW_PRESS) c_input->A_press = true;
     else c_input->A_press = false;
 
-    if (io->getKey(GLFW_KEY_D) == GLFW_PRESS) c_input->D_press = true;
+    if (io.getKey(GLFW_KEY_D) == GLFW_PRESS) c_input->D_press = true;
     else c_input->D_press = false;
 
-    if (io->getKey(GLFW_KEY_Q) == GLFW_PRESS) c_input->Q_press = true;
+    if (io.getKey(GLFW_KEY_Q) == GLFW_PRESS) c_input->Q_press = true;
     else c_input->Q_press = false;
 
-    if (io->getKey(GLFW_KEY_E) == GLFW_PRESS) c_input->E_press = true;
+    if (io.getKey(GLFW_KEY_E) == GLFW_PRESS) c_input->E_press = true;
     else c_input->E_press = false;
 
-    if (io->getKey(GLFW_KEY_UP) == GLFW_PRESS) c_input->up_press = true;
+    if (io.getKey(GLFW_KEY_UP) == GLFW_PRESS) c_input->up_press = true;
     else c_input->up_press = false;
 
-    if (io->getKey(GLFW_KEY_DOWN) == GLFW_PRESS) c_input->down_press = true;
+    if (io.getKey(GLFW_KEY_DOWN) == GLFW_PRESS) c_input->down_press = true;
     else c_input->down_press = false;
 
-    if (io->getKey(GLFW_KEY_LEFT) == GLFW_PRESS) c_input->left_press = true;
+    if (io.getKey(GLFW_KEY_LEFT) == GLFW_PRESS) c_input->left_press = true;
     else c_input->left_press = false;
 
-    if (io->getKey(GLFW_KEY_RIGHT) == GLFW_PRESS) c_input->right_press = true;
+    if (io.getKey(GLFW_KEY_RIGHT) == GLFW_PRESS) c_input->right_press = true;
     else c_input->right_press = false;
 }
 
-void s_Input::getMouseInput(IOmanager* io, c_Input* c_input, float timeStep)
+void s_Input::getMouseInput(IOmanager& io, c_Input* c_input, float timeStep)
 {
     c_input->LMB_justPressed = false;
     c_input->RMB_justPressed = false;
     c_input->MMB_justPressed = false;
 
-    if (io->getMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    if (io.getMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         if (c_input->LMB_pressed == false)
             c_input->LMB_justPressed = true;
@@ -86,7 +85,7 @@ void s_Input::getMouseInput(IOmanager* io, c_Input* c_input, float timeStep)
     else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
         c_input->LMB_pressed = false;
 
-    if (io->getMouseButton(GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+    if (io.getMouseButton(GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
     {
         if (c_input->RMB_pressed == false)
             c_input->RMB_justPressed = true;
@@ -96,7 +95,7 @@ void s_Input::getMouseInput(IOmanager* io, c_Input* c_input, float timeStep)
     else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
         c_input->RMB_pressed = false;
 
-    if (io->getMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+    if (io.getMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
     {
         if (c_input->MMB_pressed == false)
             c_input->MMB_justPressed = true;
@@ -108,7 +107,7 @@ void s_Input::getMouseInput(IOmanager* io, c_Input* c_input, float timeStep)
     
     c_input->lastX = c_input->xpos;
     c_input->lastY = c_input->ypos;
-    io->getCursorPos(&c_input->xpos, &c_input->ypos);
+    io.getCursorPos(&c_input->xpos, &c_input->ypos);
 
     c_input->yScrollOffset;     //!< Set in a callback (windowUserPointer)
 }
@@ -152,15 +151,13 @@ void s_SphereCam::update(float timeStep)
         std::cout << "No input component found: " << typeid(this).name() << std::endl;
         return;
     }
-    //printVec(c_cam->camPos);
-    std::cout << c_cam->radius << std::endl;
-
+    
     // Cursor modes
     if (c_input->LMB_justPressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!c_input->LMB_pressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
@@ -241,10 +238,10 @@ void s_PolarCam::update(float timeStep)
 
     // Cursor modes
     if (c_input->LMB_justPressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!c_input->LMB_pressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
@@ -315,10 +312,10 @@ void s_PlaneCam::update(float timeStep)
 
     // Cursor modes
     if (c_input->LMB_justPressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!c_input->LMB_pressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
@@ -379,10 +376,10 @@ void s_FPCam::update(float timeStep)
 
     // Cursor modes
     if (c_input->LMB_justPressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!c_input->LMB_pressed)
-        c_engine->io->setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        c_engine->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
@@ -432,6 +429,52 @@ void s_FPCam::update(float timeStep)
     c_cam->proj = getProjectionMatrix(c_engine->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
+void s_Lights::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Lights* c_lights = (c_Lights*)em->getSComponent("lights");
+    if (!c_lights) return;
+
+    unsigned count = c_lights->lights.numLights;
+    unsigned i = 0;
+
+    const c_Sky* c_sky = (c_Sky*)em->getSComponent("sky");
+    if (!c_sky) return;
+
+    if (i < count) c_lights->lights.posDir[i++].direction = -c_sky->sunDir;     // Dir. from sun
+
+    if (i < count) c_lights->lights.posDir[i++].direction =  c_sky->sunDir;     // Dir. to sun
+
+    if (i < count)
+    {
+        const c_Camera* c_cam = (c_Camera*)em->getSComponent("cam");
+        if (!c_cam) return;
+
+        c_lights->lights.posDir[i++].position  = c_cam->camPos;                 // Flashlight from cam
+        c_lights->lights.posDir[i  ].direction = c_cam->front;
+    }
+}
+
+void s_Sky_XY::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Sky* c_sky = (c_Sky*)em->getSComponent("sky");
+    if (!c_sky) return;
+
+    c_Engine* c_eng = (c_Engine*)em->getSComponent("engine");
+    if (!c_eng) return;
+    
+    c_sky->skyAngle = fmod(c_eng->time * c_sky->skySpeed + c_sky->skyAngle_0, 2 * pi);
+    c_sky->sunAngle = fmod(c_eng->time * c_sky->sunSpeed + c_sky->sunAngle_0, 2 * pi);
+    c_sky->sunDir = { cos(c_sky->sunAngle), sin(c_sky->sunAngle), 0 };
+}
+
 void s_Model::update(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
@@ -464,9 +507,21 @@ void s_ModelMatrix::update(float timeStep)
     {
         c_mm = (c_ModelMatrix*)em->getComponent("mm", eId);
         c_mov = (c_Move*)em->getComponent("move", eId);
-        if (c_mov) c_mm->translation = c_mov->pos;
-        c_mm->modelMatrix = modelMatrix2(c_mm->scaling, c_mm->rotQuat, c_mm->translation);
+
+        if (c_mov)
+            c_mm->modelMatrix = modelMatrix2(c_mm->scale, c_mov->rotQuat, c_mov->pos);
     }
+}
+
+void s_Move::updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
+{
+    c_mov->pos.x = c_cam->camPos.x + cos(angle) * dist;
+    c_mov->pos.y = c_cam->camPos.y + sin(angle) * dist;
+    c_mov->pos.z = c_cam->camPos.z;
+
+    c_mov->rotQuat = productQuat(
+        getRotQuat(glm::vec3(0, 1, 0), 3 * pi / 2),
+        getRotQuat(glm::vec3(0, 0, 1), angle));
 }
 
 void s_Move::update(float timeStep)
@@ -478,7 +533,9 @@ void s_Move::update(float timeStep)
     std::vector<uint32_t> entities = em->getEntitySet("move");
     const c_Camera* c_cam;
     const c_Engine* c_eng;
+    const c_Sky* c_sky;
     c_Move* c_mov;
+    float angle;
 
     for (uint32_t eId : entities)
     {
@@ -488,31 +545,37 @@ void s_Move::update(float timeStep)
         {
             c_cam = (c_Camera*)em->getSComponent("camera");
 
-            if (c_cam)
-                switch (c_mov->moveType)
-                {
-                case followCam:             // follow cam
+            switch (c_mov->moveType)
+            {
+            case followCam:             // follow cam
+                if (c_cam)
                     c_mov->pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
-                    break;
+                break;
 
-                case followCamXY:           // follow cam on axis XY
+            case followCamXY:           // follow cam on axis XY
+                if (c_cam)
                     c_mov->pos = glm::vec3(
                         c_cam->camPos.x - safeMod(c_cam->camPos.x, c_mov->jumpStep),
                         c_cam->camPos.y - safeMod(c_cam->camPos.y, c_mov->jumpStep),
                         c_mov->pos.z );
-                    break;
+                break;
 
-                case followRotateCam:       // rotate around cam
-                    c_eng = (c_Engine*)em->getComponent("engine", eId);
-                    if(c_eng)
-                        c_mov->pos = glm::vec3(
-                            c_cam->camPos.x + c_mov->dist * cos(c_mov->speed * c_eng->time),
-                            c_cam->camPos.y - c_mov->dist * sin(c_mov->speed * c_eng->time),
-                            c_cam->camPos.z );
-                    break;
-                default:
-                    break;
-                }
+            case skyOrbit:              // Update using c_Sky::skyAngle
+                c_sky = (c_Sky*)em->getSComponent("sky");
+                if (c_cam && c_sky)
+                    updateSkyMove(c_mov, c_cam, c_sky->skyAngle, 0);
+                break;
+
+            case sunOrbit:              // Update using c_Sky::sunAngle
+                c_sky = (c_Sky*)em->getSComponent("sky");
+                if (c_cam && c_sky)
+                    updateSkyMove(c_mov, c_cam, c_sky->sunAngle, c_sky->sunDist);
+                break;
+
+            default:
+                std::cout << "MoveType not found" << std::endl;
+                break;
+            }
         }
     }
 }
@@ -547,17 +610,22 @@ void s_UBO::update(float timeStep)
             }
     }
 }
-/*
-void s_Sun::update(float timeStep)
+
+void s_Template::update(float timeStep)
 {
-    float frameTime;
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
 
-    c_Sun* c_sun = (c_Sun*)em->getSComponent("sun");
+    std::vector<uint32_t> entities = em->getEntitySet("xxx");
+    c_ModelMatrix* c_xxx;
+    c_Move* c_mov;
 
-    if (c_sun)
+    for (uint32_t eId : entities)
     {
-        c_sun->dayTime = c_sun->initialDayTime + frameTime * c_sun->speed;
-        c_sun->dayTime = c_sun->dayTime - (24 * (((int)c_sun->dayTime) / 24));
+        c_xxx = (c_ModelMatrix*)em->getComponent("xxx", eId);
+        c_mov = (c_Move*)em->getComponent("move", eId);
+
     }
 }
-*/
+

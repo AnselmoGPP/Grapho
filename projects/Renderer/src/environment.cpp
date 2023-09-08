@@ -46,8 +46,8 @@ void SwapChain::destroy(VkDevice device)
 //VkFormat									swapChainImageFormat;
 //VkExtent2D									swapChainExtent;
 
-VulkanCore::VulkanCore()
-	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT), io(width, height)
+VulkanCore::VulkanCore(IOmanager& io)
+	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT), io(io)
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -64,8 +64,8 @@ VulkanCore::VulkanCore()
 	supportsAF = supportsAnisotropicFiltering();
 }
 
-VulkanEnvironment::VulkanEnvironment()
-	: inputAttachmentCount(2)
+VulkanEnvironment::VulkanEnvironment(IOmanager& io)
+	: c(io), io(io), inputAttachmentCount(2)
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -546,7 +546,7 @@ void VulkanCore::destroy()
 	io.destroy();
 }
 
-IOmanager* VulkanCore::getWindowManager() { return &io; }
+//IOmanager* VulkanCore::getWindowManager() { return &io; }
 
 /**
 	Check whether all the required device extensions are supported.
@@ -774,7 +774,7 @@ VkExtent2D VulkanEnvironment::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& c
 	else
 	{
 		int width, height;
-		c.io.getFramebufferSize(&width, &height);
+		io.getFramebufferSize(&width, &height);
 
 		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 
@@ -895,7 +895,7 @@ VkFormat VulkanEnvironment::findDepthFormat()
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-IOmanager* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
+//IOmanager* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
 
 /**
 * 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.

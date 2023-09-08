@@ -33,8 +33,8 @@ public:
 
 class s_Input : public System
 {
-    void getKeyboardInput(IOmanager* io, c_Input* c_input, float deltaTime);
-    void getMouseInput(IOmanager* io, c_Input* c_input, float deltaTime);
+    void getKeyboardInput(IOmanager& io, c_Input* c_input, float deltaTime);
+    void getMouseInput(IOmanager& io, c_Input* c_input, float deltaTime);
 
 public:
     s_Input() : System() { };
@@ -93,6 +93,25 @@ public:
     void update(float timeStep) override;       //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
 };
 
+class s_Lights : public System
+{
+public:
+    s_Lights() : System() { };
+    ~s_Lights() { };
+
+    void update(float timeStep) override;
+};
+
+/// Update c_Sky (sky & sun rotation)
+class s_Sky_XY : public System
+{
+public:
+    s_Sky_XY() : System() { };
+    ~s_Sky_XY() { };
+
+    void update(float timeStep) override;
+};
+
 
 // Non-Singletons --------------------------------------
 
@@ -105,40 +124,46 @@ public:
     void update(float timeStep) override;       //!< <<< NOT DEFINED
 };
 
+/// Update Model Matrix (c_ModelMatrix) using c_Move (position & rotation) and c_ModelMatrix (scale)
 class s_ModelMatrix : public System
 {
 public:
     s_ModelMatrix() : System() { };
     ~s_ModelMatrix() { };
 
-    void update(float timeStep) override;       //!< Update Model Matrix (c_ModelMatrix)
+    void update(float timeStep) override;
 };
 
+/// Update c_Move (position & rotation)
 class s_Move : public System
 {
+    void updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist);
+
 public:
     s_Move() : System() { };
     ~s_Move() { };
 
-    void update(float timeStep) override;       //!< Update position vector (c_Position)
+    void update(float timeStep) override;
 };
 
+/// Update UBO (c_UBO)
 class s_UBO : public System
 {
 public:
     s_UBO() : System() { };
     ~s_UBO() { };
 
-    void update(float timeStep) override;       //!< Update UBO (c_UBO)
+    void update(float timeStep) override;
 };
 
-class s_Sun : public System
+/// Update XXX
+class s_Template : public System
 {
 public:
-    s_Sun() : System() { };
-    ~s_Sun() { };
+    s_Template() : System() { };
+    ~s_Template() { };
 
-    void update(float timeStep) override;       //!< Update UBO (c_UBO)
+    void update(float timeStep) override; 
 };
 
 #endif

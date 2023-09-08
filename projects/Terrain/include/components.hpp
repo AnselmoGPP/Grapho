@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include "terrain.hpp"
+
 //#define GLM_FORCE_RADIANS
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE		// GLM uses OpenGL depth range [-1.0, 1.0]. This macro forces GLM to use Vulkan range [0.0, 1.0].
 //#define GLM_ENABLE_EXPERIMENTAL			// Required for using std::hash functions for the GLM types (since gtx folder contains experimental extensions)
@@ -11,7 +13,7 @@
 //#include <glm/gtx/hash.hpp>
 #include "glm/gtc/type_ptr.hpp"
 
-//#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
+//#define GLFW_INCLUDE_VULKAN				// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"
 
 #include "renderer.hpp"
@@ -21,7 +23,7 @@
 
 // enumerations --------------------------------------
 
-enum MoveType { followCam, followCamXY, followRotateCam };
+enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
 
 
 // Singletons --------------------------------------
@@ -33,7 +35,7 @@ struct c_Engine : public Component
 	void printInfo() const;
 
 	Renderer& r;
-	IOmanager* io;
+	IOmanager& io;
 
 	uint32_t width;		//!< pixels width  (1920/2)
 	uint32_t height;	//!< pixels height (1080/2)
@@ -41,7 +43,7 @@ struct c_Engine : public Component
 	uint32_t getHeight() { return r.getScreenSize().y; };
 	float aspectRatio() const { return (float)width / height; };
 
-	float time;
+	long double time;
 };
 
 struct c_Input : public Component
@@ -122,29 +124,25 @@ struct c_Lights : public Component
 
 	LightSet lights;
 };
-/*
-struct c_Sun : public Component
+
+struct c_Sky : public Component
 {
-	/
-	@brief Constructor
-	@param initialTime Range [0.0, 24.0).
-	@param speed Orbital speed.
-	@param mode Orbit mode: 1 (XZ plane) or 2 (XY plane).
-	/
-	c_Sun(float initialDayTime, float speed, float angularWidth, float dist, unsigned mode);
-	~c_Sun() { };
+	c_Sky(float skySpeed, float skyAngle, float sunSpeed, float sunAngle, float sunDist);
+	~c_Sky() { };
 	void printInfo() const;
+	
+	const float eclipticAngle;		//!< Angle between planet's rotation axis & ecliptic plane
+	const float skySpeed;			//!< Angular velocity (rad/s)
+	const float sunSpeed;			//!< Angular velocity (rad/s)
+	const float sunDist;			//!< Dist. to sun
+	const float skyAngle_0;			//!< Initial angle
+	const float sunAngle_0;			//!< Initial angle
 
-	const unsigned mode;        //!< Orbit mode: 1 (XZ plane) or 2 (XY plane)
-	const float angularWidth;   //!< Angular sun width
-	const float speed;          //!< Orbital speed
-	const float distance;       //!< Distance to camera
-	const float initialDayTime;	//!< Range [0.0, 24.0)
-
-	float dayTime;              //!< Range [0.0, 24.0)
-	float radius;				//!< Distance sun-camera
+	float skyAngle;					//!< Current_angle - initial_angle
+	float sunAngle;					//!< Current_angle - initial_angle
+	glm::vec3 sunDir;				//!< Direction to sun
 };
-*/
+
 // Non-Singletons --------------------------------------
 
 struct c_Model : public Component
@@ -182,18 +180,18 @@ struct c_Rotation : public Component
 /// Determines the translation for the Model matrix 
 struct c_Move : public Component
 {
-	c_Move(MoveType moveType, float jumpStep = 0, glm::vec3 position = { 0, 0, 0 });
-	c_Move(MoveType moveType, float dist, float speed, glm::vec3 position = { 0, 0, 0 });
+	c_Move(MoveType moveType, float jumpStep, glm::vec3 position = { 0, 0, 0 });
+	c_Move(MoveType moveType);
 	~c_Move() { };
 	void printInfo() const;
 
-	glm::vec3 pos;
 	MoveType moveType;
 
-	float jumpStep;			//!< Used in discrete moves, not uniform moves.
+	glm::vec3 pos     = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+	glm::vec4 rotQuat = { 1, 0, 0, 0 };
+	//glm::vec3 scale   = { 1, 1, 1 };
 
-	float speed;
-	float dist;
+	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
 
 /*
@@ -218,15 +216,44 @@ struct c_Scale : public Component
 struct c_ModelMatrix : public Component
 {
 	c_ModelMatrix();
+	c_ModelMatrix(float scale);
 	c_ModelMatrix(glm::vec4 rotQuat);
-	c_ModelMatrix(float scaleFactor);
+	c_ModelMatrix(float scale, glm::vec4 rotQuat);
 	~c_ModelMatrix() { };
 	void printInfo() const;
 
-	glm::vec3 scaling	  = { 1, 1, 1 };
-	glm::vec4 rotQuat     = { 1, 0, 0, 0 };
-	glm::vec3 translation = { 0, 0, 0 };
+	glm::vec3 scale = { 1, 1, 1 };
+	//glm::vec4 rotQuat     = { 1, 0, 0, 0 };
+	//glm::vec3 translation = { 0, 0, 0 };
+
 	glm::mat4 modelMatrix;			//!< Model transformation matrix
 };
+
+struct c_Planet : public Component
+{
+	c_Planet(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	~c_Planet() { };
+	void printInfo() const;
+
+	Planet planet;
+
+	//Renderer* renderer;
+	//LightSet& lights;
+	size_t rootCellSize;
+	size_t numSideVertex;
+	size_t numLevels;
+	size_t minLevel;
+	float distMultiplier;
+	float radius;
+	glm::vec3 nucleus;
+	bool transparency;
+
+	glm::vec3 scale = { 1, 1, 1 };
+	//glm::vec4 rotQuat     = { 1, 0, 0, 0 };
+	//glm::vec3 translation = { 0, 0, 0 };
+
+	glm::mat4 modelMatrix;			//!< Model transformation matrix
+};
+
 
 #endif

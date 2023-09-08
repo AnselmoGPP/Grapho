@@ -71,6 +71,9 @@ void printVec(const T& vec)
     std::cout << std::endl;
 }
 
+/// Print string (or any printable object)
+template<typename T>
+void printS(const T& vec) { std::cout << T << std::endl; }
 
 // Vertex sets -----------------------------------------------------------------
 

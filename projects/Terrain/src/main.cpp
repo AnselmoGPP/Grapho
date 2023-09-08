@@ -44,30 +44,39 @@ int main(int argc, char* argv[])
 
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
 	{
-		//IOmanager ioMan(1920/2, 1080/2);
-		Renderer app(update, 2);					// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-		
+		IOmanager io(1920/2, 1080/2);
+		Renderer app(update, io, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
+		
+		// ENTITIES:
 
 		world.addEntity(std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
 			new c_Camera(1),
+			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
-			//new c_Sun(0.00, 0.0, 3.14 / 10, 500.f, 2) });
+
+		//Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
+		world.addEntity(eFact.createSeaPlanet(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
 		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
+		world.addEntity(eFact.createSun(ShaderLoaders[16], ShaderLoaders[17], { texInfos[4] }));
 		world.addEntity(eFact.createAxes(ShaderLoaders[2], ShaderLoaders[3], { }));
 		world.addEntity(eFact.createGrid(ShaderLoaders[2], ShaderLoaders[3], { }));
 		world.addEntity(eFact.createPoints(ShaderLoaders[0], ShaderLoaders[1], { }));
 		world.addEntity(eFact.createNoPP(ShaderLoaders[22], ShaderLoaders[23], { texInfos[4], texInfos[5] }));
 		
+		// SYSTEMS:
+
 		world.addSystem(new s_Engine);
 		world.addSystem(new s_Input);
 		world.addSystem(new s_SphereCam);	// s_SphereCam, s_PolarCam, s_PlaneCam, s_FPCam
+		world.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
+		world.addSystem(new s_Lights);
 		world.addSystem(new s_Move);
 		world.addSystem(new s_ModelMatrix);
 		world.addSystem(new s_UBO);
-
+		
 		//world.printInfo();
 
 		app.renderLoop();		// Start rendering

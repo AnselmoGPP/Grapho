@@ -51,7 +51,7 @@ glm::mat4 modelMatrix2(const glm::vec3& scale, const glm::vec4& rotQuat, const g
 {
 	glm::mat4 mm(1.0f);
 
-	// Execution order: Scale > X rot > Y rot > Z rot > Translation
+	// Execution order: Scale > Rotation > Translation
 	mm = glm::translate(mm, translation);
 	mm *= getRotationMatrix(rotQuat);
 	mm = glm::scale(mm, scale);

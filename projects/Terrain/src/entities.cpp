@@ -1,4 +1,4 @@
-#include "entities.hpp"
+﻿#include "entities.hpp"
 #include "terrain.hpp"
 
 
@@ -51,7 +51,12 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 		0,
 		false);
 
-	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
+	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
+	return std::vector<Component*> {
+		new c_Model(model),
+		new c_ModelMatrix(100),
+		new c_Move(skyOrbit)		// 1 day ≈ 30 min
+	};
 }
 
 std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -75,10 +80,8 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 	return std::vector<Component*> { 
 		new c_Model(model), 
 		new c_ModelMatrix(10),
-		new c_Move(followRotateCam) };
-	
-	//SunSystem sun(0.00, 0.0, 3.14 / 10, 500.f, 2);	// Params: dayTime, speed, angularWidth, distance, mode
-	//sun.MM(d.camPos);	// model matrix position
+		new c_Move(sunOrbit)	// 1 year ≈ 6 hours
+	};
 }
 
 std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
