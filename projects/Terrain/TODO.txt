@@ -1,5 +1,22 @@
 TODO:
-EntityManager::getEntitySet
+
+Sphere(
+Renderer* renderer, 
+LightSet& lights, <<<<<<
+size_t rootCellSize, 
+size_t numSideVertex, 
+size_t numLevels, 
+size_t minLevel, 
+float distMultiplier, 
+float radius, 
+glm::vec3 nucleus, 
+bool transparency);
+
+
+	Solve Model-Planet component duplicity. Options:
+		- SingleModel & Planets inherit from Model > s_Model reads name and acts accordingly.
+		- Model & planet components > s_Model search for both and acts on the one founded.
+		- s_Model can be parent?
 
 c_move
 c_scale

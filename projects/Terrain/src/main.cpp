@@ -78,6 +78,7 @@ int main(int argc, char* argv[])
 		world.addSystem(new s_UBO);
 		
 		//world.printInfo();
+		std::cout << "ECS arch. completed" << std::endl;
 
 		app.renderLoop();		// Start rendering
 

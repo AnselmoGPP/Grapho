@@ -58,6 +58,10 @@ uint32_t EntityManager::getNewId()
 
 void EntityManager::update(float timeStep)
 {
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	for (System* s : systems)
 		s->update(timeStep);
 }
@@ -81,6 +85,10 @@ void EntityManager::printInfo()
 
 uint32_t EntityManager::addEntity(std::vector<Component*>& components)
 {
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	uint32_t newId = getNewId();
 	if (newId) entities[newId] = new Entity(newId, components);
 	return newId;
@@ -88,6 +96,10 @@ uint32_t EntityManager::addEntity(std::vector<Component*>& components)
 
 void EntityManager::addSystem(System* system)
 {
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	system->em = this;
 	this->systems.push_back(system);
 }
@@ -118,6 +130,10 @@ Component* EntityManager::getSComponent(const char* type)
 
 void EntityManager::removeEntity(uint32_t entityId)
 {
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
 	if (entities.find(entityId) != entities.end())
 	{
 		delete entities[entityId];

@@ -8,6 +8,7 @@
 #include <memory>
 //#include <initializer_list>
 
+//#define DEBUG_ECS
 
 struct Component;
 class  Entity;

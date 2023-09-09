@@ -23,7 +23,7 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 		false,
 		1);
 
-	return std::vector<Component*> { new c_Model(model) };
+	return std::vector<Component*> { new c_Model_normal(model, UboType::noData) };
 }
 
 std::vector<Component*> EntityFactory::createSeaPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -53,7 +53,7 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
-		new c_Model(model),
+		new c_Model_normal(model, UboType::mvp),
 		new c_ModelMatrix(100),
 		new c_Move(skyOrbit)		// 1 day ≈ 30 min
 	};
@@ -78,7 +78,7 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 		true);
 
 	return std::vector<Component*> { 
-		new c_Model(model), 
+		new c_Model_normal(model, UboType::mvp),
 		new c_ModelMatrix(10),
 		new c_Move(sunOrbit)	// 1 year ≈ 6 hours
 	};
@@ -104,7 +104,7 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 		0,
 		false);
 
-	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(), new c_Move(followCamXY, gridStep) };
+	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_ModelMatrix(), new c_Move(followCamXY, gridStep) };
 }
 
 std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -125,7 +125,7 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 		0,
 		false);
 
-	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix() };
+	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_ModelMatrix() };
 }
 
 std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -144,5 +144,5 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 		0,
 		false);
 
-	return std::vector<Component*> { new c_Model(model), new c_ModelMatrix() };
+	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_ModelMatrix() };
 }

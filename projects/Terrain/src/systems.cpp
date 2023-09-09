@@ -587,9 +587,11 @@ void s_UBO::update(float timeStep)
     #endif
 
     std::vector<uint32_t> entities = em->getEntitySet("model");
-    c_Model* c_model;
-    c_ModelMatrix* c_mm;
-    c_Camera* c_cam;
+    const c_Model* c_model;
+    const c_ModelMatrix* c_mm;
+    const c_Camera* c_cam;
+    c_Lights* c_lights;     // << const?
+    const c_Engine* c_eng;
 
     uint8_t* dest;
     int i;
@@ -597,17 +599,46 @@ void s_UBO::update(float timeStep)
     for (uint32_t eId : entities)
     {
         c_model = (c_Model*)em->getComponent("model", eId);
-        c_mm    = (c_ModelMatrix*)em->getComponent("mm", eId);
-        c_cam   = (c_Camera*)em->getSComponent("camera");
 
-        if (c_mm && c_cam)
-            for (i = 0; i < c_model->model->vsDynUBO.numDynUBOs; i++)
+        switch (c_model->model_type)
+        {
+        case ModelType::normal:
+            switch (c_model->ubo_type)
             {
-                dest = c_model->model->vsDynUBO.getUBOptr(i);
-                memcpy(dest + 0 * size.mat4, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
-                memcpy(dest + 1 * size.mat4, &c_cam->view, sizeof(c_cam->view));
-                memcpy(dest + 2 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
+            case UboType::mvp:
+                c_cam = (c_Camera*)em->getSComponent("camera");
+                c_mm = (c_ModelMatrix*)em->getComponent("mm", eId);
+                if (!c_mm || !c_cam) std::cout << "Component not found" << std::endl;
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
+                {
+                    dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
+                    memcpy(dest + 0 * size.mat4, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
+                    memcpy(dest + 1 * size.mat4, &c_cam->view, sizeof(c_cam->view));
+                    memcpy(dest + 2 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
+                }
+                break;
+
+            case UboType::noData:
+                break;
+
+            default:
+                std::cout << "Wrong UBO type" << std::endl;
             }
+            break;
+
+        case ModelType::planet:
+            c_lights = (c_Lights*)em->getSComponent("lights");
+            c_eng = (c_Engine*)em->getSComponent("engine");
+            if (!c_lights || !c_eng) std::cout << "Component not found" << std::endl;
+
+            ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 1);   // <<< const Lights&
+            // LightSet & lights, float frameTime, float groundHeight)
+            break;
+
+        default:
+            std::cout << "Wrong model type" << std::endl;
+            break;
+        }
     }
 }
 

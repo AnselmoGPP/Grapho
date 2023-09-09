@@ -21,9 +21,27 @@
 #include "ECSarch.hpp"
 
 
+// Prototypes --------------------------------------
+
+struct c_Engine;
+struct c_Input;
+struct c_Camera;
+struct c_Lights;
+struct c_Sky;
+
+struct c_Model;
+	struct c_Model_single;
+	struct c_Model_planet;
+struct c_Move;
+struct c_ModelMatrix;
+struct c_Planet;
+
+
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
+enum class ModelType { normal, planet };
+enum class UboType { noData, mvp, planet };		//!< Determine the type of data a model requires for updating its UBO
 
 
 // Singletons --------------------------------------
@@ -147,11 +165,36 @@ struct c_Sky : public Component
 
 struct c_Model : public Component
 {
-	c_Model(modelIter model) : Component("model"), model(model) { };
+	c_Model(ModelType model_type, UboType ubo_type) 
+		: Component("model"), model_type(model_type), ubo_type(ubo_type) { };
 	~c_Model() { };
-	void printInfo() const { };
+	virtual void printInfo() const = 0;
+
+	ModelType model_type;
+	UboType ubo_type;
+};
+
+struct c_Model_normal : public c_Model
+{
+	c_Model_normal(modelIter model, UboType ubo_type)
+		: c_Model(ModelType::normal, ubo_type), model(model) { };
+	~c_Model_normal() { };
+	void printInfo() const override { };
 
 	modelIter model;
+};
+
+struct c_Model_planet : public c_Model
+{
+	c_Model_planet(Planet* planet) 
+		: c_Model(ModelType::planet, UboType::planet), planet(planet) { };
+	~c_Model_planet() { };
+	void printInfo() const override { };
+
+	Planet* planet;
+
+	//Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	//Sphere(Renderer* renderer, ______________________, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 };
 
 /// Determines the scaling for the Model matrix 

@@ -234,8 +234,8 @@ public:
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
 	void updateTree(glm::vec3 newCamPos);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
-	void toLastDraw();												//!< Call it after updateTree(), so the correct tree is put last to draw
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);		//!< Get active chunks with depth >= X in the active tree 
+	void toLastDraw();														//!< Call it after updateTree(), so the correct tree is put last to draw
+	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
 
 protected:
 	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
