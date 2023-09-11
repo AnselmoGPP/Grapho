@@ -54,14 +54,12 @@ struct c_Engine : public Component
 
 	Renderer& r;
 	IOmanager& io;
-
-	uint32_t width;		//!< pixels width  (1920/2)
-	uint32_t height;	//!< pixels height (1080/2)
-	uint32_t getWidth() { return r.getScreenSize().x; };
-	uint32_t getHeight() { return r.getScreenSize().y; };
-	float aspectRatio() const { return (float)width / height; };
-
 	long double time;
+	size_t frameCount;			//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
+
+	int width() const;
+	int height() const;
+	float aspectRatio() const;
 };
 
 struct c_Input : public Component
@@ -189,7 +187,7 @@ struct c_Model_planet : public c_Model
 	c_Model_planet(Planet* planet) 
 		: c_Model(ModelType::planet, UboType::planet), planet(planet) { };
 	~c_Model_planet() { };
-	void printInfo() const override { };
+	void printInfo() const override { if(planet) delete planet; };
 
 	Planet* planet;
 

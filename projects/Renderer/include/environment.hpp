@@ -72,9 +72,6 @@ class VulkanCore
 public:
 	VulkanCore(IOmanager& io);
 
-	uint32_t width = 1920 / 2;			// <<< Does this change when recreating swap chain?
-	uint32_t height = 1080 / 2;
-
 	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes

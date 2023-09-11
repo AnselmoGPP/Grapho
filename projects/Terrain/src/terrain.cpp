@@ -93,7 +93,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     
 }
 
-void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter)
+void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter)
 {
     if (!modelOrdered) return;
 
@@ -639,9 +639,9 @@ void SphereChunk::computeTerrain(bool computeIndices)
 
 // DynamicGrid ----------------------------------------------------------------------
 
-DynamicGrid::DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency)
-    : camPos(camPos), 
-    lights(&lights), 
+DynamicGrid::DynamicGrid(glm::vec3 camPos, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency)
+    : camPos(camPos),
+    numLights(0),
     renderer(renderer), 
     activeTree(activeTree),
     nonActiveTree((activeTree + 1) % 2),
@@ -674,7 +674,7 @@ void DynamicGrid::addResources(const std::vector<ShaderLoader>& shadersInfo, con
     this->textures = texturesInfo;
 }
 
-void DynamicGrid::updateTree(glm::vec3 newCamPos)
+void DynamicGrid::updateTree(glm::vec3 newCamPos, unsigned numLights)
 {
     if (!numLevels) return;
 
@@ -686,7 +686,8 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos)
     if (!root[nonActiveTree])
     {
         camPos = newCamPos;
-        updateVisibilityState();
+        this->numLights = numLights;
+        updateVisibilityState();        // overridden method
 
         visibleLeafChunks[nonActiveTree].clear();
         root[nonActiveTree] = getNode(closestCenter(), rootCellSize, 0, 1);
@@ -729,7 +730,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
 
         if (chunk->modelOrdered == false) {
             chunk->computeTerrain(false);
-            chunk->render(shaders, textures, &indices, lights->numLights, transparency);
+            chunk->render(shaders, textures, &indices, numLights, transparency);
             renderer->setRenders(chunk->model, 0);
         }
 
@@ -866,10 +867,9 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
     }
 }
 
-void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight)
+void DynamicGrid::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float groundHeight)
 {
     this->camPos = camPos;
-    this->lights = &lights;
 
     for (Chunk* chunk : visibleLeafChunks[activeTree])
         chunk->updateUBOs(view, proj, camPos, lights, time, groundHeight);
@@ -1012,8 +1012,8 @@ void DynamicGrid::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth)
 
 // TerrainGrid ----------------------------------------------------------------------
 
-TerrainGrid::TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency)
-    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, transparency), noiseGen(noiseGenerator)
+TerrainGrid::TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, transparency), noiseGen(noiseGenerator)
 { }
 
 QuadNode<Chunk*>* TerrainGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
@@ -1045,8 +1045,9 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 
 // PlanetGrid ----------------------------------------------------------------------
 
-PlanetGrid::PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
-    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), lights, renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, transparency), noiseGen(noiseGenerator), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
+PlanetGrid::PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
+    : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, transparency), 
+    noiseGen(noiseGenerator), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
 { }
 
 float PlanetGrid::getRadius() { return radius; }
@@ -1111,8 +1112,8 @@ glm::vec3 PlanetGrid::getChunkCenter(Chunk* chunk)
 
 // SphereGrid ------------------------------------------------------------------
 
-SphereGrid::SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
-    : PlanetGrid::PlanetGrid(renderer, nullptr, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, cubePlane, cubeSideCenter, transparency)
+SphereGrid::SphereGrid(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
+    : PlanetGrid::PlanetGrid(renderer, nullptr, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, cubePlane, cubeSideCenter, transparency)
 { }
 
 QuadNode<Chunk*>* SphereGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
@@ -1135,18 +1136,18 @@ QuadNode<Chunk*>* SphereGrid::getNode(std::tuple<float, float, float> center, fl
 
 // Planet ----------------------------------------------------------------------
 
-Planet::Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
+Planet::Planet(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
     : radius(radius), 
     nucleus(nucleus), 
     noiseGen(noiseGenerator), 
     readyForUpdate(false)
 { 
-    planetGrid_pZ = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0,  1), glm::vec3( 0,  0, 50), transparency);
-    planetGrid_nZ = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0, -1), glm::vec3( 0,  0,-50), transparency);
-    planetGrid_pY = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  1,  0), glm::vec3( 0, 50,  0), transparency);
-    planetGrid_nY = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, -1,  0), glm::vec3( 0,-50,  0), transparency);
-    planetGrid_pX = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 1,  0,  0), glm::vec3( 50, 0,  0), transparency);
-    planetGrid_nX = new PlanetGrid(renderer, noiseGenerator, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1,  0,  0), glm::vec3(-50, 0,  0), transparency);
+    planetGrid_pZ = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0,  1), glm::vec3( 0,  0, 50), transparency);
+    planetGrid_nZ = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0, -1), glm::vec3( 0,  0,-50), transparency);
+    planetGrid_pY = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  1,  0), glm::vec3( 0, 50,  0), transparency);
+    planetGrid_nY = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, -1,  0), glm::vec3( 0,-50,  0), transparency);
+    planetGrid_pX = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 1,  0,  0), glm::vec3( 50, 0,  0), transparency);
+    planetGrid_nX = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1,  0,  0), glm::vec3(-50, 0,  0), transparency);
 }
 
 Planet::~Planet()
@@ -1171,21 +1172,21 @@ void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::v
     readyForUpdate = true;
 }
 
-void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float groundHeight)
+void Planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const LightSet& lights, float frameTime, float groundHeight)
 {
     if (readyForUpdate)
     {
-        planetGrid_pZ->updateTree(camPos);
+        planetGrid_pZ->updateTree(camPos, lights.numLights);
         planetGrid_pZ->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
-        planetGrid_nZ->updateTree(camPos);
+        planetGrid_nZ->updateTree(camPos, lights.numLights);
         planetGrid_nZ->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
-        planetGrid_pY->updateTree(camPos);
+        planetGrid_pY->updateTree(camPos, lights.numLights);
         planetGrid_pY->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
-        planetGrid_nY->updateTree(camPos);
+        planetGrid_nY->updateTree(camPos, lights.numLights);
         planetGrid_nY->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
-        planetGrid_pX->updateTree(camPos);
+        planetGrid_pX->updateTree(camPos, lights.numLights);
         planetGrid_pX->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
-        planetGrid_nX->updateTree(camPos);
+        planetGrid_nX->updateTree(camPos, lights.numLights);
         planetGrid_nX->updateUBOs(view, proj, camPos, lights, frameTime, groundHeight);
     }
 }
@@ -1233,8 +1234,8 @@ float Planet::callBack_getFloorHeight(const glm::vec3& pos)
 
 // Sphere ----------------------------------------------------------------------
 
-Sphere::Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
-    : Planet(renderer, nullptr, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, transparency)
+Sphere::Sphere(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
+    : Planet(renderer, nullptr, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, transparency)
 {
     delete planetGrid_pZ;
     delete planetGrid_nZ;
@@ -1243,12 +1244,12 @@ Sphere::Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t
     delete planetGrid_pX;
     delete planetGrid_nX;
 
-    planetGrid_pZ = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 0, 1), glm::vec3(  0,  0, 50), transparency);
-    planetGrid_nZ = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 0,-1), glm::vec3(  0,  0,-50), transparency);
-    planetGrid_pY = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 1, 0), glm::vec3(  0, 50,  0), transparency);
-    planetGrid_nY = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,-1, 0), glm::vec3(  0,-50,  0), transparency);
-    planetGrid_pX = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 1, 0, 0), glm::vec3( 50,  0,  0), transparency);
-    planetGrid_nX = new SphereGrid(renderer, lights, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1, 0, 0), glm::vec3(-50,  0,  0), transparency);
+    planetGrid_pZ = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 0, 1), glm::vec3(  0,  0, 50), transparency);
+    planetGrid_nZ = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 0,-1), glm::vec3(  0,  0,-50), transparency);
+    planetGrid_pY = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0, 1, 0), glm::vec3(  0, 50,  0), transparency);
+    planetGrid_nY = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,-1, 0), glm::vec3(  0,-50,  0), transparency);
+    planetGrid_pX = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 1, 0, 0), glm::vec3( 50,  0,  0), transparency);
+    planetGrid_nX = new SphereGrid(renderer, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3(-1, 0, 0), glm::vec3(-50,  0,  0), transparency);
 }
 
 Sphere::~Sphere()

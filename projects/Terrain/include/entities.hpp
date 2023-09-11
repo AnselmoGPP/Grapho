@@ -15,7 +15,7 @@ class EntityFactory : public MainEntityFactory
 public:
 	EntityFactory(Renderer& renderer);
 
-	std::vector<Component*> createSeaPlanet	(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
+	std::vector<Component*> createSphere	(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createSkyBox	(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createSun		(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createGrid		(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);

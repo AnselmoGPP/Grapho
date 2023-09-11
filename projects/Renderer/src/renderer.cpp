@@ -185,7 +185,6 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
-	frameCount(0),
 	commandsCount(0),
 	worker(500, models, modelsToLoad, modelsToDelete, textures, shaders, updateCommandBuffer)
 { 
@@ -230,7 +229,6 @@ void Renderer::createCommandBuffers()
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
-		std::cout << i << std::endl;
 		// Start command buffer recording
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -260,12 +258,10 @@ void Renderer::createCommandBuffers()
 		
 		for (size_t j = 0; j < numLayers; j++)	// for each LAYER
 		{
-			std::cout << "  " << j << std::endl;
 			clearDepthBuffer(commandBuffers[i]);
 			
 			for (modelIter it = models[0].begin(); it != models[0].end(); it++)	// for each MODEL (color)
 			{
-				std::cout << "    " << it->name << std::endl;
 				if (it->layer != j || !it->activeRenders) continue;
 				
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
@@ -292,7 +288,7 @@ void Renderer::createCommandBuffers()
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);
-		std::cout << "---" << std::endl;
+
 		// Start render pass 2 (post processing):
 
 		renderPassInfo.renderPass = e.renderPass[1];
@@ -308,7 +304,6 @@ void Renderer::createCommandBuffers()
 		
 		for (modelIter it = models[1].begin(); it != models[1].end(); it++)	// for each MODEL (post processing)
 		{
-			std::cout << "  " << it->name << std::endl;
 			if (!it->activeRenders) continue;
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
@@ -324,7 +319,7 @@ void Renderer::createCommandBuffers()
 	}
 	
 	updateCommandBuffer = false;
-	std::cout << "end---" << std::endl;
+
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << " END" << std::endl;
 	#endif
@@ -369,14 +364,11 @@ void Renderer::renderLoop()
 	createSyncObjects();
 	worker.start();
 
-	frameCount = 0;
 	timer.setMaxFPS(maxFPS);
 	timer.startTimer();
 
 	while (!io.windowShouldClose())
 	{
-		++frameCount;
-
 		io.pollEvents();	// Check for events (processes only those events that have already been received and then returns immediately)
 		drawFrame();
 
@@ -510,14 +502,13 @@ void Renderer::recreateSwapChain()
 
 	// Get window size
 	int width = 0, height = 0;
-	io.getFramebufferSize(&width, &height);
+	//io.getFramebufferSize(&width, &height);
 	while (width == 0 || height == 0) 
 	{
 		io.getFramebufferSize(&width, &height);
 		io.waitEvents();
 	}
-	e.c.width = width;
-	e.c.height = height;
+	std::cout << "New window size: " << width << ", " << height << std::endl;
 
 	vkDeviceWaitIdle(e.c.device);			// We shouldn't touch resources that may be in use.
 
@@ -796,15 +787,9 @@ TimerSet& Renderer::getTimer() { return timer; }
 
 size_t Renderer::getRendersCount(modelIter model) { return model->activeRenders; }
 
-size_t Renderer::getFrameCount() { return frameCount; }
-
 size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); }
 
 size_t Renderer::getCommandsCount() { return commandsCount; }
-
-float Renderer::getAspectRatio() { return (float)e.c.height / e.c.width; }
-
-glm::vec2 Renderer::getScreenSize() { return glm::vec2(e.c.width, e.c.height); }
 
 size_t Renderer::loadedModels() { return models[0].size() + models[1].size(); }
 

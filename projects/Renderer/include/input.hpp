@@ -17,6 +17,7 @@ class IOmanager
 {
 	void initWindow(int width, int height);
 	void setCallbacks();
+	float YscrollOffset = 0;     //!< Set in a callback (windowUserPointer)
 
 public:
 	IOmanager(int width, int height);
@@ -40,10 +41,10 @@ public:
 	void waitEvents();
 
 	// Callbacks
-	float YscrollOffset = false;
-	bool framebufferResized = false;	///< Many drivers/platforms trigger VK_ERROR_OUT_OF_DATE_KHR after window resize, but it's not guaranteed. This variable handles resizes explicitly.
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);		///< Callback for window resizing (called when window is resized).
-	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);	///< Callback for mouse scroll (called when mouse is scrolled).
+	float getYscrollOffset();			//!< Get YscrollOffset value and reset it (set to 0).
+	bool framebufferResized = false;	//!< Many drivers/platforms trigger VK_ERROR_OUT_OF_DATE_KHR after window resize, but it's not guaranteed. This variable handles resizes explicitly.
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);		//!< Callback for window resizing (called when window is resized).
+	static void mouseScroll_callback(GLFWwindow* window, double xoffset, double yoffset);	//!< Callback for mouse scroll (called when mouse is scrolled).
 };
 
 #endif

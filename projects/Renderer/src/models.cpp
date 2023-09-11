@@ -341,26 +341,6 @@ void ModelData::createGraphicsPipeline()
 	//vkDestroyShaderModule(e.device, vertShaderModule, nullptr);
 }
 
-/*
-VkShaderModule ModelData::createShaderModule(const std::vector<char>& code)
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
-	#endif
-
-	VkShaderModuleCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = code.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());	// The default allocator from std::vector ensures that the data satisfies the alignment requirements of `uint32_t`.
-
-	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(e->c.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-		throw std::runtime_error("Failed to create shader module!");
-
-	return shaderModule;
-}
-*/
-
 // (22)
 void ModelData::createDescriptorPool()
 {

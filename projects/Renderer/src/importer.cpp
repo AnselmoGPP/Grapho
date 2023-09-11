@@ -15,7 +15,7 @@ VertexType vt_332({ 3 * sizeof(float), 3 * sizeof(float), 2 * sizeof(float) }, {
 VertexType vt_333({ 3 * sizeof(float), 3 * sizeof(float), 3 * sizeof(float) }, { VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT });
 
 std::vector<TextureLoader> noTextures;
-std::vector<uint16_t   > noIndices;
+std::vector<uint16_t> noIndices;
 
 // RESOURCES --------------------------------------------------------
 
@@ -133,6 +133,8 @@ void VLModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, Vertex
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
+	result.indexCount = rawIndices.size();
+
 	if (rawIndices.size() == 0) return;
 
 	// Create a staging buffer
@@ -162,8 +164,6 @@ void VLModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, Vertex
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		result.indexBuffer,
 		result.indexBufferMemory);
-
-	result.indexCount = rawIndices.size();
 
 	// Move the vertex data to the device local buffer
 	copyBuffer(stagingBuffer, result.indexBuffer, bufferSize, e);
@@ -212,7 +212,6 @@ void VLM_fromBuffer::getRawData(VertexSet& destVertices, std::vector<uint16_t>& 
 	destVertices = rawVertices;
 	destIndices = rawIndices;
 }
-
 
 VLM_fromFile::VLM_fromFile(size_t vertexSize, std::string& filePath)
 	: VLModule(vertexSize), path(filePath) { }

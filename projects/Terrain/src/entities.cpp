@@ -26,15 +26,14 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*> { new c_Model_normal(model, UboType::noData) };
 }
 
-std::vector<Component*> EntityFactory::createSeaPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
 {
-	//Sphere planetSeaGrid(&renderer, lights, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
-	
-	//planetSeaGrid.addResources(std::vector<ShaderLoader>{ShaderLoaders[10], ShaderLoaders[11]}, usedTextures);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 
-	//planetSeaGrid.updateState(d.camPos, view, proj, lights, d.frameTime, d.groundHeight);
-	//planetSeaGrid.toLastDraw();
-	return std::vector<Component*>();
+	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
+	seaSphere->addResources(shaders, textures);
+
+	return std::vector<Component*>{ new c_Model_planet(seaSphere) };
 }
 
 std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)

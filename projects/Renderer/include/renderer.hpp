@@ -101,7 +101,6 @@ class Renderer
 	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One for each swap chain image.
 
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
-	size_t						frameCount;					//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
 	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
 
 	// Main methods:
@@ -198,14 +197,10 @@ public:
 	void toLastDraw(modelIter model);
 
 	TimerSet&	getTimer();		//!< Returns the timer object (provides access to time data).
-	//Camera&		getCamera();	//!< Returns the camera object (provides access to camera data).
-	//Input&		getInput();
 	size_t		getRendersCount(modelIter model);
 	size_t		getFrameCount();
 	size_t		getModelsCount();
 	size_t		getCommandsCount();
-	float		getAspectRatio();
-	glm::vec2	getScreenSize();
 	size_t		loadedModels();		//!< Returns number of models in Renderer:models
 	size_t		loadedShaders();	//!< Returns number of shaders in Renderer:shaders
 	size_t		loadedTextures();	//!< Returns number of textures in Renderer:textures

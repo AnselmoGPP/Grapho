@@ -1,18 +1,36 @@
 #include "components.hpp"
 
 c_Engine::c_Engine(Renderer& renderer)
-	: Component("engine"), 
-	r(renderer),
-	io(r.getIOManager()),
-	width(renderer.getScreenSize().x),
-	height(renderer.getScreenSize().y),
-	time(0)
+	: Component("engine"), r(renderer), io(r.getIOManager()), time(0), frameCount(0)
 { };
+
+int c_Engine::width() const 
+{ 
+	int width, height;
+	io.getFramebufferSize(&width, &height);
+	return width; 
+}
+
+int c_Engine::height() const 
+{ 
+	int width, height;
+	io.getFramebufferSize(&width, &height);
+	return height;
+}
+
+float c_Engine::aspectRatio() const 
+{
+	int width, height;
+	io.getFramebufferSize(&width, &height);
+	return (float)width/height;
+};
+
 
 void c_Engine::printInfo() const
 {
-	std::cout << "width = " << width << std::endl;
-	std::cout << "height = " << height << std::endl;
+	std::cout << "width = " << width() << std::endl;
+	std::cout << "height = " << height() << std::endl;
+	std::cout << "aspectRatio = " << aspectRatio() << std::endl;
 
 	std::cout << "----------" << std::endl;
 }
@@ -58,9 +76,9 @@ c_Camera::c_Camera(unsigned mode) : Component("camera")
 		mouseSpeed = 0.002;
 		scrollSpeed = 0.1;
 		maxPitch = 1.3;
-		radius = 1000;
+		radius = 4000;
 		minRadius = 100;
-		maxRadius = 2000;
+		maxRadius = 5000;
 		camPos = -front * radius;
 		break;
 	case 2:			// polar plane

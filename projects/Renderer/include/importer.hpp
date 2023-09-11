@@ -23,6 +23,23 @@
 
 //#define DEBUG_RESOURCES
 
+/*
+	A VerticesLoader, ShaderLoader and TextureLoader objects are passed to our ModelData.
+	ModelData uses it to create a ResourceLoader member.
+	Later (in ModelData::fullConstruction()), ResourceLoader::loadResources() is used for loading resources.
+
+	VerticesLoader has a VLModule* member. A children of VLModule is built, depending upon the VerticesLoader constructor used.
+	ResourceLoader::loadResources()
+		VerticesLoader::loadVertices()
+			VLModule::loadVertices()
+				getRawData() (polymorphic)
+				createBuffers()
+		ShaderLoader::loadShader()
+		TextureLoader::loadTexture()
+	
+	ModelData
+*/
+
 
 extern VertexType vt_32;					//!< (Vert, UV)
 extern VertexType vt_33;					//!< (Vert, Color)
@@ -53,7 +70,7 @@ struct VertexData
 	VkDeviceMemory				 vertexBufferMemory;	//!< Opaque handle to a device memory object (here, memory for the vertex buffer).
 
 	// Indices
-	uint32_t					 indexCount;
+	uint32_t					 indexCount;			// <<< BUG WITH POINTS (= 7340144)
 	VkBuffer					 indexBuffer;			//!< Opaque handle to a buffer object (here, index buffer).
 	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 };
@@ -110,7 +127,7 @@ public:
 	VLModule* clone() override;
 };
 
-/// Wrapper around VLModule for loading vertices from any source.
+/// Wrapper around VLModule for loading vertices from any source. It creates a VLModule children, depending upon the constructor called, which will be used for loading vertices later (loadVertices). 
 class VerticesLoader
 {
 	VLModule* loader;

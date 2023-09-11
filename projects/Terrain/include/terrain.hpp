@@ -130,7 +130,7 @@ public:
 	virtual glm::vec3 getCenter();
 
 	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
 	glm::vec3 getGeoideCenter() { return geoideCenter; }
@@ -224,16 +224,16 @@ public:
 class DynamicGrid
 {
 public:
-	DynamicGrid(glm::vec3 camPos, LightSet& lights, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
+	DynamicGrid(glm::vec3 camPos, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 	virtual ~DynamicGrid();
 
-	unsigned char* ubo;
+	//unsigned char* ubo;
 	glm::vec3 camPos;
-	LightSet* lights;
+	unsigned numLights;
 
 	void addResources(const std::vector<ShaderLoader>& shadersInfo, const std::vector<TextureLoader>& texturesInfo);		//!< Add textures and shaders info
-	void updateTree(glm::vec3 newCamPos);
-	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, LightSet& lights, float time, float groundHeight);
+	void updateTree(glm::vec3 newCamPos, unsigned numLights);
+	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float groundHeight);
 	void toLastDraw();														//!< Call it after updateTree(), so the correct tree is put last to draw
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
 
@@ -289,7 +289,7 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
+	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 
 private:
 	Noiser* noiseGen;
@@ -301,7 +301,7 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
+	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	virtual ~PlanetGrid() { };
 
 	float getRadius();
@@ -325,7 +325,7 @@ protected:
 class SphereGrid : public PlanetGrid
 {
 public:
-	SphereGrid(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
+	SphereGrid(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 };
@@ -348,15 +348,15 @@ public:
 */
 struct Planet
 {
-	Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	Planet(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
 	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
-	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, LightSet& lights, float frameTime, float groundHeight);	//!< Update tree and UBOs
+	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const LightSet& lights, float frameTime, float groundHeight);	//!< Update tree and UBOs
 	void toLastDraw();
-	float getSphereArea();																										//!< Given planet radius, get sphere's area
 	float getGroundHeight(const glm::vec3& camPos);
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);
+	float getSphereArea();													//!< Given planet radius, get sphere's area
 
 	const float radius;
 	const glm::vec3 nucleus;
@@ -383,7 +383,7 @@ struct Sphere : public Planet
 	float callBack_getFloorHeight(const glm::vec3& pos) override;	//!< Callback example
 
 public:
-	Sphere(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	Sphere(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	~Sphere();
 };
 

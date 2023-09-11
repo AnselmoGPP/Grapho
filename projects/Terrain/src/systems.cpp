@@ -7,15 +7,10 @@ void s_Engine::update(float timeStep)
     #endif
     
     c_Engine* c_eng = (c_Engine*)em->getSComponent("engine");
+    if (!c_eng) std::cout << "Component not found" << std::endl;
 
-    if (c_eng)
-    {
-        //c_eng->window = c_eng->r.getWindowManager();    // <<< Necessary to update each frame???
-        c_eng->width = c_eng->r.getScreenSize().x;
-        c_eng->height = c_eng->r.getScreenSize().y;
-        c_eng->time += timeStep;
-    }
-    else std::cout << "No input component found: " << typeid(this).name() << std::endl;
+    c_eng->time += timeStep;
+    c_eng->frameCount++;
 }
 
 void s_Input::update(float timeStep)
@@ -24,13 +19,84 @@ void s_Input::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    c_Input*  c_input  = (c_Input* ) em->getSComponent("input");
-    c_Engine* c_engine = (c_Engine*) em->getSComponent("engine");
+    c_Input*  c_inp  = (c_Input* ) em->getSComponent("input");
+    c_Engine* c_eng = (c_Engine*) em->getSComponent("engine");
 
-    if (c_input && c_engine)
+    if (c_inp && c_eng)
     {
-        getKeyboardInput(c_engine->io, c_input, timeStep);
-        getMouseInput(c_engine->io, c_input, timeStep);
+        // KEYBOARD input:
+
+        if (c_eng->io.getKey(GLFW_KEY_W) == GLFW_PRESS) c_inp->W_press = true;
+        else c_inp->W_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_S) == GLFW_PRESS) c_inp->S_press = true;
+        else c_inp->S_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_A) == GLFW_PRESS) c_inp->A_press = true;
+        else c_inp->A_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_D) == GLFW_PRESS) c_inp->D_press = true;
+        else c_inp->D_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_Q) == GLFW_PRESS) c_inp->Q_press = true;
+        else c_inp->Q_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_E) == GLFW_PRESS) c_inp->E_press = true;
+        else c_inp->E_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_UP) == GLFW_PRESS) c_inp->up_press = true;
+        else c_inp->up_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_DOWN) == GLFW_PRESS) c_inp->down_press = true;
+        else c_inp->down_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_LEFT) == GLFW_PRESS) c_inp->left_press = true;
+        else c_inp->left_press = false;
+
+        if (c_eng->io.getKey(GLFW_KEY_RIGHT) == GLFW_PRESS) c_inp->right_press = true;
+        else c_inp->right_press = false;
+
+        // MOUSE input:
+
+        c_inp->LMB_justPressed = false;
+        c_inp->RMB_justPressed = false;
+        c_inp->MMB_justPressed = false;
+
+        if (c_eng->io.getMouseButton(GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
+            if (c_inp->LMB_pressed == false)
+                c_inp->LMB_justPressed = true;
+
+            c_inp->LMB_pressed = true;
+        }
+        else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+            c_inp->LMB_pressed = false;
+
+        if (c_eng->io.getMouseButton(GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        {
+            if (c_inp->RMB_pressed == false)
+                c_inp->RMB_justPressed = true;
+
+            c_inp->RMB_pressed = true;
+        }
+        else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
+            c_inp->RMB_pressed = false;
+
+        if (c_eng->io.getMouseButton(GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+        {
+            if (c_inp->MMB_pressed == false)
+                c_inp->MMB_justPressed = true;
+
+            c_inp->MMB_pressed = true;
+        }
+        else // if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_RELEASE)
+            c_inp->MMB_pressed = false;
+
+        c_inp->lastX = c_inp->xpos;
+        c_inp->lastY = c_inp->ypos;
+        c_eng->io.getCursorPos(&c_inp->xpos, &c_inp->ypos);
+
+        c_inp->yScrollOffset = c_eng->io.getYscrollOffset();
     }
     else
         std::cout << "No input component found: " << typeid(this).name() << std::endl;
@@ -109,7 +175,7 @@ void s_Input::getMouseInput(IOmanager& io, c_Input* c_input, float timeStep)
     c_input->lastY = c_input->ypos;
     io.getCursorPos(&c_input->xpos, &c_input->ypos);
 
-    c_input->yScrollOffset;     //!< Set in a callback (windowUserPointer)
+    c_input->yScrollOffset = io.getYscrollOffset();
 }
 
 glm::mat4 s_Camera::getViewMatrix(glm::vec3& camPos, glm::vec3& front, glm::vec3& camUp)
@@ -143,8 +209,8 @@ void s_SphereCam::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    c_Input const* c_input = (c_Input*)em->getSComponent("input");
-    c_Engine const* c_engine = (c_Engine*)em->getSComponent("engine");
+    const c_Input* c_input = (c_Input*)em->getSComponent("input");
+    const c_Engine* c_engine = (c_Engine*)em->getSComponent("engine");
     c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
 
     if (!c_input || !c_engine || !c_cam) {
@@ -192,8 +258,6 @@ void s_SphereCam::update(float timeStep)
         c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
         if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
-
-        //c_input->yScrollOffset() = 0;     // <<<
     }
 
     // Update cam vectors
@@ -270,8 +334,6 @@ void s_PolarCam::update(float timeStep)
         c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
         if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
-
-        //c_input->yScrollOffset() = 0;     // <<<
     }
 
     // Update cam vectors
@@ -342,8 +404,6 @@ void s_PlaneCam::update(float timeStep)
         c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
         if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
-    
-        //c_input->yScrollOffset() = 0;     // <<<
     }
     
     // Update cam vectors
@@ -408,8 +468,6 @@ void s_FPCam::update(float timeStep)
         c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
         if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
-
-        //c_input->yScrollOffset() = 0;     // <<<
     }
 
     // Update cam vectors
@@ -473,24 +531,6 @@ void s_Sky_XY::update(float timeStep)
     c_sky->skyAngle = fmod(c_eng->time * c_sky->skySpeed + c_sky->skyAngle_0, 2 * pi);
     c_sky->sunAngle = fmod(c_eng->time * c_sky->sunSpeed + c_sky->sunAngle_0, 2 * pi);
     c_sky->sunDir = { cos(c_sky->sunAngle), sin(c_sky->sunAngle), 0 };
-}
-
-void s_Model::update(float timeStep)
-{
-    #ifdef DEBUG_SYSTEM
-        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
-    #endif
-
-    return;
-
-    std::vector<uint32_t> entities = em->getEntitySet("model");
-    c_Model* c_model;
-
-    for (uint32_t eId : entities)
-    {
-        c_model = (c_Model*)em->getComponent("model", eId);
-
-    }
 }
 
 void s_ModelMatrix::update(float timeStep)
@@ -580,7 +620,7 @@ void s_Move::update(float timeStep)
     }
 }
 
-void s_UBO::update(float timeStep)
+void s_Model::update(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
@@ -589,10 +629,12 @@ void s_UBO::update(float timeStep)
     std::vector<uint32_t> entities = em->getEntitySet("model");
     const c_Model* c_model;
     const c_ModelMatrix* c_mm;
-    const c_Camera* c_cam;
-    c_Lights* c_lights;     // << const?
-    const c_Engine* c_eng;
 
+    const c_Engine* c_eng = (c_Engine*)em->getSComponent("engine");
+    const c_Camera* c_cam = (c_Camera*)em->getSComponent("camera");
+    const c_Lights* c_lights = (c_Lights*)em->getSComponent("lights");
+    if (!c_eng || !c_cam || !c_lights) std::cout << "Component not found" << std::endl;
+    
     uint8_t* dest;
     int i;
     
@@ -606,9 +648,8 @@ void s_UBO::update(float timeStep)
             switch (c_model->ubo_type)
             {
             case UboType::mvp:
-                c_cam = (c_Camera*)em->getSComponent("camera");
                 c_mm = (c_ModelMatrix*)em->getComponent("mm", eId);
-                if (!c_mm || !c_cam) std::cout << "Component not found" << std::endl;
+                if (!c_mm) std::cout << "Component not found" << std::endl;
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
@@ -627,12 +668,8 @@ void s_UBO::update(float timeStep)
             break;
 
         case ModelType::planet:
-            c_lights = (c_Lights*)em->getSComponent("lights");
-            c_eng = (c_Engine*)em->getSComponent("engine");
-            if (!c_lights || !c_eng) std::cout << "Component not found" << std::endl;
-
-            ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 1);   // <<< const Lights&
-            // LightSet & lights, float frameTime, float groundHeight)
+            ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 100);   // <<< groundHeight
+            ((c_Model_planet*)c_model)->planet->toLastDraw();
             break;
 
         default:

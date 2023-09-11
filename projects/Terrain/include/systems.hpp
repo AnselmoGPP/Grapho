@@ -115,15 +115,6 @@ public:
 
 // Non-Singletons --------------------------------------
 
-class s_Model : public System
-{
-public:
-    s_Model() : System() { };
-    ~s_Model() { };
-
-    void update(float timeStep) override;       //!< <<< NOT DEFINED
-};
-
 /// Update Model Matrix (c_ModelMatrix) using c_Move (position & rotation) and c_ModelMatrix (scale)
 class s_ModelMatrix : public System
 {
@@ -147,11 +138,11 @@ public:
 };
 
 /// Update UBO (c_UBO)
-class s_UBO : public System
+class s_Model : public System
 {
 public:
-    s_UBO() : System() { };
-    ~s_UBO() { };
+    s_Model() : System() { };
+    ~s_Model() { };
 
     void update(float timeStep) override;
 };

@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 		Renderer app(update, io, 2);				// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
 		
-		// ENTITIES:
+		// ENTITIES + COMPONENTS:
 
 		world.addEntity(std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
@@ -57,13 +57,12 @@ int main(int argc, char* argv[])
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
 
-		//Sphere planetSeaGrid(&app, lights, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
-		world.addEntity(eFact.createSeaPlanet(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
+		//world.addEntity(eFact.createSphere(ShaderLoaders[10], ShaderLoaders[11], usedTextures));
 		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
 		world.addEntity(eFact.createSun(ShaderLoaders[16], ShaderLoaders[17], { texInfos[4] }));
 		world.addEntity(eFact.createAxes(ShaderLoaders[2], ShaderLoaders[3], { }));
-		world.addEntity(eFact.createGrid(ShaderLoaders[2], ShaderLoaders[3], { }));
-		world.addEntity(eFact.createPoints(ShaderLoaders[0], ShaderLoaders[1], { }));
+		//world.addEntity(eFact.createGrid(ShaderLoaders[2], ShaderLoaders[3], { }));
+		world.addEntity(eFact.createPoints(ShaderLoaders[0], ShaderLoaders[1], { }));	// <<<
 		world.addEntity(eFact.createNoPP(ShaderLoaders[22], ShaderLoaders[23], { texInfos[4], texInfos[5] }));
 		
 		// SYSTEMS:
@@ -75,7 +74,7 @@ int main(int argc, char* argv[])
 		world.addSystem(new s_Lights);
 		world.addSystem(new s_Move);
 		world.addSystem(new s_ModelMatrix);
-		world.addSystem(new s_UBO);
+		world.addSystem(new s_Model);		// update UBOs
 		
 		//world.printInfo();
 		std::cout << "ECS arch. completed" << std::endl;

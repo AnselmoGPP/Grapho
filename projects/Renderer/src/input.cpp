@@ -62,6 +62,13 @@ void IOmanager::pollEvents() { glfwPollEvents(); }
 
 void IOmanager::waitEvents() { glfwWaitEvents(); }
 
+float IOmanager::getYscrollOffset()
+{
+	float offset = YscrollOffset;
+	YscrollOffset = 0;
+	return offset;
+}
+
 void IOmanager::framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
 	auto windowUserPointer = reinterpret_cast<IOmanager*>(glfwGetWindowUserPointer(window));
