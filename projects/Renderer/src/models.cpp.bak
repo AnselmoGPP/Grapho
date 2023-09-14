@@ -50,12 +50,12 @@ ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::li
 	#ifdef DEBUG_MODELS
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
-	
+
 	if (resLoader) {
 		resLoader->loadResources(vert, shaders, loadedShaders, textures, loadedTextures, mutResources);
 		deleteLoader();
 	} else std::cout << "Error: No loading info data" << std::endl;
-	
+
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
 		
@@ -63,7 +63,7 @@ ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::li
 	fsUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-	
+
 	//fullyConstructed = true;
 	return *this;
 }

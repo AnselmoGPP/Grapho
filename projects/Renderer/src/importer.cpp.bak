@@ -60,8 +60,9 @@ void VLModule::loadVertices(VertexData& result, ResourcesLoader* resources, Vulk
 {
 	VertexSet rawVertices;
 	std::vector<uint16_t> rawIndices;
-	
+
 	getRawData(rawVertices, rawIndices, *resources);		// Get the raw data
+
 	createBuffers(result, rawVertices, rawIndices, e);		// Upload data to Vulkan
 }
 

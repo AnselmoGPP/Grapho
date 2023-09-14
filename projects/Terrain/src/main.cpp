@@ -57,11 +57,11 @@ int main(int argc, char* argv[])
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
 
-		//world.addEntity(eFact.createSphere(ShaderLoaders[10], ShaderLoaders[11], usedTextures));
+		world.addEntity(eFact.createSphere(ShaderLoaders[10], ShaderLoaders[11], usedTextures));
 		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
 		world.addEntity(eFact.createSun(ShaderLoaders[16], ShaderLoaders[17], { texInfos[4] }));
 		world.addEntity(eFact.createAxes(ShaderLoaders[2], ShaderLoaders[3], { }));
-		//world.addEntity(eFact.createGrid(ShaderLoaders[2], ShaderLoaders[3], { }));
+		world.addEntity(eFact.createGrid(ShaderLoaders[2], ShaderLoaders[3], { }));
 		world.addEntity(eFact.createPoints(ShaderLoaders[0], ShaderLoaders[1], { }));	// <<<
 		world.addEntity(eFact.createNoPP(ShaderLoaders[22], ShaderLoaders[23], { texInfos[4], texInfos[5] }));
 		

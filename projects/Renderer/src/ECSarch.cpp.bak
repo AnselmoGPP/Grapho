@@ -80,7 +80,7 @@ void EntityManager::printInfo()
 	}
 
 	// Print Systems
-	std::cout << "Systems count = " << systems.size() << std::endl;
+	std::cout << "\nSystems count = " << systems.size() << std::endl;
 }
 
 uint32_t EntityManager::addEntity(std::vector<Component*>& components)

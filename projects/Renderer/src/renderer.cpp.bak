@@ -831,10 +831,6 @@ void Renderer::updateStates(uint32_t currentImage)
 		}
 
 	// - UPDATE COMMAND BUFFER
-	#ifdef DEBUG_RENDERLOOP
-		std::cout << "Update command buffer" << std::endl;
-	#endif
-	
 	if (updateCommandBuffer)
 	{
 		{

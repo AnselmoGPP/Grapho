@@ -44,7 +44,7 @@ glm::mat4 getModelMatrix(const glm::vec3& scale, const glm::vec4& rotQuat, const
 	return mm;
 }
 
-glm::mat4 getModelMatrixForNormals(const glm::mat4& modelMatrix)
+glm::mat4 modelMatrixForNormals(const glm::mat4& modelMatrix)
 {
 	//return toMat3(glm::transpose(glm::inverse(modelMatrix)));
 	return glm::transpose(glm::inverse(modelMatrix));

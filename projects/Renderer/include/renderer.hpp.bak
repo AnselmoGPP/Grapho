@@ -13,8 +13,6 @@
 #include "commons.hpp"
 
 //#define DEBUG_RENDERER
-//#define DEBUG_COMMANDBUFFERS
-//#define DEBUG_RENDERLOOP
 //#define DEBUG_WORKER
 
 /// Used for the user to specify what primitive type represents the vertex data. 

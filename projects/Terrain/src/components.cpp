@@ -175,16 +175,16 @@ void c_Move::printInfo() const
 }
 
 c_ModelMatrix::c_ModelMatrix()
-	: Component("mm"), modelMatrix(modelMatrix2(glm::vec3(1,1,1), glm::vec4(1,0,0,0), glm::vec3(0,0,0))) { };
+	: Component("mm"), modelMatrix(getModelMatrix()) { };
 
 c_ModelMatrix::c_ModelMatrix(glm::vec4 rotQuat)
-	: Component("mm"), modelMatrix(modelMatrix2(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
+	: Component("mm"), modelMatrix(getModelMatrix(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
 
 c_ModelMatrix::c_ModelMatrix(float scale)
-	: Component("mm"), scale(scale, scale, scale), modelMatrix(modelMatrix2(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
+	: Component("mm"), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
 
 c_ModelMatrix::c_ModelMatrix(float scale, glm::vec4 rotQuat)
-	: Component("mm"), scale(scale, scale, scale), modelMatrix(modelMatrix2(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
+	: Component("mm"), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
 
 void c_ModelMatrix::printInfo() const
 {

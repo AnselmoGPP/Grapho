@@ -549,7 +549,7 @@ void s_ModelMatrix::update(float timeStep)
         c_mov = (c_Move*)em->getComponent("move", eId);
 
         if (c_mov)
-            c_mm->modelMatrix = modelMatrix2(c_mm->scale, c_mov->rotQuat, c_mov->pos);
+            c_mm->modelMatrix = getModelMatrix(c_mm->scale, c_mov->rotQuat, c_mov->pos);
     }
 }
 

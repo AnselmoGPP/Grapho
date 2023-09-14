@@ -66,13 +66,13 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
     {
         dest = model->vsDynUBO.getUBOptr(i);
-        memcpy(dest, &modelMatrix(), size.mat4);
+        memcpy(dest, &getModelMatrix(), size.mat4);
         dest += size.mat4;
         //memcpy(dest, &view, mat4size);
         dest += size.mat4;
         //memcpy(dest, &proj, mat4size);
         dest += size.mat4;
-        memcpy(dest, &modelMatrixForNormals(modelMatrix()), size.mat4);
+        memcpy(dest, &getModelMatrixForNormals(getModelMatrix()), size.mat4);
         dest += size.mat4;
         //memcpy(dest, &camPos, vec3size);
         //dest += vec4size;
@@ -1329,8 +1329,8 @@ void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm
     for (int i = 0; i < pos.size(); i++)
     {
         k = index[i];
-        model = modelMatrix2(sca[k], rot[k], pos[k]);
-        modelNormals = modelMatrixForNormals(model);
+        model = getModelMatrix(sca[k], rot[k], pos[k]);
+        modelNormals = getModelMatrixForNormals(model);
 
         dest = grassModel->vsDynUBO.getUBOptr(i);
 
