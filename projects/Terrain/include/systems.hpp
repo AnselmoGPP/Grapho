@@ -137,7 +137,7 @@ public:
     void update(float timeStep) override;
 };
 
-/// Update UBO (c_UBO)
+/// Update c_UBO
 class s_Model : public System
 {
 public:
@@ -154,7 +154,7 @@ public:
     s_Template() : System() { };
     ~s_Template() { };
 
-    void update(float timeStep) override; 
+    void update(float timeStep) override { };
 };
 
 #endif

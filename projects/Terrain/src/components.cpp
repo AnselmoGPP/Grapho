@@ -1,7 +1,7 @@
 #include "components.hpp"
 
 c_Engine::c_Engine(Renderer& renderer)
-	: Component("engine"), r(renderer), io(r.getIOManager()), time(0), frameCount(0)
+	: Component(CT::engine), r(renderer), io(r.getIOManager()), time(0), frameCount(0)
 { };
 
 int c_Engine::width() const 
@@ -67,7 +67,7 @@ void c_Input::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Camera::c_Camera(unsigned mode) : Component("camera") 
+c_Camera::c_Camera(unsigned mode) : Component(CT::camera) 
 { 
 	switch (mode)
 	{
@@ -148,21 +148,11 @@ void c_Camera::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-void c_Scale::printInfo() const
-{
-	std::cout << "scale: "; printVec(scale);
-}
-
-void c_Rotation::printInfo() const
-{
-	std::cout << "rotQuat: "; printVec(rotQuat);
-}
-
 c_Move::c_Move(MoveType moveType, float jumpStep, glm::vec3 position)
-	: Component("move"), pos(position), moveType(moveType), jumpStep(jumpStep) { };
+	: Component(CT::move), pos(position), moveType(moveType), jumpStep(jumpStep) { };
 
 c_Move::c_Move(MoveType moveType)
-	: Component("move"), moveType(moveType) { };
+	: Component(CT::move), moveType(moveType) { };
 
 void c_Move::printInfo() const
 {
@@ -175,16 +165,16 @@ void c_Move::printInfo() const
 }
 
 c_ModelMatrix::c_ModelMatrix()
-	: Component("mm"), modelMatrix(getModelMatrix()) { };
+	: Component(CT::modelMatrix), modelMatrix(getModelMatrix()) { };
 
 c_ModelMatrix::c_ModelMatrix(glm::vec4 rotQuat)
-	: Component("mm"), modelMatrix(getModelMatrix(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
+	: Component(CT::modelMatrix), modelMatrix(getModelMatrix(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
 
 c_ModelMatrix::c_ModelMatrix(float scale)
-	: Component("mm"), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
+	: Component(CT::modelMatrix), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
 
 c_ModelMatrix::c_ModelMatrix(float scale, glm::vec4 rotQuat)
-	: Component("mm"), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
+	: Component(CT::modelMatrix), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
 
 void c_ModelMatrix::printInfo() const
 {
@@ -195,7 +185,7 @@ void c_ModelMatrix::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Lights::c_Lights(unsigned count) : Component("lights"), lights(count) 
+c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count) 
 { 
 	unsigned i = 0;
 
@@ -228,7 +218,7 @@ void c_Lights::printInfo() const
 }
 
 c_Sky::c_Sky(float skySpeed, float skyAngle, float sunSpeed, float sunAngle, float sunDist)
-	: Component("sky"), 
+	: Component(CT::sky), 
 	eclipticAngle(0.41), 
 	skySpeed(skySpeed), sunSpeed(sunSpeed), 
 	skyAngle_0(skyAngle), sunAngle_0(sunAngle),

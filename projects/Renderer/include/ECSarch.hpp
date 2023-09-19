@@ -17,14 +17,27 @@ class  System;
 class  EntityFactory;
 
 
+// Component type (CT). Used for identifying the type of component.
+extern enum class CT
+{
+    engine,
+    input,
+    camera,
+    lights,
+    sky,
+    model,
+    move,
+    modelMatrix,
+    planet
+};
+
 /// It stores state data (fields) and have no behavior (no methods).
 struct Component
 {
-    Component(std::string& type);
-    Component(const char* type);
+    Component(CT type);
     virtual ~Component();
 
-    const std::string type;
+    const CT type;
 };
 
 /// An ID associated with a set of components.
@@ -38,7 +51,7 @@ public:
 
     void addComponent(Component* component);
     const std::vector<std::shared_ptr<Component>>& getComponents();
-    Component* getSingleComponent(const char*  type);
+    Component* getSingleComponent(CT type);
     std::vector<Component*> getAllComponents();
 
     const uint32_t id;
@@ -79,11 +92,11 @@ public:
 
     // Entity methods
     uint32_t addEntity(std::vector<Component*>& components);  //!< Add new entity by defining its components.
-    std::vector<uint32_t> getEntitySet(const char* type);                //!< Get set of entities containing component of type X.
+    std::vector<uint32_t> getEntitySet(CT type);                //!< Get set of entities containing component of type X.
 
     // Component methods
-    Component* getSComponent(const char* type);                    //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.
-    Component* getComponent(const char* type, uint32_t entityId); //!< Get the first component found of type X in a given entity.
+    Component* getSComponent(CT type);                    //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.
+    Component* getComponent(CT type, uint32_t entityId); //!< Get the first component found of type X in a given entity.
 
     // System methods
     void addSystem(System* system);                                     //!< Add new system

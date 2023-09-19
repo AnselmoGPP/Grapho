@@ -72,7 +72,7 @@ struct LightProps
 */
 struct LightSet
 {
-	LightSet(int numLights);
+	LightSet(unsigned numLights);
 	~LightSet();
 	void turnOff(size_t index);
 	void setDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);

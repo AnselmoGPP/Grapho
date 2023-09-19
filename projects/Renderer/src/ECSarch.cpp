@@ -4,8 +4,7 @@
 #include "ECSarch.hpp"
 
 
-Component::Component(std::string& type) : type(type) { }
-Component::Component(const char*  type) : type(type) { }
+Component::Component(CT type) : type(type) { }
 Component::~Component() { }
 
 Entity::Entity(uint32_t id, std::vector<Component*>& components)
@@ -15,13 +14,25 @@ Entity::Entity(uint32_t id, std::vector<Component*>& components)
 		this->components.push_back(std::shared_ptr<Component>(comp));
 };
 
-Entity::~Entity() { }
+Entity::~Entity() 
+{ 
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << " (1/2)" << std::endl;
+	#endif
+
+	//for (Component* comp : components)
+	//	delete comp;
+
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << " (2/2)" << std::endl;
+	#endif
+}
 
 const std::vector<std::shared_ptr<Component>>& Entity::getComponents() { return components; };
 
 void Entity::addComponent(Component* component) { components.push_back(std::shared_ptr<Component>(component)); };
 
-Component* Entity::getSingleComponent(const char* type)
+Component* Entity::getSingleComponent(CT type)
 {
 	for (uint32_t i = 0; i < components.size(); i++)
 		if (type == components[i]->type)
@@ -42,7 +53,24 @@ std::vector<Component*> Entity::getAllComponents()
 
 EntityManager::EntityManager() { }
 
-EntityManager::~EntityManager() { };
+EntityManager::~EntityManager() 
+{ 
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << " (1/2)" << std::endl;
+	#endif
+
+	// Delete entities
+	for (auto it = entities.begin(); it != entities.end(); it++)
+		delete it->second;
+	
+	// Delete systems
+	for (unsigned i = 0; i < systems.size(); i++)
+		delete systems[i];
+
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << " (2/2)" << std::endl;
+	#endif
+};
 
 uint32_t EntityManager::getNewId()
 {
@@ -76,7 +104,7 @@ void EntityManager::printInfo()
 		std::cout << "Entity " << it->second->id << std::endl;
 		comps = it->second->getAllComponents();
 		for (unsigned i = 0; i < comps.size(); i++)
-			std::cout << "  " << comps[i]->type << std::endl;
+			std::cout << "  " << (int)comps[i]->type << std::endl;
 	}
 
 	// Print Systems
@@ -104,7 +132,7 @@ void EntityManager::addSystem(System* system)
 	this->systems.push_back(system);
 }
 
-std::vector<uint32_t> EntityManager::getEntitySet(const char* type)
+std::vector<uint32_t> EntityManager::getEntitySet(CT type)
 {
 	std::vector<uint32_t> result;
 
@@ -115,7 +143,7 @@ std::vector<uint32_t> EntityManager::getEntitySet(const char* type)
 	return result;
 }
 
-Component* EntityManager::getSComponent(const char* type)
+Component* EntityManager::getSComponent(CT type)
 {
 	Component* result = nullptr;
 
@@ -146,7 +174,7 @@ void EntityManager::addComponentToEntity(uint32_t entityId, Component* component
 	entities[entityId]->addComponent(component);
 }
 
-Component* EntityManager::getComponent(const char* type, uint32_t entityId)
+Component* EntityManager::getComponent(CT type, uint32_t entityId)
 {
 	return entities[entityId]->getSingleComponent(type);
 }

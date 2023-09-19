@@ -78,7 +78,7 @@ Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)
 
 // LightSet -------------------------------------------------------------
 
-LightSet::LightSet(int numLights)
+LightSet::LightSet(unsigned numLights)
 	: numLights(numLights), posDirBytes(numLights * sizeof(LightPosDir)), propsBytes(numLights * sizeof(LightProps))
 {
 	this->posDir = new LightPosDir[numLights];
@@ -87,7 +87,7 @@ LightSet::LightSet(int numLights)
 	for (size_t i = 0; i < numLights; i++)
 		props[i].type = 0;
 
-	if (numLights < 0) numLights = 0;
+	//if (numLights < 0) numLights = 0;
 }
 
 LightSet::~LightSet()

@@ -64,7 +64,7 @@ struct c_Engine : public Component
 
 struct c_Input : public Component
 {
-	c_Input() : Component("input") { };
+	c_Input() : Component(CT::input) { };
 	~c_Input() { };
 	void printInfo() const;
 
@@ -164,7 +164,7 @@ struct c_Sky : public Component
 struct c_Model : public Component
 {
 	c_Model(ModelType model_type, UboType ubo_type) 
-		: Component("model"), model_type(model_type), ubo_type(ubo_type) { };
+		: Component(CT::model), model_type(model_type), ubo_type(ubo_type) { };
 	~c_Model() { };
 	virtual void printInfo() const = 0;
 
@@ -195,29 +195,6 @@ struct c_Model_planet : public c_Model
 	//Sphere(Renderer* renderer, ______________________, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 };
 
-/// Determines the scaling for the Model matrix 
-struct c_Scale : public Component
-{
-	c_Scale() : Component("scale") { };
-	c_Scale(glm::vec3 scale) : Component("scale"), scale(scale) { };
-	c_Scale(float scale) : Component("scale"), scale(scale, scale, scale) { };
-	~c_Scale() { };
-	void printInfo() const;
-
-	glm::vec3 scale = { 1, 1, 1 };
-};
-
-/// Determines the rotation (rotation quaternion) for the Model matrix 
-struct c_Rotation : public Component
-{
-	c_Rotation() : Component("rotation") { };
-	c_Rotation(glm::vec4 rotQuat) : Component("rotation"), rotQuat(rotQuat) { };
-	~c_Rotation() { };
-	void printInfo() const;
-
-	glm::vec4 rotQuat = { 1, 0, 0, 0 };
-};
-
 /// Determines the translation for the Model matrix 
 struct c_Move : public Component
 {
@@ -235,25 +212,6 @@ struct c_Move : public Component
 	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
 
-/*
-struct c_Velocity : public Component
-{
-	c_Velocity(glm::vec3 velocity = { 0, 0, 0 }) : Component("vel"), v(velocity) { };
-	~c_Velocity() { };
-
-	glm::vec3 v;															//!< Velocity: Moving time rate & direction
-	float speed() { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); };	//!< Speed: Moving time rate 
-};
-
-struct c_Scale : public Component
-{
-	c_Scale(glm::vec3 scale = { 1, 1, 1 }) : Component("scale"), scale(scale) { };
-	~c_Scale() { };
-
-	glm::vec3 scale;
-};
-*/
-
 struct c_ModelMatrix : public Component
 {
 	c_ModelMatrix();
@@ -262,32 +220,6 @@ struct c_ModelMatrix : public Component
 	c_ModelMatrix(float scale, glm::vec4 rotQuat);
 	~c_ModelMatrix() { };
 	void printInfo() const;
-
-	glm::vec3 scale = { 1, 1, 1 };
-	//glm::vec4 rotQuat     = { 1, 0, 0, 0 };
-	//glm::vec3 translation = { 0, 0, 0 };
-
-	glm::mat4 modelMatrix;			//!< Model transformation matrix
-};
-
-struct c_Planet : public Component
-{
-	c_Planet(Renderer* renderer, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
-	~c_Planet() { };
-	void printInfo() const;
-
-	Planet planet;
-
-	//Renderer* renderer;
-	//LightSet& lights;
-	size_t rootCellSize;
-	size_t numSideVertex;
-	size_t numLevels;
-	size_t minLevel;
-	float distMultiplier;
-	float radius;
-	glm::vec3 nucleus;
-	bool transparency;
 
 	glm::vec3 scale = { 1, 1, 1 };
 	//glm::vec4 rotQuat     = { 1, 0, 0, 0 };

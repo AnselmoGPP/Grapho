@@ -18,9 +18,9 @@
 
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
-void setLights();
-float getFloorHeight(const glm::vec3& pos);
-float getSeaHeight(const glm::vec3& pos);
+//void setLights();
+//float getFloorHeight(const glm::vec3& pos);
+//float getSeaHeight(const glm::vec3& pos);
 void tests();
 
 // Models, textures, & shaders
@@ -35,9 +35,8 @@ int main(int argc, char* argv[])
 	#ifdef DEBUG_MAIN
 		//std::cout << std::setprecision(7);
 		std::cout << "Current path: " << std::filesystem::current_path() << std::endl;
-		std::cout << "PlanetGrid area: " << planetGrid.getSphereArea() << std::endl;
 		TimerSet time;
-		std::cout << "------------------------------" << std::endl << time.getDate() << std::endl;
+		std::cout << "--------------------" << std::endl << time.getDate() << std::endl;
 	#endif
 
 	//tests(); return 0;
@@ -56,7 +55,6 @@ int main(int argc, char* argv[])
 			new c_Camera(1),
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
-
 		world.addEntity(eFact.createSphere(ShaderLoaders[10], ShaderLoaders[11], usedTextures));
 		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
 		world.addEntity(eFact.createSun(ShaderLoaders[16], ShaderLoaders[17], { texInfos[4] }));
@@ -76,8 +74,10 @@ int main(int argc, char* argv[])
 		world.addSystem(new s_ModelMatrix);
 		world.addSystem(new s_Model);		// update UBOs
 		
-		//world.printInfo();
-		std::cout << "ECS arch. completed" << std::endl;
+		#ifdef DEBUG_MAIN
+			world.printInfo();
+			std::cout << "--------------------" << std::endl;
+		#endif
 
 		app.renderLoop();		// Start rendering
 

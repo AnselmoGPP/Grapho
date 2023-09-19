@@ -5,7 +5,17 @@
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
 #define RADIUS 2010
-
+#define DIST_1 150
+#define DIST_2 300
+#define WATER_COL_1 vec3(0.14, 0.30, 0.36)			// https://colorswall.com/palette/63192
+#define WATER_COL_2 vec3(0.17, 0.71, 0.61)
+#define FOAM_COL    vec3(0.98, 0.98, 0.98)
+#define SPECULARITY vec3(0.6, 0.6, 0.6)
+#define ROUGHNESS 10
+#define SCALE_1 150
+#define SCALE_2 150 * 5
+#define SPEED_1 2
+#define SPEED_2 2*2
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
@@ -50,78 +60,77 @@ vec3 getTex_Sea()
 	// Colors: https://colorswall.com/palette/63192
 	// Colors: https://www.color-hex.com/color-palette/101255
 
-	vec3 waterColor  = vec3(0.14, 0.30, 0.36);	// https://colorswall.com/palette/63192
-	vec3 specularity = vec3(0.6, 0.6, 0.6);
-	float roughness  = 10;
-	float scale      = 150;
-	float speed      = 2;
-
-	// Green and foam colors
-	if(inDist < 200)
+	// GREEN & FOAM COLORS
+	vec3 waterColor  = WATER_COL_1;
+		
+	if(inDist < DIST_2)
 	{
-		vec3 finalColor = waterColor;
+		//vec3 finalColor = waterColor;
 		
 		// Green water (depth map)
-		vec3 depth = triplanarNoColor_Sea(texSampler[32], scale, speed, inTime).rgb;
+		vec3 depth = triplanarNoColor_Sea(texSampler[32], SCALE_1, SPEED_1, inTime).rgb;
 		if(depth.x > 0.32)
 		{
-			float ratio = getRatio(depth.x, 0.32, 0.70);	// Mix ratio
-			finalColor = mix(finalColor, vec3(0.17, 0.71, 0.61), ratio);
+			float ratio = getRatio(depth.x, 0.32, 0.70);		// Mix ratio
+			waterColor = mix(waterColor, WATER_COL_2, ratio);
 		}
 		
 		// Green water (height from nucleus)
 		if(inGroundHeight > 2021) 
 		{
 			float ratio = getRatio(inGroundHeight, 2021, 2027);	// Mix ratio
-			finalColor = mix(finalColor, vec3(0.17, 0.71, 0.61), ratio);
+			waterColor = mix(waterColor, WATER_COL_2, ratio);
 		}
 	
 		// Foam
-		vec3 foam = triplanarTexture_Sea(texSampler[33], scale, speed, inTime).rgb;
+		vec3 foam = triplanarTexture_Sea(texSampler[33], SCALE_1, SPEED_1, inTime).rgb;
 		if(foam.x > 0.17) 
 		{
-			float ratio = getRatio(foam.x, 0.17, 0.25);	// Mix ratio
-			finalColor = mix(finalColor, vec3(0.98, 0.98, 0.98), ratio);
-			specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
-			roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<
+			float ratio = getRatio(foam.x, 0.17, 0.25);			// Mix ratio
+			waterColor = mix(waterColor, FOAM_COL, ratio);
+			//specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
+			//roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<
 		}
 		
-		if(inDist > 100)	// Mix area (
+		// Mix area
+		if(inDist > DIST_1)
 		{
-			float ratio = getRatio(inDist, 100, 200);
-			finalColor = mix(finalColor, waterColor, ratio);
+			float ratio = getRatio(inDist, DIST_1, DIST_2);
+			waterColor = mix(waterColor, WATER_COL_1, ratio);
 		}
-		
-		waterColor = finalColor;
 	}
 
-	// Normals and light
-	if(inDist < 150)	// Close normals
+	// NORMALS & LIGHT
+	
+	//    - Close normals
+	if(inDist < DIST_1)
 		return getFragColor( 
 			waterColor,
-			triplanarNormal_Sea(texSampler[31], scale, speed, inTime),
-			specularity,
-			roughness );
+			triplanarNormal_Sea(texSampler[31], SCALE_1, SPEED_1, inTime),
+			SPECULARITY,
+			ROUGHNESS );
 	
-	if(inDist < 300)	// Mix area (close and far normals)
+	//    - Mix area (close and far normals)
+	if(inDist < DIST_2)
 	{
-		vec3 normal  = triplanarNormal_Sea(texSampler[31], scale, speed, inTime);
-		vec3 normal2 = triplanarNormal_Sea(texSampler[31], scale * 5, speed * 1.5, inTime);
+		vec3 normal  = triplanarNormal_Sea(texSampler[31], SCALE_1, SPEED_1, inTime);
+		vec3 normal2 = triplanarNormal_Sea(texSampler[31], SCALE_2, SPEED_2, inTime);
 		float ratio  = getRatio(inDist, 150, 200);
 		normal       = mix(normal, normal2, ratio);
 		
 		return getFragColor( 
 				waterColor,
 				normal,
-				specularity,
-				roughness );
+				SPECULARITY,
+				ROUGHNESS );
 	}
 	
-	return getFragColor( 	// Far normals
+	//    - Far normals
+	return getFragColor(
 			waterColor,
-			triplanarNormal_Sea(texSampler[31], scale * 5, speed * 1.5, inTime),
-			specularity,
-			roughness );
+			triplanarNormal_Sea(texSampler[31], SCALE_2, SPEED_2, inTime),
+			SPECULARITY,
+			ROUGHNESS );
 }
 
 vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
