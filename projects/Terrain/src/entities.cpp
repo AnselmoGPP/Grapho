@@ -26,16 +26,6 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*> { new c_Model_normal(model, UboType::noData) };
 }
 
-std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
-{
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-
-	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
-	seaSphere->addResources(shaders, textures);
-
-	return std::vector<Component*>{ new c_Model_planet(seaSphere) };
-}
-
 std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
 	VerticesLoader vertexData(vt_32.vertexSize, v_cube.data(), 14, i_inCube);
@@ -144,4 +134,84 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 		false);
 
 	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_ModelMatrix() };
+}
+
+std::vector<Component*> EntityFactory::createReticule(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	return std::vector<Component*>{};
+}
+
+std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
+{
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+
+	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
+	seaSphere->addResources(shaders, textures);
+
+	return std::vector<Component*>{ new c_Model_planet(seaSphere) };
+}
+
+std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
+{
+	SingleNoise* noiser_hills = new SingleNoise(
+		FastNoiseLite::NoiseType_Perlin,	// Noise type
+		3, 6.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+		3, 120,								// Scale, Multiplier
+		1,									// Curve degree
+		0, 0, 0,							// XYZ offsets
+		4952);								// Seed
+
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+
+	Planet* planet = new Planet(&renderer, noiser_hills, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
+	planet->addResources(shaders, textures);
+
+	return std::vector<Component*>{ new c_Model_planet(planet) };
+}
+
+std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader)
+{
+	std::vector<float> v_quad;	// [4 * 5]
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
+
+	OpticalDepthTable optDepth(10, 1400, 2450, 30, pi / 20, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	TextureLoader texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+	DensityVector density(1400, 2450, 30, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	TextureLoader texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ texOD, texDV };
+
+	modelIter model = renderer.newModel(
+		"atmosphere",
+		2, 1, primitiveTopology::triangle, vt_32,
+		vertexData, shaders, textureSet,
+		1, 2 * size.mat4 + 8 * size.vec4,
+		0,
+		false,
+		1);
+
+	return std::vector<Component*> { new c_Model_normal(model, UboType::noData) };
+
+	/*
+	if (assets.find("atmosphere") != assets.end())
+		for (i = 0; i < assets["atmosphere"]->vsDynUBO.numDynUBOs; i++)
+		{
+			dest = assets["atmosphere"]->vsDynUBO.getUBOptr(i);
+			memcpy(dest + 0 * size.vec4, &d.fov, sizeof(d.fov));
+			memcpy(dest + 1 * size.vec4, &d.aspectRatio, sizeof(d.aspectRatio));
+			memcpy(dest + 2 * size.vec4, &d.camPos, sizeof(d.camPos));
+			memcpy(dest + 3 * size.vec4, &d.camDir, sizeof(d.camDir));
+			memcpy(dest + 4 * size.vec4, &d.camUp, sizeof(d.camUp));
+			memcpy(dest + 5 * size.vec4, &d.camRight, sizeof(d.camRight));
+			memcpy(dest + 6 * size.vec4, &lights.posDir[0].direction, sizeof(glm::vec3));
+			memcpy(dest + 7 * size.vec4, &d.clipPlanes, sizeof(glm::vec2));
+			memcpy(dest + 8 * size.vec4, &d.screenSize, sizeof(glm::vec2));
+			memcpy(dest + 9 * size.vec4, &view, sizeof(view));
+			memcpy(dest + 9 * size.vec4 + 1 * size.mat4, &proj, sizeof(proj));
+		}
+	*/
 }

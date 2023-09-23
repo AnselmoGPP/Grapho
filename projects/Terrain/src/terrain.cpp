@@ -1158,6 +1158,8 @@ Planet::~Planet()
     delete planetGrid_nY;
     delete planetGrid_pX;
     delete planetGrid_nX;
+
+    if(noiseGen) delete noiseGen;
 };
 
 void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures)

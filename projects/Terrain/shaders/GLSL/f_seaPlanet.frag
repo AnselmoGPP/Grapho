@@ -4,18 +4,18 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
-#define RADIUS 2010
-#define DIST_1 150
-#define DIST_2 300
-#define WATER_COL_1 vec3(0.14, 0.30, 0.36)			// https://colorswall.com/palette/63192
-#define WATER_COL_2 vec3(0.17, 0.71, 0.61)
+#define RADIUS      2010
 #define FOAM_COL    vec3(0.98, 0.98, 0.98)
-#define SPECULARITY vec3(0.6, 0.6, 0.6)
-#define ROUGHNESS 10
-#define SCALE_1 150
-#define SCALE_2 150 * 5
-#define SPEED_1 2
-#define SPEED_2 2*2
+#define SPECULARITY vec3(0.7, 0.7, 0.7)
+#define ROUGHNESS   30
+#define DIST_1      150
+#define DIST_2      300
+#define SCALE_1     150
+#define SCALE_2     750
+#define SPEED_1     2
+#define SPEED_2     5
+#define WATER_COL_1 vec3(0.02, 0.26, 0.45)	//https://www.color-hex.com/color-palette/3497	//vec3(0.14, 0.30, 0.36)	// https://colorswall.com/palette/63192
+#define WATER_COL_2 vec3(0.11, 0.64, 0.85)	//vec3(0.17, 0.71, 0.61)
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
@@ -62,6 +62,7 @@ vec3 getTex_Sea()
 
 	// GREEN & FOAM COLORS
 	vec3 waterColor  = WATER_COL_1;
+	float ratio;
 		
 	if(inDist < DIST_2)
 	{
@@ -71,14 +72,14 @@ vec3 getTex_Sea()
 		vec3 depth = triplanarNoColor_Sea(texSampler[32], SCALE_1, SPEED_1, inTime).rgb;
 		if(depth.x > 0.32)
 		{
-			float ratio = getRatio(depth.x, 0.32, 0.70);		// Mix ratio
+			ratio = getRatio(depth.x, 0.32, 0.70);		// Mix ratio
 			waterColor = mix(waterColor, WATER_COL_2, ratio);
 		}
 		
 		// Green water (height from nucleus)
 		if(inGroundHeight > 2021) 
 		{
-			float ratio = getRatio(inGroundHeight, 2021, 2027);	// Mix ratio
+			ratio = getRatio(inGroundHeight, 2021, 2027);	// Mix ratio
 			waterColor = mix(waterColor, WATER_COL_2, ratio);
 		}
 	
@@ -86,16 +87,14 @@ vec3 getTex_Sea()
 		vec3 foam = triplanarTexture_Sea(texSampler[33], SCALE_1, SPEED_1, inTime).rgb;
 		if(foam.x > 0.17) 
 		{
-			float ratio = getRatio(foam.x, 0.17, 0.25);			// Mix ratio
+			ratio = getRatio(foam.x, 0.17, 0.25);			// Mix ratio
 			waterColor = mix(waterColor, FOAM_COL, ratio);
-			//specularity *= ratio * 1.5 + 1;// <<<<<<<<<<<<<<<<<<<<
-			//roughness   *= ratio / 5.0 + 1;// <<<<<<<<<<<<<<<<<<<<
 		}
 		
 		// Mix area
 		if(inDist > DIST_1)
 		{
-			float ratio = getRatio(inDist, DIST_1, DIST_2);
+			ratio = getRatio(inDist, DIST_1, DIST_2);
 			waterColor = mix(waterColor, WATER_COL_1, ratio);
 		}
 	}
@@ -115,7 +114,7 @@ vec3 getTex_Sea()
 	{
 		vec3 normal  = triplanarNormal_Sea(texSampler[31], SCALE_1, SPEED_1, inTime);
 		vec3 normal2 = triplanarNormal_Sea(texSampler[31], SCALE_2, SPEED_2, inTime);
-		float ratio  = getRatio(inDist, 150, 200);
+		ratio        = getRatio(inDist, 150, 200);
 		normal       = mix(normal, normal2, ratio);
 		
 		return getFragColor( 

@@ -14,7 +14,7 @@
 #include "components.hpp"
 #include "systems.hpp"
 
-//#define DEBUG_MAIN 
+#define DEBUG_MAIN 
 
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
@@ -55,6 +55,8 @@ int main(int argc, char* argv[])
 			new c_Camera(1),
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
+		world.addEntity(eFact.createAtmosphere(ShaderLoaders[20], ShaderLoaders[21]));
+		world.addEntity(eFact.createPlanet(ShaderLoaders[14], ShaderLoaders[15], usedTextures));
 		world.addEntity(eFact.createSphere(ShaderLoaders[10], ShaderLoaders[11], usedTextures));
 		world.addEntity(eFact.createSkyBox(ShaderLoaders[4], ShaderLoaders[5], { texInfos[0] }));
 		world.addEntity(eFact.createSun(ShaderLoaders[16], ShaderLoaders[17], { texInfos[4] }));

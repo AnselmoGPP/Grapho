@@ -1,4 +1,12 @@
 TODO:
+	Scale sea texture
+	Minecraft method: Continents (multiple noise)
+	add all entities
+
+	delete non-used elements (camera class...)
+	Terrain texture for a given vertex is determined at CPU
+	maps for shaders & textures
+
 	Solve Model-Planet component duplicity. Options:
 		- SingleModel & Planets inherit from Model > s_Model reads name and acts accordingly.
 		- Model & planet components > s_Model search for both and acts on the one founded.

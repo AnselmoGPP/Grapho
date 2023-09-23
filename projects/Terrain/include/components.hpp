@@ -40,8 +40,8 @@ struct c_Planet;
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
-enum class ModelType { normal, planet };
-enum class UboType { noData, mvp, planet };		//!< Determine the type of data a model requires for updating its UBO
+enum class ModelType { normal, planet };					//!< Type of model (and c_model sub-component)
+enum class UboType { noData, mvp, planet, atmosphere };		//!< Determine the type of data a model requires for updating its UBO
 
 
 // Singletons --------------------------------------
