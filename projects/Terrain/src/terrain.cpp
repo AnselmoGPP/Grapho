@@ -24,8 +24,10 @@ Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHor
 
 Chunk::~Chunk()
 {
-    if (renderer.getModelsCount() && modelOrdered)
-        renderer.deleteModel(model);
+    // Renderer already deletes all models when render loop ends (so this tries to delete already deleted models when application closes)
+    // Problem: When application is closed, Renderer is destroyed. But destroying a chunk's model requires access to Renderer, so a crash may happen.
+    //if (renderer.getModelsCount() && modelOrdered)
+    //    renderer.deleteModel(model);
 }
 
 glm::vec3 Chunk::getVertex(size_t position) const
@@ -281,7 +283,7 @@ void PlainChunk::computeSizes()
 
 // PlanetChunk ----------------------------------------------------------------------
 
-PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
+PlanetChunk::PlanetChunk(Renderer& renderer, std::shared_ptr<Noiser> noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth, unsigned chunkID)
     : Chunk(renderer, cubeSideCenter, stride, numHorVertex, numVertVertex, depth, chunkID), noiseGen(noiseGenerator), nucleus(nucleus), radius(radius)
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
@@ -706,7 +708,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos, unsigned numLights)
         
         changeRenders(nonActiveTree, true);
 
-        removeFarChunks(distMultRemove, newCamPos);
+        //removeFarChunks(distMultRemove, newCamPos);
 
         resetVisibility(root[nonActiveTree]);
 
@@ -1045,7 +1047,7 @@ std::tuple<float, float, float> TerrainGrid::closestCenter()
 
 // PlanetGrid ----------------------------------------------------------------------
 
-PlanetGrid::PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
+PlanetGrid::PlanetGrid(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency)
     : DynamicGrid(glm::vec3(0.1f, 0.1f, 0.1f), renderer, 0, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, transparency), 
     noiseGen(noiseGenerator), radius(radius), nucleus(nucleus), cubePlane(cubePlane), cubeSideCenter(cubeSideCenter) 
 { }
@@ -1136,12 +1138,12 @@ QuadNode<Chunk*>* SphereGrid::getNode(std::tuple<float, float, float> center, fl
 
 // Planet ----------------------------------------------------------------------
 
-Planet::Planet(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
+Planet::Planet(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency)
     : radius(radius), 
     nucleus(nucleus), 
-    noiseGen(noiseGenerator), 
+    noiseGen(noiseGenerator),
     readyForUpdate(false)
-{ 
+{
     planetGrid_pZ = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0,  1), glm::vec3( 0,  0, 50), transparency);
     planetGrid_nZ = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  0, -1), glm::vec3( 0,  0,-50), transparency);
     planetGrid_pY = new PlanetGrid(renderer, noiseGenerator, rootCellSize, numSideVertex, numLevels, minLevel, distMultiplier, radius, nucleus, glm::vec3( 0,  1,  0), glm::vec3( 0, 50,  0), transparency);
@@ -1158,8 +1160,6 @@ Planet::~Planet()
     delete planetGrid_nY;
     delete planetGrid_pX;
     delete planetGrid_nX;
-
-    if(noiseGen) delete noiseGen;
 };
 
 void Planet::addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures)
@@ -1203,6 +1203,8 @@ void Planet::toLastDraw()
     planetGrid_nX->toLastDraw();
 }
 
+std::shared_ptr<Noiser> Planet::getNoiseGen() const { return noiseGen; }
+
 float Planet::getSphereArea() { return 4 * pi * radius * radius; }
 
 float Planet::getGroundHeight(const glm::vec3& camPos)
@@ -1216,7 +1218,7 @@ float Planet::getGroundHeight(const glm::vec3& camPos)
     return 0;
 }
 
-void Planet::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth)
+void Planet::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const
 {
     planetGrid_pZ->getActiveLeafChunks(dest, depth);
     planetGrid_nZ->getActiveLeafChunks(dest, depth);
@@ -1269,17 +1271,18 @@ float Sphere::callBack_getFloorHeight(const glm::vec3& pos)
 
 // Grass ----------------------------------------------------------------------
 
-GrassSystem::GrassSystem(Renderer& renderer, LightSet& lights, float maxDist, bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope))
-    : renderer(renderer), lights(lights), modelOrdered(false), camPos(1,2,3), camDir(1,2,3), fov(0), pi(3.141592653589793238462), maxDist(maxDist), grassSupported(grassSupported_callback)
+GrassSystem::GrassSystem(Renderer& renderer, float maxDist, bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope))
+    : renderer(renderer), modelOrdered(false), camPos(1,2,3), camDir(1,2,3), fov(0), pi(3.141592653589793238462), maxDist(maxDist), grassSupported(grassSupported_callback)
 { }
 
 GrassSystem::~GrassSystem()
 {
-    if (renderer.getModelsCount() && modelOrdered)
-        renderer.deleteModel(grassModel);
+
+    //if (renderer.getModelsCount() && modelOrdered)
+    //    renderer.deleteModel(grassModel);
 }
 
-void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures)
+void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, const LightSet* lights)
 {
     std::vector<float> vertices =       // plane XY (pos, normal, UV) centered at X axis
     { 
@@ -1299,64 +1302,13 @@ void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vect
         "grass",
         1, 5, primitiveTopology::triangle, vt_332,
         vertexData, shaders, textures,
-        5, 4 * size.mat4 + 2 * size.vec4 + lights.posDirBytes,	// M, V, P, MN, camPos + time, centerPos, lights
-        lights.propsBytes,                                          // lights, centerPos
-        true,
+        5, 4 * size.mat4 + 2 * size.vec4 + lights->posDirBytes,     // M, V, P, MN, camPos + time, centerPos, lights
+        lights->propsBytes,                                         // lights, centerPos
+        false,
         0,
         VK_CULL_MODE_NONE);
     
     modelOrdered = true;
-}
-
-void GrassSystem::updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time, float fov, glm::vec3& camDir)
-{ 
-    if (!modelOrdered) return;
-
-    // Get sorted grass parameters
-    if (this->camDir != camDir || this->camPos != camPos || this->fov != fov || renderRequired())
-    {
-        this->camPos = camPos;
-        this->camDir = camDir;
-        this->fov = fov;
-        getGrassItems(true);
-        renderer.setRenders(grassModel, pos.size());
-    }
-
-    // Update UBOs
-    uint8_t* dest;
-    float rotation;
-    glm::mat4 model, modelNormals;
-    int k;
-
-    for (int i = 0; i < pos.size(); i++)
-    {
-        k = index[i];
-        model = getModelMatrix(sca[k], rot[k], pos[k]);
-        modelNormals = getModelMatrixForNormals(model);
-
-        dest = grassModel->vsDynUBO.getUBOptr(i);
-
-        memcpy(dest, &model, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &view, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &proj, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &modelNormals, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &camPos, size.vec3);
-        dest += size.vec3;
-        memcpy(dest, &time, sizeof(float));
-        dest += sizeof(float);
-        memcpy(dest, &pos[k], size.vec3);
-        dest += size.vec3;
-        memcpy(dest, &slp[k], sizeof(float));
-        dest += sizeof(float);
-        memcpy(dest, lights.posDir, lights.posDirBytes);
-    }
-    
-    dest = grassModel->fsUBO.getUBOptr(0);
-    memcpy(dest, lights.props, lights.propsBytes);
 }
 
 void GrassSystem::toLastDraw() 
@@ -1381,8 +1333,8 @@ bool GrassSystem::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, c
 }
 
 
-GrassSystem_XY::GrassSystem_XY(Renderer& renderer, LightSet& lights, float step, float side, float maxDist)
-    : GrassSystem(renderer, lights, maxDist), step(step), side(side)
+GrassSystem_XY::GrassSystem_XY(Renderer& renderer, float step, float side, float maxDist)
+    : GrassSystem(renderer, maxDist), step(step), side(side)
 {
     std::mt19937_64 engine(38572);
     std::uniform_real_distribution<float> distributor(0, 2 * pi);
@@ -1437,11 +1389,59 @@ void GrassSystem_XY::getGrassItems(bool toSort)
     if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
-bool GrassSystem_XY::renderRequired() { return true; }
+void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camDir, float fov, const LightSet& lights, const Planet& planet, float time)
+{
+    if (!modelOrdered) return;
+    
+    // Get sorted grass parameters
+    if (this->camDir != camDir || this->camPos != camPos || this->fov != fov || renderRequired(planet))
+    {
+        this->camDir = camDir;
+        this->camPos = camPos;
+        this->fov = fov;
+        getGrassItems(planet, false);
+        renderer.setRenders(grassModel, pos.size());
+    }
 
+    // Update UBOs
+    uint8_t* dest;
+    float rotation;
+    glm::mat4 model, modelNormals;
+    int k;
 
-GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet, float maxDist, unsigned minDepth)
-    : GrassSystem(renderer, lights, maxDist), planet(planet), minDepth(minDepth), chunksCount(0)
+    for (int i = 0; i < pos.size(); i++)
+    {
+        k = index[i];
+        model = getModelMatrix(sca[k], rot[k], pos[k]);
+        modelNormals = getModelMatrixForNormals(model);
+
+        dest = grassModel->vsDynUBO.getUBOptr(i);
+
+        memcpy(dest, &model, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &view, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &proj, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &modelNormals, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &camPos, size.vec3);
+        dest += size.vec3;
+        memcpy(dest, &time, sizeof(float));
+        dest += sizeof(float);
+        memcpy(dest, &pos[k], size.vec3);
+        dest += size.vec3;
+        memcpy(dest, &slp[k], sizeof(float));
+        dest += sizeof(float);
+        memcpy(dest, lights.posDir, lights.posDirBytes);
+    }
+
+    dest = grassModel->fsUBO.getUBOptr(0);
+    memcpy(dest, lights.props, lights.propsBytes);
+}
+
+GrassSystem_planet::GrassSystem_planet(Renderer& renderer, float maxDist, unsigned minDepth)
+    : GrassSystem(renderer, maxDist), minDepth(minDepth), chunksCount(0)
 {
     std::mt19937_64 engine(38572);
     std::uniform_real_distribution<float> distributor(0, 2 * pi);
@@ -1454,17 +1454,17 @@ GrassSystem_planet::GrassSystem_planet(Renderer& renderer, LightSet& lights, Pla
 
 GrassSystem_planet::~GrassSystem_planet() { }
 
-void GrassSystem_planet::getGrassItems(bool toSort)
+void GrassSystem_planet::getGrassItems(const Planet& planet, bool toSort)
 {
-    //getGrassItems_fullGrass(toSort);
-    getGrassItems_average(toSort);
+    //getGrassItems_fullGrass(planet, toSort);
+    getGrassItems_average(planet, toSort);
 
     if (pos.size() > maxPosSize) maxPosSize = pos.size();
 
-    std::cout << maxPosSize << " / " << pos.size() << std::endl;
+    std::cout << "Grass items: " << maxPosSize << " / " << pos.size() << std::endl;
 }
 
-void GrassSystem_planet::getGrassItems_average(bool toSort)
+void GrassSystem_planet::getGrassItems_average(const Planet& planet, bool toSort)
 {
     // Reserved memory variables
     glm::vec3 gPos;     // grass bunch position
@@ -1566,7 +1566,7 @@ void GrassSystem_planet::getGrassItems_average(bool toSort)
     if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
-void GrassSystem_planet::getGrassItems_fullGrass(bool toSort)
+void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet, bool toSort)
 {
     // Reserved memory variables
     glm::vec3 gPos;     // grass bunch position
@@ -1690,7 +1690,7 @@ glm::vec3 GrassSystem_planet::getProjectionOnPlane(glm::vec3& normal, glm::vec3&
     return vec - projOnNormal;
 }
 
-bool GrassSystem_planet::renderRequired()
+bool GrassSystem_planet::renderRequired(const Planet& planet)
 {
     std::vector<Chunk*> availableChunks;
     planet.getActiveLeafChunks(availableChunks, minDepth);

@@ -1417,8 +1417,6 @@ void VulkanEnvironment::createRenderPass_2x2()
 	if (vkCreateRenderPass(c.device, &renderPassInfo, nullptr, &renderPass[0]) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create render pass!");
 
-	std::cout << "---------------" << std::endl;
-
 	// Render pass 2 (Multisample Postprocessing) -------------------------
 
 	VkSubpassDescription subpass2{};

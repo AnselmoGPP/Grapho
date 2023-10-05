@@ -4,21 +4,21 @@ c_Engine::c_Engine(Renderer& renderer)
 	: Component(CT::engine), r(renderer), io(r.getIOManager()), time(0), frameCount(0)
 { };
 
-int c_Engine::width() const 
+int c_Engine::getWidth() const 
 { 
 	int width, height;
 	io.getFramebufferSize(&width, &height);
 	return width; 
 }
 
-int c_Engine::height() const 
+int c_Engine::getHeight() const 
 { 
 	int width, height;
 	io.getFramebufferSize(&width, &height);
 	return height;
 }
 
-float c_Engine::aspectRatio() const 
+float c_Engine::getAspectRatio() const 
 {
 	int width, height;
 	io.getFramebufferSize(&width, &height);
@@ -28,9 +28,9 @@ float c_Engine::aspectRatio() const
 
 void c_Engine::printInfo() const
 {
-	std::cout << "width = " << width() << std::endl;
-	std::cout << "height = " << height() << std::endl;
-	std::cout << "aspectRatio = " << aspectRatio() << std::endl;
+	std::cout << "width = " << getWidth() << std::endl;
+	std::cout << "height = " << getHeight() << std::endl;
+	std::cout << "aspectRatio = " << getAspectRatio() << std::endl;
 
 	std::cout << "----------" << std::endl;
 }

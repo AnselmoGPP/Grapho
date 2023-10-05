@@ -27,14 +27,13 @@ layout(location = 4) flat out vec3 outLightDir;
 layout(location = 5) flat out vec2 outClipPlanes;
 layout(location = 6) flat out vec2 outScreenSize;
 
-vec4 ndc2world();
+vec4 ndc2world();		//!< Get vertex world space coordinates
 float getDotLimit();
 
 void main()
-{
-    //gl_Position = vec4(inPos, 1.0f);
-	//gl_Position.x = gl_Position.x * ubo.aspRatio.x;
+{	
 	gl_Position = vec4(inPos, 1.0f);
+	//gl_Position.x = gl_Position.x * ubo.aspRatio.x;
     outUVs = inUVs;
 	outPixPos = ndc2world().xyz;
 	outCamPos = ubo.camPos.xyz;
@@ -52,7 +51,7 @@ vec4 ndc2world()
 	
 	vec3 world = ubo.camPos.xyz + ubo.camDir.xyz;
 	world -= inPos.y * ubo.camUp.xyz * side;
-	world += inPos.x * ubo.camRight.xyz * (side / ubo.aspRatio.x); 
+	world += inPos.x * ubo.camRight.xyz * (side * ubo.aspRatio.x); 
 	
 	return vec4(world, 1.0f);
 }

@@ -40,8 +40,7 @@ struct c_Planet;
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
-enum class ModelType { normal, planet };					//!< Type of model (and c_model sub-component)
-enum class UboType { noData, mvp, planet, atmosphere };		//!< Determine the type of data a model requires for updating its UBO
+enum class UboType { noData, mvp, planet, grassPlanet, atmosphere };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
 // Singletons --------------------------------------
@@ -57,9 +56,9 @@ struct c_Engine : public Component
 	long double time;
 	size_t frameCount;			//!< Number of current frame being created [0, SIZE_MAX). If it's 0, no frame has been created yet. If render-loop finishes, the last value is kept. For debugging purposes.
 
-	int width() const;
-	int height() const;
-	float aspectRatio() const;
+	int getWidth() const;
+	int getHeight() const;
+	float getAspectRatio() const;
 };
 
 struct c_Input : public Component
@@ -163,19 +162,16 @@ struct c_Sky : public Component
 
 struct c_Model : public Component
 {
-	c_Model(ModelType model_type, UboType ubo_type) 
-		: Component(CT::model), model_type(model_type), ubo_type(ubo_type) { };
-	~c_Model() { };
+	c_Model(UboType ubo_type) : Component(CT::model), ubo_type(ubo_type) { };
+	virtual ~c_Model() { };
 	virtual void printInfo() const = 0;
 
-	ModelType model_type;
-	UboType ubo_type;
+	UboType ubo_type;	//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 };
 
 struct c_Model_normal : public c_Model
 {
-	c_Model_normal(modelIter model, UboType ubo_type)
-		: c_Model(ModelType::normal, ubo_type), model(model) { };
+	c_Model_normal(modelIter model, UboType ubo_type) : c_Model(ubo_type), model(model) { };
 	~c_Model_normal() { };
 	void printInfo() const override { };
 
@@ -184,15 +180,20 @@ struct c_Model_normal : public c_Model
 
 struct c_Model_planet : public c_Model
 {
-	c_Model_planet(Planet* planet) 
-		: c_Model(ModelType::planet, UboType::planet), planet(planet) { };
-	~c_Model_planet() { };
-	void printInfo() const override { if(planet) delete planet; };
+	c_Model_planet(Planet* planet) : c_Model(UboType::planet), planet(planet) { }
+	~c_Model_planet() { if (planet) delete planet; }
+	void printInfo() const override { }
 
 	Planet* planet;
+};
 
-	//Planet(Renderer* renderer, Noiser* noiseGenerator, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
-	//Sphere(Renderer* renderer, ______________________, LightSet& lights, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+struct c_Model_grassPlanet : public c_Model
+{
+	c_Model_grassPlanet(GrassSystem_planet* grass) : c_Model(UboType::grassPlanet), grass(grass) { };
+	~c_Model_grassPlanet() { /*if (grass) delete grass;*/ };
+	void printInfo() const override { };
+
+	GrassSystem_planet* grass;
 };
 
 /// Determines the translation for the Model matrix 

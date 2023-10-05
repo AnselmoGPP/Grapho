@@ -95,8 +95,9 @@ public:
     std::vector<uint32_t> getEntitySet(CT type);                //!< Get set of entities containing component of type X.
 
     // Component methods
-    Component* getSComponent(CT type);                    //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.
-    Component* getComponent(CT type, uint32_t entityId); //!< Get the first component found of type X in a given entity.
+    Component* getSComponent(CT type);                      //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.
+    Component* getComponent(CT type, uint32_t entityId);    //!< Get the first component found of type X in a given entity.
+    std::vector<Component*> getComponents(CT type);
 
     // System methods
     void addSystem(System* system);                                     //!< Add new system

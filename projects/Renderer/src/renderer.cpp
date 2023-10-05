@@ -210,6 +210,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	:
 	e(io),
 	io(io),
+	numRenderPasses(2),
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
@@ -654,7 +655,7 @@ void Renderer::cleanup()
 	
 	// Cleanup models, textures and shaders
 	// const std::lock_guard<std::mutex> lock(worker.mutModels);	// Not necessary (worker stopped loading thread)
-
+	
 	models[0].clear();
 	models[1].clear();
 	modelsToLoad.clear();
@@ -697,30 +698,34 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
+	
 	// If the model was not found on modelsToDelete, look in modelsToLoad
 	// Problem: What if the model is being loaded, or was loaded after the delete order?
 	// Solution: Wait for any model to delete in ModelsToLoad to be loaded. Then, delete. (this doesn't solve second problem).
 
-	size_t rpi = model->renderPassIndex;
+	//size_t rpi = model->renderPassIndex;	// Removed: Crashes when the modelIter points to a model that no longer exists (cleared during cleanup())
 
-	while (1)
+	while (true)	// If model is being processed, continue in loop until until it has been loaded and delete it.
 	{
 		{
+			// Be the only thread touching the lists of models
 			const std::lock_guard<std::mutex> lock_1(worker.mutModels);
 			const std::lock_guard<std::mutex> lock_3(worker.mutLoad);
 			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 
-			for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)		// found in Renderer::models
-				if (it == model)
-				{
-					model->inModels = false;
-					modelsToDelete.splice(modelsToDelete.cend(), models[rpi], model);
-					updateCommandBuffer = true;
-					return;
-				}
+			// Look in Renderer::models
+			for(unsigned rpi = 0; rpi < numRenderPasses; rpi ++)
+				for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)
+					if (it == model)
+					{
+						model->inModels = false;
+						modelsToDelete.splice(modelsToDelete.cend(), models[rpi], model);
+						updateCommandBuffer = true;
+						return;
+					}
 
-			for (auto it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)	// found in Renderer::modelsToLoad
+			// Look in Renderer::modelsToLoad
+			for (auto it = modelsToLoad.begin(); it != modelsToLoad.end(); it++)
 				if (it == model)
 				{
 					model->inModels = false;
@@ -728,7 +733,8 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 					return;
 				}
 
-			if (!worker.isBeingProcessed(model)) break;		// If model is being processed, continue in loop until until it has been loaded and delete it.
+			// If model is not being processed, exit loop
+			if (!worker.isBeingProcessed(model)) break;
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(3));

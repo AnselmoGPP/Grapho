@@ -275,7 +275,7 @@ void s_SphereCam::update(float timeStep)
 
     // Update View & Projection transformation matrices
     c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
-    c_cam->proj = getProjectionMatrix(c_eng->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+    c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
 void s_PolarCam::update(float timeStep)
@@ -343,7 +343,7 @@ void s_PolarCam::update(float timeStep)
 
     // Update View & Projection transformation matrices
     c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
-    c_cam->proj = getProjectionMatrix(c_eng->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+    c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
 void s_PlaneCam::update(float timeStep)
@@ -401,7 +401,7 @@ void s_PlaneCam::update(float timeStep)
     
     // Update View & Projection transformation matrices
     c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
-    c_cam->proj = getProjectionMatrix(c_eng->aspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+    c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
 void s_FPCam::update(float timeStep)
@@ -538,9 +538,9 @@ void s_Move::update(float timeStep)
 
 void s_Model::update(float timeStep)
 {
-    #ifdef DEBUG_SYSTEM
-        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
-    #endif
+#ifdef DEBUG_SYSTEM
+    std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+#endif
 
     std::vector<uint32_t> entities = em->getEntitySet(CT::model);
 
@@ -551,20 +551,24 @@ void s_Model::update(float timeStep)
 
     const c_Model* c_model;
     const c_ModelMatrix* c_mm;
-    
+
     uint8_t* dest;
     int i;
-    
+
+    float aspectRatio = c_eng->getAspectRatio();
+    glm::vec2 clipPlanes{ c_cam->nearViewPlane, c_cam->farViewPlane };
+    glm::vec2 screenSize{ c_eng->getWidth(), c_eng->getHeight() };
+
     for (uint32_t eId : entities)
     {
         c_model = (c_Model*)em->getComponent(CT::model, eId);
 
-        switch (c_model->model_type)
+        switch (c_model->ubo_type)
         {
-        case ModelType::normal:
-            switch (c_model->ubo_type)
+        case UboType::noData:
+            break;
+        case UboType::mvp:
             {
-            case UboType::mvp:
                 c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
                 if (!c_mm) continue;
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
@@ -575,24 +579,56 @@ void s_Model::update(float timeStep)
                     memcpy(dest + 2 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
                 }
                 break;
-
-            case UboType::noData:
+            }
+        case UboType::planet:
+            {
+                ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 100);   // <<< groundHeight
+                ((c_Model_planet*)c_model)->planet->toLastDraw();
                 break;
+            }
+        case UboType::atmosphere:
+            {
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
+                {
+                    dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
+                    memcpy(dest + 0 * size.vec4, &c_cam->fov, sizeof(c_cam->fov));
+                    memcpy(dest + 1 * size.vec4, &aspectRatio, sizeof(aspectRatio));
+                    memcpy(dest + 2 * size.vec4, &c_cam->camPos, sizeof(c_cam->camPos));
+                    memcpy(dest + 3 * size.vec4, &c_cam->front, sizeof(c_cam->front));
+                    memcpy(dest + 4 * size.vec4, &c_cam->camUp, sizeof(c_cam->camUp));
+                    memcpy(dest + 5 * size.vec4, &c_cam->right, sizeof(c_cam->right));
+                    memcpy(dest + 6 * size.vec4, &c_lights->lights.posDir[0].direction, sizeof(glm::vec3)); // sun direction
+                    memcpy(dest + 7 * size.vec4, &clipPlanes, sizeof(clipPlanes));
+                    memcpy(dest + 8 * size.vec4, &screenSize, sizeof(screenSize));
+                    memcpy(dest + 9 * size.vec4, &c_cam->view, sizeof(c_cam->view));
+                    memcpy(dest + 9 * size.vec4 + 1 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
+                }
+                break;
+            }
+        case UboType::grassPlanet:
+            {
+                std::vector<Component*> c_models = em->getComponents(CT::model);
 
-            default:
+                for (i = 0; i < c_models.size(); i++)
+                    if (((c_Model*)c_models[i])->ubo_type == UboType::planet && ((c_Model_planet*)c_models[i])->planet->getNoiseGen())
+                    {
+                        ((c_Model_grassPlanet*)c_model)->grass->updateState(
+                            c_cam->camPos, c_cam->view, c_cam->proj,
+                            c_cam->front, c_cam->fov,
+                            c_lights->lights,
+                            *((c_Model_planet*)c_models[i])->planet,
+                            c_eng->time);
+                        //((c_Model_grassPlanet*)c_model)->grass->toLastDraw();
+                        break;
+                    }
+                break;
+            }
+        default:
+            {
                 std::cout << "Wrong UBO type" << std::endl;
                 break;
             }
-            break;
-
-        case ModelType::planet:
-            ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 100);   // <<< groundHeight
-            ((c_Model_planet*)c_model)->planet->toLastDraw();
-            break;
-
-        default:
-            std::cout << "Wrong model type" << std::endl;
-            break;
         }
     }
 }
+

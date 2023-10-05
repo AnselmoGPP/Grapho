@@ -24,9 +24,7 @@ layout(location = 0) out vec4 outColor;								// layout(location=0) specifies t
 
 
 void main()
-{
-	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
-	
+{	
 	//if(applyOrderedDithering(inSqrDist, 2, 0)) { discard; return; }
 	
 	// Choose texture
@@ -36,7 +34,11 @@ void main()
 	else if (noise.x > 0.4) albedo = texture(texSampler[1], unpackUVmirror(inUVs, 1));		// vec4(0, 1, 0, 1);
 	else                    albedo = texture(texSampler[2], unpackUVmirror(inUVs, 1));		// vec4(0, 0, 1, 1);
 	
-	if(albedo.a < 0.2) { discard; return; }		// discard transparent fragments
+	// Discard transparent fragments
+	if(albedo.a < 0.5) { discard; return; }
+	//else albedo.a = 1.f;
+	
+	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 
 	// Transparency (distance to camPos)
 	//float dist = getDist(inPos, inCamPos);
@@ -44,7 +46,7 @@ void main()
 	//if(dist > 14) albedo.a *= 1.f - getRatio(dist, 14, 17);
 	
 	// Transparency (roots)
-	albedo.a *= getRatio(inUVs.y, 0.1, 0.2);
+	//albedo.a *= getRatio(inUVs.y, 0.1, 0.2);
 	
 	// Color filter
 	albedo.xyz *= vec3(0.4, 0.4, 0.4);

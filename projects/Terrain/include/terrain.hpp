@@ -172,7 +172,7 @@ public:
 class PlanetChunk : public Chunk
 {
 protected:
-	Noiser* noiseGen;
+	std::shared_ptr<Noiser> noiseGen;
 	glm::vec3 nucleus;
 	float radius;
 	glm::vec3 xAxis, yAxis;			//!< Vectors representing the relative XY coordinate system of the cube side plane.
@@ -182,7 +182,7 @@ protected:
 	void computeSizes() override;
 
 public:
-	PlanetChunk::PlanetChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
+	PlanetChunk::PlanetChunk(Renderer& renderer, std::shared_ptr<Noiser> noiseGenerator, glm::vec3 cubeSideCenter, float stride, unsigned numHorVertex, unsigned numVertVertex, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, unsigned depth = 0, unsigned chunkID = 0);
 	virtual ~PlanetChunk() { };
 
 	virtual void computeTerrain(bool computeIndices) override;
@@ -290,6 +290,7 @@ public:
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
 	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
+	~TerrainGrid() { if (noiseGen) delete noiseGen; }
 
 private:
 	Noiser* noiseGen;
@@ -301,13 +302,13 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
-	virtual ~PlanetGrid() { };
+	PlanetGrid(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
+	virtual ~PlanetGrid() { }
 
 	float getRadius();
 
 protected:
-	Noiser* noiseGen;
+	std::shared_ptr<Noiser> noiseGen;
 	float radius;
 	glm::vec3 nucleus;
 	glm::vec3 cubePlane;
@@ -348,21 +349,22 @@ public:
 */
 struct Planet
 {
-	Planet(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	Planet(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
 	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const LightSet& lights, float frameTime, float groundHeight);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getGroundHeight(const glm::vec3& camPos);
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);
-	float getSphereArea();													//!< Given planet radius, get sphere's area
+	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const;
+	std::shared_ptr<Noiser> getNoiseGen() const;
+	float getSphereArea();							//!< Given planet radius, get sphere's area
 
 	const float radius;
 	const glm::vec3 nucleus;
 
 protected:
-	Noiser* noiseGen;
+	std::shared_ptr<Noiser> noiseGen;
 	PlanetGrid* planetGrid_pZ;
 	PlanetGrid* planetGrid_nZ;
 	PlanetGrid* planetGrid_pY;
@@ -395,16 +397,14 @@ bool grassSupported_callback(const glm::vec3& pos, float groundSlope);
 class GrassSystem
 {
 public:
-	GrassSystem(Renderer& renderer, LightSet& lights, float maxDist, bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope) = grassSupported_callback);
+	GrassSystem(Renderer& renderer, float maxDist, bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope) = grassSupported_callback);
 	~GrassSystem();
 
-	void createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures);
-	void updateGrass(const glm::vec3& camPos, const Planet& planet, glm::mat4& view, glm::mat4& proj, float time, float fov, glm::vec3& camDir);
+	void createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, const LightSet* lights);
 	void toLastDraw();
 
 protected:
 	Renderer& renderer;
-	LightSet& lights;
 	modelIter grassModel;
 
 	std::vector<glm::vec3> pos;     //!< position
@@ -420,18 +420,17 @@ protected:
 
 	float maxDist;							//!< Max. rendering distance
 
-	virtual void getGrassItems(bool toSort)  = 0;
-	virtual bool renderRequired() = 0;									//!< Evaluated each frame. Function used by this class for evaluating sub-class related conditions and forcing grass rendering.
+	//virtual void getGrassItems(bool toSort)  = 0;
+	//virtual bool renderRequired() = 0;								//!< Evaluated each frame. Function used by this class for evaluating sub-class related conditions and forcing grass rendering.
 	bool(*grassSupported) (const glm::vec3& pos, float groundSlope);	//!< Evaluated each grass. Callback used by the client for evaluating world-related conditions and forcing grass rendering.
 
 	bool withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov);
 };
 
-
 class GrassSystem_XY : public GrassSystem
 {
 public:
-	GrassSystem_XY(Renderer& renderer, LightSet& lights, float step, float side, float maxDist);
+	GrassSystem_XY(Renderer& renderer, float step, float side, float maxDist);
 	~GrassSystem_XY();
 
 protected:
@@ -439,29 +438,31 @@ protected:
 	float step;				//!< step size
 	float side;				//!< steps per side
 
-	void getGrassItems(bool toSort) override;
-	bool renderRequired() override;
+	void getGrassItems(bool toSort);
+	//bool renderRequired() override;
 };
 
 class GrassSystem_planet : public GrassSystem
 {
 public:
-	GrassSystem_planet(Renderer& renderer, LightSet& lights, Planet& planet, float maxDist, unsigned minDepth);
+	GrassSystem_planet(Renderer& renderer, float maxDist, unsigned minDepth);
 	~GrassSystem_planet();
+
+	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camDir, float fov, const LightSet& lights, const Planet& planet, float time);
 
 protected:
 	float whiteNoise[15][15][15];	// Rotation angles for grass bunchs to be randomly rotated
 	std::vector<Chunk*> chunks;
-	Planet& planet;
+	//Planet& planet; <<<
 	unsigned minDepth;				//!< Used chunks have this depth or more
 	unsigned chunksCount;			//!< Number of chunks used in the last grass rendering
 
-	glm::vec4 getLatLonRotQuat(glm::vec3& normal);		//!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
+	glm::vec4 getLatLonRotQuat(glm::vec3& normal);					//!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
 	glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);
-	bool renderRequired() override;						//!< Detect whether new chunks are available. If so, render the grass of these chunks.
-	void getGrassItems(bool toSort) override;
-	void getGrassItems_fullGrass(bool toSort);
-	void getGrassItems_average(bool toSort);
+	bool renderRequired(const Planet& planet);						//!< Evaluated each frame. Detect whether new chunks are available. If so, render the grass of these chunks.
+	void getGrassItems(const Planet& planet, bool toSort);
+		void getGrassItems_fullGrass(const Planet& planet, bool toSort);
+		void getGrassItems_average(const Planet& planet, bool toSort);
 
 	unsigned maxPosSize = 0;	// for testing 
 };

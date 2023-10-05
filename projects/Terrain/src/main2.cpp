@@ -252,7 +252,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	grass.updateGrass(d.camPos, planetGrid, view, proj, d.frameTime, d.fov, d.camDir);
 	grass.toLastDraw();
 
-/*
+	/*
 	if (check.ifBigger(frameTime, 5))
 		if (assets.find("room") != assets.end())
 		{
@@ -280,9 +280,9 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 		memcpy(assets["points"]->vsDynUBO.getUBOptr(2), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f,  90.f), glm::vec3(30.f, -80.f, 3.f)), mat4size);
 		memcpy(assets["points"]->vsDynUBO.getUBOptr(3), &modelMatrix(glm::vec3(20.f, 20.f, 20.f), glm::vec3(0.f, 0.f, 180.f), glm::vec3(30.f, -50.f, 3.f)), mat4size);
 	}
-*/
+	*/
 
-// Update UBOs
+	// Update UBOs
 	uint8_t* dest;
 
 	if (assets.find("reticule") != assets.end())

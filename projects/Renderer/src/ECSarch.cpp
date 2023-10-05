@@ -100,15 +100,7 @@ void EntityManager::printInfo()
 
 	// Print Entities & Components
 	for (auto it = entities.begin(); it != entities.end(); it++)
-	{
-		std::cout << "Entity " << it->second->id << std::endl;
 		comps = it->second->getAllComponents();
-		for (unsigned i = 0; i < comps.size(); i++)
-			std::cout << "  " << (int)comps[i]->type << std::endl;
-	}
-
-	// Print Systems
-	std::cout << "Systems count = " << systems.size() << std::endl;
 }
 
 uint32_t EntityManager::addEntity(std::vector<Component*>& components)
@@ -145,7 +137,7 @@ std::vector<uint32_t> EntityManager::getEntitySet(CT type)
 
 Component* EntityManager::getSComponent(CT type)
 {
-	Component* result = nullptr;
+	Component* result;
 
 	for (auto it = entities.begin(); it != entities.end(); it++)
 	{
@@ -153,7 +145,7 @@ Component* EntityManager::getSComponent(CT type)
 		if (result) return result;
 	}
 
-	return result;
+	return nullptr;
 }
 
 void EntityManager::removeEntity(uint32_t entityId)
@@ -177,5 +169,19 @@ void EntityManager::addComponentToEntity(uint32_t entityId, Component* component
 Component* EntityManager::getComponent(CT type, uint32_t entityId)
 {
 	return entities[entityId]->getSingleComponent(type);
+}
+
+std::vector<Component*> EntityManager::getComponents(CT type)
+{
+	std::vector<Component*> componentSet;
+	Component* component;
+
+	for (auto it = entities.begin(); it != entities.end(); it++)
+	{
+		component = it->second->getSingleComponent(type);
+		if (component) componentSet.push_back(component);
+	}
+
+	return componentSet;
 }
 

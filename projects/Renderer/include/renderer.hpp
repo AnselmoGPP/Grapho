@@ -55,7 +55,10 @@ public:
 	LoadingWorker(int waitTime, std::list<ModelData>* models, std::list<ModelData>& modelsToLoad, std::list<ModelData>& modelsToDelete, std::list<Texture>& textures, std::list<Shader>& shaders, bool& updateCommandBuffer);
 	~LoadingWorker();
 
-	std::mutex mutModels, mutLoad, mutDelete, mutResources;
+	std::mutex mutModels;		//!< for Renderer::models
+	std::mutex mutLoad;			//!< for Renderer::modelsToLoad
+	std::mutex mutDelete;		//!< for Renderer::modelsToDelete
+	std::mutex mutResources;	//!< for Renderer::shaders & Renderer::textures
 
 	void start();
 	void stop();
@@ -90,7 +93,8 @@ class Renderer
 
 	LoadingWorker				worker;
 
-	size_t						numLayers;					//!< Number of layers (Painter's algorithm)
+	const uint32_t				numRenderPasses;			//!< Number of render passes (2)
+	const size_t				numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIter>		lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
 	// Member variables:
@@ -190,7 +194,7 @@ public:
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
 	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0, VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT);
 
-	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes.
+	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes. Note: When the app closes, it destroys Renderer. Thus, don't use this method at app-closing (like in an object destructor): if Renderer is destroyed first, the app may crash.
 	void deleteModel(modelIter model);
 
 	void setRenders(modelIter model, size_t numberOfRenders);

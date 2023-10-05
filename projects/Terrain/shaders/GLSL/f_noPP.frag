@@ -14,4 +14,5 @@ void main()
 	outColor = texelFetch(inputAttachments[0], ivec2(inUVs * textureSize(inputAttachments[0])), gl_SampleID);
 	//outColor = vec4(texture(texSampler[0], inUVs).rgb, 1.0);
 	//outColor = vec4(0,0,1,1);
+	//outColor = vec4(gl_FragCoord.x, gl_FragCoord.x, gl_FragCoord.x, 1);
 }
