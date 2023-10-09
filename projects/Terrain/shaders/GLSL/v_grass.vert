@@ -39,17 +39,18 @@ void main()
 	float height  = getLength(modelPos);
 	
 	// Translation
-	pos += vec3(-0.1, 0, 0);
+	//pos += vec3(-0.1, 0, 0);
 	
 	// Scale
 	pos *= getRatio(sqrDist, 90*90, 0);			// Re-scaling (later, the MVP scales the mesh)
 	
-	float xScale = min(min(
-					getRatio(height, MIN_HEIGHT, MIN_HEIGHT + 4, 0.2, 1.0),			// The closer to MIN_HEIGHT, the shorter the grass
-					getRatio(height, MAX_HEIGHT, MAX_HEIGHT - 4, 0.2, 1.0) ),		// The closer to MAX_HEIGHT, the shorter the grass
-					getRatio(gSlope, MAX_SLOPE - 0.1, MAX_SLOPE, 1.0, 0.2) );		// The higher the slope, the shorter the grass
+	float xScale = 1;
+	//float xScale = min(min(
+	//				getRatio(height, MIN_HEIGHT, MIN_HEIGHT + 4, 0.2, 1.0),			// The closer to MIN_HEIGHT, the shorter the grass
+	//				getRatio(height, MAX_HEIGHT, MAX_HEIGHT - 4, 0.2, 1.0) ),		// The closer to MAX_HEIGHT, the shorter the grass
+	//				getRatio(gSlope, MAX_SLOPE - 0.1, MAX_SLOPE, 1.0, 0.2) );		// The higher the slope, the shorter the grass
 
-	pos.x *= xScale;	// vert. scale
+	//pos.x *= xScale;	// vert. scale
 	//pos.y *= 1.5;		// hor. scale
 	
 	// Wind

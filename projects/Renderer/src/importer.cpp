@@ -426,6 +426,8 @@ ShaderLoader::ShaderLoader(const std::string& id, const std::string& text)
 	loader = new SLM_fromBuffer(id, text);
 }
 
+ShaderLoader::ShaderLoader() : loader(nullptr) { }
+
 ShaderLoader::ShaderLoader(const ShaderLoader& obj)
 {
 	if (obj.loader) loader = obj.loader->clone();
@@ -794,6 +796,8 @@ TextureLoader::TextureLoader(unsigned char* pixels, int texWidth, int texHeight,
 {
 	loader = new TLM_fromBuffer(id, pixels, texWidth, texHeight, imageFormat, addressMode);
 }
+
+TextureLoader::TextureLoader() : loader(nullptr) { }
 
 TextureLoader::TextureLoader(const TextureLoader& obj)
 {

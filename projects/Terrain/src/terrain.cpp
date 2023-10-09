@@ -1277,19 +1277,22 @@ GrassSystem::GrassSystem(Renderer& renderer, float maxDist, bool(*grassSupported
 
 GrassSystem::~GrassSystem()
 {
-
+    // Not necessary (Renderer destroys models), nor desirable (at app closing, Renderer has already closed models).
     //if (renderer.getModelsCount() && modelOrdered)
     //    renderer.deleteModel(grassModel);
 }
 
 void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, const LightSet* lights)
 {
+    float hor = 1;
+    float ver = 1;
+    float vMove = 0.1;
     std::vector<float> vertices =       // plane XY (pos, normal, UV) centered at X axis
     { 
-         0,  0.5, 0,   1, 0, 0,   0, 0,
-         0, -0.5, 0,   1, 0, 0,   1, 0,
-         1, -0.5, 0,   1, 0, 0,   1, 1,
-         1,  0.5, 0,   1, 0, 0,   0, 1
+         0   - ver * vMove,  hor/2, 0,   1, 0, 0,   0, 0,     //     y|___
+         0   - ver * vMove, -hor/2, 0,   1, 0, 0,   1, 0,     //   ___|   |___x
+         ver - ver * vMove, -hor/2, 0,   1, 0, 0,   1, 1,     //      |___|
+         ver - ver * vMove,  hor/2, 0,   1, 0, 0,   0, 1      //      |
     };
 
     std::vector<uint16_t> indices = { 0, 1, 2,  0, 2, 3 };
@@ -1346,7 +1349,7 @@ GrassSystem_XY::GrassSystem_XY(Renderer& renderer, float step, float side, float
 
 GrassSystem_XY::~GrassSystem_XY() { }
 
-void GrassSystem_XY::getGrassItems(bool toSort)
+void GrassSystem_XY::getGrassItems()
 {
     glm::vec3 gPos;     // grass bouquet position
     glm::ivec2 nIdx;    // noise index
@@ -1386,7 +1389,7 @@ void GrassSystem_XY::getGrassItems(bool toSort)
             sca.push_back(glm::vec3(1, 1, 1));
         }
 
-    if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
+    //if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
 void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camDir, float fov, const LightSet& lights, const Planet& planet, float time)
@@ -1399,7 +1402,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         this->camDir = camDir;
         this->camPos = camPos;
         this->fov = fov;
-        getGrassItems(planet, false);
+        getGrassItems(planet);
         renderer.setRenders(grassModel, pos.size());
     }
 
@@ -1407,12 +1410,10 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
     uint8_t* dest;
     float rotation;
     glm::mat4 model, modelNormals;
-    int k;
 
     for (int i = 0; i < pos.size(); i++)
     {
-        k = index[i];
-        model = getModelMatrix(sca[k], rot[k], pos[k]);
+        model = getModelMatrix(sca[i], rot[i], pos[i]);
         modelNormals = getModelMatrixForNormals(model);
 
         dest = grassModel->vsDynUBO.getUBOptr(i);
@@ -1429,9 +1430,9 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         dest += size.vec3;
         memcpy(dest, &time, sizeof(float));
         dest += sizeof(float);
-        memcpy(dest, &pos[k], size.vec3);
+        memcpy(dest, &pos[i], size.vec3);
         dest += size.vec3;
-        memcpy(dest, &slp[k], sizeof(float));
+        memcpy(dest, &slp[i], sizeof(float));
         dest += sizeof(float);
         memcpy(dest, lights.posDir, lights.posDirBytes);
     }
@@ -1454,17 +1455,17 @@ GrassSystem_planet::GrassSystem_planet(Renderer& renderer, float maxDist, unsign
 
 GrassSystem_planet::~GrassSystem_planet() { }
 
-void GrassSystem_planet::getGrassItems(const Planet& planet, bool toSort)
+void GrassSystem_planet::getGrassItems(const Planet& planet)
 {
     //getGrassItems_fullGrass(planet, toSort);
-    getGrassItems_average(planet, toSort);
+    getGrassItems_average(planet);
 
     if (pos.size() > maxPosSize) maxPosSize = pos.size();
 
     std::cout << "Grass items: " << maxPosSize << " / " << pos.size() << std::endl;
 }
 
-void GrassSystem_planet::getGrassItems_average(const Planet& planet, bool toSort)
+void GrassSystem_planet::getGrassItems_average(const Planet& planet)
 {
     // Reserved memory variables
     glm::vec3 gPos;     // grass bunch position
@@ -1560,13 +1561,12 @@ void GrassSystem_planet::getGrassItems_average(const Planet& planet, bool toSort
     }
 
     // > [Index]
-    index.resize(pos.size());
-    for (int i = 0; i < pos.size(); i++) index[i] = i;
-
-    if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
+    //index.resize(pos.size());
+    //for (int i = 0; i < pos.size(); i++) index[i] = i;
+    //if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
-void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet, bool toSort)
+void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet)
 {
     // Reserved memory variables
     glm::vec3 gPos;     // grass bunch position
@@ -1656,11 +1656,9 @@ void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet, bool toSo
     }
 
     // > [Index]
-    index.resize(pos.size());
-    for (int i = 0; i < pos.size(); i++) index[i] = i;
-
-    if(toSort) 
-        sorter.sort(pos, index, camPos, 0, pos.size() - 1);
+    //index.resize(pos.size());
+    //for (int i = 0; i < pos.size(); i++) index[i] = i;
+    //if(toSort) sorter.sort(pos, index, camPos, 0, pos.size() - 1);
 }
 
 glm::vec4 GrassSystem_planet::getLatLonRotQuat(glm::vec3& normal)

@@ -4,6 +4,7 @@ TODO:
 	Scale sea texture
 	Minecraft method: Continents (multiple noise)
 	removeFarChunks()
+	Global planet params?
 
 Good practice:
 	Use const references as parameters

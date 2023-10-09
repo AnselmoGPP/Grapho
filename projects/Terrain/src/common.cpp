@@ -54,7 +54,7 @@ PlanetFPcam camera_4(
 	0.f, 47.f );					// latitude & longitude
 */
 
-ShaderLoader ShaderLoaders[]
+ShaderLoader ShaderLoadersX[]
 {
 	/*00*/ ShaderLoader(shadersDir + "v_points.vert"),
 	/*01*/ ShaderLoader(shadersDir + "f_points.frag"),
@@ -96,7 +96,7 @@ ShaderLoader ShaderLoaders[]
 	/*25*/ ShaderLoader(shadersDir + "f_XXX.frag")
 };
 
-TextureLoader texInfos[]
+TextureLoader texInfosX[]
 {
 	// Special
 	/*00*/ TextureLoader(texDir + "sky_box/space1.jpg"),//space1.jpg"),
@@ -157,7 +157,7 @@ TextureLoader texInfos[]
 	/*40*/ TextureLoader(texDir + "grass/whiteNoise.png"),
 };
 
-std::vector<TextureLoader> usedTextures
+std::vector<TextureLoader> usedTexturesX
 {
 	// Plants
 	/*00*/ TextureLoader(texDir + "grass/grassDry_a.png"),

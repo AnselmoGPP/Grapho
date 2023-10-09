@@ -26,9 +26,9 @@ extern const std::string texDir;
 
 // Resources
 
-extern ShaderLoader ShaderLoaders[];
-extern TextureLoader texInfos[];
+extern ShaderLoader ShaderLoadersX[];
+extern TextureLoader texInfosX[];
 
-extern std::vector<TextureLoader> usedTextures;	// Package of textures
+extern std::vector<TextureLoader> usedTexturesX;	// Package of textures
 
 #endif

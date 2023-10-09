@@ -185,7 +185,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 		FastNoiseLite::NoiseType_Perlin,	// Noise type
 		3, 6.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 		3, 120,								// Scale, Multiplier
-		0,									// Curve degree
+		1,									// Curve degree
 		0, 0, 0,							// XYZ offsets
 		4952);								// Seed
 

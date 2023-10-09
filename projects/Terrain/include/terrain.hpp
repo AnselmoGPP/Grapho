@@ -411,9 +411,9 @@ protected:
 	std::vector<glm::vec4> rot;     //!< rotation quaternions
 	std::vector<glm::vec3> sca;		//!< scaling
 	std::vector<float> slp;			//!< ground slope
-	std::vector<int> index;			//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
+	//std::vector<int> index;		//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
 
-	Quicksort_distVec3_index sorter;
+	//Quicksort_distVec3_index sorter;
 	bool modelOrdered;
 	glm::vec3 camPos, camDir;
 	float pi, fov;
@@ -438,7 +438,7 @@ protected:
 	float step;				//!< step size
 	float side;				//!< steps per side
 
-	void getGrassItems(bool toSort);
+	void getGrassItems();
 	//bool renderRequired() override;
 };
 
@@ -453,16 +453,15 @@ public:
 protected:
 	float whiteNoise[15][15][15];	// Rotation angles for grass bunchs to be randomly rotated
 	std::vector<Chunk*> chunks;
-	//Planet& planet; <<<
 	unsigned minDepth;				//!< Used chunks have this depth or more
 	unsigned chunksCount;			//!< Number of chunks used in the last grass rendering
 
 	glm::vec4 getLatLonRotQuat(glm::vec3& normal);					//!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
 	glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);
 	bool renderRequired(const Planet& planet);						//!< Evaluated each frame. Detect whether new chunks are available. If so, render the grass of these chunks.
-	void getGrassItems(const Planet& planet, bool toSort);
-		void getGrassItems_fullGrass(const Planet& planet, bool toSort);
-		void getGrassItems_average(const Planet& planet, bool toSort);
+	void getGrassItems(const Planet& planet);
+		void getGrassItems_fullGrass(const Planet& planet);
+		void getGrassItems_average(const Planet& planet);
 
 	unsigned maxPosSize = 0;	// for testing 
 };

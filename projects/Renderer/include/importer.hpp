@@ -201,6 +201,7 @@ class ShaderLoader
 public:
 	ShaderLoader(const std::string& filePath);						//!< From file
 	ShaderLoader(const std::string& id, const std::string& text);	//!< From buffer
+	ShaderLoader();													//!< Default constructor
 	ShaderLoader(const ShaderLoader& obj);							//!< Copy constructor (necessary because loader can be freed in destructor)
 	~ShaderLoader();
 
@@ -307,6 +308,7 @@ class TextureLoader
 public:
 	TextureLoader(std::string filePath, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 	TextureLoader(unsigned char* pixels, int texWidth, int texHeight, std::string id, VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	TextureLoader();	//!< Default constructor
 	TextureLoader(const TextureLoader& obj);							//!< Copy constructor (necessary because loader can be freed in destructor)
 	~TextureLoader();
 
