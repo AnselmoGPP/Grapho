@@ -17,12 +17,13 @@ bool QueueFamilyIndices::isComplete()
 
 Image::Image() : image(nullptr), memory(nullptr), view(nullptr), sampler(nullptr) { }
 
-void Image::destroy(VkDevice device)
+void Image::destroy(VulkanEnvironment* e)
 {
-	if(view)    vkDestroyImageView(device, view, nullptr);		// Resolve buffer	(VkImageView)
-	if(image)   vkDestroyImage(device, image, nullptr);			// Resolve buffer	(VkImage)
-	if(memory)  vkFreeMemory(device, memory, nullptr);			// Resolve buffer	(VkDeviceMemory)
-	if(sampler) vkDestroySampler(device, sampler, nullptr);
+	if(view)    vkDestroyImageView(e->c.device, view, nullptr);		// Resolve buffer	(VkImageView)
+	if(image)   vkDestroyImage(e->c.device, image, nullptr);			// Resolve buffer	(VkImage)
+	if(memory)  vkFreeMemory(e->c.device, memory, nullptr);			// Resolve buffer	(VkDeviceMemory)
+	e->c.memAllocObjects--;
+	if(sampler) vkDestroySampler(e->c.device, sampler, nullptr);
 }
 
 SwapChain::SwapChain()
@@ -47,7 +48,7 @@ void SwapChain::destroy(VkDevice device)
 //VkExtent2D									swapChainExtent;
 
 VulkanCore::VulkanCore(IOmanager& io)
-	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT), io(io)
+	: physicalDevice(VK_NULL_HANDLE), msaaSamples(VK_SAMPLE_COUNT_1_BIT), io(io), memAllocObjects(0)
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -455,7 +456,7 @@ int VulkanCore::evaluateDevice(VkPhysicalDevice device)
 	// Get basic device properties: Name, type, supported Vulkan version...
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
+	
 	// Get optional features: Texture compression, 64 bit floats, multi-viewport rendering...
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
@@ -533,6 +534,13 @@ QueueFamilyIndices VulkanCore::findQueueFamilies(VkPhysicalDevice device)
 }
 
 QueueFamilyIndices VulkanCore::findQueueFamilies() { return findQueueFamilies(physicalDevice); }
+
+uint32_t VulkanCore::getMaxMemoryAllocationCount()
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+	return deviceProperties.limits.maxMemoryAllocationCount;
+}
 
 void VulkanCore::destroy()
 {
@@ -856,6 +864,8 @@ void VulkanEnvironment::createImage(uint32_t width, uint32_t height, uint32_t mi
 	if (vkAllocateMemory(c.device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate image memory!");
 
+	c.memAllocObjects++;
+
 	vkBindImageMemory(c.device, image, imageMemory, 0);
 }
 
@@ -1175,9 +1185,9 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
 	// Destroy attachments (images)
-	color_1.destroy(c.device);
-	depth.destroy(c.device);
-	color_2.destroy(c.device);
+	color_1.destroy(this);
+	depth.destroy(this);
+	color_2.destroy(this);
 
 	// Framebuffers
 	for (auto framebuffer : framebuffers)

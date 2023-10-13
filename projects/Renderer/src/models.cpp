@@ -564,11 +564,13 @@ void ModelData::cleanup()
 	{
 		vkDestroyBuffer(e->c.device, vert.indexBuffer, nullptr);
 		vkFreeMemory(e->c.device, vert.indexBufferMemory, nullptr);
+		e->c.memAllocObjects--;
 	}
 
 	// Vertex
 	vkDestroyBuffer(e->c.device, vert.vertexBuffer, nullptr);
 	vkFreeMemory(e->c.device, vert.vertexBufferMemory, nullptr);
+	e->c.memAllocObjects--;
 }
 
 void ModelData::deleteLoader()

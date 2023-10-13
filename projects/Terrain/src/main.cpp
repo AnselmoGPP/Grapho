@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 			world.printInfo();
 			std::cout << "--------------------" << std::endl;
 		#endif
-
+		
 		app.renderLoop();		// Start rendering
 
 		if (0) throw "Test exception";
@@ -108,6 +108,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//d.fps = rend.getTimer().getFPS();
 	//d.maxfps = rend.getTimer().getMaxPossibleFPS();
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
+	std::cout << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
 
 	em.update(rend.getTimer().getDeltaTime());
 }
@@ -116,6 +117,7 @@ void loadResourcesInfo()
 {
 	// SHADERS
 
+	//shaderLoaders["v_points"] = ShaderLoader(shadersDir + "v_points.vert");
 	shaderLoaders.insert(std::pair("v_points",      ShaderLoader(shadersDir + "v_points.vert")));
 	shaderLoaders.insert(std::pair("f_points",      ShaderLoader(shadersDir + "f_points.frag")));
 

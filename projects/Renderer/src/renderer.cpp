@@ -877,3 +877,7 @@ size_t Renderer::loadedShaders() { return shaders.size(); }
 size_t Renderer::loadedTextures() { return textures.size(); }
 
 IOmanager& Renderer::getIOManager() { return io; }
+
+int Renderer::getMaxMemoryAllocationCount() { return e.c.getMaxMemoryAllocationCount(); }
+
+int Renderer::getMemAllocObjects() { return e.c.memAllocObjects; }

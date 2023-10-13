@@ -68,6 +68,7 @@ void UBO::destroyUniformBuffers()
 		{
 			vkDestroyBuffer(e->c.device, uniformBuffers[i], nullptr);
 			vkFreeMemory(e->c.device, uniformBuffersMemory[i], nullptr);
+			e->c.memAllocObjects--;
 		}
 	}
 }

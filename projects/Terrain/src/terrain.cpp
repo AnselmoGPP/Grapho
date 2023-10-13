@@ -24,6 +24,9 @@ Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHor
 
 Chunk::~Chunk()
 {
+    //Problem: If Renderer is working (not at app closing), model must be erased here. (see also grass)
+    //renderer.deleteModel(model);
+
     // Renderer already deletes all models when render loop ends (so this tries to delete already deleted models when application closes)
     // Problem: When application is closed, Renderer is destroyed. But destroying a chunk's model requires access to Renderer, so a crash may happen.
     //if (renderer.getModelsCount() && modelOrdered)
@@ -158,6 +161,9 @@ void Chunk::setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d)
 }
 
 glm::vec3 Chunk::getCenter() { return groundCenter; }
+
+void Chunk::deleteModel() { renderer.deleteModel(model); }
+
 
 // PlainChunk ----------------------------------------------------------------------
 
@@ -708,7 +714,7 @@ void DynamicGrid::updateTree(glm::vec3 newCamPos, unsigned numLights)
         
         changeRenders(nonActiveTree, true);
 
-        //removeFarChunks(distMultRemove, newCamPos);
+        removeFarChunks(distMultRemove, newCamPos);
 
         resetVisibility(root[nonActiveTree]);
 
@@ -849,7 +855,7 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
         nextIt++;
         targetDist = it->second->getHorChunkSide() * relDist;
         chunk = it->second;
-
+        
         if(chunk->isVisible && (!chunk->modelOrdered || !chunk->model->activeRenders))    // traverse chunks that are not in the active tree
         {
             center = getChunkCenter(it->second);    // it->second->getGroundCenter();
@@ -860,6 +866,7 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
 
             if ((distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z) > targetSqrDist)
             {
+                if(chunks[it->first]->modelOrdered) chunks[it->first]->deleteModel();
                 delete chunks[it->first];
                 chunks.erase(it->first);
             }
@@ -1011,6 +1018,21 @@ void DynamicGrid::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth)
             dest.push_back(chunk);
 }
 
+unsigned DynamicGrid::numActiveLeafChunks() { return visibleLeafChunks[activeTree].size(); }
+
+unsigned DynamicGrid::numChunksOrdered()
+{
+    unsigned count = 0;
+
+    for (auto it = chunks.begin(); it != chunks.end(); it++)
+        if (it->second->modelOrdered)
+            count++;
+
+    return count;
+}
+
+unsigned DynamicGrid::numChunks() { return chunks.size(); }
+
 
 // TerrainGrid ----------------------------------------------------------------------
 
@@ -1120,7 +1142,7 @@ SphereGrid::SphereGrid(Renderer* renderer, size_t rootCellSize, size_t numSideVe
 
 QuadNode<Chunk*>* SphereGrid::getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID)
 {
-    if (chunks.find(center) == chunks.end())
+    if (chunks.find(center) == chunks.end())    // if chunk was not created previously
         chunks[center] = new SphereChunk(
             *renderer,
             glm::vec3(std::get<0>(center), std::get<1>(center), std::get<2>(center)),
@@ -1207,6 +1229,15 @@ std::shared_ptr<Noiser> Planet::getNoiseGen() const { return noiseGen; }
 
 float Planet::getSphereArea() { return 4 * pi * radius * radius; }
 
+void Planet::printCounts()
+{
+    unsigned nChunks = planetGrid_pZ->numChunks() + planetGrid_nZ->numChunks() + planetGrid_pY->numChunks() + planetGrid_nY->numChunks() + planetGrid_pX->numChunks() + planetGrid_nX->numChunks();
+    unsigned nOrderedChunks = planetGrid_pZ->numChunksOrdered() + planetGrid_nZ->numChunksOrdered() + planetGrid_pY->numChunksOrdered() + planetGrid_nY->numChunksOrdered() + planetGrid_pX->numChunksOrdered() + planetGrid_nX->numChunksOrdered();
+    unsigned nActiveLeafChunks = planetGrid_pZ->numActiveLeafChunks() + planetGrid_nZ->numActiveLeafChunks() + planetGrid_pY->numActiveLeafChunks() + planetGrid_nY->numActiveLeafChunks() + planetGrid_pX->numActiveLeafChunks() + planetGrid_nX->numActiveLeafChunks();
+
+    std::cout << "C: " << nChunks << " / OC: " << nOrderedChunks << ", / ALF: " << nActiveLeafChunks << std::endl;
+}
+
 float Planet::getGroundHeight(const glm::vec3& camPos)
 {
     if (readyForUpdate)
@@ -1277,7 +1308,7 @@ GrassSystem::GrassSystem(Renderer& renderer, float maxDist, bool(*grassSupported
 
 GrassSystem::~GrassSystem()
 {
-    // Not necessary (Renderer destroys models), nor desirable (at app closing, Renderer has already closed models).
+    // More info in Chunk::~Chunk()
     //if (renderer.getModelsCount() && modelOrdered)
     //    renderer.deleteModel(grassModel);
 }
@@ -1462,7 +1493,7 @@ void GrassSystem_planet::getGrassItems(const Planet& planet)
 
     if (pos.size() > maxPosSize) maxPosSize = pos.size();
 
-    std::cout << "Grass items: " << maxPosSize << " / " << pos.size() << std::endl;
+    //std::cout << "Grass items: " << maxPosSize << " / " << pos.size() << std::endl;
 }
 
 void GrassSystem_planet::getGrassItems_average(const Planet& planet)

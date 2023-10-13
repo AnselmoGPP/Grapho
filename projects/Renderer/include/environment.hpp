@@ -23,6 +23,9 @@ const bool enableValidationLayers = false;
 
 typedef std::vector<VkFramebuffer> framebufferSet;
 
+class VulkanCore;
+class VulkanEnvironment;
+
 /// Structure for storing vector indices of the queue families we want. 
 /** Note that graphicsFamilyand presentFamily could refer to the same queue family, but we included them separately because sometimes they are in different queue families. */
 struct QueueFamilyIndices
@@ -45,7 +48,7 @@ struct SwapChainSupportDetails
 struct Image
 {
 	Image();
-	void destroy(VkDevice device);
+	void destroy(VulkanEnvironment* e);
 
 	VkImage			image;		//!< Image object
 	VkDeviceMemory	memory;		//!< Device memory object
@@ -90,10 +93,12 @@ public:
 	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
 	VkDeviceSize minUniformBufferOffsetAlignment;	//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
 
+	uint32_t getMaxMemoryAllocationCount();			//!< Max. number of valid memory objects
+	int memAllocObjects;							//!< Number of memory allocated objects (must be <= maxMemoryAllocationCount). Incremented each vkAllocateMemory call; decremented each vkFreeMemory call.
+
 	SwapChainSupportDetails	querySwapChainSupport();
 	QueueFamilyIndices findQueueFamilies();
 	void destroy();
-	//IOmanager* getWindowManager();
 
 private:
 	IOmanager& io;

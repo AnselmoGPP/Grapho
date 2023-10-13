@@ -124,6 +124,7 @@ void VLModule::createVertexBuffer(const VertexSet& rawVertices, VertexData& resu
 	// Clean up
 	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
 	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
+	e->c.memAllocObjects--;
 }
 
 void VLModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, VertexData& result, VulkanEnvironment* e)
@@ -170,6 +171,7 @@ void VLModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, Vertex
 	// Clean up
 	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
 	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
+	e->c.memAllocObjects--;
 }
 
 /**
@@ -457,6 +459,7 @@ Texture::~Texture()
 	vkDestroyImage(e.c.device, textureImage, nullptr);
 	vkDestroyImageView(e.c.device, textureImageView, nullptr);
 	vkFreeMemory(e.c.device, textureImageMemory, nullptr);
+	e.c.memAllocObjects--;
 }
 
 TLModule::TLModule(const std::string& id, VkFormat imageFormat, VkSamplerAddressMode addressMode) 
@@ -543,6 +546,7 @@ std::pair<VkImage, VkDeviceMemory> TLModule::createTextureImage(unsigned char* p
 	// Cleanup the staging buffer and its memory
 	vkDestroyBuffer(e->c.device, stagingBuffer, nullptr);
 	vkFreeMemory(e->c.device, stagingBufferMemory, nullptr);
+	e->c.memAllocObjects--;
 
 	return std::pair(textureImage, textureImageMemory);
 }

@@ -211,6 +211,8 @@ public:
 	size_t		loadedShaders();	//!< Returns number of shaders in Renderer:shaders
 	size_t		loadedTextures();	//!< Returns number of textures in Renderer:textures
 	IOmanager&  getIOManager();
+	int getMaxMemoryAllocationCount();			//!< Max. number of valid memory objects
+	int getMemAllocObjects();					//!< Number of memory allocated objects (must be <= maxMemoryAllocationCount)
 };
 
 #endif

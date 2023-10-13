@@ -32,6 +32,8 @@ void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags us
 	if (vkAllocateMemory(e->c.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate buffer memory!");
 
+	e->c.memAllocObjects++;
+
 	vkBindBufferMemory(e->c.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
 }
 

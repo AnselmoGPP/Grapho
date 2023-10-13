@@ -128,6 +128,7 @@ public:
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 
 	virtual void getSubBaseCenters(std::tuple<float, float, float>* centers) = 0;
 	virtual glm::vec3 getCenter();
+	void deleteModel();
 
 	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
@@ -236,6 +237,11 @@ public:
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float groundHeight);
 	void toLastDraw();														//!< Call it after updateTree(), so the correct tree is put last to draw
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
+	
+	// Testing
+	unsigned numChunks();				//!< Number of chunks (loaded and not loaded)
+	unsigned numChunksOrdered();		//!< Number of ordered chunks (those fully constructed or pending to be so)
+	unsigned numActiveLeafChunks();		//!< Number of leaf chunks in the active tree
 
 protected:
 	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
@@ -347,8 +353,9 @@ public:
 		- DynamicGrid.updateTree()
 		- DynamicGrid.updateUBOs()
 */
-struct Planet
+class Planet
 {
+public:
 	Planet(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
@@ -359,6 +366,7 @@ struct Planet
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const;
 	std::shared_ptr<Noiser> getNoiseGen() const;
 	float getSphereArea();							//!< Given planet radius, get sphere's area
+	void printCounts();
 
 	const float radius;
 	const glm::vec3 nucleus;
@@ -380,7 +388,7 @@ protected:
 };
 
 
-struct Sphere : public Planet
+class Sphere : public Planet
 {
 	float callBack_getFloorHeight(const glm::vec3& pos) override;	//!< Callback example
 

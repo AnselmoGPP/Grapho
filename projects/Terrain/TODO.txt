@@ -1,9 +1,8 @@
 TODO:
-	GrassSystem::index not necessary if sorting is not needed
+	Put as components the main Renderer & other classes parameters
 	Unify camera systems & add CameraType enum to c_Camera component
 	Scale sea texture
 	Minecraft method: Continents (multiple noise)
-	removeFarChunks()
 	Global planet params?
 
 Good practice:
@@ -11,35 +10,18 @@ Good practice:
 	Use smart pointers (maybe also for shaders and textures in order to don't having counters (ModelData::~ModelData()))
 	Iterators from different lists cannot be compared, but they are (deleteModel...) (https://stackoverflow.com/questions/4657513/comparing-iterators-from-different-containers)
 
-
 	delete non-used elements (camera class...)
 	Terrain texture for a given vertex is determined at CPU
-	maps for shaders & textures
 	struct Sphere has to be a struct? Furthermore, structs are public by default, so why are you specifying "public:"?
-	why uncommented destructor ~c_Model_planet() (and ~c_Model_grassPlanet()) makes app crash?
-
-	Solve Model-Planet component duplicity. Options:
-		- SingleModel & Planets inherit from Model > s_Model reads name and acts accordingly.
-		- Model & planet components > s_Model search for both and acts on the one founded.
-		- s_Model can be parent?
+	Bug: shaderLoaders["x"] = X causes crash at app-close-up, but shaderLoaders.insert("x", X) doesn't
 
 	Transparent coast water requires "planetSeaGrid.toLastDraw()", thus it requires a different UBOtype.
-	Grass: Lightning on vertical normal or terrain normal? Sorted or not sorted?
+	Grass: Lightning on vertical normal or terrain normal?
 
-c_move
-c_scale
-c_pos
-c_rotations
-
-	Influences:
-		Arma III: Realism
-		MGS: Tactical action espionage
-		Dynasty Warriors: Bases wars & officer orders
-		Apache Vs Havoc: Ongoing war
+	Components: c_move, c_scale, c_pos, c_rotations
 
 	ECS:
 		Use only entities id
-		modelMatrix2() (take 2 out)
 		Make systems safer (update()) (like using const) (are components/entities being found?) (method names from factory & entity classes)
 		Improve c_ModelMatrix construction parameters
 		s_Engine::update
@@ -58,21 +40,16 @@ c_rotations
 	Chunks rendering based on distance makes no difference between chunks types (see planet from afar).
 	Don't render chunks if [out of cam view angle (fov)] / [you don't move camera]
 
-	Grass inverts texture when pov changes
 	DynamicGrid::chunks requires lookup and delete elements. Is there a better DS for this than std::map?
 	PlanetGrid::isVisible & modelOrdered & fullyConstructed & inModels necessary?
-	Don't try to create grass if ... (find condition)
 	Chunks don't empty their buffers after construction of Model. However, this is useful for grass positioning.
-	Optimization: Grass transparencies computed in CPU
 
 	Log
 	Optimize shaders
 	Plain coasts
 	seaPlanet VS: outCamSqrHeight & 
-	Planet texture
 	>Configurable UBOs for dynamic grids
 		Pass camera height param to sea shader
-	ModelData's flags fullyConstructed or inModels are necessary? Are they initialized in the correct places? 
 	Unloaded resources are deleted in loading thread, but they should be deleted in main thread.
 	Mutex for ShaderLoader::loadShader and loadTexture (mutResources is blocking main thread when compiling shaders)
 
@@ -383,3 +360,9 @@ std::unique_ptr<Entity> ent = std::make_unique<Entity>();		// This pointer canno
 std::shared_ptr<Entity> ent1 = std::make_shared<Entity>();		// Keeps a counter of pointer; if it is 0, pointer is deleted
 std::shared_ptr<Entity> ent2 = ent1;
 std::weak_ptr<Entity>   ent3 = ent1;							// Copy pointer without incrementing the counter
+
+Influences ----------
+	Arma III: Realism
+	MGS: Tactical action espionage
+	Dynasty Warriors: Bases wars & officer orders
+	Apache Vs Havoc: Ongoing war
