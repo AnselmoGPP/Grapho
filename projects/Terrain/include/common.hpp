@@ -12,7 +12,6 @@
 // Standalone executable's path == Grapho\_BUILD\projects\Terrain\Release (Terrain.exe)
 #define STANDALONE_EXECUTABLE false
 
-
 // File's paths
 extern const std::string shadersDir;
 extern const std::string vertexDir;

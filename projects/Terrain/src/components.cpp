@@ -76,8 +76,8 @@ c_Camera::c_Camera(unsigned mode) : Component(CT::camera)
 		mouseSpeed = 0.002;
 		scrollSpeed = 0.1;
 		maxPitch = 1.3;
-		radius = 4000;
-		minRadius = 100;
+		radius = 10; //4000;
+		minRadius = 10;
 		maxRadius = 5000;
 		camPos = -front * radius;
 		break;

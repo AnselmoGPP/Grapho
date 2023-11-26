@@ -50,24 +50,27 @@ int main(int argc, char* argv[])
 		EntityFactory eFact(app);
 		bool withPP = false;				// Add Post-Processing effects (atmosphere...) or not
 
-		loadResourcesInfo();
+		loadResourcesInfo();				// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
 		
 		em.addEntity(std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
-			new c_Camera(3),
+			new c_Camera(1),
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
+
 		//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
 		em.addEntity(eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
 		//em.addEntity(eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
 		em.addEntity(eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], {texInfos["space_1"]}));
 		em.addEntity(eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
-		//em.addEntity(eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
+		em.addEntity(eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity(eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
 		em.addEntity(eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntity(eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+
 		if(withPP) em.addEntity(eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity(eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		
@@ -75,7 +78,7 @@ int main(int argc, char* argv[])
 
 		em.addSystem(new s_Engine);
 		em.addSystem(new s_Input);
-		em.addSystem(new s_PlaneCam);	// s_SphereCam, s_PolarCam, s_PlaneCam, s_FPCam
+		em.addSystem(new s_SphereCam);	// s_SphereCam (1), s_PolarCam (2), s_PlaneCam (3), s_FPCam (4)
 		em.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
 		em.addSystem(new s_Lights);
 		em.addSystem(new s_Move);
@@ -108,7 +111,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//d.fps = rend.getTimer().getFPS();
 	//d.maxfps = rend.getTimer().getMaxPossibleFPS();
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
-	std::cout << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
+	std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
 
 	em.update(rend.getTimer().getDeltaTime());
 }
@@ -151,8 +154,11 @@ void loadResourcesInfo()
 	shaderLoaders.insert(std::pair("v_atmosphere",  ShaderLoader(shadersDir + "v_atmosphere.vert")));
 	shaderLoaders.insert(std::pair("f_atmosphere",  ShaderLoader(shadersDir + "f_atmosphere.frag")));
 
-	shaderLoaders.insert(std::pair("v_noPP",        ShaderLoader(shadersDir + "v_noPP.vert")));
-	shaderLoaders.insert(std::pair("f_noPP",        ShaderLoader(shadersDir + "f_noPP.frag")));
+	shaderLoaders.insert(std::pair("v_subject",     ShaderLoader(shadersDir + "v_subject.vert")));
+	shaderLoaders.insert(std::pair("f_subject",     ShaderLoader(shadersDir + "f_subject.frag")));
+
+	shaderLoaders.insert(std::pair("v_noPP",		ShaderLoader(shadersDir + "v_noPP.vert")));
+	shaderLoaders.insert(std::pair("f_noPP",		ShaderLoader(shadersDir + "f_noPP.frag")));
 
 	// TEXTURES
 

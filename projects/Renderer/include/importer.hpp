@@ -75,11 +75,11 @@ struct VertexData
 	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 };
 
-/// Vertices loader module used in VerticesLoader for loading vertices from any source.
+/// Vertices Loader Module (VLM) used in VerticesLoader for loading vertices from any source.
 class VLModule
 {
 protected:
-	const size_t vertexSize;
+	const size_t vertexSize;	//!< Size (bytes) of a vertex object
 
 	virtual void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesLoader& destResources) = 0;					//!< Get raw vertex data (vertices & indices)
 	void createBuffers(VertexData& result, const VertexSet& rawVertices, const std::vector<uint16_t>& rawIndices, VulkanEnvironment* e);	//!< Upload raw vertex data to Vulkan (i.e., create Vulkan buffers)
@@ -91,7 +91,7 @@ protected:
 public:
 	VLModule(size_t vertexSize);
 	virtual ~VLModule() { };
-	virtual VLModule* clone() = 0;
+	virtual VLModule* clone() = 0;		//!< Create a new object of children type and return its pointer.
 
 	void loadVertices(VertexData& result, ResourcesLoader* resources, VulkanEnvironment* e);
 };
@@ -116,13 +116,13 @@ class VLM_fromFile : public VLModule
 	std::vector<uint16_t>* indices;
 	ResourcesLoader* resources;
 
-	void processNode(aiNode* node, const aiScene* scene);	//!< Recursive function. It goes through each node getting all the meshes in each one.
-	void processMesh(aiMesh* mesh, const aiScene* scene);
+	void processNode(const aiScene* scene, aiNode* node);					//!< Recursive function. It goes through each node getting all the meshes in each one.
+	void processMeshes(const aiScene* scene, std::vector<aiMesh*>& meshes);	//!< Get Vertex data, Indices, and Resources (textures).
 
 	void getRawData(VertexSet& destVertices, std::vector<uint16_t>& destIndices, ResourcesLoader& destResources) override;
 
 public:
-	VLM_fromFile(size_t vertexSize, std::string& filePath);
+	VLM_fromFile(std::string& filePath);	//!< vertexSize == (3+3+2) * sizeof(float)
 
 	VLModule* clone() override;
 };
@@ -133,7 +133,7 @@ class VerticesLoader
 	VLModule* loader;
 
 public:
-	VerticesLoader(size_t vertexSize, std::string& filePath);	//!< From file <<< Can vertexType be taken from file?
+	VerticesLoader(std::string& filePath);	//!< From file (vertexSize == (3+3+2) * sizeof(float))
 	VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< From buffers
 	VerticesLoader(const VerticesLoader& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
 	~VerticesLoader();

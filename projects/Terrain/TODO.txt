@@ -4,6 +4,9 @@ TODO:
 	Scale sea texture
 	Minecraft method: Continents (multiple noise)
 	Global planet params?
+	Analytical normal (closes gaps & make texture fit)
+	Improve camera component & system relationship (at startup)
+	c_Model_dummy necessary? Maybe this could be c_Model_normal
 
 Good practice:
 	Use const references as parameters

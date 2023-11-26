@@ -40,7 +40,7 @@ struct c_Planet;
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
-enum class UboType { noData, mvp, planet, grassPlanet, atmosphere };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
+enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, dummy };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
 // Singletons --------------------------------------
@@ -160,19 +160,28 @@ struct c_Sky : public Component
 
 // Non-Singletons --------------------------------------
 
-struct c_Model : public Component
+struct c_Model : public Component	//!< Its children doesn't have the same interface, so UboType enum is used to identify them.
 {
 	c_Model(UboType ubo_type) : Component(CT::model), ubo_type(ubo_type) { };
 	virtual ~c_Model() { };
 	virtual void printInfo() const = 0;
 
-	UboType ubo_type;	//!< Tells the system how to update uniforms and what type of c_Model's child was created.
+	UboType ubo_type;	//!< Tells the system what type of c_Model's child was created and how to update uniforms.
 };
 
 struct c_Model_normal : public c_Model
 {
 	c_Model_normal(modelIter model, UboType ubo_type) : c_Model(ubo_type), model(model) { };
 	~c_Model_normal() { };
+	void printInfo() const override { };
+
+	modelIter model;
+};
+
+struct c_Model_dummy : public c_Model
+{
+	c_Model_dummy(modelIter model, UboType ubo_type) : c_Model(ubo_type), model(model) { };
+	~c_Model_dummy() { };
 	void printInfo() const override { };
 
 	modelIter model;
@@ -194,6 +203,25 @@ struct c_Model_grassPlanet : public c_Model
 	void printInfo() const override { };
 
 	GrassSystem_planet* grass;
+};
+
+class c_Model_dummy2 : public c_Model
+{
+protected:
+	//Renderer& renderer;
+	int numAttribs;							//!< Number of attributes per vertex (9)
+
+	VerticesLoader* vertexData;
+	std::vector<float> vertex;				//!< VBO[n][9] (vertex position[3], normals[3], gap-fix data[3])
+	std::vector<uint16_t> indices;			//!< EBO[m][3] (indices[3])
+
+public:
+	c_Model_dummy2(Renderer& renderer) : c_Model(UboType::noData) { };
+	virtual ~c_Model_dummy2() { };
+
+	//modelIter model;				//!< Model iterator. It has to be created with render(), which calls app->newModel()
+	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
+	bool isVisible;					//!< Used during tree construction and loading for not rendering non-visible chunks in DynamicGrid.
 };
 
 /// Determines the translation for the Model matrix 

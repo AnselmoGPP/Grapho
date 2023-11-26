@@ -1361,7 +1361,6 @@ bool GrassSystem::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, c
     if (angle > fov) return false;
     else return true;
     */
-
     if (acos(glm::dot(glm::normalize(itemPos - camPos), camDir)) > fov) return false;
     return true;
 }

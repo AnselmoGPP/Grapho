@@ -214,3 +214,31 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 
 	return std::vector<Component*>{ new c_Model_grassPlanet(grass) };
 }
+
+std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
+{
+	const LightSet* lights;
+	if (c_lights) lights = &c_lights->lights;
+	else {
+		std::cout << "No c_Light component found" << std::endl;
+		return std::vector<Component*>();
+	}
+	
+	VerticesLoader vertexData(vertexDir + "test_box.obj");
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+	
+	modelIter model = renderer.newModel(
+		"dummy",
+		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
+		vertexData, shaders, textureSet,
+		1, 4 * size.mat4 + 1 * size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, ...
+		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
+		false);
+	
+	//1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
+	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
+
+	
+	return std::vector<Component*>{ new c_Model_dummy(model, UboType::dummy), new c_ModelMatrix() };
+}

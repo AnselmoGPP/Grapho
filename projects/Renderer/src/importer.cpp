@@ -214,8 +214,8 @@ void VLM_fromBuffer::getRawData(VertexSet& destVertices, std::vector<uint16_t>& 
 	destIndices = rawIndices;
 }
 
-VLM_fromFile::VLM_fromFile(size_t vertexSize, std::string& filePath)
-	: VLModule(vertexSize), path(filePath) { }
+VLM_fromFile::VLM_fromFile(std::string& filePath)
+	: VLModule((3+3+2) * sizeof(float)), path(filePath), vertices(nullptr), indices(nullptr), resources(nullptr) { }
 
 VLModule* VLM_fromFile::clone() { return new VLM_fromFile(*this); }
 
@@ -229,98 +229,106 @@ void VLM_fromFile::getRawData(VertexSet& destVertices, std::vector<uint16_t>& de
 
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
-
-	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+	
+	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) 
 	{
 		std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
 		return;
 	}
-
-	processNode(scene->mRootNode, scene);
+	
+	std::cout << __func__ << " 1" << std::endl;
+	processNode(scene, scene->mRootNode);	// recursive
+	std::cout << __func__ << " 2" << std::endl;
 }
 
-void VLM_fromFile::processNode(aiNode* node, const aiScene* scene)
+void VLM_fromFile::processNode(const aiScene* scene, aiNode* node)
 {
 	// Process all node's meshes
-	aiMesh* mesh;
-	//std::vector<aiMesh*> meshes;
+	//aiMesh* mesh;
+	std::vector<aiMesh*> meshes;
 
 	for (unsigned i = 0; i < node->mNumMeshes; i++)
 	{
-		mesh = scene->mMeshes[node->mMeshes[i]];
-		//meshes.push_back(mesh);
-		processMesh(mesh, scene);
+		//mesh = scene->mMeshes[node->mMeshes[i]];
+		meshes.push_back(scene->mMeshes[node->mMeshes[i]]);
+		processMeshes(scene, meshes);
 	}
 
 	// Repeat process in children
 	for (unsigned i = 0; i < node->mNumChildren; i++)
-		processNode(node->mChildren[i], scene);
+		processNode(scene, node->mChildren[i]);
 }
 
-void VLM_fromFile::processMesh(aiMesh* mesh, const aiScene* scene)
+void VLM_fromFile::processMeshes(const aiScene* scene, std::vector<aiMesh*> &meshes)
 {
 	//<<< destVertices->reserve(destVertices->size() + mesh->mNumVertices);
-	float* vertex = new float[vertexSize / sizeof(float)];	// [3 + 3 + 2]
-	unsigned i, j;
+	float* vertex = new float[vertexSize / sizeof(float)];			// [3 + 3 + 2]  (pos, UV, normal)
+	unsigned i, j, k;
 
-	// Get VERTEX data (positions, normals, UVs) and store it.
-	for (i = 0; i < mesh->mNumVertices; i++)
+	std::wcout << vertexSize << ", " << vertexSize / sizeof(float) << std::endl;
+
+	// Go through each mesh contained in this node
+	for (k = 0; k < meshes.size(); k++)
 	{
-		vertex[0] = mesh->mVertices[i].x;
-		vertex[1] = mesh->mVertices[i].y;
-		vertex[2] = mesh->mVertices[i].z;
-
-		if (mesh->mNormals)
+		// Get VERTEX data (positions, normals, UVs) and store it.
+		for (i = 0; i < meshes[k]->mNumVertices; i++)
 		{
-			vertex[3] = mesh->mNormals[i].x;
-			vertex[4] = mesh->mNormals[i].y;
-			vertex[5] = mesh->mNormals[i].z;
-		}
-		else { vertex[3] = 0.f; vertex[4] = 0.f; vertex[5] = 1.f; };
+			vertex[0] = meshes[k]->mVertices[i].x;
+			vertex[1] = meshes[k]->mVertices[i].y;
+			vertex[2] = meshes[k]->mVertices[i].z;
 
-		if (mesh->mTextureCoords[0])
+			if (meshes[k]->mNormals)
+			{
+				vertex[3] = meshes[k]->mNormals[i].x;
+				vertex[4] = meshes[k]->mNormals[i].y;
+				vertex[5] = meshes[k]->mNormals[i].z;
+			}
+			else { vertex[3] = 0.f; vertex[4] = 0.f; vertex[5] = 1.f; };
+
+			if (meshes[k]->mTextureCoords[0])
+			{
+				vertex[6] = meshes[k]->mTextureCoords[0][i].x;
+				vertex[7] = meshes[k]->mTextureCoords[0][i].y;
+			}
+			else { vertex[6] = 0.f; vertex[7] = 0.f; };
+
+			vertices->push_back(vertex);	// Get VERTICES
+		}
+
+		// Get INDICES and store them.
+		aiFace face;
+		for (i = 0; i < meshes[k]->mNumFaces; i++)
 		{
-			vertex[6] = mesh->mTextureCoords[0][i].x;
-			vertex[7] = mesh->mTextureCoords[0][i].y;
+			face = meshes[k]->mFaces[i];
+			for (j = 0; j < face.mNumIndices; j++)
+				indices->push_back(face.mIndices[j]);	// Get INDICES
 		}
-		else { vertex[6] = 0.f; vertex[7] = 0.f; };
 
-		vertices->push_back(vertex);	// Get VERTICES
+		// Process MATERIAL
+		if (meshes[k]->mMaterialIndex >= 0)
+		{
+			aiMaterial* material = scene->mMaterials[meshes[k]->mMaterialIndex];
+			aiTextureType types[] = { aiTextureType_DIFFUSE, aiTextureType_SPECULAR };
+			aiString fileName;
+
+			for (unsigned i = 0; i < 2; i++)
+				for (unsigned j = 0; j < material->GetTextureCount(types[i]); j++)
+				{
+					material->GetTexture(types[i], j, &fileName);					// get texture file location
+					resources->textures.push_back(TextureLoader(fileName.C_Str()));	// Get RESOURCES
+					fileName.Clear();
+				}
+		}
 	}
 
 	delete[] vertex;
-
-	// Get INDICES and store them.
-	aiFace face;
-	for (i = 0; i < mesh->mNumFaces; i++)
-	{
-		face = mesh->mFaces[i];
-		for (j = 0; j < face.mNumIndices; j++)
-			indices->push_back(face.mIndices[j]);	// Get INDICES
-	}
-
-	// Process material
-	if (mesh->mMaterialIndex >= 0)
-	{
-		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-		aiTextureType types[] = { aiTextureType_DIFFUSE, aiTextureType_SPECULAR };
-		aiString fileName;
-
-		for (unsigned i = 0; i < 2; i++)
-			for (unsigned j = 0; j < material->GetTextureCount(types[i]); j++)
-			{
-				material->GetTexture(types[i], j, &fileName);					// get texture file location
-				resources->textures.push_back(TextureLoader(fileName.C_Str()));	// Get RESOURCES
-				fileName.Clear();
-			}
-	}
 }
 
 
-VerticesLoader::VerticesLoader(size_t vertexSize, std::string& filePath)
+VerticesLoader::VerticesLoader(std::string& filePath)
 	: loader(nullptr)
 { 
-	loader = new VLM_fromFile(vertexSize, filePath);
+	loader = new VLM_fromFile(filePath);
 }
 
 VerticesLoader::VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices)

@@ -580,6 +580,32 @@ void s_Model::update(float timeStep)
                 }
                 break;
             }
+        case UboType::dummy:
+            {
+                c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
+                if (!c_mm) continue;
+                for (i = 0; i < ((c_Model_dummy*)c_model)->model->vsDynUBO.numDynUBOs; i++)
+                {
+                    dest = ((c_Model_dummy*)c_model)->model->vsDynUBO.getUBOptr(i);
+                    memcpy(dest, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->view, sizeof(c_cam->view));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
+                    dest += size.mat4;
+                    memcpy(dest, &getModelMatrixForNormals(c_mm->modelMatrix), sizeof(c_mm->modelMatrix));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
+                    dest += size.vec4;
+                    memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
+                    //dest += lights.posDirBytes;
+                }
+
+                dest = ((c_Model_dummy*)c_model)->model->fsUBO.getUBOptr(0);
+                memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+                //dest += lights.propsBytes;
+                break;
+            }
         case UboType::planet:
             {
                 ((c_Model_planet*)c_model)->planet->updateState(c_cam->camPos, c_cam->view, c_cam->proj, c_lights->lights, c_eng->time, 100);   // <<< groundHeight

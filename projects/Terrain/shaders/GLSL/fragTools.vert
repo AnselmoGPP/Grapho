@@ -39,7 +39,7 @@
 		getAngle
 		getModulus
 		lerp
-	Lightning:
+	Lighting:
 		directionalLightColor
 		PointLightColor
 		SpotLightColor

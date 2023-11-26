@@ -26,6 +26,7 @@ public:
 	std::vector<Component*> createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights);
+	std::vector<Component*> createDummy(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights);
 };
 
 #endif
