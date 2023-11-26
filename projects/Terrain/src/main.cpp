@@ -50,14 +50,14 @@ int main(int argc, char* argv[])
 		EntityFactory eFact(app);
 		bool withPP = false;				// Add Post-Processing effects (atmosphere...) or not
 
-		loadResourcesInfo();				// Load shaders & textures
+		loadResourcesInfo();					// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
 		
 		em.addEntity(std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
-			new c_Camera(1),
+			new c_Camera(c_Camera::sphere),
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
 		em.addSystem(new s_Engine);
 		em.addSystem(new s_Input);
-		em.addSystem(new s_SphereCam);	// s_SphereCam (1), s_PolarCam (2), s_PlaneCam (3), s_FPCam (4)
+		em.addSystem(new s_Camera);		// s_SphereCam (1), s_PolarCam (2), s_PlaneCam (3), s_FPCam (4)
 		em.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
 		em.addSystem(new s_Lights);
 		em.addSystem(new s_Move);

@@ -236,9 +236,7 @@ void VLM_fromFile::getRawData(VertexSet& destVertices, std::vector<uint16_t>& de
 		return;
 	}
 	
-	std::cout << __func__ << " 1" << std::endl;
 	processNode(scene, scene->mRootNode);	// recursive
-	std::cout << __func__ << " 2" << std::endl;
 }
 
 void VLM_fromFile::processNode(const aiScene* scene, aiNode* node)
@@ -264,8 +262,6 @@ void VLM_fromFile::processMeshes(const aiScene* scene, std::vector<aiMesh*> &mes
 	//<<< destVertices->reserve(destVertices->size() + mesh->mNumVertices);
 	float* vertex = new float[vertexSize / sizeof(float)];			// [3 + 3 + 2]  (pos, UV, normal)
 	unsigned i, j, k;
-
-	std::wcout << vertexSize << ", " << vertexSize / sizeof(float) << std::endl;
 
 	// Go through each mesh contained in this node
 	for (k = 0; k < meshes.size(); k++)

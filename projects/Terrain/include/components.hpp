@@ -97,9 +97,13 @@ struct c_Input : public Component
 
 struct c_Camera : public Component
 {
-	c_Camera(unsigned mode);
+	static enum camType { sphere, plane_polar, plane_free, fpv };
+
+	c_Camera(camType type);
 	~c_Camera() { };
 	void printInfo() const;
+
+	camType type;
 
 	// Position & orientation
 	glm::vec3 camPos  = { 0, 0, 0 };

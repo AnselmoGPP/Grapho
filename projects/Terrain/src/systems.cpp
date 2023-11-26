@@ -200,7 +200,35 @@ void s_Camera::updateAxes(c_Camera* c_cam, glm::vec4& rotQuat)
     c_cam->front = glm::normalize(c_cam->front);
 }
 
-void s_SphereCam::update(float timeStep)
+void s_Camera::update(float timeStep)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    if (!c_cam) { std::cout << "Singleton component not found (s_Camera)" << std::endl; return; }
+
+    switch (c_cam->type)
+    {
+    case c_Camera::sphere:
+        update_Sphere(timeStep);
+        break;
+    case c_Camera::plane_polar:
+        update_Plane_polar(timeStep);
+        break;
+    case c_Camera::plane_free:
+        update_Plane_free(timeStep);
+        break;
+    case c_Camera::fpv:
+        update_FPV(timeStep);
+        break;
+    default:
+        break;
+    }
+}
+
+void s_Camera::update_Sphere(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
@@ -278,7 +306,7 @@ void s_SphereCam::update(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_PolarCam::update(float timeStep)
+void s_Camera::update_Plane_polar(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
@@ -346,7 +374,7 @@ void s_PolarCam::update(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_PlaneCam::update(float timeStep)
+void s_Camera::update_Plane_free(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
@@ -404,7 +432,7 @@ void s_PlaneCam::update(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_FPCam::update(float timeStep)
+void s_Camera::update_FPV(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;

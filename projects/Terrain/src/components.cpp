@@ -67,11 +67,11 @@ void c_Input::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Camera::c_Camera(unsigned mode) : Component(CT::camera) 
+c_Camera::c_Camera(camType camType) : Component(CT::camera), type(type)
 { 
-	switch (mode)
+	switch (type)
 	{
-	case 1:			// sphere
+	case sphere:
 		keysSpeed = 50;
 		mouseSpeed = 0.002;
 		scrollSpeed = 0.1;
@@ -81,19 +81,19 @@ c_Camera::c_Camera(unsigned mode) : Component(CT::camera)
 		maxRadius = 5000;
 		camPos = -front * radius;
 		break;
-	case 2:			// polar plane
+	case plane_polar:
 		camPos = { 0, 0, 5.0 };
 		keysSpeed = 2;
 		mouseSpeed = 0.001;
 		scrollSpeed = 0.1;
 		break;
-	case 3:			// free plane
+	case plane_free:
 		camPos = { 1450, 1450, 0 };
 		keysSpeed = 50;
 		mouseSpeed = 0.001;
 		scrollSpeed = 0.1;
 		break;
-	case 4:			// first person
+	case fpv:
 		camPos = { 1450, 1450, 0 };
 		keysSpeed = 2;
 		mouseSpeed = 0.001;

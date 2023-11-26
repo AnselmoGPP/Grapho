@@ -50,47 +50,16 @@ protected:
     glm::mat4 getProjectionMatrix(float aspectRatio, float fov, float nearViewPlane, float farViewPlane);
     void updateAxes(c_Camera* c_cam, glm::vec4& rotQuat);                   //!< Rotate current axes.
 
+    void update_Sphere(float timeStep);
+    void update_Plane_polar(float timeStep);
+    void update_Plane_free(float timeStep);
+    void update_FPV(float timeStep);
+
 public:
     s_Camera() : System() { };
     ~s_Camera() { };
 
-    virtual void update(float timeStep) = 0;
-};
-
-class s_SphereCam : public s_Camera
-{
-public:
-    s_SphereCam() : s_Camera() { };
-    ~s_SphereCam() { };
-
-    void update(float timeStep) override;       //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
-};
-
-class s_PolarCam : public s_Camera
-{
-public:
-    s_PolarCam() : s_Camera() { };
-    ~s_PolarCam() { };
-
-    void update(float timeStep) override;       //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
-};
-
-class s_PlaneCam : public s_Camera
-{
-public:
-    s_PlaneCam() : s_Camera() { };
-    ~s_PlaneCam() { };
-
-    void update(float timeStep) override;       //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
-};
-
-class s_FPCam : public s_Camera
-{
-public:
-    s_FPCam() : s_Camera() { };
-    ~s_FPCam() { };
-
-    void update(float timeStep) override;       //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
+    void update(float timeStep);        //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
 };
 
 class s_Lights : public System
