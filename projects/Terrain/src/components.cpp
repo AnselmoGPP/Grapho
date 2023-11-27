@@ -67,43 +67,15 @@ void c_Input::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Camera::c_Camera(camType camType) : Component(CT::camera), type(camType)
-{ 
-	switch (type)
-	{
-	case sphere:
-		keysSpeed = 50;
-		mouseSpeed = 0.002;
-		scrollSpeed = 0.1;
-		maxPitch = 1.3;
-		radius = 10; //4000;
-		minRadius = 10;
-		maxRadius = 5000;
-		camPos = -front * radius;
-		break;
-	case plane_polar:
-		camPos = { 0, 0, 5.0 };
-		keysSpeed = 2;
-		mouseSpeed = 0.001;
-		scrollSpeed = 0.1;
-		break;
-	case plane_free:
-		camPos = { 1450, 1450, 0 };
-		keysSpeed = 50;
-		mouseSpeed = 0.001;
-		scrollSpeed = 0.1;
-		break;
-	case fpv:
-		camPos = { 1450, 1450, 0 };
-		keysSpeed = 2;
-		mouseSpeed = 0.001;
-		scrollSpeed = 0.1;
-		break;
-	default:
-		break;
-	}
-	
-	radius = glm::length(camPos);
+c_Camera::c_Camera(camMode camMode, glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed) 
+	: Component(CT::camera), mode(camMode), camPos(camPos), keysSpeed(keysSpeed), mouseSpeed(mouseSpeed), scrollSpeed(scrollSpeed)
+{ }
+
+c_Cam_Sphere::c_Cam_Sphere()
+	: c_Camera(camMode::sphere, glm::vec3(0,0,0), 50, 0.002, 0.1), worldUp(0,0,1), center(0,0,0), radius(10), minRadius(10), maxRadius(4000), maxPitch(1.3)
+{
+	camPos = -front * radius;
+	//radius = glm::length(camPos);
 
 	// Pitch
 	euler.x = asin(front.z);
@@ -127,21 +99,50 @@ c_Camera::c_Camera(camType camType) : Component(CT::camera), type(camType)
 	else euler.y = 0;
 };
 
+c_Cam_Plane_polar::c_Cam_Plane_polar()
+	: c_Camera(camMode::plane_polar, glm::vec3(0, 0, 5), 2, 0.001, 0.1), worldUp(0,0,1), euler(0,0,0)
+{ 
+	// Pitch
+	euler.x = asin(front.z);
+
+	// Yaw
+	if (abs(front.x) > 0.001)
+	{
+		euler.z = atan(front.y / front.x);
+		if (front.x < 0) euler.z = pi + euler.z;
+	}
+	else euler.z = pi / 2;
+
+	// Roll
+	float dotP;
+	if (front.z < 0.999) {
+		dotP = glm::dot(right, glm::normalize(glm::cross(front, worldUp)));
+		if (dotP < 0.999) euler.y = acos(dotP);
+		else euler.y = 0;
+		if (right.z < 0) euler.y *= -1;
+	}
+	else euler.y = 0;
+}
+
+c_Cam_Plane_free::c_Cam_Plane_free()
+	: c_Camera(camMode::plane_free, glm::vec3(1450, 1450, 0), 50, 0.001, 0.1), spinSpeed(0.05)
+{ }
+
+c_Cam_FPV::c_Cam_FPV()
+	: c_Camera(camMode::fpv, glm::vec3(1450, 1450, 0), 2, 0.001, 0.1)
+{ }
+
 void c_Camera::printInfo() const
 {
 	std::cout << "camPos = "; printVec(camPos);
 	std::cout << "front = "; printVec(front);
 	std::cout << "right = "; printVec(right);
 	std::cout << "camUp = "; printVec(camUp);
-	std::cout << "worldUp = "; printVec(worldUp);
-	std::cout << "euler angles = "; printVec(euler);
-	std::cout << "radius = " << radius << std::endl;
 
 	std::cout << "fov = " << fov << " (" << minFov << ", " << maxFov << ')' << std::endl;
 	std::cout << "View planes = (" << nearViewPlane << ", " << farViewPlane << std::endl;
-
+	
 	std::cout << "keysSpeed = " << keysSpeed << std::endl;
-	std::cout << "spinSpeed = " << spinSpeed << std::endl;
 	std::cout << "mouseSpeed = " << mouseSpeed << std::endl;
 	std::cout << "scrollSpeed = " << scrollSpeed << std::endl;
 

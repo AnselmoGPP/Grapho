@@ -1,4 +1,5 @@
 TODO:
+	updateSkyMove moves sky backwards
 	Can I fix the issue of having the parameters of all types of cameras in the same camera component?
 	Put as components the main Renderer & other classes parameters
 	Unify camera systems & add CameraType enum to c_Camera component

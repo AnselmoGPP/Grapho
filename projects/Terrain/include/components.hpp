@@ -97,43 +97,73 @@ struct c_Input : public Component
 
 struct c_Camera : public Component
 {
-	static enum camType { sphere, plane_polar, plane_free, fpv };
+	static enum camMode { sphere, plane_polar, plane_free, fpv };
 
-	c_Camera(camType type);
-	~c_Camera() { };
+	c_Camera(camMode camMode, glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed);
+	virtual ~c_Camera() { };
 	void printInfo() const;
 
-	camType type;
+	camMode mode;									//!> Sphere, Plane_polar, Plane_free, FPV
 
 	// Position & orientation
-	glm::vec3 camPos  = { 0, 0, 0 };
-	glm::vec3 front   = { 1, 0, 0 };		//!< cam front vector
-	glm::vec3 right   = { 0,-1, 0 };		//!< cam right vector
-	glm::vec3 camUp   = { 0, 0, 1 };		//!< cam up vector (used in lookAt()) (computed from cross(right, front))
-
-	glm::vec3 worldUp = { 0, 0, 1 };		//!< World up vector (used for elevating/descending to/from the sky)
-	glm::vec3 euler   = { 0, 0, 0 };		//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
-
+	glm::vec3 camPos;
+	glm::vec3 front   = { 1, 0, 0 };				//!< cam front vector
+	glm::vec3 right   = { 0,-1, 0 };				//!< cam right vector
+	glm::vec3 camUp   = { 0, 0, 1 };				//!< cam up vector (used in lookAt()) (computed from cross(right, front))
+	
 	// View
-	glm::mat4 view;		//!< Model transformation matrix
-	glm::mat4 proj;		//!< Model transformation matrix
+	glm::mat4 view;									//!< Model transformation matrix
+	glm::mat4 proj;									//!< Model transformation matrix
+	
+	float fov = 1.f;								//!< FOV (rad)
+	float minFov = 0.1f;
+	float maxFov = 2.f;
 
-	float fov = 1.f, minFov = 0.1f, maxFov = 2.f;	//!< FOV (rad)
 	float nearViewPlane = 0.2f;						//!< Near view plane
 	float farViewPlane = 4000.f;					//!< Near view plane
-
-	// Sphere cam
-	glm::vec3 center = { 0, 0, 0 };
-	float maxPitch = 0;
-	float radius = 0;
-	float minRadius = 0;
-	float maxRadius = 0;
-
+	
 	// Cam speed
-	float keysSpeed = 50.f;		//!< camera speed
-	float spinSpeed = 0.05f;	//!< Spinning speed
-	float mouseSpeed = 0.001f;	//!< Mouse sensitivity
-	float scrollSpeed = 0.1f;	//!< Scroll speed
+	float keysSpeed;								//!< camera speed
+	float mouseSpeed;								//!< Mouse sensitivity
+	float scrollSpeed;								//!< Scroll speed
+};
+
+struct c_Cam_Sphere : public c_Camera
+{
+	c_Cam_Sphere();
+	~c_Cam_Sphere() { };
+
+	glm::vec3 worldUp;				//!< World up vector (used for elevating/descending to/from the sky)
+	glm::vec3 euler;				//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
+
+	glm::vec3 center;
+	float maxPitch;
+	float radius;
+	float minRadius;
+	float maxRadius;
+};
+
+struct c_Cam_Plane_polar : public c_Camera
+{
+	c_Cam_Plane_polar();
+	~c_Cam_Plane_polar() { };
+
+	glm::vec3 worldUp;		//!< World up vector (used for elevating/descending to/from the sky)
+	glm::vec3 euler;		//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
+};
+
+struct c_Cam_Plane_free : public c_Camera
+{
+	c_Cam_Plane_free();
+	~c_Cam_Plane_free() { };
+
+	float spinSpeed;	//!< Spinning speed
+};
+
+struct c_Cam_FPV : public c_Camera
+{
+	c_Cam_FPV();
+	~c_Cam_FPV() { };
 };
 
 struct c_Lights : public Component
