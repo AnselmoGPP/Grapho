@@ -50,10 +50,10 @@ protected:
     glm::mat4 getProjectionMatrix(float aspectRatio, float fov, float nearViewPlane, float farViewPlane);
     void updateAxes(c_Camera* c_cam, glm::vec4& rotQuat);                   //!< Rotate current axes.
 
-    void update_Sphere(float timeStep);
-    void update_Plane_polar(float timeStep);
-    void update_Plane_free(float timeStep);
-    void update_FPV(float timeStep);
+    void update_Sphere(float timeStep, c_Camera* c_cam);
+    void update_Plane_polar(float timeStep, c_Camera* c_cam);
+    void update_Plane_free(float timeStep, c_Camera* c_cam);
+    void update_FPV(float timeStep, c_Camera* c_cam);
 
 public:
     s_Camera() : System() { };

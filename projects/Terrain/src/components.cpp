@@ -67,7 +67,7 @@ void c_Input::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Camera::c_Camera(camType camType) : Component(CT::camera), type(type)
+c_Camera::c_Camera(camType camType) : Component(CT::camera), type(camType)
 { 
 	switch (type)
 	{

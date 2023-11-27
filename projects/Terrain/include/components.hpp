@@ -110,6 +110,7 @@ struct c_Camera : public Component
 	glm::vec3 front   = { 1, 0, 0 };		//!< cam front vector
 	glm::vec3 right   = { 0,-1, 0 };		//!< cam right vector
 	glm::vec3 camUp   = { 0, 0, 1 };		//!< cam up vector (used in lookAt()) (computed from cross(right, front))
+
 	glm::vec3 worldUp = { 0, 0, 1 };		//!< World up vector (used for elevating/descending to/from the sky)
 	glm::vec3 euler   = { 0, 0, 0 };		//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
 

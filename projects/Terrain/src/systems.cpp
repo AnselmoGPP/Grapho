@@ -212,29 +212,29 @@ void s_Camera::update(float timeStep)
     switch (c_cam->type)
     {
     case c_Camera::sphere:
-        update_Sphere(timeStep);
+        update_Sphere(timeStep, c_cam);
         break;
     case c_Camera::plane_polar:
-        update_Plane_polar(timeStep);
+        update_Plane_polar(timeStep, c_cam);
         break;
     case c_Camera::plane_free:
-        update_Plane_free(timeStep);
+        update_Plane_free(timeStep, c_cam);
         break;
     case c_Camera::fpv:
-        update_FPV(timeStep);
+        update_FPV(timeStep, c_cam);
         break;
     default:
         break;
     }
 }
 
-void s_Camera::update_Sphere(float timeStep)
+void s_Camera::update_Sphere(float timeStep, c_Camera* c_cam)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    //c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Input* c_input = (c_Input*)em->getSComponent(CT::input);
     const c_Engine* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     if (!c_cam || !c_input || !c_eng) { std::cout << "Singleton component not found (s_SphereCam)" << std::endl; return; }
@@ -306,13 +306,13 @@ void s_Camera::update_Sphere(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_Camera::update_Plane_polar(float timeStep)
+void s_Camera::update_Plane_polar(float timeStep, c_Camera* c_cam)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    //c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     c_Input const* c_input = (c_Input*)em->getSComponent(CT::input);
     c_Engine const* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     if (!c_cam || !c_input || !c_eng) { std::cout << "Singleton component not found (s_PolarCam)" << std::endl; return; }
@@ -374,13 +374,13 @@ void s_Camera::update_Plane_polar(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_Camera::update_Plane_free(float timeStep)
+void s_Camera::update_Plane_free(float timeStep, c_Camera* c_cam)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    //c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     c_Input const* c_input = (c_Input*)em->getSComponent(CT::input);
     c_Engine const* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     if (!c_cam || !c_input || !c_eng) { std::cout << "Singleton component not found (s_PlaneCam)" << std::endl; return; }
@@ -432,7 +432,7 @@ void s_Camera::update_Plane_free(float timeStep)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
-void s_Camera::update_FPV(float timeStep)
+void s_Camera::update_FPV(float timeStep, c_Camera* c_cam)
 {
     #ifdef DEBUG_SYSTEM
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;

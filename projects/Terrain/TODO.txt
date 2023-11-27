@@ -6,8 +6,7 @@ TODO:
 	Minecraft method: Continents (multiple noise)
 	Global planet params?
 	Analytical normal (closes gaps & make texture fit)
-	Improve camera component & system relationship (at startup)
-	c_Model_dummy necessary? Maybe this could be c_Model_normal
+	c_Model_dummy necessary? Maybe this could be c_Model_normal (maybe not because it uses a different system)
 
 Good practice:
 	Use const references as parameters
