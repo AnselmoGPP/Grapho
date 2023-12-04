@@ -20,6 +20,20 @@
 
 //#define DEBUG_SYSTEM
 
+
+// Prototypes --------------------------------------
+
+class s_Engine;         //!< Update engine (timer)
+class s_Input;          //!< Update user input
+class s_Camera;         //!< Update camera (c_Camera) & engine::GLFWwindow (c_Engine)
+class s_Lights;         //!< Update lights (position & direction)
+class s_Sky_XY;         //!< Update c_Sky (sky & sun rotation)
+
+class s_ModelMatrix;    //!< Update Model Matrix (c_ModelMatrix) using c_Move (position & rotation) and c_ModelMatrix (scale)
+class s_Move;           //!< Update c_Move (position & rotation)
+class s_Model;          //!< Update c_UBO
+
+
 // Singletons --------------------------------------
 
 class s_Engine : public System
@@ -71,7 +85,6 @@ public:
     void update(float timeStep) override;
 };
 
-/// Update c_Sky (sky & sun rotation)
 class s_Sky_XY : public System
 {
 public:
@@ -84,7 +97,6 @@ public:
 
 // Non-Singletons --------------------------------------
 
-/// Update Model Matrix (c_ModelMatrix) using c_Move (position & rotation) and c_ModelMatrix (scale)
 class s_ModelMatrix : public System
 {
 public:
@@ -94,7 +106,6 @@ public:
     void update(float timeStep) override;
 };
 
-/// Update c_Move (position & rotation)
 class s_Move : public System
 {
     void updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist);
@@ -106,7 +117,6 @@ public:
     void update(float timeStep) override;
 };
 
-/// Update c_UBO
 class s_Model : public System
 {
 public:

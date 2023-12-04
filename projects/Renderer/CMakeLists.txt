@@ -35,7 +35,6 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	src/vertex.cpp
 	src/importer.cpp
 	src/ubo.cpp
-	src/camera.cpp
 	src/input.cpp
 	src/timer.cpp
 	src/toolkit.cpp
@@ -49,7 +48,6 @@ ADD_LIBRARY(${PROJECT_NAME} STATIC
 	include/vertex.hpp
 	include/importer.hpp
 	include/ubo.hpp
-	include/camera.hpp
 	include/input.hpp
 	include/timer.hpp
 	include/toolkit.hpp

@@ -26,15 +26,18 @@
 struct c_Engine;
 struct c_Input;
 struct c_Camera;
+	struct c_Cam_Sphere;
+	struct c_Cam_Plane_polar;
+	struct c_Cam_Plane_free;
+	struct c_Cam_FPV;
 struct c_Lights;
 struct c_Sky;
-
 struct c_Model;
-	struct c_Model_single;
+	struct c_Model_normal;
 	struct c_Model_planet;
+	struct c_Model_grassPlanet;
 struct c_Move;
 struct c_ModelMatrix;
-struct c_Planet;
 
 
 // enumerations --------------------------------------
@@ -206,7 +209,7 @@ struct c_Model : public Component	//!< Its children doesn't have the same interf
 
 struct c_Model_normal : public c_Model
 {
-	c_Model_normal(modelIter model, UboType ubo_type) : c_Model(ubo_type), model(model) { };
+	c_Model_normal(modelIter model, UboType uboType) : c_Model(uboType), model(model) { };
 	~c_Model_normal() { };
 	void printInfo() const override { };
 
@@ -215,7 +218,7 @@ struct c_Model_normal : public c_Model
 
 struct c_Model_dummy : public c_Model
 {
-	c_Model_dummy(modelIter model, UboType ubo_type) : c_Model(ubo_type), model(model) { };
+	c_Model_dummy(modelIter model) : c_Model(UboType::dummy), model(model) { };
 	~c_Model_dummy() { };
 	void printInfo() const override { };
 

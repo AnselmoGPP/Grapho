@@ -28,6 +28,22 @@ glm::vec3 reflect(const glm::vec3& lightRay, const glm::vec3& normal)
 	return lightRay - 2 * glm::dot(lightRay, normal) * normal;
 }
 
+float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+glm::vec3 lerp(glm::vec3 a, glm::vec3 b, float t) { return a + (b - a) * t; }
+
+float powLinInterp(float base, float exponent)
+{
+	float down = std::floor(exponent);
+	float up = down + 1;
+	float diff = exponent - down;
+
+	up = std::pow(base, up);
+	down = std::pow(base, down);
+
+	return down + diff * (up - down);
+}
+
 // Model Matrix -----------------------------------------------------------------
 
 glm::mat4 getModelMatrix() { return glm::mat4(1.0f); }

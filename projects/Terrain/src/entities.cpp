@@ -173,7 +173,7 @@ std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, Shader
 {
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 
-	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2010, { 0.f, 0.f, 0.f }, true);
+	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
 	seaSphere->addResources(shaders, textures);
 
 	return std::vector<Component*>{ new c_Model_planet(seaSphere) };
@@ -181,17 +181,42 @@ std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, Shader
 
 std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
 {
-	std::shared_ptr<Noiser> noiser_hills = std::make_shared<SingleNoise>(
+	// Create noise generator:
+
+	std::shared_ptr<Noiser> continentalness = std::make_shared<FractalNoise_SplinePts>(		// Range [-1, 1]
 		FastNoiseLite::NoiseType_Perlin,	// Noise type
-		3, 6.f, 0.1f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
-		3, 120,								// Scale, Multiplier
-		1,									// Curve degree
-		0, 0, 0,							// XYZ offsets
-		4952);								// Seed
+		3, 4.f, 0.3f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+		0.1,								// Scale
+		4952,								// Seed
+		std::vector<std::array<float, 2>>{ {-1, -0.5}, {-0.1, -0.1}, { 0.1, 0.1 }, { 1, 1 } } );
+
+	std::shared_ptr<Noiser> erosion = std::make_shared<FractalNoise_SplinePts>(				// Rage [0, 1]
+		FastNoiseLite::NoiseType_Perlin,
+		2, 5.f, 0.3f,
+		0.1,
+		4953,
+		std::vector<std::array<float, 2>>{ {-1, 1}, { 0, 0.3 }, { 1, 0} } );
+
+	std::shared_ptr<Noiser> PV = std::make_shared<FractalNoise_SplinePts>(					// Range [-1, 1]
+		FastNoiseLite::NoiseType_Perlin,
+		2, 2.f, 0.3f,
+		0.5,
+		4953,
+		//std::vector<std::array<float, 2>>{ {-1, -0.5}, { -0.5, -0.5 }, { 0.7, 1 }, { 1, 0.5 } });
+		std::vector<std::array<float, 2>>{ {-1, 0}, { -0.3, 1 }, { 0.6, 0 }, { 1, 1 } });
+
+	std::shared_ptr<Noiser> temperature;
+
+	std::shared_ptr<Noiser> humidity;
+
+	std::vector<std::shared_ptr<Noiser>> noiserSet = { continentalness, erosion, PV, temperature, humidity };
+	std::shared_ptr<Noiser> multiNoise = std::make_shared<Multinoise>(noiserSet, getNoise_C_E_PV);
+	
+	// Create planet entity:
 
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 
-	Planet* planet = new Planet(&renderer, noiser_hills, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
+	Planet* planet = new Planet(&renderer, multiNoise, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
 	planet->addResources(shaders, textures);
 	
 	return std::vector<Component*>{ new c_Model_planet(planet) };
@@ -238,7 +263,6 @@ std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderL
 	
 	//1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
 	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
-
-	
-	return std::vector<Component*>{ new c_Model_dummy(model, UboType::dummy), new c_ModelMatrix() };
+		
+	return std::vector<Component*>{ new c_Model_normal(model, UboType::dummy), new c_ModelMatrix() };
 }

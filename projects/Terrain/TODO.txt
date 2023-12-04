@@ -1,14 +1,21 @@
 TODO:
-	updateSkyMove moves sky backwards
-	Can I fix the issue of having the parameters of all types of cameras in the same camera component?
+	noiser::getRange() necessary?
+	Planet general texture
 	Put as components the main Renderer & other classes parameters
-	Unify camera systems & add CameraType enum to c_Camera component
 	Scale sea texture
-	Minecraft method: Continents (multiple noise)
 	Global planet params?
 	Analytical normal (closes gaps & make texture fit)
-	c_Model_dummy necessary? Maybe this could be c_Model_normal (maybe not because it uses a different system)
+	> FPV camera
+	> Corregir distribución de hierba lejana
+	> Randomize grass positioning
+	> Optimization: Reduce size of vertex data / Delete not-used UBO's variables / Don't update UBO's variables that don't need updating.
+	> Placement: trees / grass / base / NPCs
 
+	Bugs:
+	Validation layer: Validation Error: [ UNASSIGNED-Threading-MultipleThreads ] 
+	Object 0: handle = 0xcfef35000000000a, type = VK_OBJECT_TYPE_COMMAND_POOL; | MessageID = 0x141cb623 | 
+	THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0xa70 and thread 0x4198
+	
 Good practice:
 	Use const references as parameters
 	Use smart pointers (maybe also for shaders and textures in order to don't having counters (ModelData::~ModelData()))
@@ -370,3 +377,8 @@ Influences ----------
 	MGS: Tactical action espionage
 	Dynasty Warriors: Bases wars & officer orders
 	Apache Vs Havoc: Ongoing war
+	No Man's sky: Planets
+
+Info ----------
+
+Cross& Dot product : https://www.youtube.com/watch?v=h0NJK4mEIJU

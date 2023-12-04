@@ -5,7 +5,7 @@
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
 #define RADIUS 2000
-#define SEALEVEL 2010
+#define SEALEVEL 2000
 #define DIST_1 5
 #define DIST_2 8
 
@@ -34,18 +34,23 @@ vec3  getDryColor (vec3 color, float minHeight, float maxHeight);
 float getBlackRatio(float min, float max);
 void getTexture_Sand(inout vec3 result);
 vec3 getTexture_GrassRock();
+vec3 heatMap(float seaLevel, float maxHeight);
+vec3 naturalMap(float seaLevel, float maxHeight);
 
 // Definitions:
 
 void main()
 {
+	float blackRatio = 0;
+	//float blackRatio = getBlackRatio(2005, 2010);
+	//if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
+	
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	savePNT(inPos, inNormal, inTB3);
-
-	float blackRatio = getBlackRatio(2005, 2010);
-	if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
 		
 	vec3 color = mix(getTexture_GrassRock(), vec3(0,0,0), blackRatio);
+	//vec3 color = naturalMap(RADIUS, RADIUS + 150);
+	//vec3 color = heatMap(RADIUS, RADIUS + 150);
 	outColor = vec4(color, 1.0);
 }
 
@@ -276,3 +281,44 @@ float getBlackRatio(float min, float max)
 	return 1.f - getRatio(inGroundHeight, min, max);	
 }
 
+vec3 heatMap(float seaLevel, float maxHeight)
+{
+	// Fill arrays (heights & colors)
+	const int size = 6;
+
+	float heights[size] = { -0.1, -0.05, 0.05, 0.15, 0.5, 0.9 };
+	for(int i = 0; i < size; i++) heights[i] = seaLevel + heights[i] * (maxHeight - seaLevel);
+	
+	vec3 colors[size] = { vec3(0.1,0.1,0.5), vec3(0.25,0.25,1), vec3(0.25,1,0.25), vec3(1,1,0.25), vec3(1,0.25,0.25), vec3(1,1,1) };
+	
+	// Colorize
+	if(inGroundHeight < heights[0]) return colors[0];
+	
+	for(int i = 1; i < size; i++)
+		if(inGroundHeight < heights[i])
+			return lerp(colors[i-1], colors[i],	
+						(inGroundHeight - heights[i-1]) / (heights[i] - heights[i-1]) );
+	
+	return colors[size -1];
+}
+
+vec3 naturalMap(float seaLevel, float maxHeight)
+{
+	// Fill arrays (heights & colors)
+	const int size = 8;
+	
+	float heights[size] = { -0.1, -0.05, 0.05, 0.15, 0.3, 0.5, 0.7, 0.9 };
+	for(int i = 0; i < size; i++) heights[i] = seaLevel + heights[i] * (maxHeight - seaLevel);
+	
+	vec3 colors[size] = { vec3(0.23, 0.43, 0.79), vec3(0.25, 0.44, 0.80), vec3(0.85, 0.84, 0.53), vec3(0.38, 0.64, 0.090), vec3(0.28, 0.47, 0.06), vec3(0.39, 0.31, 0.27), vec3(0.34, 0.27, 0.24), vec3(1, 1, 1) };
+	
+	// Colorize
+	if(inGroundHeight < heights[0]) return colors[0];
+	
+	for(int i = 1; i < size; i++)
+		if(inGroundHeight < heights[i])
+			return lerp(colors[i-1], colors[i],	
+						(inGroundHeight - heights[i-1]) / (heights[i] - heights[i-1]) );
+	
+	return colors[size -1];
+}

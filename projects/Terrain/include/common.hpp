@@ -4,7 +4,6 @@
 #include <string>
 
 #include "ubo.hpp"
-#include "camera.hpp"
 #include "importer.hpp"
 #include "ECSarch.hpp"
 

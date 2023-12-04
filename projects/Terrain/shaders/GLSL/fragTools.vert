@@ -203,8 +203,10 @@ float getAngle(vec3 a, vec3 b)
 float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
 
 // Linear interpolation. Position between A and B located at ratio t [0,1]
-vec3 lerp(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+vec3 lerp(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
+
 
 // Graphic functions ------------------------------------------------------------------------
 

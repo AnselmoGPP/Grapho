@@ -1,6 +1,8 @@
 ﻿#include <algorithm>
 #include <random>
 
+#include "physics.hpp"
+
 #include "terrain.hpp"
 #include "ubo.hpp"
 
@@ -170,7 +172,7 @@ void Chunk::deleteModel() { renderer.deleteModel(model); }
 PlainChunk::PlainChunk(Renderer& renderer, Noiser* noiseGenerator, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
     : Chunk(renderer, center, stride, numHorVertex, numVertVertex, depth, chunkID), noiseGen(noiseGenerator)
 {
-    groundCenter.z = noiseGen->GetNoise(baseCenter.x, baseCenter.y);
+    groundCenter.z = noiseGen->getNoise(baseCenter.x, baseCenter.y);
 
     computeSizes();
 }
@@ -192,7 +194,7 @@ void PlainChunk::computeTerrain(bool computeIndices)   // <<< Fix function to ma
             // Positions (0, 1, 2)
             vertex[index * 6 + 0] = x0 + x * stride;
             vertex[index * 6 + 1] = y0 + y * stride;
-            vertex[index * 6 + 2] = noiseGen->GetNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
+            vertex[index * 6 + 2] = noiseGen->getNoise((float)vertex[index * 6 + 0], (float)vertex[index * 6 + 1]);
         }
 
     // Normals (3, 4, 5)
@@ -294,7 +296,7 @@ PlanetChunk::PlanetChunk(Renderer& renderer, std::shared_ptr<Noiser> noiseGenera
 {
     glm::vec3 unitVec = glm::normalize(baseCenter - nucleus);
     geoideCenter = unitVec * radius;
-    if(noiseGenerator) groundCenter = geoideCenter + unitVec * noiseGen->GetNoise(geoideCenter.x, geoideCenter.y, geoideCenter.z);  // if added due to SphereChunk
+    if(noiseGenerator) groundCenter = geoideCenter + unitVec * noiseGen->getNoise(geoideCenter.x, geoideCenter.y, geoideCenter.z);  // if added due to SphereChunk
 
     // Set relative axes of the cube face (needed for computing indices in good order)
      if (cubePlane.x != 0)           // 1: (y, z)  // -1: (-y, z)
@@ -337,7 +339,7 @@ void PlanetChunk::computeTerrain(bool computeIndices)
             cube = pos0 + (xAxis * (float)h * stride) + (yAxis * (float)v * stride);
             unitVec = glm::normalize(cube - nucleus);
             sphere = unitVec * radius;
-            ground = sphere + unitVec * noiseGen->GetNoise(sphere.x, sphere.y, sphere.z);
+            ground = sphere + unitVec * noiseGen->getNoise(sphere.x, sphere.y, sphere.z);
             vertex[index + 0] = ground.x;
             vertex[index + 1] = ground.y;
             vertex[index + 2] = ground.z;
@@ -1243,7 +1245,7 @@ float Planet::getGroundHeight(const glm::vec3& camPos)
     if (readyForUpdate)
     {
         glm::vec3 ground = glm::normalize(camPos - nucleus) * radius;
-        return radius + noiseGen->GetNoise(ground.x, ground.y, ground.z);
+        return radius + noiseGen->getNoise(ground.x, ground.y, ground.z);
     }
 
     return 0;
@@ -1264,7 +1266,7 @@ float Planet::callBack_getFloorHeight(const glm::vec3& pos)
     glm::vec3 nucleus(0.f, 0.f, 0.f);
     float radius = planetGrid_pZ->getRadius();
     glm::vec3 espheroid = glm::normalize(pos - nucleus) * radius;
-    return 1.70 + radius + noiseGen->GetNoise(espheroid.x, espheroid.y, espheroid.z);
+    return 1.70 + radius + noiseGen->getNoise(espheroid.x, espheroid.y, espheroid.z);
 }
 
 // Sphere ----------------------------------------------------------------------

@@ -1,8 +1,6 @@
 #ifndef INPUT_HPP
 #define INPUT_HPP
 
-#include "camera.hpp"
-
 #include "vulkan/vulkan.h"			// From LunarG SDK. Can be used for off-screen rendering
 //#define GLFW_INCLUDE_VULKAN		// Makes GLFW load the Vulkan header with it
 #include "GLFW/glfw3.h"

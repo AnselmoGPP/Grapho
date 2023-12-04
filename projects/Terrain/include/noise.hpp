@@ -1,6 +1,7 @@
 #ifndef NOISE_HPP
 #define NOISE_HPP
 
+#include <array>
 #include <random>
 
 #include "FastNoiseLite.h"
@@ -14,15 +15,81 @@
 //#define DEBUG_NOISE
 
 
+/// Noise generator
 class Noiser
 {
 public:
     Noiser() { };
     virtual ~Noiser() { };
 
-    virtual float GetNoise(float x, float y, float z) = 0;
-    virtual float GetNoise(float x, float y) = 0;
+    virtual float getNoise(float x, float y, float z) = 0;
+    virtual float getNoise(float x, float y) = 0;
+
+    virtual std::array<float, 2> getRange() const = 0;        //!< Range: [min, max]
 };
+
+
+// Callbacks for Multinoise objects
+float default3D_callback(float x, float y, float z, std::vector<std::shared_ptr<Noiser>>& noisers);
+float default2D_callback(float x, float y, std::vector<std::shared_ptr<Noiser>>& noisers);
+float getNoise_C_E_PV(float x, float y, float z, std::vector<std::shared_ptr<Noiser>>& noisers);
+
+/// Noise generator that mixes outputs of different Noiser objects.
+class Multinoise : public Noiser
+{
+    std::vector<std::shared_ptr<Noiser>> noisers;
+
+    float(*getNoise2D_callback) (float x, float y, std::vector<std::shared_ptr<Noiser>>& noisers);            //!< Callback (stablish here how the different noises interact to produce the final noise)
+    float(*getNoise3D_callback) (float x, float y, float z, std::vector<std::shared_ptr<Noiser>>& noisers);   //!< Callback (stablish here how the different noises interact to produce the final noise)
+
+public:
+    Multinoise(std::vector<std::shared_ptr<Noiser>>& noisers, float(*getNoise3D)(float, float, float, std::vector<std::shared_ptr<Noiser>>&) = default3D_callback, float(*getNoise2D)(float, float, std::vector<std::shared_ptr<Noiser>>&) = default2D_callback);
+    ~Multinoise() { };
+
+    float getNoise(float x, float y, float z) override;
+    float getNoise(float x, float y) override;
+
+    std::array<float, 2> getRange() const override;
+};
+
+
+class FractalNoise : public Noiser
+{
+protected:
+    FastNoiseLite noise;
+
+    FastNoiseLite::NoiseType noiseType;     //!< FastnoiseLite::NoiseType_ ... OpenSimplex2, OpenSimplex2S, Cellular, Perlin, ValueCubic, Value
+    int numOctaves;                         //!< Layers with different contributions each (by default, frequency doubles and amplitude halfs)
+    float lacunarity;                       //!< How quickly frequency increases with each layer (by default, frequency doubles)
+    float persistence;                      //!< How quickly amplitude decreases with each layer (by default, amplitude halfs)
+    float scale;                            //!< Increase noise scale
+    float multiplier;                       //!< Multiply scale noise
+    int seed;
+    //float offsetX, offsetY, offsetZ;      //!< Translate noise
+    //unsigned curveDegree;                 //!< Flatter valleys, sharper peaks. Raise unit noise to this power and multiply the result with the actual noise.
+    //std::vector<std::tuple<float, float>> splinePts;    //!< Spline points (pair<noise, height)
+
+public:
+    FractalNoise(
+        FastNoiseLite::NoiseType NoiseType,
+        int NumOctaves,
+        float Lacunarity,
+        float Persistence,
+        float Scale,
+        float Multiplier,
+        int Seed);
+
+    virtual ~FractalNoise() { };
+
+    virtual float getNoise(float x, float y, float z) override;
+    virtual float getNoise(float x, float y) override;
+
+    virtual std::array<float, 2> getRange() const override;        //!< Range: [min, max]
+
+    friend std::ostream& operator << (std::ostream& os, const FractalNoise& obj);
+};
+
+std::ostream& operator << (std::ostream& os, const FractalNoise& obj);
 
 
 /**
@@ -42,70 +109,63 @@ public:
      <li>Seed: Seed for noise generation</li>
     </ul>
 */
-class SingleNoise : public Noiser
+class FractalNoise_Exp : public FractalNoise
 {
+    unsigned curveDegree;                 //!< Flatter valleys, sharper peaks. Raise unit noise to this power and multiply the result with the actual noise.
+
 public:
-    SingleNoise(
+    FractalNoise_Exp(
         FastNoiseLite::NoiseType NoiseType,
         int NumOctaves,
         float Lacunarity,
         float Persistence,
         float Scale,
         float Multiplier,
-        unsigned CurveDegree,
-        float OffsetX, float OffsetY, float OffsetZ,
-        int Seed);
+        int Seed,
+        unsigned CurveDegree);
+    ~FractalNoise_Exp() { }
 
-    // Get noise. Computations are performed by this method (Octaves, Lacunarity, Persistence, Offsets, Scale, Multiplier, Degree).
+    // Get noise. Computations are directly performed by this method (Octaves, Lacunarity, Persistence, Offsets, Scale, Multiplier, Degree).
     float getProcessedNoise(float x, float y, float z);
 
-    // Get noise after the full process. Computations performed by FastNoise (Octaves, Lacunarity, Persistence) and this method (Offsets, Scale, Multiplier, Degree).
-    float GetNoise(float x, float y, float z) override;
-    float GetNoise(float x, float y) override;
+    // Get noise after the full process. Computations performed by FastNoise (Octaves, Lacunarity, Persistence) and this method (Scale, Multiplier, Degree).
+    float getNoise(float x, float y, float z) override;
+    float getNoise(float x, float y) override;
 
-    friend std::ostream& operator << (std::ostream& os, const SingleNoise& obj);
-
-private:
-    FastNoiseLite noise;
-
-    FastNoiseLite::NoiseType noiseType;
-    int numOctaves;
-    float lacunarity;
-    float persistence;
-    float scale;
-    float multiplier;
-    unsigned curveDegree;
-    float offsetX, offsetY, offsetZ;
-    int seed;
-
-    // Helpers
-    float totalAmplitude;
-    float maxHeight;
-    float result;
-    float frequency;
-    float amplitude;
-
-    float powLinInterp(float base, float exponent);     //!< Uses linear interpolation to get an aproximation of a base raised to a float exponent
-
-    /*
-    *  @brief Used for testing purposes. Checks the noise values for a size x size terrain and outputs the absolute maximum and minimum
-    *  @param size Size of one side of the square that will be tested
-    */
-    void noiseTester(size_t size);
+    std::array<float, 2> getRange() const override;
 };
 
-std::ostream& operator << (std::ostream& os, const SingleNoise& obj);
 
-/// Takes many SingleNoise and mixes them
-//class NoiseMix : public Noiser
-//{
-//public:
-//    NoiseMix() { };
-//    virtual ~MixNoise() { };
-//
-//    float GetNoise(float x, float y, float z) override;
-//    float GetNoise(float x, float y) override;
-//};
+class FractalNoise_SplinePts : public FractalNoise
+{
+    float lerp(float a, float b, float t);
+
+    std::vector<std::array<float, 2>> splinePts;       // pair(noiseValue, finalValue)  (noise values must cover range [-1, 1])
+  
+    float value;    // helper
+    unsigned i;     // helper
+
+public:
+    FractalNoise_SplinePts(
+        FastNoiseLite::NoiseType NoiseType,
+        int NumOctaves,
+        float Lacunarity,
+        float Persistence,
+        float scale,
+        int Seed,
+        std::vector<std::array<float, 2>> splinePts);
+    ~FractalNoise_SplinePts() { }
+
+    float getNoise(float x, float y, float z) override;
+    float getNoise(float x, float y) override;
+
+    std::array<float, 2> getRange() const override;
+};
+
+
+/// Used for testing purposes. Checks the noise values for a size x size terrain and outputs the absolute maximum and minimum
+void noiseTester(Noiser* noiser, size_t size);
+
 
 // -----------------------------------------------------------------------------------
 

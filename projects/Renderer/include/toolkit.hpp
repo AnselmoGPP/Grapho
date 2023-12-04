@@ -118,8 +118,17 @@ extern double pi;
 extern double e;
 
 float getDist(const glm::vec3& a, const glm::vec3& b);
+
 float getSqrDist(const glm::vec3& a, const glm::vec3& b);
+
 glm::vec3 reflect(const glm::vec3& lightRay, const glm::vec3& normal);
+
+// Linear interpolation. Position between A and B located at ratio t [0,1]
+float lerp(float a, float b, float t);
+glm::vec3 lerp(glm::vec3 a, glm::vec3 b, float t);
+
+/// Uses linear interpolation to get an aproximation of a base raised to a float exponent
+float powLinInterp(float base, float exponent);
 
 /// This class checks if argument X (float) is bigger than argument Y (float). But if it is true once, then it will be false in all the next calls. This is useful for executing something once only after X time (used for testing in graphicsUpdate()). Example: obj.ifBigger(time, 5);
 class ifOnce

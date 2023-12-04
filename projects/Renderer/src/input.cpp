@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "glm/gtc/type_ptr.hpp"
 
 #include "input.hpp"

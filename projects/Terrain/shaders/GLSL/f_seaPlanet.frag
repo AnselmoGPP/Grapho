@@ -4,7 +4,7 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
-#define RADIUS      2010
+#define RADIUS      2000
 #define FOAM_COL    vec3(0.98, 0.98, 0.98)
 #define SPECULARITY vec3(0.7, 0.7, 0.7)
 #define ROUGHNESS   30

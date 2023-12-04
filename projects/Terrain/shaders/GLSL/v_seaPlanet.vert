@@ -4,7 +4,7 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
-#define RADIUS 2010
+#define RADIUS 2000
 #define MIN 100			// min. dist.
 #define MAX 200			// max. dist.
 #define WAVES 6
@@ -60,11 +60,14 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves proje
 
 void main()
 {
+	bool waves = false;
 	//adjustWavesAmplitude(15, 1, 0.1);
 	//for(int i = 0; i < WAVES; i++) A[i] *= 0.3;
 	
 	vec3 normal     = inNormal;
-	vec3 pos        = getSeaOptimized(normal, MIN, MAX);
+	vec3 pos;
+	if(waves) pos = getSeaOptimized(normal, MIN, MAX);
+	else pos = inPos;
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;
