@@ -72,7 +72,7 @@ c_Camera::c_Camera(camMode camMode, glm::vec3 camPos, float keysSpeed, float mou
 { }
 
 c_Cam_Sphere::c_Cam_Sphere()
-	: c_Camera(camMode::sphere, glm::vec3(0,0,0), 50, 0.002, 0.1), worldUp(0,0,1), center(0,0,0), radius(4000), minRadius(10), maxRadius(4000), maxPitch(1.3)
+	: c_Camera(camMode::sphere, glm::vec3(0,0,0), 50, 0.002, 0.1), worldUp(0,0,1), center(0,0,0), radius(20), minRadius(10), maxRadius(4000), maxPitch(1.3)
 {
 	camPos = -front * radius;
 	//radius = glm::length(camPos);

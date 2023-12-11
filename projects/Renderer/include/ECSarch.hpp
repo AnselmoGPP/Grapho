@@ -91,8 +91,9 @@ public:
     void printInfo();
 
     // Entity methods
-    uint32_t addEntity(std::vector<Component*>& components);  //!< Add new entity by defining its components.
-    std::vector<uint32_t> getEntitySet(CT type);                //!< Get set of entities containing component of type X.
+    uint32_t addEntity(std::vector<Component*>& components);                //!< Add new entity by defining its components.
+    std::vector<uint32_t> addEntities(std::vector<std::vector<Component*>> entities); //!< Add many entities.
+    std::vector<uint32_t> getEntitySet(CT type);                            //!< Get set of entities containing component of type X.
 
     // Component methods
     Component* getSComponent(CT type);                      //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.

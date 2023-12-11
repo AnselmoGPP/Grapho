@@ -1,4 +1,15 @@
 TODO:
+	Tree model:
+		Why branches are inverted?? Fix this
+		Delete camPos from 1st UBO and put in on the 2nd
+		Enderezar coordenadas
+		Smooth normals
+	Use basic shaders (v_basic_332, for example)
+	Change name to UboType::dummy
+	Finish EntityManager::addEntities()
+	EntityFactory::createXXX() should check that the passed shaders/textures exist
+	Add uniform for f_basic_332 shader that defines what textures are passed (albedo, normal, spec, roughness)
+
 	noiser::getRange() necessary?
 	Planet general texture
 	Put as components the main Renderer & other classes parameters
@@ -382,3 +393,9 @@ Influences ----------
 Info ----------
 
 Cross& Dot product : https://www.youtube.com/watch?v=h0NJK4mEIJU
+
+Importing OBJ from Blender ----------
+
+Shade smooth
+Forward axis: Y (default: -Z)
+Up axis: Z (default: Y)

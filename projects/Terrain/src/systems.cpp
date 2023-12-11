@@ -568,9 +568,9 @@ void s_Move::update(float timeStep)
 
 void s_Model::update(float timeStep)
 {
-#ifdef DEBUG_SYSTEM
-    std::cout << typeid(this).name() << "::" << __func__ << std::endl;
-#endif
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
 
     std::vector<uint32_t> entities = em->getEntitySet(CT::model);
 
@@ -634,6 +634,7 @@ void s_Model::update(float timeStep)
                 dest = ((c_Model_dummy*)c_model)->model->fsUBO.getUBOptr(0);
                 memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
                 //dest += lights.propsBytes;
+                
                 break;
             }
         case UboType::planet:

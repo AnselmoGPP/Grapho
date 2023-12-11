@@ -114,6 +114,28 @@ uint32_t EntityManager::addEntity(std::vector<Component*>& components)
 	return newId;
 }
 
+std::vector<uint32_t> EntityManager::addEntities(std::vector<std::vector<Component*>> newEntities)
+{
+	#ifdef DEBUG_ECS
+		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
+	std::vector<uint32_t> newIds;
+	uint32_t newId;
+
+	for (int i = 0; i < newEntities.size(); i++)
+	{
+		newId = getNewId();
+		if (newId)
+		{
+			entities[newId] = new Entity(newId, newEntities[i]);
+			newIds.push_back(newId);
+		}
+	}
+	
+	return newIds;
+}
+
 void EntityManager::addSystem(System* system)
 {
 	#ifdef DEBUG_ECS

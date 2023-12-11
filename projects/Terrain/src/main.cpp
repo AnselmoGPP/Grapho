@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 		EntityFactory eFact(app);
 		bool withPP = false;				// Add Post-Processing effects (atmosphere...) or not
 
-		loadResourcesInfo();					// Load shaders & textures
+		loadResourcesInfo();				// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
 		
@@ -69,8 +69,9 @@ int main(int argc, char* argv[])
 		em.addEntity(eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
 		em.addEntity(eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity(eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		em.addEntity(eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntity(eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+		//em.addEntity(eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		//em.addEntity(eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntities(eFact.createTree(shaderLoaders["v_basic_332"], shaderLoaders["f_basic_332"], { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
 
 		if(withPP) em.addEntity(eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity(eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
@@ -158,6 +159,9 @@ void loadResourcesInfo()
 	shaderLoaders.insert(std::pair("v_subject",     ShaderLoader(shadersDir + "v_subject.vert")));
 	shaderLoaders.insert(std::pair("f_subject",     ShaderLoader(shadersDir + "f_subject.frag")));
 
+	shaderLoaders.insert(std::pair("v_basic_332",	ShaderLoader(shadersDir + "v_basic_332.vert")));
+	shaderLoaders.insert(std::pair("f_basic_332",	ShaderLoader(shadersDir + "f_basic_332.frag")));
+
 	shaderLoaders.insert(std::pair("v_noPP",		ShaderLoader(shadersDir + "v_noPP.vert")));
 	shaderLoaders.insert(std::pair("f_noPP",		ShaderLoader(shadersDir + "f_noPP.frag")));
 
@@ -177,6 +181,10 @@ void loadResourcesInfo()
 	texInfos.insert(std::pair("grassDry_s", TextureLoader(texDir + "grass/grassDry_s.png")));
 	texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
 	texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
+
+	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
+	//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
+	texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
 
 	// Rocks
 	texInfos.insert(std::pair("bumpRock_a", TextureLoader(texDir + "rock/bumpRock_a.png")));
