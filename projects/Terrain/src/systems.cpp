@@ -610,13 +610,13 @@ void s_Model::update(float timeStep)
                 }
                 break;
             }
-        case UboType::dummy:
+        case UboType::mvpnl:
             {
                 c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
                 if (!c_mm) continue;
-                for (i = 0; i < ((c_Model_dummy*)c_model)->model->vsDynUBO.numDynUBOs; i++)
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
-                    dest = ((c_Model_dummy*)c_model)->model->vsDynUBO.getUBOptr(i);
+                    dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
                     memcpy(dest, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
                     dest += size.mat4;
                     memcpy(dest, &c_cam->view, sizeof(c_cam->view));
@@ -631,7 +631,7 @@ void s_Model::update(float timeStep)
                     //dest += lights.posDirBytes;
                 }
 
-                dest = ((c_Model_dummy*)c_model)->model->fsUBO.getUBOptr(0);
+                dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
                 memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
                 //dest += lights.propsBytes;
                 

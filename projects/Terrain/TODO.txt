@@ -1,14 +1,15 @@
 TODO:
+	no c_ModelMatrix or S_ModelMatrix. Simply, MM is computed in s_Model
 	Tree model:
-		Why branches are inverted?? Fix this
-		Delete camPos from 1st UBO and put in on the 2nd
-		Enderezar coordenadas
-		Smooth normals
+		x Why branches are inverted?? Fix this
+		x Enderezar coordenadas
+		x Smooth normals
 	Use basic shaders (v_basic_332, for example)
 	Change name to UboType::dummy
 	Finish EntityManager::addEntities()
 	EntityFactory::createXXX() should check that the passed shaders/textures exist
 	Add uniform for f_basic_332 shader that defines what textures are passed (albedo, normal, spec, roughness)
+	Delete camPos from 1st UBO and put in on the 2nd (pasar camPos al FS instead of having it passed to the VS)
 
 	noiser::getRange() necessary?
 	Planet general texture
@@ -384,11 +385,12 @@ std::shared_ptr<Entity> ent2 = ent1;
 std::weak_ptr<Entity>   ent3 = ent1;							// Copy pointer without incrementing the counter
 
 Influences ----------
-	Arma III: Realism
-	MGS: Tactical action espionage
-	Dynasty Warriors: Bases wars & officer orders
-	Apache Vs Havoc: Ongoing war
-	No Man's sky: Planets
+
+Arma III: Realism
+MGS: Tactical action espionage
+Dynasty Warriors: Bases wars & officer orders
+Apache Vs Havoc: Ongoing war
+No Man's sky: Planets
 
 Info ----------
 

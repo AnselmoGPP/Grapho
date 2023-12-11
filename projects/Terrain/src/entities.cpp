@@ -264,7 +264,7 @@ std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderL
 	//1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
 	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
 	
-	return std::vector<Component*>{ new c_Model_normal(model, UboType::dummy), new c_ModelMatrix() };
+	return std::vector<Component*>{ new c_Model_normal(model, UboType::mvpnl), new c_ModelMatrix() };
 }
 
 std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
@@ -292,7 +292,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
 		false);
 
-	entities.push_back(std::vector<Component*>{ new c_Model_normal(model, UboType::dummy), new c_ModelMatrix() });
+	entities.push_back(std::vector<Component*>{ new c_Model_normal(model, UboType::mvpnl), new c_ModelMatrix() });
 	
 	// Branches:
 
@@ -308,7 +308,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
 		true);
 
-	entities.push_back(std::vector<Component*>{ new c_Model_normal(model2, UboType::dummy), new c_ModelMatrix() });
-	std::cout << "AA" << std::endl;
+	entities.push_back(std::vector<Component*>{ new c_Model_normal(model2, UboType::mvpnl), new c_ModelMatrix() });
+	
 	return entities;
 }

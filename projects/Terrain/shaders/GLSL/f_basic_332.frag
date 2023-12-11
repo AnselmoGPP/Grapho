@@ -25,9 +25,9 @@ layout(location = 0) out vec4 outColor;								// layout(location=0) specifies t
 
 void main()
 {	
-	//vec4 albedo = texture(texSampler[0], unpackUVmirror(inUVs, 1));
-	vec4 albedo = texture(texSampler[0], inUVs);
-	if(albedo.a < 0.5) { discard; return; }		// Discard transparent fragments
+	// Discard transparent fragments
+	vec4 albedo = texture(texSampler[0], inUVs);		// texture(texSampler[0], unpackUVmirror(inUVs, 1));
+	if(albedo.a < 0.5) { discard; return; }
 	
 	//if(applyOrderedDithering(inSqrDist, 2, 0)) { discard; return; }
 
