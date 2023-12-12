@@ -850,9 +850,9 @@ const mat4 thresholdMap = {		// for dithering
 	{15/16., 7/16.,  13/16., 5/16.}
 };
 
-bool applyOrderedDithering(float sqrDist, float minDist, float maxDist)
+bool applyOrderedDithering(float value, float minValue, float maxValue)
 {
-	float ratio = getRatio(sqrDist, minDist*minDist, maxDist*maxDist);
+	float ratio = getRatio(value, minValue, maxValue);
 	ivec2 index = { int(mod(gl_FragCoord.x, 4)), int(mod(gl_FragCoord.y, 4)) };
 	
 	if(ratio > thresholdMap[index.x][index.y]) return true;

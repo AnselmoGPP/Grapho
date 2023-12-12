@@ -70,8 +70,7 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 		0, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
-		0,
-		false);
+		0 );
 
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
@@ -121,10 +120,12 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 		1, 1, primitiveTopology::line, vt_33,
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
-		0,
-		false);
+		0 );
 
-	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_Move(followCamXY, gridStep, 1) };
+	return std::vector<Component*> { 
+		new c_Model_normal(model, UboType::mvp), 
+		new c_Move(followCamXY, gridStep, 1) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -142,10 +143,12 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 		1, 1, primitiveTopology::line, vt_33,
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
-		0,
-		false);
+		0 );
 
-	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_Move(MoveType::noMove) };
+	return std::vector<Component*> { 
+		new c_Model_normal(model, UboType::mvp), 
+		new c_Move(MoveType::noMove) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -161,10 +164,12 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 		1, 1, primitiveTopology::point, vt_33,
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
-		0,
-		false);
+		0 );
 
-	return std::vector<Component*> { new c_Model_normal(model, UboType::mvp), new c_Move(MoveType::noMove) };
+	return std::vector<Component*> { 
+		new c_Model_normal(model, UboType::mvp), 
+		new c_Move(MoveType::noMove) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
@@ -256,13 +261,15 @@ std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderL
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
 		1, 4 * size.mat4 + 1 * size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
-		false);
+		c_lights->lights.numLights * sizeof(LightProps) );										// n * LightProps (6*vec4)
 	
 	//1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
 	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
 	
-	return std::vector<Component*>{ new c_Model_normal(model, UboType::mvpnl), new c_Move(MoveType::noMove) };
+	return std::vector<Component*>{ 
+		new c_Model_normal(model, UboType::mvpnl), 
+		new c_Move(MoveType::noMove) 
+	};
 }
 
 std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
@@ -286,11 +293,13 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		"tree_trunk",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + 1 * size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
-		false);
+		1, 4 * size.mat4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
+		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
-	entities.push_back(std::vector<Component*>{ new c_Model_normal(model, UboType::mvpnl), new c_Move(MoveType::noMove) });
+	entities.push_back(std::vector<Component*>{ 
+		new c_Model_normal(model, UboType::mvpnl), 
+		new c_Move(MoveType::noMove) 
+	});
 	
 	// Branches:
 
@@ -302,11 +311,13 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		"tree_branches",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData2, shaders2, textureSet2,
-		1, 4 * size.mat4 + 1 * size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps),										// n * LightProps (6*vec4)
-		true);
+		1, 4 * size.mat4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
+		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
-	entities.push_back(std::vector<Component*>{ new c_Model_normal(model2, UboType::mvpnl), new c_Move(MoveType::noMove) });
+	entities.push_back(std::vector<Component*>{ 
+		new c_Model_normal(model2, UboType::mvpnl), 
+		new c_Move(MoveType::noMove) 
+	});
 	
 	return entities;
 }

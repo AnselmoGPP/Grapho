@@ -1,15 +1,7 @@
 TODO:
-	no c_ModelMatrix or S_ModelMatrix. Simply, MM is computed in s_Model
-	Tree model:
-		x Why branches are inverted?? Fix this
-		x Enderezar coordenadas
-		x Smooth normals
 	Use basic shaders (v_basic_332, for example)
-	Change name to UboType::dummy
-	Finish EntityManager::addEntities()
-	EntityFactory::createXXX() should check that the passed shaders/textures exist
-	Add uniform for f_basic_332 shader that defines what textures are passed (albedo, normal, spec, roughness)
-	Delete camPos from 1st UBO and put in on the 2nd (pasar camPos al FS instead of having it passed to the VS)
+	Don't update static ubo's values
+	ShaderModifier (defines what textures are passed: albedo, normal, spec, roughness)
 
 	noiser::getRange() necessary?
 	Planet general texture
@@ -29,7 +21,7 @@ TODO:
 	THREADING ERROR : vkAllocateCommandBuffers(): object of type VkCommandPool is simultaneously used in thread 0xa70 and thread 0x4198
 	
 Good practice:
-	Use const references as parameters
+	Use const references as parameters (and const functions)
 	Use smart pointers (maybe also for shaders and textures in order to don't having counters (ModelData::~ModelData()))
 	Iterators from different lists cannot be compared, but they are (deleteModel...) (https://stackoverflow.com/questions/4657513/comparing-iterators-from-different-containers)
 

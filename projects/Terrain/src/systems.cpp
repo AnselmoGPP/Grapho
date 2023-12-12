@@ -622,15 +622,13 @@ void s_Model::update(float timeStep)
                     dest += size.mat4;
                     memcpy(dest, &getModelMatrixForNormals(modelMatrix), sizeof(modelMatrix));
                     dest += size.mat4;
-                    memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
-                    dest += size.vec4;
                     memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
-                    //dest += lights.posDirBytes;
                 }
 
                 dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
+                memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
+                dest += size.vec4;
                 memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
-                //dest += lights.propsBytes;
                 
                 break;
             }
