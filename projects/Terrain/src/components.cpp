@@ -149,8 +149,8 @@ void c_Camera::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Move::c_Move(MoveType moveType, float jumpStep, glm::vec3 position)
-	: Component(CT::move), pos(position), moveType(moveType), jumpStep(jumpStep) { };
+c_Move::c_Move(MoveType moveType, float jumpStep, float scale, glm::vec3 position)
+	: Component(CT::move), scale(scale, scale, scale), pos(position), moveType(moveType), jumpStep(jumpStep) { };
 
 c_Move::c_Move(MoveType moveType)
 	: Component(CT::move), moveType(moveType) { };
@@ -161,27 +161,6 @@ void c_Move::printInfo() const
 	std::cout << "pos: "; printVec(pos);
 	std::cout << "rotQuat: "; printVec(rotQuat);
 	std::cout << "jumpStep: " << jumpStep << std::endl;
-
-	std::cout << "----------" << std::endl;
-}
-
-c_ModelMatrix::c_ModelMatrix()
-	: Component(CT::modelMatrix), modelMatrix(getModelMatrix()) { };
-
-c_ModelMatrix::c_ModelMatrix(glm::vec4 rotQuat)
-	: Component(CT::modelMatrix), modelMatrix(getModelMatrix(glm::vec3(1,1,1), rotQuat, glm::vec3(0, 0, 0))) { };
-
-c_ModelMatrix::c_ModelMatrix(float scale)
-	: Component(CT::modelMatrix), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, glm::vec4(1, 0, 0, 0), glm::vec3(0, 0, 0))) { };
-
-c_ModelMatrix::c_ModelMatrix(float scale, glm::vec4 rotQuat)
-	: Component(CT::modelMatrix), scale(scale, scale, scale), modelMatrix(getModelMatrix(this->scale, rotQuat, glm::vec3(0, 0, 0))) { };
-
-void c_ModelMatrix::printInfo() const
-{
-	std::cout << "Scale = "; printVec(scale);
-	//std::cout << "Rotation = "; printVec(rotQuat);
-	//std::cout << "Translation = "; printVec(translation);
 
 	std::cout << "----------" << std::endl;
 }

@@ -7,8 +7,8 @@
 Component::Component(CT type) : type(type) { }
 Component::~Component() { }
 
-Entity::Entity(uint32_t id, std::vector<Component*>& components)
-	: id(id), resourceHandle(this) 
+Entity::Entity(uint32_t id, std::string name, std::vector<Component*>& components)
+	: id(id), resourceHandle(this), name(name)
 { 
 	for (Component* comp : components)
 		this->components.push_back(std::shared_ptr<Component>(comp));
@@ -103,18 +103,18 @@ void EntityManager::printInfo()
 		comps = it->second->getAllComponents();
 }
 
-uint32_t EntityManager::addEntity(std::vector<Component*>& components)
+uint32_t EntityManager::addEntity(std::string name, std::vector<Component*>& components)
 {
 	#ifdef DEBUG_ECS
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	uint32_t newId = getNewId();
-	if (newId) entities[newId] = new Entity(newId, components);
+	if (newId) entities[newId] = new Entity(newId, name, components);
 	return newId;
 }
 
-std::vector<uint32_t> EntityManager::addEntities(std::vector<std::vector<Component*>> newEntities)
+std::vector<uint32_t> EntityManager::addEntities(std::vector<std::string> names, std::vector<std::vector<Component*>> newEntities)
 {
 	#ifdef DEBUG_ECS
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -128,7 +128,7 @@ std::vector<uint32_t> EntityManager::addEntities(std::vector<std::vector<Compone
 		newId = getNewId();
 		if (newId)
 		{
-			entities[newId] = new Entity(newId, newEntities[i]);
+			entities[newId] = new Entity(newId, names[i], newEntities[i]);
 			newIds.push_back(newId);
 		}
 	}
@@ -207,3 +207,7 @@ std::vector<Component*> EntityManager::getComponents(CT type)
 	return componentSet;
 }
 
+std::string EntityManager::getName(uint32_t entityId)
+{
+	return entities[entityId]->name;
+}

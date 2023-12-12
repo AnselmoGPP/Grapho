@@ -41,9 +41,9 @@ vec3 naturalMap(float seaLevel, float maxHeight);
 
 void main()
 {
-	float blackRatio = 0;
-	//float blackRatio = getBlackRatio(2005, 2010);
-	//if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
+	//float blackRatio = 0;
+	float blackRatio = getBlackRatio(1990, 2000);
+	if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
 	
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	savePNT(inPos, inNormal, inTB3);

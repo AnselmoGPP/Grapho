@@ -46,7 +46,7 @@ class Entity
     std::vector<std::shared_ptr<Component>> components;
 
 public:
-    Entity(uint32_t id, std::vector<Component*>& components);
+    Entity(uint32_t id, std::string name, std::vector<Component*>& components);
     ~Entity();
 
     void addComponent(Component* component);
@@ -56,6 +56,7 @@ public:
 
     const uint32_t id;
     const Entity* resourceHandle;
+    const std::string name;
 };
 
 
@@ -91,9 +92,10 @@ public:
     void printInfo();
 
     // Entity methods
-    uint32_t addEntity(std::vector<Component*>& components);                //!< Add new entity by defining its components.
-    std::vector<uint32_t> addEntities(std::vector<std::vector<Component*>> entities); //!< Add many entities.
+    uint32_t addEntity(std::string name, std::vector<Component*>& components);                //!< Add new entity by defining its components.
+    std::vector<uint32_t> addEntities(std::vector<std::string> names, std::vector<std::vector<Component*>> entities); //!< Add many entities.
     std::vector<uint32_t> getEntitySet(CT type);                            //!< Get set of entities containing component of type X.
+    std::string getName(uint32_t entityId);
 
     // Component methods
     Component* getSComponent(CT type);                      //!< Get the first component found of type X in the whole set of entities. Useful for singleton components.

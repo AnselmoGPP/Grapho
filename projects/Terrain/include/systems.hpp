@@ -97,15 +97,6 @@ public:
 
 // Non-Singletons --------------------------------------
 
-class s_ModelMatrix : public System
-{
-public:
-    s_ModelMatrix() : System() { };
-    ~s_ModelMatrix() { };
-
-    void update(float timeStep) override;
-};
-
 class s_Move : public System
 {
     void updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist);

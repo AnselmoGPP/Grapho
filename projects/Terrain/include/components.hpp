@@ -42,7 +42,7 @@ struct c_ModelMatrix;
 
 // enumerations --------------------------------------
 
-enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
+enum MoveType { noMove, followCam, followCamXY, skyOrbit, sunOrbit };
 enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, mvpnl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
@@ -237,35 +237,18 @@ struct c_Model_grassPlanet : public c_Model
 /// Determines the translation for the Model matrix 
 struct c_Move : public Component
 {
-	c_Move(MoveType moveType, float jumpStep, glm::vec3 position = { 0, 0, 0 });
+	c_Move(MoveType moveType, float jumpStep, float scale, glm::vec3 position = { 0, 0, 0 });
 	c_Move(MoveType moveType);
 	~c_Move() { };
 	void printInfo() const;
 
 	MoveType moveType;
 
-	glm::vec3 pos     = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+	glm::vec3 scale = { 1, 1, 1 };
 	glm::vec4 rotQuat = { 1, 0, 0, 0 };
-	//glm::vec3 scale   = { 1, 1, 1 };
+	glm::vec3 pos = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
 
 	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
-
-struct c_ModelMatrix : public Component
-{
-	c_ModelMatrix();
-	c_ModelMatrix(float scale);
-	c_ModelMatrix(glm::vec4 rotQuat);
-	c_ModelMatrix(float scale, glm::vec4 rotQuat);
-	~c_ModelMatrix() { };
-	void printInfo() const;
-
-	glm::vec3 scale = { 1, 1, 1 };
-	//glm::vec4 rotQuat     = { 1, 0, 0, 0 };
-	//glm::vec3 translation = { 0, 0, 0 };
-
-	glm::mat4 modelMatrix;			//!< Model transformation matrix
-};
-
 
 #endif

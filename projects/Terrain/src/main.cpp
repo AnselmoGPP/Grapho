@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 		
 		// ENTITIES + COMPONENTS:
 		
-		em.addEntity(std::vector<Component*>{	// Singleton components.
+		em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
 			//new c_Cam_Plane_free,
@@ -63,18 +63,18 @@ int main(int argc, char* argv[])
 			new c_Lights(3) });
 
 		//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
-		em.addEntity(eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
-		//em.addEntity(eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
-		em.addEntity(eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], {texInfos["space_1"]}));
-		em.addEntity(eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
-		em.addEntity(eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
-		em.addEntity(eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		//em.addEntity(eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
-		//em.addEntity(eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntities(eFact.createTree(shaderLoaders["v_basic_332"], shaderLoaders["f_basic_332"], { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
+		//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
+		em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], {texInfos["space_1"]}));
+		em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
+		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
+		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
+		//em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		//em.addEntity("dummy", eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(shaderLoaders["v_basic_332"], shaderLoaders["f_basic_332"], {texInfos["bark_a"]}, {texInfos["branch_a"]}, (c_Lights*)em.getSComponent(CT::lights)));
 
-		if(withPP) em.addEntity(eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
-		else em.addEntity(eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
+		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
+		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		
 		// SYSTEMS:
 
@@ -84,7 +84,6 @@ int main(int argc, char* argv[])
 		em.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
 		em.addSystem(new s_Lights);
 		em.addSystem(new s_Move);
-		em.addSystem(new s_ModelMatrix);
 		em.addSystem(new s_Model);		// update UBOs
 		
 		#ifdef DEBUG_MAIN

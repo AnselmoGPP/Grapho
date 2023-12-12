@@ -484,27 +484,6 @@ void s_Sky_XY::update(float timeStep)
     c_sky->sunDir = { cos(c_sky->sunAngle), sin(c_sky->sunAngle), 0 };
 }
 
-void s_ModelMatrix::update(float timeStep)
-{
-    #ifdef DEBUG_SYSTEM
-        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
-    #endif
-
-    std::vector<uint32_t> entities = em->getEntitySet(CT::modelMatrix);
-
-    c_ModelMatrix* c_mm;
-    const c_Move* c_mov;
-
-    for (uint32_t eId : entities)
-    {
-        c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
-        c_mov = (c_Move*)em->getComponent(CT::move, eId);
-
-        if (c_mov)
-            c_mm->modelMatrix = getModelMatrix(c_mm->scale, c_mov->rotQuat, c_mov->pos);
-    }
-}
-
 void s_Move::updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
 {
     c_mov->pos.x = c_cam->camPos.x + cos(angle) * dist;
@@ -536,6 +515,9 @@ void s_Move::update(float timeStep)
 
         switch (c_mov->moveType)
         {
+        case noMove:
+            break;
+
         case followCam:             // follow cam
             if (c_cam)
                 c_mov->pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
@@ -580,8 +562,9 @@ void s_Model::update(float timeStep)
     if (!c_eng || !c_cam || !c_lights) { std::cout << "Single component not found (s_Model)" << std::endl; return; }
 
     const c_Model* c_model;
-    const c_ModelMatrix* c_mm;
-
+    c_Move* c_mov;
+    glm::mat4 modelMatrix;      // Model transformation matrix
+    
     uint8_t* dest;
     int i;
 
@@ -599,12 +582,22 @@ void s_Model::update(float timeStep)
             break;
         case UboType::mvp:
             {
-                c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
-                if (!c_mm) continue;
+                c_mov = (c_Move*)em->getComponent(CT::move, eId);
+                if (c_mov) modelMatrix = getModelMatrix(c_mov->scale, c_mov->rotQuat, c_mov->pos);
+                else break;
+
+                //if (em->getName(eId) == "sun") {
+                //    printVec(c_mov->scale);
+                //    printVec(c_mov->rotQuat);
+                //    printVec(c_mov->pos);
+                //}
+
+               // c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
+                //if (!c_mm) continue;
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
-                    memcpy(dest + 0 * size.mat4, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
+                    memcpy(dest + 0 * size.mat4, &modelMatrix, sizeof(modelMatrix));
                     memcpy(dest + 1 * size.mat4, &c_cam->view, sizeof(c_cam->view));
                     memcpy(dest + 2 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
                 }
@@ -612,18 +605,22 @@ void s_Model::update(float timeStep)
             }
         case UboType::mvpnl:
             {
-                c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
-                if (!c_mm) continue;
+                c_mov = (c_Move*)em->getComponent(CT::move, eId);
+                if (c_mov) modelMatrix = getModelMatrix(c_mov->scale, c_mov->rotQuat, c_mov->pos);
+                else break;
+
+                //c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
+                //if (!c_mm) continue;
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
-                    memcpy(dest, &c_mm->modelMatrix, sizeof(c_mm->modelMatrix));
+                    memcpy(dest, &modelMatrix, sizeof(modelMatrix));
                     dest += size.mat4;
                     memcpy(dest, &c_cam->view, sizeof(c_cam->view));
                     dest += size.mat4;
                     memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
                     dest += size.mat4;
-                    memcpy(dest, &getModelMatrixForNormals(c_mm->modelMatrix), sizeof(c_mm->modelMatrix));
+                    memcpy(dest, &getModelMatrixForNormals(modelMatrix), sizeof(modelMatrix));
                     dest += size.mat4;
                     memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
                     dest += size.vec4;
