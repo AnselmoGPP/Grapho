@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <numbers>
+#include <random>
 
 #include "noise.hpp"
 

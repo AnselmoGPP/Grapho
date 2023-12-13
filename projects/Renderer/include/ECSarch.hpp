@@ -27,8 +27,8 @@ extern enum class CT
     sky,
     model,
     move,
-    modelMatrix,
-    planet
+    planet,
+    distributor
 };
 
 /// It stores state data (fields) and have no behavior (no methods).

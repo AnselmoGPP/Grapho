@@ -1428,7 +1428,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
 {
     if (!modelOrdered) return;
     
-    // Get sorted grass parameters
+    // Get grass parameters
     if (this->camDir != camDir || this->camPos != camPos || this->fov != fov || renderRequired(planet))
     {
         this->camDir = camDir;
@@ -1611,10 +1611,10 @@ void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet)
 
     // Precalculations
     float step           = 0.5;   // <<< this is arbitrary
-    glm::vec3 normal     = glm::normalize(camPos - planet.nucleus);
-    glm::vec4 latLonQuat = getLatLonRotQuat(normal);
-    glm::vec3 front      = rotatePoint(latLonQuat, zAxis);
-    glm::vec3 right      = glm::normalize(glm::cross(front, normal));     //glm::normalize(glm::cross(front, zAxis));
+    glm::vec3 normal     = glm::normalize(camPos - planet.nucleus);     // Cam's normal is considered the normal for all items.
+    glm::vec4 latLonQuat = getLatLonRotQuat(normal);                    // Rotation quaternion around world coordinates for all items.
+    glm::vec3 front      = rotatePoint(latLonQuat, zAxis);              // Front for all items (looks north).
+    glm::vec3 right      = glm::normalize(glm::cross(front, normal));   // Right for all items. // glm::normalize(glm::cross(front, zAxis));
     
     // Get vertices for grass
     chunks.clear();
@@ -1627,11 +1627,11 @@ void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet)
     sca.clear();
     slp.clear();
     
-    for (int i = 0; i < chunks.size(); i++)
+    for (int i = 0; i < chunks.size(); i++)     // for each chunk
     {
         vert = chunks[i]->getVertices();
 
-        for (int j = 0; j < vert->size(); j += 9)
+        for (int j = 0; j < vert->size(); j += 9)   // for each vertex
         {
             // Filter (choose positions that support grass)
             gPos = glm::vec3((*vert)[j+0], (*vert)[j+1], (*vert)[j+2]);

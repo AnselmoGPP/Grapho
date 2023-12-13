@@ -422,6 +422,7 @@ protected:
 	//std::vector<int> index;		//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
 
 	//Quicksort_distVec3_index sorter;
+
 	bool modelOrdered;
 	glm::vec3 camPos, camDir;
 	float pi, fov;

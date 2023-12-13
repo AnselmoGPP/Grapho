@@ -251,4 +251,14 @@ struct c_Move : public Component
 	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
 
+/// Used for distributing multiple instances of the same object over a surface
+struct c_Distributor : public Component
+{
+	c_Distributor();
+	~c_Distributor() { };
+	void printInfo() const { };
+
+	std::vector<std::vector<int>> distroMap;
+};
+
 #endif

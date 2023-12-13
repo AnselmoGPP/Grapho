@@ -1,7 +1,17 @@
 TODO:
+	RONALD
+	UNIV (día 20)
+	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta )
+	BTC
+	PARTE HORAS RDT
+
+	Grass:
+		Dont' we have ground normal?
+
 	Use basic shaders (v_basic_332, for example)
 	Don't update static ubo's values
 	ShaderModifier (defines what textures are passed: albedo, normal, spec, roughness)
+	Terrain chunk: Why 29 vertices per side?
 
 	noiser::getRange() necessary?
 	Planet general texture
