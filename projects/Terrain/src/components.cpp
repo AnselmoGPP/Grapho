@@ -149,17 +149,24 @@ void c_Camera::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Move::c_Move(MoveType moveType, float jumpStep, float scale, glm::vec3 position)
-	: Component(CT::move), scale(scale, scale, scale), pos(position), moveType(moveType), jumpStep(jumpStep) { };
+c_ModelParams::c_ModelParams(glm::vec3 scale, glm::vec3 position, glm::vec4 rotQuat) 
+	: Component(CT::modelParams), scale(scale), pos(position), rotQuat(rotQuat) { };
 
-c_Move::c_Move(MoveType moveType)
-	: Component(CT::move), moveType(moveType) { };
+void c_ModelParams::printInfo() const
+{
+	std::cout << "scale: "; printVec(scale);
+	std::cout << "rotQuat: "; printVec(rotQuat);
+	std::cout << "pos: "; printVec(pos);
+
+	std::cout << "----------" << std::endl;
+}
+
+c_Move::c_Move(MoveType moveType, float jumpStep) 
+	: Component(CT::move), moveType(moveType), jumpStep(jumpStep) { };
 
 void c_Move::printInfo() const
 {
 	std::cout << "moveType: " << moveType << std::endl;
-	std::cout << "pos: "; printVec(pos);
-	std::cout << "rotQuat: "; printVec(rotQuat);
 	std::cout << "jumpStep: " << jumpStep << std::endl;
 
 	std::cout << "----------" << std::endl;

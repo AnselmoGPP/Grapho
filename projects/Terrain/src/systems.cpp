@@ -484,13 +484,13 @@ void s_Sky_XY::update(float timeStep)
     c_sky->sunDir = { cos(c_sky->sunAngle), sin(c_sky->sunAngle), 0 };
 }
 
-void s_Move::updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
+void s_Move::updateSkyMove(c_ModelParams* c_mParams, const c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
 {
-    c_mov->pos.x = c_cam->camPos.x + cos(angle) * dist;
-    c_mov->pos.y = c_cam->camPos.y + sin(angle) * dist;
-    c_mov->pos.z = c_cam->camPos.z;
+    c_mParams->pos.x = c_cam->camPos.x + cos(angle) * dist;
+    c_mParams->pos.y = c_cam->camPos.y + sin(angle) * dist;
+    c_mParams->pos.z = c_cam->camPos.z;
 
-    c_mov->rotQuat = productQuat(
+    c_mParams->rotQuat = productQuat(
         getRotQuat(glm::vec3(0, 1, 0), 3 * pi / 2),
         getRotQuat(glm::vec3(0, 0, 1), angle));
 }
@@ -501,17 +501,23 @@ void s_Move::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
+    // Entities with the component
     std::vector<uint32_t> entities = em->getEntitySet(CT::move);
-
+    
+    // Singletons
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Sky* c_sky = (c_Sky*)em->getSComponent(CT::sky);
     if (!c_cam || !c_sky) std::cout << "Single component not found (s_Model)" << std::endl;
 
-    c_Move* c_mov;
+    // Traverse the entities
+    const c_Move* c_mov;
+    c_ModelParams* c_mParams;   // component to update
 
     for (uint32_t eId : entities)
     {
         c_mov = (c_Move*)em->getComponent(CT::move, eId);
+        c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
+        if (!c_mParams) { std::cout << "c_mParams not found" << std::endl; continue; }
 
         switch (c_mov->moveType)
         {
@@ -520,25 +526,25 @@ void s_Move::update(float timeStep)
 
         case followCam:             // follow cam
             if (c_cam)
-                c_mov->pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
+                c_mParams->pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
             break;
 
         case followCamXY:           // follow cam on axis XY
             if (c_cam)
-                c_mov->pos = glm::vec3(
+                c_mParams->pos = glm::vec3(
                     c_cam->camPos.x - safeMod(c_cam->camPos.x, c_mov->jumpStep),
                     c_cam->camPos.y - safeMod(c_cam->camPos.y, c_mov->jumpStep),
-                    c_mov->pos.z );
+                    c_mParams->pos.z );
             break;
 
         case skyOrbit:              // Update using c_Sky::skyAngle
             if (c_cam && c_sky)
-                updateSkyMove(c_mov, c_cam, c_sky->skyAngle, 0);
+                updateSkyMove(c_mParams, c_mov, c_cam, c_sky->skyAngle, 0);
             break;
 
         case sunOrbit:              // Update using c_Sky::sunAngle
             if (c_cam && c_sky)
-                updateSkyMove(c_mov, c_cam, c_sky->sunAngle, c_sky->sunDist);
+                updateSkyMove(c_mParams, c_mov, c_cam, c_sky->sunAngle, c_sky->sunDist);
             break;
 
         default:
@@ -554,17 +560,20 @@ void s_Model::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
+    // Entities with the component
     std::vector<uint32_t> entities = em->getEntitySet(CT::model);
 
+    // Singletons
     const c_Engine* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Lights* c_lights = (c_Lights*)em->getSComponent(CT::lights);
     if (!c_eng || !c_cam || !c_lights) { std::cout << "Single component not found (s_Model)" << std::endl; return; }
 
+    // Traverse the entities
     const c_Model* c_model;
-    c_Move* c_mov;
+    const c_ModelParams* c_mParams;
+
     glm::mat4 modelMatrix;      // Model transformation matrix
-    
     uint8_t* dest;
     int i;
 
@@ -582,35 +591,27 @@ void s_Model::update(float timeStep)
             break;
         case UboType::mvp:
             {
-                c_mov = (c_Move*)em->getComponent(CT::move, eId);
-                if (c_mov) modelMatrix = getModelMatrix(c_mov->scale, c_mov->rotQuat, c_mov->pos);
-                else break;
+                c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
+                if (c_mParams) modelMatrix = getModelMatrix(c_mParams->scale, c_mParams->rotQuat, c_mParams->pos);
+                else { std::cout << "c_mParams not found" << std::endl; break; }
 
-                //if (em->getName(eId) == "sun") {
-                //    printVec(c_mov->scale);
-                //    printVec(c_mov->rotQuat);
-                //    printVec(c_mov->pos);
-                //}
-
-               // c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
-                //if (!c_mm) continue;
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
-                    memcpy(dest + 0 * size.mat4, &modelMatrix, sizeof(modelMatrix));
-                    memcpy(dest + 1 * size.mat4, &c_cam->view, sizeof(c_cam->view));
-                    memcpy(dest + 2 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
+                    memcpy(dest, &modelMatrix, sizeof(modelMatrix));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->view, sizeof(c_cam->view));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
                 }
                 break;
             }
         case UboType::mvpnl:
             {
-                c_mov = (c_Move*)em->getComponent(CT::move, eId);
-                if (c_mov) modelMatrix = getModelMatrix(c_mov->scale, c_mov->rotQuat, c_mov->pos);
-                else break;
-
-                //c_mm = (c_ModelMatrix*)em->getComponent(CT::modelMatrix, eId);
-                //if (!c_mm) continue;
+                c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
+                if (c_mParams) modelMatrix = getModelMatrix(c_mParams->scale, c_mParams->rotQuat, c_mParams->pos);
+                else { std::cout << "c_mParams not found" << std::endl; break; }
+                
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
@@ -643,17 +644,27 @@ void s_Model::update(float timeStep)
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsDynUBO.numDynUBOs; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsDynUBO.getUBOptr(i);
-                    memcpy(dest + 0 * size.vec4, &c_cam->fov, sizeof(c_cam->fov));
-                    memcpy(dest + 1 * size.vec4, &aspectRatio, sizeof(aspectRatio));
-                    memcpy(dest + 2 * size.vec4, &c_cam->camPos, sizeof(c_cam->camPos));
-                    memcpy(dest + 3 * size.vec4, &c_cam->front, sizeof(c_cam->front));
-                    memcpy(dest + 4 * size.vec4, &c_cam->camUp, sizeof(c_cam->camUp));
-                    memcpy(dest + 5 * size.vec4, &c_cam->right, sizeof(c_cam->right));
-                    memcpy(dest + 6 * size.vec4, &c_lights->lights.posDir[0].direction, sizeof(glm::vec3)); // sun direction
-                    memcpy(dest + 7 * size.vec4, &clipPlanes, sizeof(clipPlanes));
-                    memcpy(dest + 8 * size.vec4, &screenSize, sizeof(screenSize));
-                    memcpy(dest + 9 * size.vec4, &c_cam->view, sizeof(c_cam->view));
-                    memcpy(dest + 9 * size.vec4 + 1 * size.mat4, &c_cam->proj, sizeof(c_cam->proj));
+                    memcpy(dest, &c_cam->fov, sizeof(c_cam->fov));
+                    dest += size.vec4;
+                    memcpy(dest, &aspectRatio, sizeof(aspectRatio));
+                    dest += size.vec4;
+                    memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
+                    dest += size.vec4;
+                    memcpy(dest, &c_cam->front, sizeof(c_cam->front));
+                    dest += size.vec4;
+                    memcpy(dest, &c_cam->camUp, sizeof(c_cam->camUp));
+                    dest += size.vec4;
+                    memcpy(dest, &c_cam->right, sizeof(c_cam->right));
+                    dest += size.vec4;
+                    memcpy(dest, &c_lights->lights.posDir[0].direction, sizeof(glm::vec3)); // sun direction
+                    dest += size.vec4;
+                    memcpy(dest, &clipPlanes, sizeof(clipPlanes));
+                    dest += size.vec4;
+                    memcpy(dest, &screenSize, sizeof(screenSize));
+                    dest += size.vec4;
+                    memcpy(dest, &c_cam->view, sizeof(c_cam->view));
+                    dest += size.mat4;
+                    memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
                 }
                 break;
             }

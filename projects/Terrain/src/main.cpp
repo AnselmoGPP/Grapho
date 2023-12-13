@@ -57,8 +57,8 @@ int main(int argc, char* argv[])
 		em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
-			//new c_Cam_Plane_free,
-			new c_Cam_Sphere,
+			new c_Cam_Plane_free,
+			//new c_Cam_Sphere,
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
 
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 		em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
 		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		//em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
 		//em.addEntity("dummy", eFact.createDummy(shaderLoaders["v_subject"], shaderLoaders["f_subject"], { }, (c_Lights*)em.getSComponent(CT::lights)));
 		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(shaderLoaders["v_basic_332"], shaderLoaders["f_basic_332"], {texInfos["bark_a"]}, {texInfos["branch_a"]}, (c_Lights*)em.getSComponent(CT::lights)));
 

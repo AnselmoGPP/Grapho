@@ -8,11 +8,12 @@ TODO:
 	Grass:
 		Dont' we have ground normal?
 
+	Delete noMove and noData?
 	Use basic shaders (v_basic_332, for example)
 	Don't update static ubo's values
 	ShaderModifier (defines what textures are passed: albedo, normal, spec, roughness)
 	Terrain chunk: Why 29 vertices per side?
-
+	
 	noiser::getRange() necessary?
 	Planet general texture
 	Put as components the main Renderer & other classes parameters

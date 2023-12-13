@@ -23,7 +23,9 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 		false,
 		1);
 
-	return std::vector<Component*> { new c_Model_normal(model, UboType::noData) };
+	return std::vector<Component*> { 
+		new c_Model_normal(model, UboType::noData) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader)
@@ -51,7 +53,9 @@ std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, Sh
 		false,
 		1);
 
-	return std::vector<Component*> { new c_Model_normal(model, UboType::atmosphere) };
+	return std::vector<Component*> { 
+		new c_Model_normal(model, UboType::atmosphere) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createReticule(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -75,7 +79,8 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
 		new c_Model_normal(model, UboType::mvp),
-		new c_Move(skyOrbit, 0, 100)		// 1 day ≈ 30 min
+		new c_ModelParams(glm::vec3(100,100,100)),
+		new c_Move(skyOrbit)						// 1 day ≈ 30 min
 	};
 }
 
@@ -99,7 +104,8 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp),
-		new c_Move(sunOrbit, 0, 10)		// 1 year ≈ 6 hours
+		new c_ModelParams(glm::vec3(10, 10, 10)),
+		new c_Move(sunOrbit)						// 1 year ≈ 6 hours
 	};
 }
 
@@ -123,8 +129,9 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 		0 );
 
 	return std::vector<Component*> { 
-		new c_Model_normal(model, UboType::mvp), 
-		new c_Move(followCamXY, gridStep, 1) 
+		new c_Model_normal(model, UboType::mvp),
+		new c_ModelParams(),
+		new c_Move(followCamXY, gridStep) 
 	};
 }
 
@@ -146,7 +153,8 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 		0 );
 
 	return std::vector<Component*> { 
-		new c_Model_normal(model, UboType::mvp), 
+		new c_Model_normal(model, UboType::mvp),
+		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	};
 }
@@ -167,7 +175,8 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 		0 );
 
 	return std::vector<Component*> { 
-		new c_Model_normal(model, UboType::mvp), 
+		new c_Model_normal(model, UboType::mvp),
+		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	};
 }
@@ -179,7 +188,9 @@ std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, Shader
 	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
 	seaSphere->addResources(shaders, textures);
 
-	return std::vector<Component*>{ new c_Model_planet(seaSphere) };
+	return std::vector<Component*>{ 
+		new c_Model_planet(seaSphere) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
@@ -222,7 +233,9 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 	Planet* planet = new Planet(&renderer, multiNoise, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
 	planet->addResources(shaders, textures);
 	
-	return std::vector<Component*>{ new c_Model_planet(planet) };
+	return std::vector<Component*>{ 
+		new c_Model_planet(planet) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
@@ -240,7 +253,9 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	GrassSystem_planet* grass = new GrassSystem_planet(renderer, 20, 6);
 	grass->createGrassModel(shaders, textureSet, lights);
 
-	return std::vector<Component*>{ new c_Model_grassPlanet(grass) };
+	return std::vector<Component*>{ 
+		new c_Model_grassPlanet(grass) 
+	};
 }
 
 std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
@@ -267,7 +282,8 @@ std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderL
 	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
 	
 	return std::vector<Component*>{ 
-		new c_Model_normal(model, UboType::mvpnl), 
+		new c_Model_normal(model, UboType::mvpnl),
+		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	};
 }
@@ -297,7 +313,8 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model, UboType::mvpnl), 
+		new c_Model_normal(model, UboType::mvpnl),
+		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	});
 	
@@ -315,7 +332,8 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model2, UboType::mvpnl), 
+		new c_Model_normal(model2, UboType::mvpnl),
+		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	});
 	

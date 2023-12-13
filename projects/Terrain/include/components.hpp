@@ -234,24 +234,30 @@ struct c_Model_grassPlanet : public c_Model
 	GrassSystem_planet* grass;
 };
 
-/// Determines the translation for the Model matrix 
-struct c_Move : public Component
+/// Determines the Model matrix parameters (scale, rotation, translation/position)
+struct c_ModelParams : public Component
 {
-	c_Move(MoveType moveType, float jumpStep, float scale, glm::vec3 position = { 0, 0, 0 });
-	c_Move(MoveType moveType);
-	~c_Move() { };
+	c_ModelParams(glm::vec3 scale = {1, 1, 1}, glm::vec3 position = {0, 0, 0}, glm::vec4 rotQuat = { 1, 0, 0, 0 });
+	~c_ModelParams() { };
 	void printInfo() const;
-
-	MoveType moveType;
 
 	glm::vec3 scale = { 1, 1, 1 };
 	glm::vec4 rotQuat = { 1, 0, 0, 0 };
 	glm::vec3 pos = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+};
 
+/// Determines the move type
+struct c_Move : public Component
+{
+	c_Move(MoveType moveType, float jumpStep = 0);
+	~c_Move() { };
+	void printInfo() const;
+
+	MoveType moveType;
 	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
 
-/// Used for distributing multiple instances of the same object over a surface
+/// Determines the distribution over a surface of one or more instances of the same model (or set of models).
 struct c_Distributor : public Component
 {
 	c_Distributor();

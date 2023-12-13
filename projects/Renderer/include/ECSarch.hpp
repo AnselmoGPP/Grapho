@@ -26,6 +26,7 @@ extern enum class CT
     lights,
     sky,
     model,
+    modelParams,
     move,
     planet,
     distributor

@@ -99,7 +99,7 @@ public:
 
 class s_Move : public System
 {
-    void updateSkyMove(c_Move* c_mov, const c_Camera* c_cam, float angle, float dist);
+    void updateSkyMove(c_ModelParams* c_mParams, const c_Move* c_mov, const c_Camera* c_cam, float angle, float dist);
 
 public:
     s_Move() : System() { };
@@ -115,6 +115,15 @@ public:
     ~s_Model() { };
 
     void update(float timeStep) override;
+};
+
+class s_Distributor : public System
+{
+public:
+    s_Distributor() : System() { };
+    ~s_Distributor() { };
+
+    void update(float timeStep) override { };
 };
 
 /// Update XXX
