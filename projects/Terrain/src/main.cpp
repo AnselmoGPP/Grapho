@@ -184,7 +184,7 @@ void loadResourcesInfo()
 	texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
 	texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
 
-	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
+	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.png")));
 	//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
 	texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
 

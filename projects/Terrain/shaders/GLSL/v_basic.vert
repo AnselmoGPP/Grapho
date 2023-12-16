@@ -16,12 +16,13 @@ layout(set = 0, binding = 0) uniform ubobject {
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUVs;
+//normal: layout(location = 3) in vec2 inTan;
 
 layout(location = 0) out vec3 outPos;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUVs;
 layout(location = 3) flat out vec3 outCamPos;
-//layout(location = 4) out TB   outTB;						// Tangents & Bitangents
+//normal: layout(location = 4) out TB outTB;				// Tangents & Bitangents
 layout(location = 4) flat out LightPD outLight[NUMLIGHTS];	// light positions & directions
 
 void main()

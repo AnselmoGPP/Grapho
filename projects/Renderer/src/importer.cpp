@@ -424,7 +424,7 @@ std::list<Shader>::iterator SLModule::loadShader(std::list<Shader>& loadedShader
 
 void SLModule::applyModifications(std::string& shader)
 {
-	int count = 0;
+	int count = 0, i;
 	bool found;
 	
 	for (shaderModifier mod : mods)
@@ -451,10 +451,12 @@ void SLModule::applyModifications(std::string& shader)
 
 		case normal:					// (FS) Sampler used <<< doesn't work yet
 			found = findTwoAndReplaceBetween(shader, "vec3 normal", ";",
-				"vec3 normal = planarNormal(texSampler[" + std::to_string(count) + "], inUVs, 1)");
+				"vec3 normal = planarNormal(texSampler[" + std::to_string(count) + "], inUVs, inTB, inNormal, 1)");
 			if (found) count++;
+			for (i = 0; i < 3; i++) if (!findStrAndErase(shader, "//normal: ")) break;
+			findStrAndReplace(shader, "layout(location = 4) flat", "layout(location = 6) flat");
 			break;
-
+			
 		case discardAlpha:				// (FS) Discard fragments with low alpha
 			findStrAndErase(shader, "//discardAlpha: ");
 			break;

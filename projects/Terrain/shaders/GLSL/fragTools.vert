@@ -127,8 +127,8 @@ struct TB
 {
 	vec3 tan;		// U direction in bump map
 	vec3 bTan;		// V direction in bump map
-	//vec3 norm;	// Z direction in tangent space
-} tb1;
+	//vec3 normal;	// Z direction in tangent space
+};
 
 // Tangent (T) and Bitangent (B) of each dimension (3)
 struct TB3
@@ -139,7 +139,7 @@ struct TB3
 	vec3 bTanY;
 	vec3 tanZ;
 	vec3 bTanZ;
-} tb;
+} tb3;
 
 // Gradients for the X and Y texture coordinates can be used for fetching the textures when non-uniform flow control exists (https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control).  
 struct uvGradient
@@ -357,24 +357,17 @@ vec3 mixByHeight(vec3 tex_A, vec3 tex_B, float height_A, float height_B, float r
 // They store shader variables in this library, making them global for this library and allowing it to use them.
 
 // Save fragment position.
-void saveP(vec3 pos) { fragPos = pos; }
+//void saveP(vec3 pos) { fragPos = pos; }
 
 // Save Tangent and Bitangent vectors.
-void saveTB3(TB3 tb3) { tb = tb3; }
-
-// Save fragment position and normal.
-void savePN(vec3 pos, vec3 norm)
-{
-	fragPos = pos;
-	normal  = normalize(norm);
-}
+//void saveTB3(TB3 tb_3) { tb3 = tb_3; }
 
 // Save fragment position, normal, Tangent, and Bitangent.
-void savePNT(vec3 pos, vec3 norm, TB3 tb3)
+void savePNT(vec3 pos, vec3 norm, TB3 tb_3)
 {
 	fragPos = pos;
 	normal  = normalize(norm);
-	tb      = tb3;
+	tb3     = tb_3;				// Tangent & Bitangent
 }
 
 // (UNOPTIMIZED) Precalculate (to avoid repeating calculations) and save (for making them global for this library) variables required for calculating light.
@@ -560,9 +553,9 @@ vec3 triplanarNormal(sampler2D tex, float texFactor)
 	tnormalX.x *= -axis.x;	
 	
 	// World space normals
-	tnormalX = mat3(tb.tanX, tb.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
-	tnormalY = mat3(tb.tanY, tb.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
-	tnormalZ = mat3(tb.tanZ, tb.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
+	tnormalX = mat3(tb3.tanX, tb3.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
+	tnormalY = mat3(tb3.tanY, tb3.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
+	tnormalZ = mat3(tb3.tanZ, tb3.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
 	
 	// Weighted average
 	vec3 weights = abs(normal);
@@ -730,9 +723,9 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 	tnormalX.x *= -axis.x;	
 	
 	// World space normals
-	tnormalX = mat3(tb.tanX, tb.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
-	tnormalY = mat3(tb.tanY, tb.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
-	tnormalZ = mat3(tb.tanZ, tb.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
+	tnormalX = mat3(tb3.tanX, tb3.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
+	tnormalY = mat3(tb3.tanY, tb3.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
+	tnormalZ = mat3(tb3.tanZ, tb3.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
 	
 	// Weighted average
 	vec3 weights = abs(normal);
@@ -789,9 +782,9 @@ vec3 triplanarNormal(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient d
 	tnormalX.x *= -axis.x;	
 	
 	// World space normals
-	tnormalX = mat3(tb.tanX, tb.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
-	tnormalY = mat3(tb.tanY, tb.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
-	tnormalZ = mat3(tb.tanZ, tb.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
+	tnormalX = mat3(tb3.tanX, tb3.bTanX, normal) * tnormalX;	// TBN_X * tnormalX
+	tnormalY = mat3(tb3.tanY, tb3.bTanY, normal) * tnormalY;	// TBN_Y * tnormalY
+	tnormalZ = mat3(tb3.tanZ, tb3.bTanZ, normal) * tnormalZ;	// TBN_Z * tnormalZ
 	
 	// Weighted average
 	vec3 weights = abs(normal);
@@ -804,13 +797,13 @@ vec3 triplanarNormal(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient d
 // Others ------------------------------------------------------------------------
 
 // Get normal from the vertex normal (world normal) and a normal map (tangent space normal).
-vec3 planarNormal(sampler2D tex, vec2 UVs, float texFactor)
+vec3 planarNormal(sampler2D tex, vec2 UVs, TB tb, vec3 normal, float texFactor)
 {	
 	// Tangen space normal
 	vec3 tnormal = unpackNormal(texture(tex, unpackUV(UVs, texFactor)).xyz);
 	
 	// Final World space normal
-	return mat3(tb1.tan, tb1.bTan, normal) * tnormal;	// TBN * tnormal
+	return mat3(tb.tan, tb.bTan, normal) * tnormal;	// TBN * tnormal  (convert tangent space normal to world space)
 }
 
 // Get ratio (return value) of 2 different texture resolutions (texFactor1, texFactor2). Used for getting textures of different resolutions depending upon distance to fragment, and for mixing them.
