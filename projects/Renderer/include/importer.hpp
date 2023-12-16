@@ -156,15 +156,25 @@ public:
 	const VkShaderModule shaderModule;
 };
 
+/// Defines some changes that can be done to the shader before compilation.
+enum shaderModifier { albedo, normal, specularity, roughness, backfaceNormals, discardAlpha};
+
 class SLModule		/// Shader Loader Module
 {
+	std::vector<shaderModifier> mods;				//!< Modifications to the shader.
+	void applyModifications(std::string& shader);	//!< Applies modifications defined by "mods".
+
+	bool findStrAndErase(std::string& text, const std::string& str);									//!< Find string and erase it.
+	bool findStrAndReplace(std::string& text, const std::string& str, const std::string& replacement);	//!< Find string and replace it with another.
+	bool findTwoAndReplaceBetween(std::string& text, const std::string& str1, const std::string& str2, const std::string& replacement);	//!< Find two sub-strings and replace what is in between the beginning of each sub-string.
+
 protected:
 	std::string id;
 
 	virtual void getRawData(std::string& glslData) = 0;
 
 public:
-	SLModule(const std::string& id) : id(id) { };
+	SLModule(const std::string& id, std::vector<shaderModifier>& modifications);
 	virtual ~SLModule() { };
 
 	std::list<Shader>::iterator loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment* e);	//!< Get an iterator to the shader in loadedShaders. If it's not in that list, it loads it, saves it in the list, and gets the iterator. 
@@ -178,7 +188,7 @@ class SLM_fromBuffer : public SLModule
 	void getRawData(std::string& glslData) override;
 
 public:
-	SLM_fromBuffer(const std::string& id, const std::string& glslText);
+	SLM_fromBuffer(const std::string& id, const std::string& glslText, std::vector<shaderModifier>& modifications);
 	SLModule* clone() override;
 };
 
@@ -189,7 +199,7 @@ class SLM_fromFile : public SLModule
 	void getRawData(std::string& glslData) override;
 
 public:
-	SLM_fromFile(const std::string& filePath);
+	SLM_fromFile(const std::string& filePath, std::vector<shaderModifier>& modifications);
 	SLModule* clone() override;
 };
 
@@ -199,8 +209,8 @@ class ShaderLoader
 	SLModule* loader;
 
 public:
-	ShaderLoader(const std::string& filePath);						//!< From file
-	ShaderLoader(const std::string& id, const std::string& text);	//!< From buffer
+	ShaderLoader(const std::string& filePath, std::vector<shaderModifier>& modifications = std::vector<shaderModifier>());						//!< From file
+	ShaderLoader(const std::string& id, const std::string& text, std::vector<shaderModifier>& modifications = std::vector<shaderModifier>());	//!< From buffer
 	ShaderLoader();													//!< Default constructor
 	ShaderLoader(const ShaderLoader& obj);							//!< Copy constructor (necessary because loader can be freed in destructor)
 	~ShaderLoader();

@@ -16,17 +16,4 @@ extern const std::string shadersDir;
 extern const std::string vertexDir;
 extern const std::string texDir;
 
-// Camera
-//extern FreePolarCam camera_1;
-//extern SphereCam camera_2;
-//extern PlaneCam camera_3;
-//extern PlanetFPcam camera_4;
-
-// Resources
-
-extern ShaderLoader ShaderLoadersX[];
-extern TextureLoader texInfosX[];
-
-extern std::vector<TextureLoader> usedTexturesX;	// Package of textures
-
 #endif

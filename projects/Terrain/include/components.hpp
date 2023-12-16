@@ -43,7 +43,7 @@ struct c_ModelMatrix;
 // enumerations --------------------------------------
 
 enum MoveType { noMove, followCam, followCamXY, skyOrbit, sunOrbit };
-enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, mvpnl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
+enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, mvpncl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
 // Singletons --------------------------------------
@@ -196,6 +196,15 @@ struct c_Sky : public Component
 	glm::vec3 sunDir;				//!< Direction to sun
 };
 
+//struct c_World
+//{
+//	c_World() : Component(CT::world) { };
+//	~c_World() { };
+//	void printInfo() const { };
+//
+//	enum worldType { flat, sphere };
+//};
+
 // Non-Singletons --------------------------------------
 
 struct c_Model : public Component	//!< Its children doesn't have the same interface, so UboType enum is used to identify them.
@@ -241,9 +250,9 @@ struct c_ModelParams : public Component
 	~c_ModelParams() { };
 	void printInfo() const;
 
-	glm::vec3 scale = { 1, 1, 1 };
+	glm::vec3 scale   = { 1, 1, 1 };
 	glm::vec4 rotQuat = { 1, 0, 0, 0 };
-	glm::vec3 pos = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+	glm::vec3 pos     = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
 };
 
 /// Determines the move type
@@ -264,7 +273,12 @@ struct c_Distributor : public Component
 	~c_Distributor() { };
 	void printInfo() const { };
 
-	std::vector<std::vector<int>> distroMap;
+	//std::vector<std::vector<int>> distroMap;
+	std::vector<glm::vec3> pos;     //!< position
+	std::vector<glm::vec4> rot;     //!< rotation quaternions
+	std::vector<glm::vec3> sca;		//!< scaling
+	std::vector<float> slp;			//!< ground slope
+	//std::vector<int> index;		//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
 };
 
 #endif

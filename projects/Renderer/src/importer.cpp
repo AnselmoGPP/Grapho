@@ -358,6 +358,17 @@ Shader::Shader(VulkanEnvironment& e, const std::string id, VkShaderModule shader
 
 Shader::~Shader() { vkDestroyShaderModule(e.c.device, shaderModule, nullptr); }
 
+SLModule::SLModule(const std::string& id, std::vector<shaderModifier>& modifications) 
+	: id(id), mods(modifications)
+{
+	if (mods.size())	// if there're modifiers, name has to change. Otherwise, it's possible that 2 different shaders have same name when the original shader is the same.
+	{
+		this->id += "_";
+		for(shaderModifier mod : mods)
+			this->id += std::to_string((int)mod);
+	}
+};
+
 std::list<Shader>::iterator SLModule::loadShader(std::list<Shader>& loadedShaders, VulkanEnvironment* e)
 {
 	#ifdef DEBUG_RESOURCES
@@ -371,6 +382,9 @@ std::list<Shader>::iterator SLModule::loadShader(std::list<Shader>& loadedShader
 	// Load shader (if not loaded yet)
 	std::string glslData;
 	getRawData(glslData);
+
+	// Make some changes to the shader string.
+	if (mods.size()) applyModifications(glslData);
 
 	// Compile data (preprocessing > compilation):
 	shaderc::CompileOptions options;
@@ -408,28 +422,106 @@ std::list<Shader>::iterator SLModule::loadShader(std::list<Shader>& loadedShader
 	return (--loadedShaders.end());
 }
 
-SLM_fromBuffer::SLM_fromBuffer(const std::string& id, const std::string& glslText) 
-	: SLModule(id), data(glslText) { }
+void SLModule::applyModifications(std::string& shader)
+{
+	int count = 0;
+	bool found;
+	
+	for (shaderModifier mod : mods)
+	{
+		switch (mod)
+		{
+		case albedo:					// (FS) Sampler used
+			found = findTwoAndReplaceBetween(shader, "vec4 albedo", ";",
+				"vec4 albedo = texture(texSampler[" + std::to_string(count) + "], inUVs)");
+			if (found) count++;
+			break;
+
+		case specularity:				// (FS) Sampler used
+			found = findTwoAndReplaceBetween(shader, "vec3 specular", ";",
+				"vec3 specular = texture(texSampler[" + std::to_string(count) + "], inUVs).xyz");
+			if (found) count++;
+			break;
+
+		case roughness:					// (FS) Sampler used
+			found = findTwoAndReplaceBetween(shader, "float roughness", ";",
+				"float roughness = texture(texSampler[" + std::to_string(count) + "], inUVs).x");
+			if (found) count++;
+			break;
+
+		case normal:					// (FS) Sampler used <<< doesn't work yet
+			found = findTwoAndReplaceBetween(shader, "vec3 normal", ";",
+				"vec3 normal = planarNormal(texSampler[" + std::to_string(count) + "], inUVs, 1)");
+			if (found) count++;
+			break;
+
+		case discardAlpha:				// (FS) Discard fragments with low alpha
+			findStrAndErase(shader, "//discardAlpha: ");
+			break;
+
+		case backfaceNormals:			// (VS) Recalculate normal based on backfacing
+			findStrAndErase(shader, "//backfaceNormals: ");
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	if (count > 0)
+		findStrAndReplace(shader, "texSampler[1]", "texSampler[" + std::to_string((int)count) + "]");
+}
+
+bool SLModule::findTwoAndReplaceBetween(std::string& text, const std::string& str1, const std::string& str2, const std::string& replacement)
+{
+	size_t pos1  = text.find(str1, 0);
+	size_t pos2 = text.find(str2, pos1);
+	if (pos1 == text.npos || pos2 == text.npos) return false;
+
+	text.replace(pos1, pos2 - pos1, (replacement));
+	return true;
+}
+
+bool SLModule::findStrAndErase(std::string& text, const std::string& str)
+{
+	size_t pos = text.find(str, 0);
+	if (pos == text.npos) return false;
+
+	text.erase(pos, str.size());
+	return true;
+}
+
+bool SLModule::findStrAndReplace(std::string& text, const std::string& str, const std::string& replacement)
+{
+	size_t pos = text.find(str, 0);
+	if (pos == text.npos) return false;
+
+	text.replace(text.begin() + pos, text.begin() + pos + str.size(), replacement);
+	return true;
+}
+
+SLM_fromBuffer::SLM_fromBuffer(const std::string& id, const std::string& glslText, std::vector<shaderModifier>& modifications)
+	: SLModule(id, modifications), data(glslText) { }
 
 SLModule* SLM_fromBuffer::clone() { return new SLM_fromBuffer(*this); }
 
 void SLM_fromBuffer::getRawData(std::string& glslData) { glslData = data; }
 
-SLM_fromFile::SLM_fromFile(const std::string& filePath) 
-	: SLModule(filePath), filePath(filePath) { };
+SLM_fromFile::SLM_fromFile(const std::string& filePath, std::vector<shaderModifier>& modifications)
+	: SLModule(filePath, modifications), filePath(filePath) { };
 
 SLModule* SLM_fromFile::clone() { return new SLM_fromFile(*this); }
 
 void SLM_fromFile::getRawData(std::string& glslData) { readFile(filePath.c_str(), glslData); }
 
-ShaderLoader::ShaderLoader(const std::string& filePath)
+ShaderLoader::ShaderLoader(const std::string& filePath, std::vector<shaderModifier>& modifications)
 {
-	loader = new SLM_fromFile(filePath);
+	loader = new SLM_fromFile(filePath, modifications);
 }
 
-ShaderLoader::ShaderLoader(const std::string& id, const std::string& text)
+ShaderLoader::ShaderLoader(const std::string& id, const std::string& text, std::vector<shaderModifier>& modifications)
 {
-	loader = new SLM_fromBuffer(id, text);
+	loader = new SLM_fromBuffer(id, text, modifications);
 }
 
 ShaderLoader::ShaderLoader() : loader(nullptr) { }

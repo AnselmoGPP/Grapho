@@ -240,6 +240,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 
 std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
 {
+	/*
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
 	else { 
@@ -256,39 +257,38 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{ 
 		new c_Model_grassPlanet(grass) 
 	};
-}
+	*/
 
-std::vector<Component*> EntityFactory::createDummy(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
-{
+	// ---------------------------
+	
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
 	else {
 		std::cout << "No c_Light component found" << std::endl;
 		return std::vector<Component*>();
 	}
-	
-	VerticesLoader vertexData(vertexDir + "test_box.obj");
+
+	VerticesLoader vertexData(vertexDir + "grass.obj");
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
-	
+
 	modelIter model = renderer.newModel(
-		"dummy",
+		"grass",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + 1 * size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps) );										// n * LightProps (6*vec4)
-	
-	//1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
-	//numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
-	
-	return std::vector<Component*>{ 
-		new c_Model_normal(model, UboType::mvpnl),
-		new c_ModelParams(),
-		new c_Move(MoveType::noMove) 
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
+		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
+		0, 0,
+		VK_CULL_MODE_NONE);
+
+	return std::vector<Component*>{
+		new c_Model_normal(model, UboType::mvpncl),
+			new c_ModelParams(),
+			new c_Move(MoveType::noMove)
 	};
 }
 
-std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
+std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_list<ShaderLoader> trunkShaders, std::initializer_list<ShaderLoader> branchShaders, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -302,7 +302,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 	// Trunk:
 	
 	VerticesLoader vertexData(vertexDir + "tree/trunk.obj");
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<ShaderLoader> shaders = trunkShaders;
 	std::vector<TextureLoader> textureSet{ tex_trunk };
 
 	modelIter model = renderer.newModel(
@@ -313,7 +313,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model, UboType::mvpnl),
+		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	});
@@ -321,7 +321,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 	// Branches:
 
 	VerticesLoader vertexData2(vertexDir + "tree/branches.obj");
-	std::vector<ShaderLoader> shaders2{ Vshader, Fshader };
+	std::vector<ShaderLoader> shaders2 = branchShaders;
 	std::vector<TextureLoader> textureSet2{ tex_branch };
 
 	modelIter model2 = renderer.newModel(
@@ -332,7 +332,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(ShaderLoader Vsha
 		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model2, UboType::mvpnl),
+		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
 		new c_Move(MoveType::noMove) 
 	});

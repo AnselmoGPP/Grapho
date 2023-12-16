@@ -54,6 +54,7 @@
 		triplanarNoColor_Sea
 		triplanarNormal_Sea
 	Others:
+		planarNormal
 		getTexScaling
 		getLowResDist
 		applyParabolicFog
@@ -71,7 +72,7 @@
 #define GAMMA 2.2
 
 
-// Data structures ------------------------------------------------------------------------
+// Data structures (& global variables) ------------------------------------------------------------------------
 
 vec3 fragPos;
 vec3 normal;
@@ -120,6 +121,14 @@ struct PreCalcValues
 	float attenuation[NUMLIGHTS];	// How light attenuates with distance (ratio)
 	float intensity[NUMLIGHTS];		//
 } pre;
+
+// Tangent (T) and Bitangent (B)
+struct TB
+{
+	vec3 tan;		// U direction in bump map
+	vec3 bTan;		// V direction in bump map
+	//vec3 norm;	// Z direction in tangent space
+} tb1;
 
 // Tangent (T) and Bitangent (B) of each dimension (3)
 struct TB3
@@ -793,6 +802,16 @@ vec3 triplanarNormal(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient d
 }
 
 // Others ------------------------------------------------------------------------
+
+// Get normal from the vertex normal (world normal) and a normal map (tangent space normal).
+vec3 planarNormal(sampler2D tex, vec2 UVs, float texFactor)
+{	
+	// Tangen space normal
+	vec3 tnormal = unpackNormal(texture(tex, unpackUV(UVs, texFactor)).xyz);
+	
+	// Final World space normal
+	return mat3(tb1.tan, tb1.bTan, normal) * tnormal;	// TBN * tnormal
+}
 
 // Get ratio (return value) of 2 different texture resolutions (texFactor1, texFactor2). Used for getting textures of different resolutions depending upon distance to fragment, and for mixing them.
 float getTexScaling(float fragDist, float initialTexFactor, float baseDist, float mixRange, inout float texFactor1, inout float texFactor2)

@@ -8,9 +8,11 @@
 		SR05
 	Data structures:
 		LightPD
+		TB
 		TB3
 	Graphics:
 		fixedPos
+		getTB
 		getTB3
 	Math:
 		getDist
@@ -50,7 +52,15 @@ struct LightPD
     vec4 direction;		// vec3
 };
 
-// Tangent (T) and Bitangent (B) of each dimension (3)
+// Tangent (T) and Bitangent (B)
+struct TB
+{
+	vec3 tan;		// U direction in bump map
+	vec3 bTan;		// V direction in bump map
+	//vec3 norm;	// Z direction in tangent space
+};
+
+// Tangent (T) and Bitangent (B) of each dimension (3) (for triplanar mapping)
 struct TB3
 {
 	vec3 tanX;
@@ -59,7 +69,7 @@ struct TB3
 	vec3 bTanY;
 	vec3 tanZ;
 	vec3 bTanZ;
-} tb;
+};
 
 
 // Graphic functions ------------------------------------------------------------------------
@@ -96,7 +106,18 @@ vec3 fixedPos(vec3 pos, vec3 gapFix, vec4 sideDepthDiff)
 	}
 }
 
-// TBN matrices for triplanar shader (Bitangent, Tangent, Normal) <<< Maybe I can reduce X & Z plane projections into a single one
+// TBN matrices (Bitangent, Tangent, Normal)
+TB getTB(vec3 normal, vec3 tangent)
+{
+	TB tb;
+	
+	tb.tan = tangent;
+	tb.bTan = normalize(cross(normal, tangent));
+	
+	return tb;
+}
+
+// TBN matrices for triplanar shader (Bitangent, Tangent, Normal) (for triplanar mapping) <<< Maybe I can reduce X & Z plane projections into a single one
 TB3 getTB3(vec3 normal)
 {
 	vec3 axis = sign(normal);	// sign() extracts sign of the parameter

@@ -5,9 +5,15 @@ TODO:
 	BTC
 	PARTE HORAS RDT
 
+	fragTools: put switch in getFragColor
+	fragTools: Is needed a  void savePNT(vec3 pos, vec3 norm, TB tb)
+	fragTools: modify tb to tb3
+	Export fbx (for tangents)
 	Grass:
 		Dont' we have ground normal?
+		Updating UboType::grassPlanet (and s_Distributor) requires looking for the planet model to get the planet object (for using chunks, noiser...). Shouldn't be the required data exist in a singleton?
 
+	Do models from Blender have duplicated vertices?
 	Delete noMove and noData?
 	Use basic shaders (v_basic_332, for example)
 	Don't update static ubo's values

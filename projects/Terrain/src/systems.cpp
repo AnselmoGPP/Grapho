@@ -504,7 +504,7 @@ void s_Move::update(float timeStep)
     // Entities with the component
     std::vector<uint32_t> entities = em->getEntitySet(CT::move);
     
-    // Singletons
+    // Singleton components
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Sky* c_sky = (c_Sky*)em->getSComponent(CT::sky);
     if (!c_cam || !c_sky) std::cout << "Single component not found (s_Model)" << std::endl;
@@ -563,7 +563,7 @@ void s_Model::update(float timeStep)
     // Entities with the component
     std::vector<uint32_t> entities = em->getEntitySet(CT::model);
 
-    // Singletons
+    // Singleton components
     const c_Engine* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Lights* c_lights = (c_Lights*)em->getSComponent(CT::lights);
@@ -606,7 +606,7 @@ void s_Model::update(float timeStep)
                 }
                 break;
             }
-        case UboType::mvpnl:
+        case UboType::mvpncl:
             {
                 c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
                 if (c_mParams) modelMatrix = getModelMatrix(c_mParams->scale, c_mParams->rotQuat, c_mParams->pos);
@@ -623,12 +623,12 @@ void s_Model::update(float timeStep)
                     dest += size.mat4;
                     memcpy(dest, &getModelMatrixForNormals(modelMatrix), sizeof(modelMatrix));
                     dest += size.mat4;
+                    memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
+                    dest += size.vec4;
                     memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
                 }
 
                 dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
-                memcpy(dest, &c_cam->camPos, sizeof(c_cam->camPos));
-                dest += size.vec4;
                 memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
                 
                 break;
@@ -672,7 +672,7 @@ void s_Model::update(float timeStep)
             {
                 std::vector<Component*> c_models = em->getComponents(CT::model);
 
-                for (i = 0; i < c_models.size(); i++)
+                for (i = 0; i < c_models.size(); i++)   // <<< this looks for the planet component (c_Model) that has noiser
                     if (((c_Model*)c_models[i])->ubo_type == UboType::planet && ((c_Model_planet*)c_models[i])->planet->getNoiseGen())
                     {
                         ((c_Model_grassPlanet*)c_model)->grass->updateState(
@@ -695,3 +695,83 @@ void s_Model::update(float timeStep)
     }
 }
 
+void s_Distributor::update(float timeStep)
+{
+    // Entities with the component
+    std::vector<uint32_t> entities = em->getEntitySet(CT::distributor);
+
+    // Singleton components
+    //const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    //const c_Sky* c_sky = (c_Sky*)em->getSComponent(CT::sky);
+    //if (!c_cam || !c_sky) std::cout << "Single component not found (s_Model)" << std::endl;
+
+    // World component (planet)
+    std::vector<Component*> c_models = em->getComponents(CT::model);
+    c_Model_planet* c_mPlanet;
+    for (int i = 0; i < c_models.size(); i++)
+        if (((c_Model*)c_models[i])->ubo_type == UboType::planet && ((c_Model_planet*)c_models[i])->planet->getNoiseGen())
+            c_mPlanet = (c_Model_planet*)c_models[i];
+
+    // Traverse the entities
+    //const c_Move* c_mov;
+    //c_ModelParams* c_mParams;   // component to update
+    c_Model* c_model;
+
+    for (uint32_t eId : entities)
+    {
+        c_model = (c_Model*)em->getComponent(CT::model, eId);
+
+        
+    }
+}
+
+bool s_Distributor::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov) const
+{
+    /* Readable version
+    glm::vec3 itemDir = glm::normalize(itemPos - camPos);
+    float camDirSide = glm::dot(itemDir, camDir);
+    float angle = acos(camDirSide);
+    
+    if (angle > fov) return false;
+    else return true;
+    */
+
+    if (acos(glm::dot(glm::normalize(itemPos - camPos), camDir)) > fov) return false;
+    return true;
+}
+
+glm::vec4 s_Distributor::getLatLonRotQuat(glm::vec3& normal)
+{
+    glm::vec3 normalXY = { normal.x, normal.y, 0 };
+
+    float longitude = angleBetween(xAxis, normalXY);
+    if (normalXY.y < 0) longitude *= -1.f;
+
+    float latitude = angleBetween(normalXY, normal);
+    if (normal.z < 0) latitude *= -1.f;
+
+    return productQuat(
+        getRotQuat(yAxis, -latitude),
+        getRotQuat(zAxis, longitude));
+}
+
+glm::vec3 s_Distributor::getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec)
+{
+    // B × (X × Y) / ||(X × Y)||^2
+
+    // Proj(on Normal) = ((Vec · Normal) / ||Normal||^2) Normal
+    // Vec = Proj(on Plane) + Proj(on Normal)
+    // Proj(on Plane) = Vec - Proj(on Normal)
+
+    glm::vec3 projOnNormal = glm::dot(vec, normal) * normal;
+    return vec - projOnNormal;
+}
+
+bool s_Distributor::renderRequired(const Planet& planet, float minDepth, unsigned chunksCount)
+{
+    std::vector<Chunk*> availableChunks;
+    planet.getActiveLeafChunks(availableChunks, minDepth);
+
+    if (availableChunks.size() == chunksCount) return false;
+    else return true;
+}

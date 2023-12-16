@@ -117,13 +117,20 @@ public:
     void update(float timeStep) override;
 };
 
+/// It takes a set of chunks and distributes instances of the same item/s all over it (following some rules).
 class s_Distributor : public System
 {
+    bool withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov) const;
+
+    bool renderRequired(const Planet& planet, float minDepth, unsigned chunksCount);    //!< Evaluated each frame. Detect whether new chunks are available. If so, render the grass of these chunks.
+    glm::vec4 getLatLonRotQuat(glm::vec3& normal);                                      //!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
+    glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);
+
 public:
     s_Distributor() : System() { };
     ~s_Distributor() { };
 
-    void update(float timeStep) override { };
+    void update(float timeStep) override;
 };
 
 /// Update XXX

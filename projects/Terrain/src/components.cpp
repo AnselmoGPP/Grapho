@@ -223,13 +223,14 @@ void c_Sky::printInfo() const
 
 c_Distributor::c_Distributor() : Component(CT::distributor)
 {
-	distroMap = {
-		std::vector<int>{0, 1, 0, 1 },
-		std::vector<int>{1, 0, 1, 0 },
-		std::vector<int>{0, 1, 0, 1 },
-		std::vector<int>{1, 0, 1, 0 },
-		std::vector<int>{0, 1, 0, 1 },
-	};
+	//distroMap = {
+	//	std::vector<int>{0, 1, 0, 1 },
+	//	std::vector<int>{1, 0, 1, 0 },
+	//	std::vector<int>{0, 1, 0, 1 },
+	//	std::vector<int>{1, 0, 1, 0 },
+	//	std::vector<int>{0, 1, 0, 1 },
+	//};
+
 	/*
 	Hello! I have a problem that I'm not sure how to solve.
 	Given a terrain (scenario), how can trees be distributed all over it automatically? They have to be distributed in a way that no two trees are too close (like in real life). 
