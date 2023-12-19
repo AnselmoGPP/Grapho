@@ -124,8 +124,12 @@ c_Cam_Plane_polar::c_Cam_Plane_polar()
 	else euler.y = 0;
 }
 
+c_Cam_Plane_polar_sphere::c_Cam_Plane_polar_sphere()
+	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1450, -1450, 0), 50, 0.001, 0.1), spinSpeed(0.05)
+{ }
+
 c_Cam_Plane_free::c_Cam_Plane_free()
-	: c_Camera(camMode::plane_free, glm::vec3(1450, 1450, 0), 50, 0.001, 0.1), spinSpeed(0.05)
+	: c_Camera(camMode::plane_free, glm::vec3(1450, -1450, 0), 50, 0.001, 0.1), spinSpeed(0.05)
 { }
 
 c_Cam_FPV::c_Cam_FPV()
@@ -231,29 +235,14 @@ bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::
 {
 	float height = glm::distance(pos, glm::vec3(0,0,0));
 	if (groundSlope > 0.22 || 
-		//height < 2010 || 
+		height < 2010 || 
 		height > 2100 || 
 		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
 		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.4)
 		return false;
 	
 	return true;
-	//if (!((int)pos.x % 2) && !((int)pos.y % 2) && !((int)pos.z % 2))
-	//	return true;
-	//else return false;
 }
 
-c_Distributor::c_Distributor(unsigned minDepth, unsigned posture, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers))
-	: Component(CT::distributor), minDepth(minDepth), posture(posture), itemSupported(itemSupported_callback)
-{
-	noisers.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 3248));
-	noisers.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 3250));
-	// <<< CREATE A NOISETESTER IN THE CLASS NOISER THAT REPLACES GETRANGE()
-
-	/*
-	Hello! I have a problem that I'm not sure how to solve.
-	Given a terrain (scenario), how can trees be distributed all over it automatically? They have to be distributed in a way that no two trees are too close (like in real life). 
-	I thought about using noise (procedural allocation of trees), but it's continuous (not discrete) and it doesn't care about two trees being too close.
-	Is there a good way to do this?
-	*/
-};
+c_Distributor::c_Distributor(unsigned minDepth, unsigned posture, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
+	: Component(CT::distributor), minDepth(minDepth), posture(posture), itemSupported(itemSupported_callback), noisers(noisers) { };

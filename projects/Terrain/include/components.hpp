@@ -42,7 +42,7 @@ struct c_ModelMatrix;
 
 // enumerations --------------------------------------
 
-enum MoveType { noMove, followCam, followCamXY, skyOrbit, sunOrbit };
+enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
 enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, mvpncl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
@@ -100,7 +100,7 @@ struct c_Input : public Component
 
 struct c_Camera : public Component
 {
-	static enum camMode { sphere, plane_polar, plane_free, fpv };
+	static enum camMode { sphere, plane_polar, plane_polar_sphere, plane_free, fpv };
 
 	c_Camera(camMode camMode, glm::vec3 camPos, float keysSpeed, float mouseSpeed, float scrollSpeed);
 	virtual ~c_Camera() { };
@@ -153,6 +153,18 @@ struct c_Cam_Plane_polar : public c_Camera
 
 	glm::vec3 worldUp;		//!< World up vector (used for elevating/descending to/from the sky)
 	glm::vec3 euler;		//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
+};
+
+struct c_Cam_Plane_polar_sphere : public c_Camera
+{
+	c_Cam_Plane_polar_sphere();
+	~c_Cam_Plane_polar_sphere() { };
+
+	glm::vec3 worldUp;				//!< World up vector (used for elevating/descending to/from the sky)
+	glm::vec3 euler;				//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
+
+	glm::vec3 center;
+	float spinSpeed;				//!< Spinning speed
 };
 
 struct c_Cam_Plane_free : public c_Camera
@@ -281,16 +293,16 @@ struct c_Distributor : public Component
 	c_Distributor(
 		unsigned minDepth, 
 		unsigned posture = 1, 
-		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback);
+		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback, std::vector<std::shared_ptr<Noiser>> noisers = std::vector<std::shared_ptr<Noiser>>());
 	~c_Distributor() { };
 	void printInfo() const { };
-
-	std::vector<std::shared_ptr<Noiser>> noisers;
 
 	unsigned minDepth;
 	unsigned posture;	// 1 (vertical),  2 (face cam)
 
 	bool(*itemSupported) (const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);	//!< Evaluated each item's posible position. Callback used by the client for evaluating world-related conditions and forcing or negating item rendering.
+
+	std::vector<std::shared_ptr<Noiser>> noisers;
 };
 
 #endif

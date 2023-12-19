@@ -66,6 +66,7 @@ protected:
 
     void update_Sphere(float timeStep, c_Cam_Sphere* c_cam);
     void update_Plane_polar(float timeStep, c_Cam_Plane_polar* c_cam);
+    void update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_sphere* c_cam);
     void update_Plane_free(float timeStep, c_Cam_Plane_free* c_cam);
     void update_FPV(float timeStep, c_Cam_FPV* c_cam);
 
@@ -120,7 +121,7 @@ public:
 /// It takes a set of chunks and distributes instances of the same item/s all over it (following some rules).
 class s_Distributor : public System
 {
-    bool withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov) const;
+    bool withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov, float minDist) const;
     bool renderRequired(const Planet& planet, float minDepth, unsigned chunksCount);    //!< Evaluated each frame. Detect whether new chunks are available. If so, render the grass of these chunks.
     glm::vec4 getLatLonRotQuat(glm::vec3& normal);                                      //!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
     glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);

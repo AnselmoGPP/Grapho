@@ -5,6 +5,7 @@ TODO:
 	BTC
 	PARTE HORAS RDT
 	
+	Normals for plants should be normal, but sunlight should be shadowed at night
 	Dithering & waving
 	Trees, small grass, rocks, bushes, flowers
 	Camera plane planet polar

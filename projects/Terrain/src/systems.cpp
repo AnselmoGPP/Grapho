@@ -219,6 +219,9 @@ void s_Camera::update(float timeStep)
     case c_Camera::plane_polar:
         update_Plane_polar(timeStep, (c_Cam_Plane_polar*)c_cam);
         break;
+    case c_Camera::plane_polar_sphere:
+        update_Plane_polar_sphere(timeStep, (c_Cam_Plane_polar_sphere*)c_cam);
+        break;
     case c_Camera::plane_free:
         update_Plane_free(timeStep, (c_Cam_Plane_free*)c_cam);
         break;
@@ -376,6 +379,64 @@ void s_Camera::update_Plane_polar(float timeStep, c_Cam_Plane_polar* c_cam)
     c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
 }
 
+void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_sphere* c_cam)
+{
+    #ifdef DEBUG_SYSTEM
+        std::cout << typeid(this).name() << "::" << __func__ << std::endl;
+    #endif
+
+    //c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
+    c_Input const* c_input = (c_Input*)em->getSComponent(CT::input);
+    c_Engine const* c_eng = (c_Engine*)em->getSComponent(CT::engine);
+    if (!c_cam || !c_input || !c_eng) { std::cout << "Singleton component not found (s_PlaneCam)" << std::endl; return; }
+
+    // Cursor modes
+    if (c_input->LMB_justPressed)
+        c_eng->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    if (!c_input->LMB_pressed)
+        c_eng->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // Keyboard moves
+    float velocity = c_cam->keysSpeed * timeStep;
+    float yaw = 0;					//!< cam yaw       Y|  R
+    float pitch = 0;				    //!< cam pitch      | /
+    float roll = 0;					//!< cam roll       |/____P
+
+    if (c_input->W_press || c_input->up_press) c_cam->camPos += c_cam->front * velocity;
+    if (c_input->S_press || c_input->down_press) c_cam->camPos -= c_cam->front * velocity;
+    if (c_input->A_press || c_input->left_press) roll = -c_cam->spinSpeed * velocity;
+    if (c_input->D_press || c_input->right_press) roll = c_cam->spinSpeed * velocity;
+    if (c_input->Q_press) yaw = c_cam->spinSpeed * velocity;
+    if (c_input->E_press) yaw = -c_cam->spinSpeed * velocity;
+
+    // Mouse moves
+    if (c_input->LMB_pressed) {
+        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+    }
+
+    // Mouse scroll
+    if (c_input->yScrollOffset)
+    {
+        c_cam->fov -= (float)c_input->yScrollOffset * c_cam->scrollSpeed;
+        if (c_cam->fov < c_cam->minFov) c_cam->fov = c_cam->minFov;
+        if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
+    }
+
+    // Update cam vectors
+    glm::vec4 rotQuat = productQuat(
+        getRotQuat(c_cam->front, roll),
+        getRotQuat(c_cam->camUp, yaw),
+        getRotQuat(c_cam->right, pitch)
+    );
+    updateAxes(c_cam, rotQuat);
+
+    // Update View & Projection transformation matrices
+    c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);
+    c_cam->proj = getProjectionMatrix(c_eng->getAspectRatio(), c_cam->fov, c_cam->nearViewPlane, c_cam->farViewPlane);
+}
+
 void s_Camera::update_Plane_free(float timeStep, c_Cam_Plane_free* c_cam)
 {
     #ifdef DEBUG_SYSTEM
@@ -521,9 +582,6 @@ void s_Move::update(float timeStep)
 
         switch (c_mov->moveType)
         {
-        case noMove:
-            break;
-
         case followCam:             // follow cam
             if (c_cam)
                 c_mParams->mp[0].pos = c_cam->camPos - safeMod(c_cam->camPos, c_mov->jumpStep);
@@ -748,7 +806,7 @@ void s_Distributor::update(float timeStep)
             for (j = 0; j < vertices->size(); j+= 9)    // terrain vertex = {3, 3, 3}
             {
                 position = glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]);
-                if (!withinFOV(position, c_cam->camPos, c_cam->front, c_cam->fov * 1.05)) continue;     // is outside fov?
+                if (!withinFOV(position, c_cam->camPos, c_cam->front, c_cam->fov * 1.2, 5)) continue;     // is outside fov?
 
                 slope = 1.f - glm::dot(glm::vec3((*vertices)[j + 3], (*vertices)[j + 4], (*vertices)[j + 5]), basicNormal);    // 1 - dot(groundNormal, sphereNormal)
                 if (!c_distrib->itemSupported(position, slope, c_distrib->noisers)) continue;                                // user condition
@@ -770,7 +828,7 @@ void s_Distributor::update(float timeStep)
     //std::cout << c_mParams->mp.size() << std::endl;
 }
 
-bool s_Distributor::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov) const
+bool s_Distributor::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos, const glm::vec3& camDir, float fov, float minDist) const
 {
     /* Readable version
     glm::vec3 itemDir = glm::normalize(itemPos - camPos);
@@ -781,7 +839,9 @@ bool s_Distributor::withinFOV(const glm::vec3& itemPos, const glm::vec3& camPos,
     else return true;
     */
 
-    if (acos(glm::dot(glm::normalize(itemPos - camPos), camDir)) > fov) return false;
+    if (acos(glm::dot(glm::normalize(itemPos - camPos), camDir)) > fov &&
+        getDist(camPos, itemPos) > minDist
+        ) return false;
     return true;
 }
 

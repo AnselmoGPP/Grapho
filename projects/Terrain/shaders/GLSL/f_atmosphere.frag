@@ -14,7 +14,7 @@
 #define SCATT_STRENGTH 10			// scattering strength
 #define WAVELENGTHS vec3(700, 530, 440)
 #define SCATT_COEFFICIENTS vec3(pow(400/WAVELENGTHS.x, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.y, 4)*SCATT_STRENGTH, pow(400/WAVELENGTHS.z, 4)*SCATT_STRENGTH)
-#define USE_LOOKUP_TABLE 1			// <<< Using lookup table is slightly slower (~52fps > ~50fps)
+#define USE_LOOKUP_TABLE 0			// <<< Using lookup table is slightly slower (~52fps > ~50fps)
 
 // Print distance to atmosphere for some view ray
 

@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 		IOmanager io(1920/2, 1080/2);
 		Renderer app(update, io, 2);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
-		bool withPP = false;				// Add Post-Processing effects (atmosphere...) or not
+		bool withPP = true;					// Add Post-Processing effects (atmosphere...) or not
 
 		loadResourcesInfo();				// Load shaders & textures
 		
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 		em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 			new c_Engine(app),
 			new c_Input,
-			new c_Cam_Plane_free,	// Sphere, Plane_free
+			new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
 			new c_Lights(3) });
 
@@ -66,11 +66,10 @@ int main(int argc, char* argv[])
 		//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
 		em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], {texInfos["space_1"]}));
 		em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
-		//em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
+		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		//em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"], texInfos["grass1"], texInfos["grass2"], texInfos["whiteNoise"] }, (c_Lights*)em.getSComponent(CT::lights)));
 		em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"] }, (c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree({ shaderLoaders["v_basic"], shaderLoaders["f_basic"] }, { shaderLoaders["v_basic"], shaderLoaders["f_grass"] }, { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree({ shaderLoaders["v_grass"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_grass"], shaderLoaders["f_grass"] }, { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
 
 		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
@@ -159,8 +158,8 @@ void loadResourcesInfo()
 	shaderLoaders.insert(std::pair("v_subject",     ShaderLoader(shadersDir + "v_subject.vert")));
 	shaderLoaders.insert(std::pair("f_subject",     ShaderLoader(shadersDir + "f_subject.frag")));
 
-	shaderLoaders.insert(std::pair("v_basic",		ShaderLoader(shadersDir + "v_basic.vert")));
-	shaderLoaders.insert(std::pair("f_basic",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo})));
+	shaderLoaders.insert(std::pair("v_trunk",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace, waving})));
+	shaderLoaders.insert(std::pair("f_trunk",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo})));
 
 	shaderLoaders.insert(std::pair("v_grass",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{verticalNormals, displace, waving})));
 	shaderLoaders.insert(std::pair("f_grass",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha})));
@@ -185,7 +184,7 @@ void loadResourcesInfo()
 	texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
 	texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
 
-	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.png")));
+	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
 	//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
 	texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
 
