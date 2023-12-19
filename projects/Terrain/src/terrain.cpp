@@ -1231,6 +1231,8 @@ std::shared_ptr<Noiser> Planet::getNoiseGen() const { return noiseGen; }
 
 float Planet::getSphereArea() { return 4 * pi * radius * radius; }
 
+glm::vec3 Planet::getBasicNormal(glm::vec3& camPos) { return glm::normalize(camPos - nucleus); }
+
 void Planet::printCounts()
 {
     unsigned nChunks = planetGrid_pZ->numChunks() + planetGrid_nZ->numChunks() + planetGrid_pY->numChunks() + planetGrid_nY->numChunks() + planetGrid_pX->numChunks() + planetGrid_nX->numChunks();

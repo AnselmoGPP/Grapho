@@ -26,10 +26,10 @@ void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
 	//discardAlpha: if(albedo.a < 0.6) { discard; return; }			// Discard non-visible fragments
-	//if(applyOrderedDithering(albedo.a, 0.9, 0.5)) { discard; return; }
+	//if(applyOrderedDithering(getDist(inCamPos, inPos), 40, 50)) { discard; return; }
 	vec3 normal = normalize(inNormal);	
-	vec3 specular = vec3(0.05, 0.05, 0.05);
-	float roughness = 0.5;	
+	vec3 specular = vec3(0, 0, 0);
+	float roughness = 0;	
 
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	

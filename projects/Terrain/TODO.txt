@@ -4,7 +4,16 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta )
 	BTC
 	PARTE HORAS RDT
-
+	
+	Dithering & waving
+	Trees, small grass, rocks, bushes, flowers
+	Camera plane planet polar
+	Any way of not updating grass if not moved?
+	getNoise(): Let glm::vec3 be passed as arguments
+	Noiser: member "scale" should multiply resulting noise? I think it' only about scale, not amplitude.
+	GrassSystem_planet::updateState has to be implemented in s_Distributor
+	// what to do when multiple intances? (in s_Model & in c_move) <<<
+	Systems: If Entities with the component == 0, return;
 	fragTools: put switch in getFragColor
 	fragTools: Is needed a  void savePNT(vec3 pos, vec3 norm, TB tb)
 	fragTools: modify tb to tb3

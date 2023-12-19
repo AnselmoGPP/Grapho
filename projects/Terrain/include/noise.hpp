@@ -14,6 +14,14 @@
 //#define DEBUG_NOISE
 
 
+class Noiser;
+class SimpleNoise;
+class Multinoise;
+class FractalNoise;
+class FractalNoise_Exp;
+class FractalNoise_SplinePts;
+
+
 /// Noise generator
 class Noiser
 {
@@ -24,7 +32,25 @@ public:
     virtual float getNoise(float x, float y, float z) = 0;
     virtual float getNoise(float x, float y) = 0;
 
-    virtual std::array<float, 2> getRange() const = 0;        //!< Range: [min, max]
+    /// Used for testing purposes. Checks the noise values for a size x size terrain and outputs the absolute maximum and minimum
+    void noiseTester(Noiser* noiser, size_t size) const;        //!< Range: [min, max]
+};
+
+
+/// Single octave noise
+class SimpleNoise : public Noiser
+{
+protected:
+    FastNoiseLite noise;
+    float scale;
+    int seed;
+
+public:
+    SimpleNoise(FastNoiseLite::NoiseType NoiseType, float scale, int seed);
+    virtual ~SimpleNoise() { };
+
+    float getNoise(float x, float y, float z) override;
+    float getNoise(float x, float y) override;
 };
 
 
@@ -47,8 +73,6 @@ public:
 
     float getNoise(float x, float y, float z) override;
     float getNoise(float x, float y) override;
-
-    std::array<float, 2> getRange() const override;
 };
 
 
@@ -82,8 +106,6 @@ public:
 
     virtual float getNoise(float x, float y, float z) override;
     virtual float getNoise(float x, float y) override;
-
-    virtual std::array<float, 2> getRange() const override;        //!< Range: [min, max]
 
     friend std::ostream& operator << (std::ostream& os, const FractalNoise& obj);
 };
@@ -130,8 +152,6 @@ public:
     // Get noise after the full process. Computations performed by FastNoise (Octaves, Lacunarity, Persistence) and this method (Scale, Multiplier, Degree).
     float getNoise(float x, float y, float z) override;
     float getNoise(float x, float y) override;
-
-    std::array<float, 2> getRange() const override;
 };
 
 
@@ -157,13 +177,7 @@ public:
 
     float getNoise(float x, float y, float z) override;
     float getNoise(float x, float y) override;
-
-    std::array<float, 2> getRange() const override;
 };
-
-
-/// Used for testing purposes. Checks the noise values for a size x size terrain and outputs the absolute maximum and minimum
-void noiseTester(Noiser* noiser, size_t size);
 
 
 // -----------------------------------------------------------------------------------

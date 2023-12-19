@@ -215,8 +215,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 		FastNoiseLite::NoiseType_Perlin,
 		2, 2.f, 0.3f,
 		0.5,
-		4953,
-		//std::vector<std::array<float, 2>>{ {-1, -0.5}, { -0.5, -0.5 }, { 0.7, 1 }, { 1, 0.5 } });
+		4954,
 		std::vector<std::array<float, 2>>{ {-1, 0}, { -0.3, 1 }, { 0.6, 0 }, { 1, 1 } });
 
 	std::shared_ptr<Noiser> temperature;
@@ -284,7 +283,8 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Move(MoveType::noMove)
+			new c_Distributor(7),
+			//new c_Move(MoveType::noMove)
 	};
 }
 

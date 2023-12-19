@@ -149,14 +149,20 @@ void c_Camera::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_ModelParams::c_ModelParams(glm::vec3 scale, glm::vec3 position, glm::vec4 rotQuat) 
-	: Component(CT::modelParams), scale(scale), pos(position), rotQuat(rotQuat) { };
+c_ModelParams::c_ModelParams(glm::vec3 scale, glm::vec4 rotQuat, glm::vec3 position)
+	: Component(CT::modelParams)
+{
+	mp.push_back(ModelParams(scale, rotQuat, position));
+};
 
 void c_ModelParams::printInfo() const
 {
-	std::cout << "scale: "; printVec(scale);
-	std::cout << "rotQuat: "; printVec(rotQuat);
-	std::cout << "pos: "; printVec(pos);
+	for (int i = 0; i < mp.size(); i++)
+	{
+		std::cout << "scale: "; printVec(mp[i].scale);
+		std::cout << "rotQuat: "; printVec(mp[i].rotQuat);
+		std::cout << "pos: "; printVec(mp[i].pos);
+	}
 
 	std::cout << "----------" << std::endl;
 }
@@ -221,15 +227,28 @@ void c_Sky::printInfo() const
 	std::cout << "sunAngle: " << sunAngle << std::endl;
 }
 
-c_Distributor::c_Distributor() : Component(CT::distributor)
+bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)
 {
-	//distroMap = {
-	//	std::vector<int>{0, 1, 0, 1 },
-	//	std::vector<int>{1, 0, 1, 0 },
-	//	std::vector<int>{0, 1, 0, 1 },
-	//	std::vector<int>{1, 0, 1, 0 },
-	//	std::vector<int>{0, 1, 0, 1 },
-	//};
+	float height = glm::distance(pos, glm::vec3(0,0,0));
+	if (groundSlope > 0.22 || 
+		//height < 2010 || 
+		height > 2100 || 
+		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
+		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.4)
+		return false;
+	
+	return true;
+	//if (!((int)pos.x % 2) && !((int)pos.y % 2) && !((int)pos.z % 2))
+	//	return true;
+	//else return false;
+}
+
+c_Distributor::c_Distributor(unsigned minDepth, unsigned posture, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers))
+	: Component(CT::distributor), minDepth(minDepth), posture(posture), itemSupported(itemSupported_callback)
+{
+	noisers.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 3248));
+	noisers.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 3250));
+	// <<< CREATE A NOISETESTER IN THE CLASS NOISER THAT REPLACES GETRANGE()
 
 	/*
 	Hello! I have a problem that I'm not sure how to solve.

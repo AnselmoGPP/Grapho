@@ -243,16 +243,23 @@ struct c_Model_grassPlanet : public c_Model
 	GrassSystem_planet* grass;
 };
 
+struct ModelParams
+{
+	ModelParams(glm::vec3& scale, glm::vec4& rotQuat, glm::vec3& pos) : scale(scale), rotQuat(rotQuat), pos(pos) { }
+
+	glm::vec3 scale = { 1, 1, 1 };
+	glm::vec4 rotQuat = { 1, 0, 0, 0 };
+	glm::vec3 pos = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+};
+
 /// Determines the Model matrix parameters (scale, rotation, translation/position)
 struct c_ModelParams : public Component
 {
-	c_ModelParams(glm::vec3 scale = {1, 1, 1}, glm::vec3 position = {0, 0, 0}, glm::vec4 rotQuat = { 1, 0, 0, 0 });
+	c_ModelParams(glm::vec3 scale = {1, 1, 1}, glm::vec4 rotQuat = { 1, 0, 0, 0 }, glm::vec3 position = { 0, 0, 0 });
 	~c_ModelParams() { };
 	void printInfo() const;
 
-	glm::vec3 scale   = { 1, 1, 1 };
-	glm::vec4 rotQuat = { 1, 0, 0, 0 };
-	glm::vec3 pos     = { 0, 0, 0 };		// glm::vec3 translation = { 0, 0, 0 };
+	std::vector<ModelParams> mp;	// model parameters (scale, rotation, position)
 };
 
 /// Determines the move type
@@ -266,19 +273,24 @@ struct c_Move : public Component
 	float jumpStep = 0;			//!< Used in discrete moves, not uniform moves.
 };
 
+bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);
+
 /// Determines the distribution over a surface of one or more instances of the same model (or set of models).
 struct c_Distributor : public Component
 {
-	c_Distributor();
+	c_Distributor(
+		unsigned minDepth, 
+		unsigned posture = 1, 
+		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback);
 	~c_Distributor() { };
 	void printInfo() const { };
 
-	//std::vector<std::vector<int>> distroMap;
-	std::vector<glm::vec3> pos;     //!< position
-	std::vector<glm::vec4> rot;     //!< rotation quaternions
-	std::vector<glm::vec3> sca;		//!< scaling
-	std::vector<float> slp;			//!< ground slope
-	//std::vector<int> index;		//!< Indices (this is shorted). Represent the sorted order of the other lists (pos, rot, sca, slp).
+	std::vector<std::shared_ptr<Noiser>> noisers;
+
+	unsigned minDepth;
+	unsigned posture;	// 1 (vertical),  2 (face cam)
+
+	bool(*itemSupported) (const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);	//!< Evaluated each item's posible position. Callback used by the client for evaluating world-related conditions and forcing or negating item rendering.
 };
 
 #endif

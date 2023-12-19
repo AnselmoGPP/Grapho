@@ -9,7 +9,7 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 view;
     mat4 proj;
     mat4 normalMatrix;			// mat3
-	vec4 camPos;
+	vec4 camPos_t;				// camPos (vec3) + time (float)
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
@@ -27,19 +27,24 @@ layout(location = 4) flat out LightPD outLight[NUMLIGHTS];	// light positions & 
 
 void main()
 {
-	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPos, 1.0);
-	outPos      = (ubo.model * vec4(inPos, 1.0)).xyz;
-	outNormal   = mat3(ubo.normalMatrix) * inNormal;	//outNormal = normalize(inPos - vec3(0, 0, 15));
-	outUVs      = inUVs;
-	outCamPos   = ubo.camPos.xyz;
+	vec3 pos = inPos;
+	//displace: pos.x += 0.2;
+	//waving: pos += vec3(1,0,0) * sin(2 * (ubo.camPos_t.w + ubo.model[0][0])) * (0.02 * inPos.z);	// speed (2), amplitude (0.02), move axis (0,0,1)
 	
+	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
+	outPos = (ubo.model * vec4(pos, 1.0)).xyz;
+	outNormal = mat3(ubo.normalMatrix) * inNormal;
+	//verticalNormals: outNormal = mat3(ubo.normalMatrix) * vec3(0,0,1);
+	outUVs = inUVs;
+	outCamPos = ubo.camPos_t.xyz;
+		
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
 		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
 	}
 	
-	//backfaceNormals: if(dot(outNormal, normalize(ubo.camPos.xyz - inPos)) < 0) outNormal *= -1;
+	//backfaceNormals: if(dot(outNormal, normalize(ubo.camPos.xyz - pos)) < 0) outNormal *= -1;
 	
 	//normal: outTB = getTB(inNormal, inTangent);
 }

@@ -7,6 +7,41 @@
 #include "noise.hpp"
 
 
+void Noiser::noiseTester(Noiser* noiser, size_t size) const
+{
+    float max = 0, min = 0;
+    float noise;
+
+    for (size_t i = 1; i != size; i++)
+    {
+        std::cout << "%: " << 100 * (float)i / size << "     \r";   // Output computation progress
+        for (size_t j = 1; j != size; j++)
+        {
+            noise = noiser->getNoise(i, j);
+            if (noise > max) max = noise;
+            else if (noise < min) min = noise;
+        }
+    }
+
+    std::cout << "Range = [" << min << ", " << max << ']' << std::endl;
+}
+
+SimpleNoise::SimpleNoise(FastNoiseLite::NoiseType NoiseType, float scale, int seed)
+    : noise(NoiseType), scale(scale), seed(seed)
+{
+    noise.SetSeed(seed);
+}
+
+float SimpleNoise::getNoise(float x, float y, float z)
+{
+    return noise.GetNoise(x / scale, y / scale, z / scale);
+}
+
+float SimpleNoise::getNoise(float x, float y)
+{
+    return noise.GetNoise(x / scale, y / scale);
+}
+
 FractalNoise::FractalNoise(FastNoiseLite::NoiseType NoiseType, int NumOctaves, float Lacunarity, float Persistence, float Scale, float Multiplier, int Seed)
     : Noiser(), noiseType(NoiseType), numOctaves(NumOctaves), lacunarity(Lacunarity), persistence(Persistence), scale(Scale), multiplier(Multiplier), seed(Seed)
 {
@@ -66,17 +101,12 @@ float FractalNoise::FractalNoise::getNoise(float x, float y)
     return multiplier * scale * noise.GetNoise(x/scale, y/scale);
 }
 
-std::array<float, 2> FractalNoise::getRange() const { return { -multiplier * scale, multiplier * scale }; }
-
-
 Multinoise::Multinoise(std::vector<std::shared_ptr<Noiser>>& noisers, float(*getNoise3D)(float, float, float, std::vector<std::shared_ptr<Noiser>>&), float(*getNoise2D)(float, float, std::vector<std::shared_ptr<Noiser>>&))
     : noisers(noisers), getNoise2D_callback(getNoise2D), getNoise3D_callback(getNoise3D) { };
 
 float Multinoise::getNoise(float x, float y, float z) { return getNoise3D_callback(x, y, z, noisers); }
 
 float Multinoise::getNoise(float x, float y) { return getNoise2D_callback(x, y, noisers); }
-
-std::array<float, 2> Multinoise::getRange() const { return { 0, 0 }; }
 
 float default3D_callback(float x, float y, float z, std::vector<std::shared_ptr<Noiser>>& noisers)
 {
@@ -110,7 +140,6 @@ std::ostream& operator << (std::ostream& os, const FractalNoise& obj)
         << "Noise data: \n"
         << "   Octaves: " << obj.numOctaves << '\n'
         //<< "   Max amplitude: " << obj.totalAmplitude << '\n'
-        << "   Range: (" << std::get<0>(obj.getRange()) << ", " << std::get<1>(obj.getRange()) << ") \n"
         << "   Scale: " << obj.scale << '\n'
         << "   Multiplier: " << obj.multiplier << '\n'
         << "   Lacunarity: " << obj.lacunarity << '\n'
@@ -168,8 +197,6 @@ float FractalNoise_Exp::getNoise(float x, float y)
     //return result * std::pow(result / maxHeight, curveDegree);
 }
 
-std::array<float, 2> FractalNoise_Exp::getRange() const { return { -multiplier * scale, multiplier * scale }; }
-
 FractalNoise_SplinePts::FractalNoise_SplinePts(
     FastNoiseLite::NoiseType NoiseType,
     int NumOctaves,
@@ -212,26 +239,6 @@ float FractalNoise_SplinePts::getNoise(float x, float y)
     return multiplier * scale * noise.GetNoise(x / scale, y / scale);
 }
 
-std::array<float, 2> FractalNoise_SplinePts::getRange() const { return { -multiplier * scale, multiplier * scale }; }
-
-void noiseTester(Noiser* noiser, size_t size)
-{
-    float max = 0, min = 0;
-    float noise;
-
-    for (size_t i = 1; i != size; i++)
-    {
-        std::cout << "%: " << 100 * (float)i / size << "     \r";   // Output computation progress
-        for (size_t j = 1; j != size; j++)
-        {
-            noise = noiser->getNoise(i, j);
-            if (noise > max) max = noise;
-            else if (noise < min) min = noise;
-        }
-    }
-
-    std::cout << "Range = [" << min << ", " << max << ']' << std::endl;
-}
 
 // ----------------------------------------------------------------------------------
 
@@ -353,6 +360,7 @@ void fillSea(float array[6][10], float height, float transparency, float x0, flo
     array[5][9] = 1;
 }
 
+// <<< Is this useful?
 void fillCubicSphere(float*** array, unsigned*** indices, float radius, unsigned numVertexPerSide, float R, float G, float B)
 {
     float *** vertex = array;        //float array[6][numVertexPerSide * numVertexPerSide][6]

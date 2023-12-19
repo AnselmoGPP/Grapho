@@ -465,6 +465,18 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//backfaceNormals: ");
 			break;
 
+		case verticalNormals:			// (VS) Make all normals (before MVP transformation) vertical (vec3(0,0,1))
+			findStrAndErase(shader, "outNormal = mat3(ubo.normalMatrix) * inNormal;");
+			findStrAndErase(shader, "//verticalNormals: ");
+			break;
+
+		case waving:					// (VS) Make mesh wave (wind)
+			findStrAndErase(shader, "//waving: ");
+			findStrAndErase(shader, "//waving: ");
+
+		case displace:
+			findStrAndErase(shader, "//displace: ");
+
 		default:
 			break;
 		}

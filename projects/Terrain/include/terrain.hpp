@@ -178,7 +178,7 @@ protected:
 	float radius;
 	glm::vec3 xAxis, yAxis;			//!< Vectors representing the relative XY coordinate system of the cube side plane.
 
-	void computeGridNormals(glm::vec3 pos0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV);
+	void computeGridNormals(glm::vec3 pños0, glm::vec3 xAxis, glm::vec3 yAxis, unsigned numHorV, unsigned numVerV);
 	void computeGapFixes();
 	void computeSizes() override;
 
@@ -366,6 +366,7 @@ public:
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const;
 	std::shared_ptr<Noiser> getNoiseGen() const;
 	float getSphereArea();							//!< Given planet radius, get sphere's area
+	glm::vec3 getBasicNormal(glm::vec3& camPos);	//!< Sphere normal at camera position
 	void printCounts();
 
 	const float radius;
