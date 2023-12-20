@@ -1,4 +1,5 @@
 #include "physics.hpp"
+#include "toolkit.hpp"
 
 #include "systems.hpp"
 
@@ -196,7 +197,7 @@ void s_Camera::updateAxes(c_Camera* c_cam, glm::vec4& rotQuat)
     c_cam->right = rotatePoint(rotQuat, c_cam->right);
     c_cam->camUp = rotatePoint(rotQuat, c_cam->camUp);
 
-    // Normalize & make perpendicular
+    // Normalize & make perpendicular (to front)
     c_cam->right = glm::normalize(glm::cross(c_cam->front, c_cam->camUp));
     c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
     c_cam->front = glm::normalize(c_cam->front);
@@ -397,23 +398,62 @@ void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_spher
     if (!c_input->LMB_pressed)
         c_eng->io.setInputMode(GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
+    /*
+        Move types:
+            - Camera changes position: Update camPos variable (maybe using rotation quaternions).
+            - Camera changes orientation (updateAxes()): Euler angles (yaw, pitch, roll) are used to adjust orientation (front, right, camUp)
+    */
+
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
     float yaw = 0;					//!< cam yaw       Y|  R
-    float pitch = 0;				    //!< cam pitch      | /
+    float pitch = 0;				//!< cam pitch      | /
     float roll = 0;					//!< cam roll       |/____P
+    
+    glm::vec3 sphereDir = glm::cross(c_cam->worldUp, glm::normalize(glm::cross(c_cam->front, c_cam->worldUp)));
+    float verticalValue = glm::dot(c_cam->front, c_cam->worldUp);
+    float frontValue = glm::dot(c_cam->front, sphereDir);
+    glm::vec4 rotQuat1 = { 1, 0, 0, 0 };    // Rotation of camera position (x, y, z)
+    glm::vec4 rotQuat2 = { 1, 0, 0, 0 };    // Rotation of camera orientation (front, right, camUp)
+    float angle;
 
-    if (c_input->W_press || c_input->up_press) c_cam->camPos += c_cam->front * velocity;
-    if (c_input->S_press || c_input->down_press) c_cam->camPos -= c_cam->front * velocity;
-    if (c_input->A_press || c_input->left_press) roll = -c_cam->spinSpeed * velocity;
-    if (c_input->D_press || c_input->right_press) roll = c_cam->spinSpeed * velocity;
-    if (c_input->Q_press) yaw = c_cam->spinSpeed * velocity;
-    if (c_input->E_press) yaw = -c_cam->spinSpeed * velocity;
+    if (c_input->W_press || c_input->up_press)
+    {
+        c_cam->camPos += c_cam->worldUp * verticalValue * velocity;
+        angle = -(frontValue * velocity) / getDist(c_cam->camPos, glm::vec3(0));
+        rotQuat1 = productQuat(rotQuat1, getRotQuat(c_cam->right, angle));
+    }
+    if (c_input->S_press || c_input->down_press)
+    {
+        c_cam->camPos -= c_cam->worldUp * verticalValue * velocity;
+        angle = (frontValue * velocity) / getDist(c_cam->camPos, glm::vec3(0));
+        rotQuat1 = productQuat(rotQuat1, getRotQuat(c_cam->right, angle));
+    }
+    if (c_input->A_press || c_input->left_press)
+    {
+        angle = -velocity / getDist(c_cam->camPos, glm::vec3(0));
+        rotQuat1 = productQuat(rotQuat1, getRotQuat(glm::cross(c_cam->worldUp, c_cam->right), angle));
+    }
+    if (c_input->D_press || c_input->right_press)
+    {
+        angle = velocity / getDist(c_cam->camPos, glm::vec3(0));
+        rotQuat1 = productQuat(rotQuat1, getRotQuat(glm::cross(c_cam->worldUp, c_cam->right), angle));
+    }
+    if (c_input->Q_press)
+        c_cam->camPos -= velocity * c_cam->worldUp;
+    if (c_input->E_press)
+        c_cam->camPos += velocity * c_cam->worldUp;
 
     // Mouse moves
     if (c_input->LMB_pressed) {
-        yaw -= c_input->xOffset() * c_cam->mouseSpeed;
-        pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+        //yaw -= c_input->xOffset() * c_cam->mouseSpeed;
+        //pitch -= c_input->yOffset() * c_cam->mouseSpeed;
+
+        angle = -c_input->yOffset() * c_cam->mouseSpeed;
+        rotQuat2 = productQuat(rotQuat2, getRotQuat(c_cam->right, angle));
+
+        angle = -c_input->xOffset() * c_cam->mouseSpeed;
+        rotQuat2 = productQuat(rotQuat2, getRotQuat(c_cam->worldUp, angle));
     }
 
     // Mouse scroll
@@ -424,13 +464,11 @@ void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_spher
         if (c_cam->fov > c_cam->maxFov) c_cam->fov = c_cam->maxFov;
     }
 
-    // Update cam vectors
-    glm::vec4 rotQuat = productQuat(
-        getRotQuat(c_cam->front, roll),
-        getRotQuat(c_cam->camUp, yaw),
-        getRotQuat(c_cam->right, pitch)
-    );
-    updateAxes(c_cam, rotQuat);
+    // Apply rotations (to camPos and its orientation axes)
+    c_cam->camPos = rotatePoint(rotQuat1, c_cam->camPos);
+    updateAxes(c_cam, rotQuat2);
+
+    c_cam->worldUp = glm::normalize(c_cam->camPos);
 
     // Update View & Projection transformation matrices
     c_cam->view = getViewMatrix(c_cam->camPos, c_cam->front, c_cam->camUp);

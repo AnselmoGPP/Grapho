@@ -112,7 +112,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//d.maxfps = rend.getTimer().getMaxPossibleFPS();
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 	
-	//std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
+	std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
 
 	em.update(rend.getTimer().getDeltaTime());
 }

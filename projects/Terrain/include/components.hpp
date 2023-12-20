@@ -160,11 +160,7 @@ struct c_Cam_Plane_polar_sphere : public c_Camera
 	c_Cam_Plane_polar_sphere();
 	~c_Cam_Plane_polar_sphere() { };
 
-	glm::vec3 worldUp;				//!< World up vector (used for elevating/descending to/from the sky)
-	glm::vec3 euler;				//!< Euler angles: Pitch (x), Roll (y), Yaw (z)
-
-	glm::vec3 center;
-	float spinSpeed;				//!< Spinning speed
+	glm::vec3 worldUp;
 };
 
 struct c_Cam_Plane_free : public c_Camera
@@ -172,7 +168,7 @@ struct c_Cam_Plane_free : public c_Camera
 	c_Cam_Plane_free();
 	~c_Cam_Plane_free() { };
 
-	float spinSpeed;	//!< Spinning speed
+	float spinSpeed;	//!< Spinning speed (for roll and yaw moves)
 };
 
 struct c_Cam_FPV : public c_Camera
