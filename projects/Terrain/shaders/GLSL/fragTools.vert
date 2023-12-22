@@ -392,19 +392,18 @@ void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLI
 		light[i].degree    = uboLight[i].degree.xyz;
 		light[i].cutOff    = uboLight[i].cutOff.xy;
 		
-		if(light[i].type == 1)
+		switch(light[i].type)
 		{
+		case 1:		// directional
 			pre.halfwayDir[i]	= normalize(-light[i].direction + viewDir);
-		}
-		else if(light[i].type == 2)
-		{
+			break;
+		case 2:		// point
 			distFragLight		= length(light[i].position - fragPos);
 			pre.lightDirFrag[i]	= normalize(fragPos - light[i].position);
 			pre.halfwayDir[i]   = normalize(-pre.lightDirFrag[i] + viewDir);
 			pre.attenuation[i]  = 1.0 / (light[i].degree[0] + light[i].degree[1] * distFragLight + light[i].degree[2] * distFragLight * distFragLight);
-		}
-		else if(light[i].type == 3)
-		{
+			break;
+		case 3:		// spot
 			distFragLight		= length(light[i].position - fragPos);
 			pre.lightDirFrag[i]	= normalize(fragPos - light[i].position);
 			pre.halfwayDir[i]   = normalize(-pre.lightDirFrag[i] + viewDir);
@@ -412,8 +411,22 @@ void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLI
 			theta				= dot(pre.lightDirFrag[i], light[i].direction);
 			epsilon				= light[i].cutOff[0] - light[i].cutOff[1];
 			pre.intensity[i]	= clamp((theta - light[i].cutOff[1]) / epsilon, 0.0, 1.0);
+			break;
+		default:
+			break;
 		}
 	}
+}
+
+
+// (For planets) Reduce sunlight intensity (diffuse & specular) if sunlight source is below the object.
+void modifySavedSunLight(vec3 fragPos)
+{
+	float ratio = getRatio(dot(normalize(light[0].direction), normalize(fragPos)), 0.3, -0.8);
+
+	//light[0].ambient  *= ratio;
+	light[0].diffuse  *= ratio;
+	light[0].specular *= ratio;
 }
 
 
@@ -487,12 +500,20 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 
 	for(int i = 0; i < NUMLIGHTS; i++)		// for each light source
 	{
-		if     (light[i].type == 1)
+		switch(light[i].type)
+		{
+		case 1:
 			result += directionalLightColor	(i, albedo, normal, specularity, roughness);
-		else if(light[i].type == 2)
+			break;
+		case 2:
 			result += PointLightColor		(i, albedo, normal, specularity, roughness);
-		else if(light[i].type == 3)
+			break;
+		case 3:
 			result += SpotLightColor		(i, albedo, normal, specularity, roughness);
+			break;
+		default:
+			break;
+		}
 	}
 	
 	return result;

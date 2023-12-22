@@ -157,7 +157,7 @@ public:
 };
 
 /// Defines some changes that can be done to the shader before compilation.
-enum shaderModifier { albedo, normal, specularity, roughness, backfaceNormals, discardAlpha, verticalNormals, waving, displace};
+enum shaderModifier { albedo, normal, specularity, roughness, backfaceNormals, discardAlpha, verticalNormals, waving, displace, reduceNightLight };
 
 class SLModule		/// Shader Loader Module
 {

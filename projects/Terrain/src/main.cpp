@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
 		em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"] }, (c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree({ shaderLoaders["v_grass"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_grass"], shaderLoaders["f_grass"] }, { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree({ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] }, { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
 
 		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
@@ -112,7 +112,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//d.maxfps = rend.getTimer().getMaxPossibleFPS();
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 	
-	std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
+	//std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
 
 	em.update(rend.getTimer().getDeltaTime());
 }
@@ -158,11 +158,14 @@ void loadResourcesInfo()
 	shaderLoaders.insert(std::pair("v_subject",     ShaderLoader(shadersDir + "v_subject.vert")));
 	shaderLoaders.insert(std::pair("f_subject",     ShaderLoader(shadersDir + "f_subject.frag")));
 
-	shaderLoaders.insert(std::pair("v_trunk",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace, waving})));
-	shaderLoaders.insert(std::pair("f_trunk",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo})));
+	shaderLoaders.insert(std::pair("v_trunk",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace})));
+	shaderLoaders.insert(std::pair("f_trunk",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, reduceNightLight})));
 
-	shaderLoaders.insert(std::pair("v_grass",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{verticalNormals, displace, waving})));
-	shaderLoaders.insert(std::pair("f_grass",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha})));
+	shaderLoaders.insert(std::pair("v_branch",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace, waving})));
+	shaderLoaders.insert(std::pair("f_branch",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha, reduceNightLight})));
+
+	shaderLoaders.insert(std::pair("v_grass",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{backfaceNormals, displace, waving})));
+	shaderLoaders.insert(std::pair("f_grass",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha, reduceNightLight})));
 
 	shaderLoaders.insert(std::pair("v_noPP",		ShaderLoader(shadersDir + "v_noPP.vert")));
 	shaderLoaders.insert(std::pair("f_noPP",		ShaderLoader(shadersDir + "f_noPP.frag")));

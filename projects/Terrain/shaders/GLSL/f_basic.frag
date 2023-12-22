@@ -30,8 +30,9 @@ void main()
 	vec3 normal = normalize(inNormal);	
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	
-
+	
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
+	//reduceNightLight: modifySavedSunLight(inPos);
 	
 	outColor.w = 1;
 	outColor.xyz = getFragColor(albedo.xyz, normal, specular, roughness );

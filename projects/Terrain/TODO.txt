@@ -1,14 +1,10 @@
 TODO:
 	RONALD
-	UNIV (día 20)
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta )
 	BTC
-	PARTE HORAS RDT
 	
-	Normals for plants should be normal, but sunlight should be shadowed at night
 	Dithering & waving
-	Trees, small grass, rocks, bushes, flowers
-	Camera plane planet polar
+	[Trees], small grass, [big grass], rocks, bushes, flowers
 	Any way of not updating grass if not moved?
 	getNoise(): Let glm::vec3 be passed as arguments
 	Noiser: member "scale" should multiply resulting noise? I think it' only about scale, not amplitude.

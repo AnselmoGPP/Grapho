@@ -37,14 +37,14 @@ void main()
 	//verticalNormals: outNormal = mat3(ubo.normalMatrix) * vec3(0,0,1);
 	outUVs = inUVs;
 	outCamPos = ubo.camPos_t.xyz;
-		
+	
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
 		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
 	}
 	
-	//backfaceNormals: if(dot(outNormal, normalize(ubo.camPos.xyz - pos)) < 0) outNormal *= -1;
+	//backfaceNormals: if(dot(outNormal, normalize(ubo.camPos_t.xyz - outPos)) < 0) outNormal *= -1;
 	
 	//normal: outTB = getTB(inNormal, inTangent);
 }

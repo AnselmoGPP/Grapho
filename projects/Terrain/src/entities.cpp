@@ -197,7 +197,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 
 	std::shared_ptr<Noiser> continentalness = std::make_shared<FractalNoise_SplinePts>(		// Range [-1, 1]
 		FastNoiseLite::NoiseType_Perlin,	// Noise type
-		3, 4.f, 0.3f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
+		4, 4.f, 0.3f,						// Octaves, Lacunarity (for frequency), Persistence (for amplitude)
 		0.1,								// Scale
 		4952,								// Seed
 		std::vector<std::array<float, 2>>{ {-1, -0.5}, {-0.1, -0.1}, { 0.1, 0.1 }, { 1, 1 } } );

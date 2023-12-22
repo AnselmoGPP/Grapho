@@ -72,7 +72,7 @@ c_Camera::c_Camera(camMode camMode, glm::vec3 camPos, float keysSpeed, float mou
 { }
 
 c_Cam_Sphere::c_Cam_Sphere()
-	: c_Camera(camMode::sphere, glm::vec3(0,0,0), 50, 0.002, 0.1), worldUp(0,0,1), center(0,0,0), radius(20), minRadius(1), maxRadius(4000), maxPitch(1.3)
+	: c_Camera(camMode::sphere, glm::vec3(0,0,0), 50, 0.002, 0.1), worldUp(0,0,1), center(0,0,0), radius(4000), minRadius(1), maxRadius(4000), maxPitch(1.3)
 {
 	camPos = -front * radius;
 	//radius = glm::length(camPos);
@@ -125,7 +125,7 @@ c_Cam_Plane_polar::c_Cam_Plane_polar()
 }
 
 c_Cam_Plane_polar_sphere::c_Cam_Plane_polar_sphere()
-	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1450, -1450, 0), 50, 0.001, 0.1), worldUp(glm::normalize(camPos))
+	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1500, -1500, 0), 10, 0.001, 0.1), worldUp(glm::normalize(camPos))
 {
 	// Camera looks east:
 	front = glm::normalize(glm::cross(glm::vec3(0,0,1), worldUp));

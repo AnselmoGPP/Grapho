@@ -473,9 +473,15 @@ void SLModule::applyModifications(std::string& shader)
 		case waving:					// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
 			findStrAndErase(shader, "//waving: ");
+			break;
 
-		case displace:
+		case displace:					// (VS) Move vertex aside a bit (0.2 meter towards x-axis)
 			findStrAndErase(shader, "//displace: ");
+			break;
+
+		case reduceNightLight:			// (FS) Reduce sunlight at night
+			findStrAndErase(shader, "//reduceNightLight: ");
+			break;
 
 		default:
 			break;
