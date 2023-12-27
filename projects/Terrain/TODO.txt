@@ -1,8 +1,10 @@
 TODO:
 	RONALD
-	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta )
+	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 -14 -18
 	BTC
 	
+	Planet component should be singleton?
+	Normals for basic shader (load vertex data from file including normal map, not only pos, normal, & UV)
 	Dithering & waving
 	[Trees], small grass, [big grass], rocks, bushes, flowers
 	Any way of not updating grass if not moved?
@@ -11,9 +13,7 @@ TODO:
 	GrassSystem_planet::updateState has to be implemented in s_Distributor
 	// what to do when multiple intances? (in s_Model & in c_move) <<<
 	Systems: If Entities with the component == 0, return;
-	fragTools: put switch in getFragColor
 	fragTools: Is needed a  void savePNT(vec3 pos, vec3 norm, TB tb)
-	fragTools: modify tb to tb3
 	Export fbx (for tangents)
 	Grass:
 		Dont' we have ground normal?

@@ -46,5 +46,5 @@ void main()
 	
 	//backfaceNormals: if(dot(outNormal, normalize(ubo.camPos_t.xyz - outPos)) < 0) outNormal *= -1;
 	
-	//normal: outTB = getTB(inNormal, inTangent);
+	//normal: outTB = getTB(inNormal, inTan);
 }

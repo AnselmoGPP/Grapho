@@ -117,7 +117,7 @@ vec3 getTexture_GrassRock()
 	
 	vec3 dryColor = getDryColor(vec3(0.9, 0.6, 0), RADIUS + 15, RADIUS + 70);
 	
-	if(true || inDist > lowResDist)	// Low resolution distance (far)
+	if(inDist > lowResDist)	// Low resolution distance (far)
 	{
 		for(int i = 0; i < 2; i++)
 		{

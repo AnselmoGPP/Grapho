@@ -288,13 +288,16 @@ struct c_Distributor : public Component
 {
 	c_Distributor(
 		unsigned minDepth, 
-		unsigned posture = 1, 
-		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback, std::vector<std::shared_ptr<Noiser>> noisers = std::vector<std::shared_ptr<Noiser>>());
+		unsigned rotType,
+		unsigned maxScale,
+		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback, 
+		std::vector<std::shared_ptr<Noiser>> noisers = std::vector<std::shared_ptr<Noiser>>());
 	~c_Distributor() { };
 	void printInfo() const { };
 
 	unsigned minDepth;
-	unsigned posture;	// 1 (vertical),  2 (face cam)
+	unsigned rotType;	//!< Rotation type: 1 (Z axis, random), 2 (all axes, random), 3 (face cam)
+	unsigned maxScale;	//!< Randomize scale in the range [1, maxScale]
 
 	bool(*itemSupported) (const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);	//!< Evaluated each item's posible position. Callback used by the client for evaluating world-related conditions and forcing or negating item rendering.
 

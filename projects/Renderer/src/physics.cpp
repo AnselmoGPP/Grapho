@@ -194,6 +194,8 @@ float angleBetween(glm::vec3 a, glm::vec3 b)
 	return glm::acos(dotP);
 }
 
+glm::vec4 noRotQuat = { 1, 0, 0, 0 };
+
 glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle)
 {
 	float cosOp = cos(angle / 2);

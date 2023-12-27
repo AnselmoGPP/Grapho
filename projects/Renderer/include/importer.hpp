@@ -88,6 +88,8 @@ protected:
 	void createIndexBuffer(const std::vector<uint16_t>& rawIndices, VertexData& result, VulkanEnvironment* e);							//!< Index buffer creation
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VulkanEnvironment* e);
 
+	glm::vec3 getVertexTangent(const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3, const glm::vec2 uv1, const glm::vec2 uv2, const glm::vec2 uv3);
+
 public:
 	VLModule(size_t vertexSize);
 	virtual ~VLModule() { };
@@ -133,6 +135,7 @@ class VerticesLoader
 	VLModule* loader;
 
 public:
+	VerticesLoader();
 	VerticesLoader(std::string& filePath);	//!< From file (vertexSize == (3+3+2) * sizeof(float))
 	VerticesLoader(size_t vertexSize, const void* verticesData, size_t vertexCount, std::vector<uint16_t>& indices);	//!< From buffers
 	VerticesLoader(const VerticesLoader& obj);	//!< Copy constructor (necessary because loader can be freed in destructor)
@@ -157,7 +160,18 @@ public:
 };
 
 /// Defines some changes that can be done to the shader before compilation.
-enum shaderModifier { albedo, normal, specularity, roughness, backfaceNormals, discardAlpha, verticalNormals, waving, displace, reduceNightLight };
+enum shaderModifier { 
+	sm_albedo, 
+	sm_normal, 
+	sm_specular, 
+	sm_roughness, 
+	sm_backfaceNormals, 
+	sm_discardAlpha, 
+	sm_verticalNormals, 
+	sm_waving, 
+	sm_displace, 
+	sm_reduceNightLight 
+};
 
 class SLModule		/// Shader Loader Module
 {

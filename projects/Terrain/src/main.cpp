@@ -29,6 +29,7 @@ void loadResourcesInfo();
 
 EntityManager em;	// world
 std::map<std::string, ShaderLoader> shaderLoaders;
+std::map<std::string, VerticesLoader> verticesLoaders;
 std::map<std::string, TextureLoader> texInfos;
 std::vector<TextureLoader> planetTexInfos;	// Package of textures
 
@@ -59,7 +60,7 @@ int main(int argc, char* argv[])
 			new c_Input,
 			new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
-			new c_Lights(3) });
+			new c_Lights(2) });
 
 		//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
 		em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
@@ -68,9 +69,19 @@ int main(int argc, char* argv[])
 		em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
 		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		em.addEntity("grass", eFact.createGrass(shaderLoaders["v_grass"], shaderLoaders["f_grass"], { texInfos["grass0"] }, (c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree({ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] }, { texInfos["bark_a"] }, { texInfos["branch_a"] }, (c_Lights*)em.getSComponent(CT::lights)));
-
+		em.addEntity("grass", eFact.createGrass(
+			shaderLoaders["v_grass"], shaderLoaders["f_grass"], 
+			{ texInfos["grass0"] }, 
+			(c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntity("stone", eFact.createRock(
+			shaderLoaders["v_stone"], shaderLoaders["f_stone"], 
+			{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
+			verticesLoaders["stone"], 
+			(c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
+			{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] }, 
+			{ texInfos["bark_a"] }, { texInfos["branch_a"] }, 
+			(c_Lights*)em.getSComponent(CT::lights)));
 		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		
@@ -120,158 +131,174 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 void loadResourcesInfo()
 {
 	// SHADERS
+	{
+		//shaderLoaders["v_points"] = ShaderLoader(shadersDir + "v_points.vert");
+		shaderLoaders.insert(std::pair("v_points", ShaderLoader(shadersDir + "v_points.vert")));
+		shaderLoaders.insert(std::pair("f_points", ShaderLoader(shadersDir + "f_points.frag")));
 
-	//shaderLoaders["v_points"] = ShaderLoader(shadersDir + "v_points.vert");
-	shaderLoaders.insert(std::pair("v_points",      ShaderLoader(shadersDir + "v_points.vert")));
-	shaderLoaders.insert(std::pair("f_points",      ShaderLoader(shadersDir + "f_points.frag")));
+		shaderLoaders.insert(std::pair("v_lines", ShaderLoader(shadersDir + "v_lines.vert")));
+		shaderLoaders.insert(std::pair("f_lines", ShaderLoader(shadersDir + "f_lines.frag")));
 
-	shaderLoaders.insert(std::pair("v_lines",       ShaderLoader(shadersDir + "v_lines.vert")));
-	shaderLoaders.insert(std::pair("f_lines",       ShaderLoader(shadersDir + "f_lines.frag")));
-	
-	shaderLoaders.insert(std::pair("v_skybox",      ShaderLoader(shadersDir + "v_skybox.vert")));
-	shaderLoaders.insert(std::pair("f_skybox",      ShaderLoader(shadersDir + "f_skybox.frag")));
+		shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "v_skybox.vert")));
+		shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "f_skybox.frag")));
 
-	shaderLoaders.insert(std::pair("v_basicModel",  ShaderLoader(shadersDir + "v_basicModel.vert")));
-	shaderLoaders.insert(std::pair("f_basicModel",  ShaderLoader(shadersDir + "f_basicModel.frag")));
+		shaderLoaders.insert(std::pair("v_basicModel", ShaderLoader(shadersDir + "v_basicModel.vert")));
+		shaderLoaders.insert(std::pair("f_basicModel", ShaderLoader(shadersDir + "f_basicModel.frag")));
 
-	//shaderLoaders.insert(std::pair("v_grass",     ShaderLoader(shadersDir + "v_grass.vert")));
-	//shaderLoaders.insert(std::pair("f_grass",     ShaderLoader(shadersDir + "f_grass.frag")));
+		//shaderLoaders.insert(std::pair("v_grass",     ShaderLoader(shadersDir + "v_grass.vert")));
+		//shaderLoaders.insert(std::pair("f_grass",     ShaderLoader(shadersDir + "f_grass.frag")));
 
-	shaderLoaders.insert(std::pair("v_seaPlanet",   ShaderLoader(shadersDir + "v_seaPlanet.vert")));
-	shaderLoaders.insert(std::pair("f_seaPlanet",   ShaderLoader(shadersDir + "f_seaPlanet.frag")));
+		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "v_seaPlanet.vert")));
+		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "f_seaPlanet.frag")));
 
-	shaderLoaders.insert(std::pair("v_plainChunk",  ShaderLoader(shadersDir + "v_plainChunk.vert")));
-	shaderLoaders.insert(std::pair("f_plainChunk",  ShaderLoader(shadersDir + "f_plainChunk.frag")));
+		shaderLoaders.insert(std::pair("v_plainChunk", ShaderLoader(shadersDir + "v_plainChunk.vert")));
+		shaderLoaders.insert(std::pair("f_plainChunk", ShaderLoader(shadersDir + "f_plainChunk.frag")));
 
-	shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "v_planetChunk.vert")));
-	shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "f_planetChunk.frag")));
+		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "v_planetChunk.vert")));
+		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "f_planetChunk.frag")));
 
-	shaderLoaders.insert(std::pair("v_sun",         ShaderLoader(shadersDir + "v_sun.vert")));
-	shaderLoaders.insert(std::pair("f_sun",         ShaderLoader(shadersDir + "f_sun.frag")));
+		shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "v_sun.vert")));
+		shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "f_sun.frag")));
 
-	shaderLoaders.insert(std::pair("v_hud",         ShaderLoader(shadersDir + "v_hud.vert")));
-	shaderLoaders.insert(std::pair("f_hud",         ShaderLoader(shadersDir + "f_hud.frag")));
+		shaderLoaders.insert(std::pair("v_hud", ShaderLoader(shadersDir + "v_hud.vert")));
+		shaderLoaders.insert(std::pair("f_hud", ShaderLoader(shadersDir + "f_hud.frag")));
 
-	shaderLoaders.insert(std::pair("v_atmosphere",  ShaderLoader(shadersDir + "v_atmosphere.vert")));
-	shaderLoaders.insert(std::pair("f_atmosphere",  ShaderLoader(shadersDir + "f_atmosphere.frag")));
+		shaderLoaders.insert(std::pair("v_atmosphere", ShaderLoader(shadersDir + "v_atmosphere.vert")));
+		shaderLoaders.insert(std::pair("f_atmosphere", ShaderLoader(shadersDir + "f_atmosphere.frag")));
 
-	shaderLoaders.insert(std::pair("v_subject",     ShaderLoader(shadersDir + "v_subject.vert")));
-	shaderLoaders.insert(std::pair("f_subject",     ShaderLoader(shadersDir + "f_subject.frag")));
+		shaderLoaders.insert(std::pair("v_subject", ShaderLoader(shadersDir + "v_subject.vert")));
+		shaderLoaders.insert(std::pair("f_subject", ShaderLoader(shadersDir + "f_subject.frag")));
 
-	shaderLoaders.insert(std::pair("v_trunk",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace})));
-	shaderLoaders.insert(std::pair("f_trunk",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, reduceNightLight})));
+		shaderLoaders.insert(std::pair("v_trunk", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace})));
+		shaderLoaders.insert(std::pair("f_trunk", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_reduceNightLight})));
 
-	shaderLoaders.insert(std::pair("v_branch",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{displace, waving})));
-	shaderLoaders.insert(std::pair("f_branch",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha, reduceNightLight})));
+		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_waving})));
+		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
-	shaderLoaders.insert(std::pair("v_grass",		ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{backfaceNormals, displace, waving})));
-	shaderLoaders.insert(std::pair("f_grass",		ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{albedo, discardAlpha, reduceNightLight})));
+		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_backfaceNormals, sm_displace, sm_waving})));
+		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
-	shaderLoaders.insert(std::pair("v_noPP",		ShaderLoader(shadersDir + "v_noPP.vert")));
-	shaderLoaders.insert(std::pair("f_noPP",		ShaderLoader(shadersDir + "f_noPP.frag")));
+		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace})));
+		shaderLoaders.insert(std::pair("f_stone", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_specular, sm_roughness, sm_reduceNightLight})));
+
+		shaderLoaders.insert(std::pair("v_noPP", ShaderLoader(shadersDir + "v_noPP.vert")));
+		shaderLoaders.insert(std::pair("f_noPP", ShaderLoader(shadersDir + "f_noPP.frag")));
+	}
+
+	// VERTICES
+	{
+		verticesLoaders.insert(std::pair("stone", VerticesLoader(vertexDir + "rocks/free_rock/stone.obj")));
+	}
 
 	// TEXTURES
+	{
+		// Special
+		texInfos.insert(std::pair("space_1", TextureLoader(texDir + "sky_box/space1.jpg")));
+		texInfos.insert(std::pair("cottage_d", TextureLoader(texDir + "models/cottage/cottage_diffuse.png")));
+		texInfos.insert(std::pair("room", TextureLoader(texDir + "models/viking_room.png")));
+		texInfos.insert(std::pair("squares", TextureLoader(texDir + "squares.png")));
+		texInfos.insert(std::pair("sun", TextureLoader(texDir + "Sun/sun2_1.png")));
+		texInfos.insert(std::pair("hud", TextureLoader(texDir + "HUD/reticule_1.png")));
 
-	// Special
-	texInfos.insert(std::pair("space_1",   TextureLoader(texDir + "sky_box/space1.jpg")));
-	texInfos.insert(std::pair("cottage_d", TextureLoader(texDir + "models/cottage/cottage_diffuse.png")));
-	texInfos.insert(std::pair("room",      TextureLoader(texDir + "models/viking_room.png")));
-	texInfos.insert(std::pair("squares",   TextureLoader(texDir + "squares.png")));
-	texInfos.insert(std::pair("sun",       TextureLoader(texDir + "Sun/sun2_1.png")));
-	texInfos.insert(std::pair("hud",       TextureLoader(texDir + "HUD/reticule_1.png")));
+		// Plants
+		texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/grassDry_a.png")));
+		texInfos.insert(std::pair("grassDry_n", TextureLoader(texDir + "grass/grassDry_n.png")));
+		texInfos.insert(std::pair("grassDry_s", TextureLoader(texDir + "grass/grassDry_s.png")));
+		texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
+		texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
 
-	// Plants
-	texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/grassDry_a.png")));
-	texInfos.insert(std::pair("grassDry_n", TextureLoader(texDir + "grass/grassDry_n.png")));
-	texInfos.insert(std::pair("grassDry_s", TextureLoader(texDir + "grass/grassDry_s.png")));
-	texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
-	texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
+		texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
+		//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
+		texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
 
-	texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
-	//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
-	texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
+		// Rocks
+		texInfos.insert(std::pair("bumpRock_a", TextureLoader(texDir + "rock/bumpRock_a.png")));
+		texInfos.insert(std::pair("bumpRock_n", TextureLoader(texDir + "rock/bumpRock_n.png")));
+		texInfos.insert(std::pair("bumpRock_s", TextureLoader(texDir + "rock/bumpRock_s.png")));
+		texInfos.insert(std::pair("bumpRock_r", TextureLoader(texDir + "rock/bumpRock_r.png")));
+		texInfos.insert(std::pair("bumpRock_h", TextureLoader(texDir + "rock/bumpRock_h.png")));
 
-	// Rocks
-	texInfos.insert(std::pair("bumpRock_a", TextureLoader(texDir + "rock/bumpRock_a.png")));
-	texInfos.insert(std::pair("bumpRock_n", TextureLoader(texDir + "rock/bumpRock_n.png")));
-	texInfos.insert(std::pair("bumpRock_s", TextureLoader(texDir + "rock/bumpRock_s.png")));
-	texInfos.insert(std::pair("bumpRock_r", TextureLoader(texDir + "rock/bumpRock_r.png")));
-	texInfos.insert(std::pair("bumpRock_h", TextureLoader(texDir + "rock/bumpRock_h.png")));
+		texInfos.insert(std::pair("stone_a", TextureLoader(vertexDir + "rocks/free_rock/stone_a.jpg")));
+		texInfos.insert(std::pair("stone_n", TextureLoader(vertexDir + "rocks/free_rock/stone_n.jpg")));
+		texInfos.insert(std::pair("stone_s", TextureLoader(vertexDir + "rocks/free_rock/stone_s.jpg")));
+		texInfos.insert(std::pair("stone_r", TextureLoader(vertexDir + "rocks/free_rock/stone_r.jpg")));
 
-	// Soils
-	texInfos.insert(std::pair("sandDunes_a", TextureLoader(texDir + "sand/sandDunes_a.png")));
-	texInfos.insert(std::pair("sandDunes_n", TextureLoader(texDir + "sand/sandDunes_n.png")));
-	texInfos.insert(std::pair("sandDunes_s", TextureLoader(texDir + "sand/sandDunes_s.png")));
-	texInfos.insert(std::pair("sandDunes_r", TextureLoader(texDir + "sand/sandDunes_r.png")));
-	texInfos.insert(std::pair("sandDunes_h", TextureLoader(texDir + "sand/sandDunes_h.png")));
+		// Soils
+		texInfos.insert(std::pair("sandDunes_a", TextureLoader(texDir + "sand/sandDunes_a.png")));
+		texInfos.insert(std::pair("sandDunes_n", TextureLoader(texDir + "sand/sandDunes_n.png")));
+		texInfos.insert(std::pair("sandDunes_s", TextureLoader(texDir + "sand/sandDunes_s.png")));
+		texInfos.insert(std::pair("sandDunes_r", TextureLoader(texDir + "sand/sandDunes_r.png")));
+		texInfos.insert(std::pair("sandDunes_h", TextureLoader(texDir + "sand/sandDunes_h.png")));
 
-	texInfos.insert(std::pair("sandWavy_a", TextureLoader(texDir + "sand/sandWavy_a.png")));
-	texInfos.insert(std::pair("sandWavy_n", TextureLoader(texDir + "sand/sandWavy_n.png")));
-	texInfos.insert(std::pair("sandWavy_s", TextureLoader(texDir + "sand/sandWavy_s.png")));
-	texInfos.insert(std::pair("sandWavy_r", TextureLoader(texDir + "sand/sandWavy_r.png")));
-	texInfos.insert(std::pair("sandWavy_h", TextureLoader(texDir + "sand/sandWavy_h.png")));
+		texInfos.insert(std::pair("sandWavy_a", TextureLoader(texDir + "sand/sandWavy_a.png")));
+		texInfos.insert(std::pair("sandWavy_n", TextureLoader(texDir + "sand/sandWavy_n.png")));
+		texInfos.insert(std::pair("sandWavy_s", TextureLoader(texDir + "sand/sandWavy_s.png")));
+		texInfos.insert(std::pair("sandWavy_r", TextureLoader(texDir + "sand/sandWavy_r.png")));
+		texInfos.insert(std::pair("sandWavy_h", TextureLoader(texDir + "sand/sandWavy_h.png")));
 
-	// Water
-	texInfos.insert(std::pair("sea_n",      TextureLoader(texDir + "water/sea_n.png")));
-	texInfos.insert(std::pair("sea_h",      TextureLoader(texDir + "water/sea_h.png")));
-	texInfos.insert(std::pair("sea_foam_a", TextureLoader(texDir + "water/sea_foam_a.png")));
+		// Water
+		texInfos.insert(std::pair("sea_n", TextureLoader(texDir + "water/sea_n.png")));
+		texInfos.insert(std::pair("sea_h", TextureLoader(texDir + "water/sea_h.png")));
+		texInfos.insert(std::pair("sea_foam_a", TextureLoader(texDir + "water/sea_foam_a.png")));
 
-	// Snow
-	texInfos.insert(std::pair("snow_a", TextureLoader(texDir + "snow/snow_a.png")));
-	texInfos.insert(std::pair("snow_n", TextureLoader(texDir + "snow/snow_n.png")));
-	texInfos.insert(std::pair("snow_s", TextureLoader(texDir + "snow/snow_s.png")));
-	texInfos.insert(std::pair("snow_r", TextureLoader(texDir + "snow/snow_r.png")));
-	texInfos.insert(std::pair("snow_h", TextureLoader(texDir + "snow/snow_h.png")));
+		// Snow
+		texInfos.insert(std::pair("snow_a", TextureLoader(texDir + "snow/snow_a.png")));
+		texInfos.insert(std::pair("snow_n", TextureLoader(texDir + "snow/snow_n.png")));
+		texInfos.insert(std::pair("snow_s", TextureLoader(texDir + "snow/snow_s.png")));
+		texInfos.insert(std::pair("snow_r", TextureLoader(texDir + "snow/snow_r.png")));
+		texInfos.insert(std::pair("snow_h", TextureLoader(texDir + "snow/snow_h.png")));
 
-	texInfos.insert(std::pair("snow2_a", TextureLoader(texDir + "snow/snow2_a.png")));
-	texInfos.insert(std::pair("snow2_n", TextureLoader(texDir + "snow/snow2_n.png")));
-	texInfos.insert(std::pair("snow2_s", TextureLoader(texDir + "snow/snow2_s.png")));
+		texInfos.insert(std::pair("snow2_a", TextureLoader(texDir + "snow/snow2_a.png")));
+		texInfos.insert(std::pair("snow2_n", TextureLoader(texDir + "snow/snow2_n.png")));
+		texInfos.insert(std::pair("snow2_s", TextureLoader(texDir + "snow/snow2_s.png")));
 
-	// Others
-	texInfos.insert(std::pair("grass0",     TextureLoader(texDir + "grass/grass0.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-	texInfos.insert(std::pair("grass1",     TextureLoader(texDir + "grass/grass1.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-	texInfos.insert(std::pair("grass2",     TextureLoader(texDir + "grass/grass2.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-	texInfos.insert(std::pair("whiteNoise", TextureLoader(texDir + "grass/whiteNoise.png")));
+		// Others
+		texInfos.insert(std::pair("grass0", TextureLoader(texDir + "grass/grass0.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("grass1", TextureLoader(texDir + "grass/grass1.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("grass2", TextureLoader(texDir + "grass/grass2.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("whiteNoise", TextureLoader(texDir + "grass/whiteNoise.png")));
+	}
 
 	// TEXTURE PACKS
-
-	// Plants
-	planetTexInfos.push_back(texInfos["grassDry_a"]);
-	planetTexInfos.push_back(texInfos["grassDry_n"]);
-	planetTexInfos.push_back(texInfos["grassDry_s"]);
-	planetTexInfos.push_back(texInfos["grassDry_r"]);
-	planetTexInfos.push_back(texInfos["grassDry_h"]);
-	// Rocks
-	planetTexInfos.push_back(texInfos["bumpRock_a"]);
-	planetTexInfos.push_back(texInfos["bumpRock_n"]);
-	planetTexInfos.push_back(texInfos["bumpRock_s"]);
-	planetTexInfos.push_back(texInfos["bumpRock_r"]);
-	planetTexInfos.push_back(texInfos["bumpRock_h"]);
-	// Snow
-	planetTexInfos.push_back(texInfos["snow_a"]);
-	planetTexInfos.push_back(texInfos["snow_n"]);
-	planetTexInfos.push_back(texInfos["snow_s"]);
-	planetTexInfos.push_back(texInfos["snow_r"]);
-	planetTexInfos.push_back(texInfos["snow_h"]);
-	planetTexInfos.push_back(texInfos["snow2_a"]);
-	planetTexInfos.push_back(texInfos["snow2_n"]);
-	planetTexInfos.push_back(texInfos["snow2_s"]);
-	planetTexInfos.push_back(texInfos["snow_r"]);	// repeated
-	planetTexInfos.push_back(texInfos["snow_h"]);	// repeated
-	// Soils
-	planetTexInfos.push_back(texInfos["sandDunes_a"]);
-	planetTexInfos.push_back(texInfos["sandDunes_n"]);
-	planetTexInfos.push_back(texInfos["sandDunes_s"]);
-	planetTexInfos.push_back(texInfos["sandDunes_r"]);
-	planetTexInfos.push_back(texInfos["sandDunes_h"]);
-	planetTexInfos.push_back(texInfos["sandWavy_a"]);
-	planetTexInfos.push_back(texInfos["sandWavy_n"]);
-	planetTexInfos.push_back(texInfos["sandWavy_s"]);
-	planetTexInfos.push_back(texInfos["sandWavy_r"]);
-	planetTexInfos.push_back(texInfos["sandWavy_h"]);
-	planetTexInfos.push_back(texInfos["squares"]);
-	// Water
-	planetTexInfos.push_back(texInfos["sea_n"]);
-	planetTexInfos.push_back(texInfos["sea_h"]);
-	planetTexInfos.push_back(texInfos["sea_foam_a"]);
+	{
+		// Plants
+		planetTexInfos.push_back(texInfos["grassDry_a"]);
+		planetTexInfos.push_back(texInfos["grassDry_n"]);
+		planetTexInfos.push_back(texInfos["grassDry_s"]);
+		planetTexInfos.push_back(texInfos["grassDry_r"]);
+		planetTexInfos.push_back(texInfos["grassDry_h"]);
+		// Rocks
+		planetTexInfos.push_back(texInfos["bumpRock_a"]);
+		planetTexInfos.push_back(texInfos["bumpRock_n"]);
+		planetTexInfos.push_back(texInfos["bumpRock_s"]);
+		planetTexInfos.push_back(texInfos["bumpRock_r"]);
+		planetTexInfos.push_back(texInfos["bumpRock_h"]);
+		// Snow
+		planetTexInfos.push_back(texInfos["snow_a"]);
+		planetTexInfos.push_back(texInfos["snow_n"]);
+		planetTexInfos.push_back(texInfos["snow_s"]);
+		planetTexInfos.push_back(texInfos["snow_r"]);
+		planetTexInfos.push_back(texInfos["snow_h"]);
+		planetTexInfos.push_back(texInfos["snow2_a"]);
+		planetTexInfos.push_back(texInfos["snow2_n"]);
+		planetTexInfos.push_back(texInfos["snow2_s"]);
+		planetTexInfos.push_back(texInfos["snow_r"]);	// repeated
+		planetTexInfos.push_back(texInfos["snow_h"]);	// repeated
+		// Soils
+		planetTexInfos.push_back(texInfos["sandDunes_a"]);
+		planetTexInfos.push_back(texInfos["sandDunes_n"]);
+		planetTexInfos.push_back(texInfos["sandDunes_s"]);
+		planetTexInfos.push_back(texInfos["sandDunes_r"]);
+		planetTexInfos.push_back(texInfos["sandDunes_h"]);
+		planetTexInfos.push_back(texInfos["sandWavy_a"]);
+		planetTexInfos.push_back(texInfos["sandWavy_n"]);
+		planetTexInfos.push_back(texInfos["sandWavy_s"]);
+		planetTexInfos.push_back(texInfos["sandWavy_r"]);
+		planetTexInfos.push_back(texInfos["sandWavy_h"]);
+		planetTexInfos.push_back(texInfos["squares"]);
+		// Water
+		planetTexInfos.push_back(texInfos["sea_n"]);
+		planetTexInfos.push_back(texInfos["sea_h"]);
+		planetTexInfos.push_back(texInfos["sea_foam_a"]);
+	}
 }

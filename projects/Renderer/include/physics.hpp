@@ -115,6 +115,9 @@ extern glm::vec3 zero;
 float angleBetween(glm::vec3 a, glm::vec3 b, glm::vec3 origin);
 float angleBetween(glm::vec3 a, glm::vec3 b);
 
+/// Quaternion that represents no rotation
+extern glm::vec4 noRotQuat;
+
 /// Get rotation quaternion. Quaternions are a 4 dimensional extension of complex numbers. Useful for rotations, and more efficient than Rotation matrices (Euler angles) (https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html).
 glm::vec4 getRotQuat(glm::vec3 rotAxis, float angle);
 

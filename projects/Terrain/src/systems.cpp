@@ -802,7 +802,7 @@ void s_Distributor::update(float timeStep)
     if (!c_cam) { std::cout << "Single component not found (s_Model)" << std::endl; return; }
 
     // World component (planet) <<<
-    std::vector<Component*> c_models = em->getComponents(CT::model);
+    //std::vector<Component*> c_models = em->getComponents(CT::model);
     c_Model_planet* c_mPlanet = getPlanetComponent();
     if (!c_mPlanet) return;
 
@@ -812,25 +812,26 @@ void s_Distributor::update(float timeStep)
     // Precalculations
     glm::vec3 normal = glm::normalize(c_cam->camPos - c_mPlanet->planet->nucleus);  // Cam's normal is considered the normal for all items.
     glm::vec4 latLonQuat = getLatLonRotQuat(normal);                    // Rotation quaternion around world coordinates for all items.
+    glm::vec3 basicNormal = glm::normalize(c_cam->camPos - c_mPlanet->planet->nucleus);
     //glm::vec3 front = rotatePoint(latLonQuat, zAxis);                   // Front for all items (looks north).
     //glm::vec3 right = glm::normalize(glm::cross(front, normal));        // Right for all items. // glm::normalize(glm::cross(front, zAxis));
 
     // Traverse the entities
     c_ModelParams* c_mParams;   // component to update
-    c_Distributor* c_distrib;
+    const c_Distributor* c_distrib;
 
     unsigned i, j;
     std::vector<float>* vertices;
     glm::vec3 position;
     float slope;
-    glm::vec4 randomQuat;
-    glm::vec3 basicNormal = glm::normalize(c_cam->camPos - c_mPlanet->planet->nucleus);
 
     for (uint32_t eId : entities)
     {
         c_distrib = (c_Distributor*)em->getComponent(CT::distributor, eId);
         c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
         if (!c_mParams) continue;
+
+        //unsigned maxScale;	// Randomize scale in the range [1, maxScale]
 
         c_mParams->mp.clear();
 
@@ -846,18 +847,17 @@ void s_Distributor::update(float timeStep)
                 position = glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]);
                 if (!withinFOV(position, c_cam->camPos, c_cam->front, c_cam->fov * 1.2, 5)) continue;     // is outside fov?
 
-                slope = 1.f - glm::dot(glm::vec3((*vertices)[j + 3], (*vertices)[j + 4], (*vertices)[j + 5]), basicNormal);    // 1 - dot(groundNormal, sphereNormal)
-                if (!c_distrib->itemSupported(position, slope, c_distrib->noisers)) continue;                                // user condition
-
-                randomQuat = getRotQuat(zAxis, position.x * position.y * position.z);
+                slope = 1.f - glm::dot(glm::vec3((*vertices)[j + 3], (*vertices)[j + 4], (*vertices)[j + 5]), basicNormal); // 1 - dot(groundNormal, sphereNormal)
+                if (!c_distrib->itemSupported(position, slope, c_distrib->noisers)) continue;                               // user condition
 
                 // Update model parameters
+                //if(em->getName(eId) == "stone")
+                //    std::cout << getScale(position, c_distrib->maxScale).x << std::endl;
+
                 c_mParams->mp.push_back(ModelParams(
-                    glm::vec3(1, 1, 1),                   // scale
-                    productQuat(randomQuat, latLonQuat),  // rotation
-                    //latLonQuat,                                                   // rotation
-                    //getRotQuat(zAxis, position.x * position.y * position.z),      // rotation
-                    position                              // position
+                    getScale(position, c_distrib->maxScale),                                // scale
+                    productQuat(getSecondQuat(position, c_distrib->rotType), latLonQuat),   // rotation
+                    position                                                                // position
                 ));
             }
         }
@@ -919,6 +919,44 @@ c_Model_planet* s_Distributor::getPlanetComponent()
             return (c_Model_planet*)c_models[i];
 
     return nullptr;
+}
+
+glm::vec4 s_Distributor::getSecondQuat(const glm::vec3& pos, unsigned rotationType)
+{
+    switch (rotationType)
+    {
+    case 1:     // Z axis, random
+        return getRotQuat(zAxis, pos.x * pos.y * pos.z);
+        break;
+    case 2:     // all axes, random
+        return productQuat(
+            getRotQuat(xAxis, pos.x * pos.y),
+            getRotQuat(yAxis, pos.x * pos.z),
+            getRotQuat(zAxis, pos.y * pos.z));
+        break;
+    case 3:     // face cam
+        return noRotQuat;
+        break;
+    default:
+        return noRotQuat;
+        break;
+    }
+}
+
+glm::vec3 s_Distributor::getScale(const glm::vec3& pos, unsigned maxScale)
+{
+    switch (maxScale)
+    {
+    case 0:
+    case 1:     // scale == 1
+        return glm::vec3(1);
+        break;
+    default:    // scale > 1
+        return glm::vec3(1 +
+            (glm::abs((int)(pos.x * pos.y * pos.z)) % 9) *     // range [0, 10]
+            maxScale / 10.f);
+        break;
+    }
 }
 
 bool s_Distributor::renderRequired(const Planet& planet, float minDepth, unsigned chunksCount)

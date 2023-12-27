@@ -249,5 +249,5 @@ bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::
 	return true;
 }
 
-c_Distributor::c_Distributor(unsigned minDepth, unsigned posture, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
-	: Component(CT::distributor), minDepth(minDepth), posture(posture), itemSupported(itemSupported_callback), noisers(noisers) { };
+c_Distributor::c_Distributor(unsigned minDepth, unsigned rotType, unsigned maxScale, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
+	: Component(CT::distributor), minDepth(minDepth), rotType(rotType), maxScale(maxScale), itemSupported(itemSupported_callback), noisers(noisers) { };

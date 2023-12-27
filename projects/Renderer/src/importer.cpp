@@ -198,6 +198,23 @@ void VLModule::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize s
 	e->endSingleTimeCommands(commandBuffer);
 }
 
+glm::vec3 VLModule::getVertexTangent(const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3, const glm::vec2 uv1, const glm::vec2 uv2, const glm::vec2 uv3)
+{
+	glm::vec3 edge1 = v2 - v1;
+	glm::vec3 edge2 = v3 - v1;
+	glm::vec3 uvDiff1 = glm::vec3(uv2, 0) - glm::vec3(uv1, 0);
+	glm::vec3 uvDiff2 = glm::vec3(uv3, 0) - glm::vec3(uv1, 0);
+
+	glm::vec3 denominator = (uvDiff1 * edge2 - uvDiff2 * edge1);
+	if (abs(denominator.x) < 0.0001) denominator.x = 0.0001;			// Handle cases where the denominator approaches zero (which can happen when the triangle's texture coordinates are aligned)
+	if (abs(denominator.y) < 0.0001) denominator.y = 0.0001;
+	if (abs(denominator.z) < 0.0001) denominator.z = 0.0001;
+
+	//glm::vec3 tangent   = glm::normalize((uvDiff2 * edge1 - uvDiff1 * edge2) / denominator);
+	//glm::vec3 biTangent = glm::normalize((uvDiff1 * edge2 - uvDiff2 * edge1) / denominator);
+
+	return glm::normalize((uvDiff2 * edge1 - uvDiff1 * edge2) / denominator);
+}
 
 VLM_fromBuffer::VLM_fromBuffer(const void* verticesData, size_t vertexSize, size_t vertexCount, const std::vector<uint16_t>& indices)
 	: VLModule(vertexSize)
@@ -260,7 +277,7 @@ void VLM_fromFile::processNode(const aiScene* scene, aiNode* node)
 void VLM_fromFile::processMeshes(const aiScene* scene, std::vector<aiMesh*> &meshes)
 {
 	//<<< destVertices->reserve(destVertices->size() + mesh->mNumVertices);
-	float* vertex = new float[vertexSize / sizeof(float)];			// [3 + 3 + 2]  (pos, UV, normal)
+	float* vertex = new float[vertexSize / sizeof(float)];			// [3 + 3 + 2]  (pos, normal, UV)
 	unsigned i, j, k;
 
 	// Go through each mesh contained in this node
@@ -320,6 +337,8 @@ void VLM_fromFile::processMeshes(const aiScene* scene, std::vector<aiMesh*> &mes
 	delete[] vertex;
 }
 
+
+VerticesLoader::VerticesLoader() : loader(nullptr) { }
 
 VerticesLoader::VerticesLoader(std::string& filePath)
 	: loader(nullptr)
@@ -431,55 +450,57 @@ void SLModule::applyModifications(std::string& shader)
 	{
 		switch (mod)
 		{
-		case albedo:					// (FS) Sampler used
+		case sm_albedo:					// (FS) Sampler used
 			found = findTwoAndReplaceBetween(shader, "vec4 albedo", ";",
 				"vec4 albedo = texture(texSampler[" + std::to_string(count) + "], inUVs)");
 			if (found) count++;
 			break;
 
-		case specularity:				// (FS) Sampler used
+		case sm_specular:					// (FS) Sampler used
 			found = findTwoAndReplaceBetween(shader, "vec3 specular", ";",
 				"vec3 specular = texture(texSampler[" + std::to_string(count) + "], inUVs).xyz");
 			if (found) count++;
 			break;
 
-		case roughness:					// (FS) Sampler used
+		case sm_roughness:					// (FS) Sampler used
 			found = findTwoAndReplaceBetween(shader, "float roughness", ";",
 				"float roughness = texture(texSampler[" + std::to_string(count) + "], inUVs).x");
 			if (found) count++;
 			break;
 
-		case normal:					// (FS) Sampler used <<< doesn't work yet
+		case sm_normal:					// (VS, FS) Sampler used <<< doesn't work yet
 			found = findTwoAndReplaceBetween(shader, "vec3 normal", ";",
 				"vec3 normal = planarNormal(texSampler[" + std::to_string(count) + "], inUVs, inTB, inNormal, 1)");
 			if (found) count++;
 			for (i = 0; i < 3; i++) if (!findStrAndErase(shader, "//normal: ")) break;
-			findStrAndReplace(shader, "layout(location = 4) flat", "layout(location = 6) flat");
+			findStrAndReplace(shader, "layout(location = 4) flat", "layout(location = 5) flat");
+			std::cout << shader << std::endl;
+			std::cout << "---------------" << std::endl;
 			break;
 			
-		case discardAlpha:				// (FS) Discard fragments with low alpha
+		case sm_discardAlpha:				// (FS) Discard fragments with low alpha
 			findStrAndErase(shader, "//discardAlpha: ");
 			break;
 
-		case backfaceNormals:			// (VS) Recalculate normal based on backfacing
+		case sm_backfaceNormals:			// (VS) Recalculate normal based on backfacing
 			findStrAndErase(shader, "//backfaceNormals: ");
 			break;
 
-		case verticalNormals:			// (VS) Make all normals (before MVP transformation) vertical (vec3(0,0,1))
+		case sm_verticalNormals:			// (VS) Make all normals (before MVP transformation) vertical (vec3(0,0,1))
 			findStrAndErase(shader, "outNormal = mat3(ubo.normalMatrix) * inNormal;");
 			findStrAndErase(shader, "//verticalNormals: ");
 			break;
 
-		case waving:					// (VS) Make mesh wave (wind)
+		case sm_waving:					// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
 			findStrAndErase(shader, "//waving: ");
 			break;
 
-		case displace:					// (VS) Move vertex aside a bit (0.2 meter towards x-axis)
+		case sm_displace:					// (VS) Move vertex aside a bit (0.2 meter towards x-axis)
 			findStrAndErase(shader, "//displace: ");
 			break;
 
-		case reduceNightLight:			// (FS) Reduce sunlight at night
+		case sm_reduceNightLight:			// (FS) Reduce sunlight at night
 			findStrAndErase(shader, "//reduceNightLight: ");
 			break;
 

@@ -245,8 +245,8 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	}
 
 	std::vector<std::shared_ptr<Noiser>> noiseSet;
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 3248));
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 3250));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1111));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
 
 	VerticesLoader vertexData(vertexDir + "grass.obj");
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
@@ -256,7 +256,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 		"grass",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
 		0, 0,
 		VK_CULL_MODE_NONE);
@@ -264,7 +264,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Distributor(7, 1, grass_callback, noiseSet),
+			new c_Distributor(7, 1, 1, grass_callback, noiseSet),
 			//new c_Move(MoveType::noMove)
 	};
 }
@@ -282,6 +282,50 @@ bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 	return true;
 }
 
+std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights)
+{
+	const LightSet* lights;
+	if (c_lights) lights = &c_lights->lights;
+	else {
+		std::cout << "No c_Light component found" << std::endl;
+		return std::vector<Component*>();
+	}
+
+	std::vector<std::shared_ptr<Noiser>> noiseSet;
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1113));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 1114));
+
+	//VerticesLoader vertexData(vertexDir + "rocks/free_rock/rock.obj");
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	modelIter model = renderer.newModel(
+		"rock",
+		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
+		vertexData, shaders, textureSet,
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
+
+	return std::vector<Component*>{
+		new c_Model_normal(model, UboType::mvpncl),
+			new c_ModelParams(),
+			new c_Distributor(7, 2, 5, stone_callback, noiseSet)
+	};
+}
+
+bool stone_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)
+{
+	float height = glm::distance(pos, glm::vec3(0, 0, 0));
+	if (groundSlope > 0.22 ||
+		height < 2010 ||
+		height > 2100 ||
+		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
+		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.95)
+		return false;
+
+	return true;
+}
+
 std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_list<ShaderLoader> trunkShaders, std::initializer_list<ShaderLoader> branchShaders, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
 {
 	const LightSet* lights;
@@ -292,8 +336,8 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	}
 
 	std::vector<std::shared_ptr<Noiser>> noiseSet;
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 3148));
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 3150));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1115));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 1116));
 
 	std::vector<std::vector<Component*>> entities;
 
@@ -307,13 +351,13 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 		"tree_trunk",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, tree_callback, noiseSet)
+		new c_Distributor(7, 1, 1, tree_callback, noiseSet)
 	});
 	
 	// Branches:
@@ -326,13 +370,13 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 		"tree_branches",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData2, shaders2, textureSet2,
-		1, 4 * size.mat4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, n * LightPosDir (2*vec4)
-		size.vec4 + c_lights->lights.numLights * sizeof(LightProps) );			// camPos, n * LightProps (6*vec4)
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, tree_callback, noiseSet)
+		new c_Distributor(7, 1, 1, tree_callback, noiseSet)
 	});
 	
 	return entities;
