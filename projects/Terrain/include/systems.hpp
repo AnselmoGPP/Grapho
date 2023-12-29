@@ -62,7 +62,8 @@ class s_Camera : public System
 protected:
     glm::mat4 getViewMatrix(glm::vec3& camPos, glm::vec3& front, glm::vec3&camUp);
     glm::mat4 getProjectionMatrix(float aspectRatio, float fov, float nearViewPlane, float farViewPlane);
-    void updateAxes(c_Camera* c_cam, glm::vec4& rotQuat);                   //!< Rotate current axes.
+    void updateAxes(c_Camera* c_cam, glm::vec4& rotQuat);                               //!< Rotate current axes (based on camUp).
+    void updateAxes_worldUp(c_Camera* c_cam, glm::vec4& rotQuat, glm::vec3& worldUp);   //!< Rotate current axes (based on worldUp).
 
     void update_Sphere(float timeStep, c_Cam_Sphere* c_cam);
     void update_Plane_polar(float timeStep, c_Cam_Plane_polar* c_cam);

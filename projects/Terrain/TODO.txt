@@ -1,12 +1,20 @@
 TODO:
 	RONALD
-	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 -14 -18
+	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	BTC
 	
+	Tangent computation
+	Load vertices from file: When many meshes exist in a file, different objects should be created (problem: different shaders and textures used)
 	Planet component should be singleton?
-	Normals for basic shader (load vertex data from file including normal map, not only pos, normal, & UV)
-	Dithering & waving
-	[Trees], small grass, [big grass], rocks, bushes, flowers
+	[Trees], small grass, [big grass], [rocks], bushes, flowers
+	XY scaling of trees
+	Base de tree
+	Use occlussion map for stones
+	Rocky is not using height map
+	Delete objs first, load second (possible?)
+	std::filesystem
+	Dithered appearance of new objects
+	Normals for basic shader (load vertex data from file including normal map, not only pos, normal, & UV (v332))
 	Any way of not updating grass if not moved?
 	getNoise(): Let glm::vec3 be passed as arguments
 	Noiser: member "scale" should multiply resulting noise? I think it' only about scale, not amplitude.
@@ -413,6 +421,7 @@ Cross& Dot product : https://www.youtube.com/watch?v=h0NJK4mEIJU
 
 Importing OBJ from Blender ----------
 
+Join all meshes together (Ctrl + J)
 Shade smooth
 Forward axis: Y (default: -Z)
 Up axis: Z (default: Y)

@@ -203,6 +203,19 @@ void s_Camera::updateAxes(c_Camera* c_cam, glm::vec4& rotQuat)
     c_cam->front = glm::normalize(c_cam->front);
 }
 
+void s_Camera::updateAxes_worldUp(c_Camera* c_cam, glm::vec4& rotQuat, glm::vec3& worldUp)
+{
+    // Rotate
+    c_cam->front = rotatePoint(rotQuat, c_cam->front);
+    c_cam->right = rotatePoint(rotQuat, c_cam->right);
+    c_cam->camUp = rotatePoint(rotQuat, c_cam->camUp);
+
+    // Normalize & make perpendicular (to front)
+    c_cam->right = glm::normalize(glm::cross(c_cam->front, worldUp));
+    c_cam->camUp = glm::normalize(glm::cross(c_cam->right, c_cam->front));
+    c_cam->front = glm::normalize(c_cam->front);
+}
+
 void s_Camera::update(float timeStep)
 {
     #ifdef DEBUG_SYSTEM
@@ -406,9 +419,9 @@ void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_spher
 
     // Keyboard moves
     float velocity = c_cam->keysSpeed * timeStep;
-    float yaw = 0;					//!< cam yaw       Y|  R
-    float pitch = 0;				//!< cam pitch      | /
-    float roll = 0;					//!< cam roll       |/____P
+    //float yaw = 0;				//!< cam yaw       Y|  R
+    //float pitch = 0;				//!< cam pitch      | /
+    //float roll = 0;				//!< cam roll       |/____P
     
     glm::vec3 sphereDir = glm::cross(c_cam->worldUp, glm::normalize(glm::cross(c_cam->front, c_cam->worldUp)));
     float verticalValue = glm::dot(c_cam->front, c_cam->worldUp);
@@ -466,7 +479,7 @@ void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_spher
 
     // Apply rotations (to camPos and its orientation axes)
     c_cam->camPos = rotatePoint(rotQuat1, c_cam->camPos);
-    updateAxes(c_cam, rotQuat2);
+    updateAxes_worldUp(c_cam, rotQuat2, c_cam->worldUp);
 
     c_cam->worldUp = glm::normalize(c_cam->camPos);
 

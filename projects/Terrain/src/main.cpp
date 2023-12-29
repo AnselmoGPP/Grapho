@@ -14,6 +14,10 @@
 #include "components.hpp"
 #include "systems.hpp"
 
+// MVS executable's path        == Grapho\_BUILD\projects\Terrain (Terrain.sln)
+// Standalone executable's path == Grapho\_BUILD\projects\Terrain\Release (Terrain.exe)
+#define STANDALONE_EXECUTABLE false
+
 //#define DEBUG_MAIN 
 
 // Prototypes
@@ -70,8 +74,14 @@ int main(int argc, char* argv[])
 		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
 		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
 		em.addEntity("grass", eFact.createGrass(
+			shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+			{ texInfos["grass"] },
+			verticesLoaders["grass"],
+			(c_Lights*)em.getSComponent(CT::lights)));
+		em.addEntity("plant", eFact.createPlant(
 			shaderLoaders["v_grass"], shaderLoaders["f_grass"], 
-			{ texInfos["grass0"] }, 
+			{ texInfos["plant"] },
+			verticesLoaders["plant"],
 			(c_Lights*)em.getSComponent(CT::lights)));
 		em.addEntity("stone", eFact.createRock(
 			shaderLoaders["v_stone"], shaderLoaders["f_stone"], 
@@ -80,11 +90,12 @@ int main(int argc, char* argv[])
 			(c_Lights*)em.getSComponent(CT::lights)));
 		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
 			{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] }, 
-			{ texInfos["bark_a"] }, { texInfos["branch_a"] }, 
+			{ texInfos["bark_a"] }, { texInfos["branch_a"] },
+			verticesLoaders["trunk"], verticesLoaders["branches"],
 			(c_Lights*)em.getSComponent(CT::lights)));
 		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
-		
+
 		// SYSTEMS:
 
 		em.addSystem(new s_Engine);
@@ -100,7 +111,7 @@ int main(int argc, char* argv[])
 			world.printInfo();
 			std::cout << "--------------------" << std::endl;
 		#endif
-		
+
 		app.renderLoop();		// Start rendering
 
 		if (0) throw "Test exception";
@@ -130,6 +141,29 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 
 void loadResourcesInfo()
 {
+	// FILES' PATHS
+#if STANDALONE_EXECUTABLE
+#if defined(__unix__)
+	const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+	const std::string vertexDir("../../../../models/");
+	const std::string texDir("../../../../textures/");
+#elif _WIN64 || _WIN32
+	const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+	const std::string vertexDir("../../../../models/");
+	const std::string texDir("../../../../textures/");
+#endif
+#else
+#if defined(__unix__)
+	const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+	const std::string vertexDir("../../../models/");
+	const std::string texDir("../../../textures/");
+#elif _WIN64 || _WIN32
+	const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+	const std::string vertexDir("../../../cg_resources/vertex/");
+	const std::string texDir("../../../cg_resources/textures/");
+#endif
+#endif
+
 	// SHADERS
 	{
 		//shaderLoaders["v_points"] = ShaderLoader(shadersDir + "v_points.vert");
@@ -175,7 +209,7 @@ void loadResourcesInfo()
 		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_waving})));
 		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
-		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_backfaceNormals, sm_displace, sm_waving})));
+		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_displace, sm_waving})));
 		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
 		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace})));
@@ -187,7 +221,11 @@ void loadResourcesInfo()
 
 	// VERTICES
 	{
+		verticesLoaders.insert(std::pair("grass", VerticesLoader(vertexDir + "grass.obj")));
+		verticesLoaders.insert(std::pair("plant", VerticesLoader(vertexDir + "plant.obj")));
 		verticesLoaders.insert(std::pair("stone", VerticesLoader(vertexDir + "rocks/free_rock/stone.obj")));
+		verticesLoaders.insert(std::pair("trunk", VerticesLoader(vertexDir + "tree/trunk.obj")));
+		verticesLoaders.insert(std::pair("branches", VerticesLoader(vertexDir + "tree/branches.obj")));
 	}
 
 	// TEXTURES
@@ -201,22 +239,28 @@ void loadResourcesInfo()
 		texInfos.insert(std::pair("hud", TextureLoader(texDir + "HUD/reticule_1.png")));
 
 		// Plants
-		texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/grassDry_a.png")));
-		texInfos.insert(std::pair("grassDry_n", TextureLoader(texDir + "grass/grassDry_n.png")));
-		texInfos.insert(std::pair("grassDry_s", TextureLoader(texDir + "grass/grassDry_s.png")));
-		texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/grassDry_r.png")));
-		texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/grassDry_h.png")));
+		texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/dry/grass_a.png")));
+		texInfos.insert(std::pair("grassDry_n", TextureLoader(texDir + "grass/dry/grass_n.png")));
+		texInfos.insert(std::pair("grassDry_s", TextureLoader(texDir + "grass/dry/grass_s.png")));
+		texInfos.insert(std::pair("grassDry_r", TextureLoader(texDir + "grass/dry/grass_r.png")));
+		texInfos.insert(std::pair("grassDry_h", TextureLoader(texDir + "grass/dry/grass_h.png")));
 
-		texInfos.insert(std::pair("bark_a", TextureLoader(texDir + "tree/bark_a.jpg")));
-		//texInfos.insert(std::pair("bark_s", TextureLoader(texDir + "tree/bark_s.png")));
-		texInfos.insert(std::pair("branch_a", TextureLoader(texDir + "tree/branch_a.png")));
+		texInfos.insert(std::pair("bark_a", TextureLoader(vertexDir + "tree/bark_a.jpg")));
+		//texInfos.insert(std::pair("bark_s", TextureLoader(vertexDir + "tree/bark_s.png")));
+		texInfos.insert(std::pair("branch_a", TextureLoader(vertexDir + "tree/branch_a.png")));
+
+		texInfos.insert(std::pair("grass", TextureLoader(texDir + "grass/grass.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("plant", TextureLoader(texDir + "grass/plant.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		//texInfos.insert(std::pair("grass1", TextureLoader(texDir + "grass/grass1.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		//texInfos.insert(std::pair("grass2", TextureLoader(texDir + "grass/grass2.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("whiteNoise", TextureLoader(texDir + "grass/whiteNoise.png")));
 
 		// Rocks
-		texInfos.insert(std::pair("bumpRock_a", TextureLoader(texDir + "rock/bumpRock_a.png")));
-		texInfos.insert(std::pair("bumpRock_n", TextureLoader(texDir + "rock/bumpRock_n.png")));
-		texInfos.insert(std::pair("bumpRock_s", TextureLoader(texDir + "rock/bumpRock_s.png")));
-		texInfos.insert(std::pair("bumpRock_r", TextureLoader(texDir + "rock/bumpRock_r.png")));
-		texInfos.insert(std::pair("bumpRock_h", TextureLoader(texDir + "rock/bumpRock_h.png")));
+		texInfos.insert(std::pair("rocky_a", TextureLoader(texDir + "rock/cracks_2/rocky_a.png")));
+		texInfos.insert(std::pair("rocky_n", TextureLoader(texDir + "rock/cracks_2/rocky_n.png")));
+		texInfos.insert(std::pair("rocky_s", TextureLoader(texDir + "rock/cracks_2/rocky_s.png")));
+		texInfos.insert(std::pair("rocky_r", TextureLoader(texDir + "rock/cracks_2/rocky_r.png")));
+		texInfos.insert(std::pair("rocky_h", TextureLoader(texDir + "rock/cracks_2/rocky_h.png")));
 
 		texInfos.insert(std::pair("stone_a", TextureLoader(vertexDir + "rocks/free_rock/stone_a.jpg")));
 		texInfos.insert(std::pair("stone_n", TextureLoader(vertexDir + "rocks/free_rock/stone_n.jpg")));
@@ -251,12 +295,6 @@ void loadResourcesInfo()
 		texInfos.insert(std::pair("snow2_a", TextureLoader(texDir + "snow/snow2_a.png")));
 		texInfos.insert(std::pair("snow2_n", TextureLoader(texDir + "snow/snow2_n.png")));
 		texInfos.insert(std::pair("snow2_s", TextureLoader(texDir + "snow/snow2_s.png")));
-
-		// Others
-		texInfos.insert(std::pair("grass0", TextureLoader(texDir + "grass/grass0.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("grass1", TextureLoader(texDir + "grass/grass1.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("grass2", TextureLoader(texDir + "grass/grass2.png", VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("whiteNoise", TextureLoader(texDir + "grass/whiteNoise.png")));
 	}
 
 	// TEXTURE PACKS
@@ -268,11 +306,11 @@ void loadResourcesInfo()
 		planetTexInfos.push_back(texInfos["grassDry_r"]);
 		planetTexInfos.push_back(texInfos["grassDry_h"]);
 		// Rocks
-		planetTexInfos.push_back(texInfos["bumpRock_a"]);
-		planetTexInfos.push_back(texInfos["bumpRock_n"]);
-		planetTexInfos.push_back(texInfos["bumpRock_s"]);
-		planetTexInfos.push_back(texInfos["bumpRock_r"]);
-		planetTexInfos.push_back(texInfos["bumpRock_h"]);
+		planetTexInfos.push_back(texInfos["rocky_a"]);
+		planetTexInfos.push_back(texInfos["rocky_n"]);
+		planetTexInfos.push_back(texInfos["rocky_s"]);
+		planetTexInfos.push_back(texInfos["rocky_r"]);
+		planetTexInfos.push_back(texInfos["rocky_h"]);
 		// Snow
 		planetTexInfos.push_back(texInfos["snow_a"]);
 		planetTexInfos.push_back(texInfos["snow_n"]);

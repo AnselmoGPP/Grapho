@@ -235,7 +235,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 	};
 }
 
-std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -245,10 +245,10 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	}
 
 	std::vector<std::shared_ptr<Noiser>> noiseSet;
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1111));
-	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
+	//noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1111));
+	//noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
 
-	VerticesLoader vertexData(vertexDir + "grass.obj");
+	//VerticesLoader vertexData(vertexDir + "grass.obj");
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
@@ -263,20 +263,63 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
-			new c_ModelParams(),
-			new c_Distributor(7, 1, 1, grass_callback, noiseSet),
-			//new c_Move(MoveType::noMove)
+		new c_ModelParams(),
+		new c_Distributor(7, 1, 1, grass_callback, noiseSet)
 	};
 }
 
 bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)
 {
 	float height = glm::distance(pos, glm::vec3(0, 0, 0));
+	if (groundSlope > 0.08 ||
+		height < 2010 ||
+		height > 2100)
+		return false;
+
+	return true;
+}
+
+std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights)
+{
+	const LightSet* lights;
+	if (c_lights) lights = &c_lights->lights;
+	else {
+		std::cout << "No c_Light component found" << std::endl;
+		return std::vector<Component*>();
+	}
+
+	std::vector<std::shared_ptr<Noiser>> noiseSet;
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1111));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
+
+	//VerticesLoader vertexData(vertexDir + "grass.obj");
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	modelIter model = renderer.newModel(
+		"plant",
+		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
+		vertexData, shaders, textureSet,
+		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
+		0, 0,
+		VK_CULL_MODE_NONE);
+
+	return std::vector<Component*>{
+		new c_Model_normal(model, UboType::mvpncl),
+		new c_ModelParams(),
+		new c_Distributor(7, 1, 2, plant_callback, noiseSet)
+	};
+}
+
+bool plant_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)
+{
+	float height = glm::distance(pos, glm::vec3(0, 0, 0));
 	if (groundSlope > 0.22 ||
-		height < 2010 || 
+		height < 2010 ||
 		height > 2100 ||
 		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
-		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.4)
+		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.7)
 		return false;
 
 	return true;
@@ -317,7 +360,7 @@ bool stone_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 {
 	float height = glm::distance(pos, glm::vec3(0, 0, 0));
 	if (groundSlope > 0.22 ||
-		height < 2010 ||
+		height < 2000 ||
 		height > 2100 ||
 		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
 		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.95)
@@ -326,7 +369,7 @@ bool stone_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 	return true;
 }
 
-std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_list<ShaderLoader> trunkShaders, std::initializer_list<ShaderLoader> branchShaders, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, const c_Lights* c_lights)
+std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_list<ShaderLoader> trunkShaders, std::initializer_list<ShaderLoader> branchShaders, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, VerticesLoader& vertexData_trunk, VerticesLoader& vertexData_branches, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -343,40 +386,40 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 
 	// Trunk:
 	
-	VerticesLoader vertexData(vertexDir + "tree/trunk.obj");
+	//VerticesLoader vertexData(vertexDir + "tree/trunk.obj");
 	std::vector<ShaderLoader> shaders = trunkShaders;
 	std::vector<TextureLoader> textureSet{ tex_trunk };
 
 	modelIter model = renderer.newModel(
 		"tree_trunk",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData, shaders, textureSet,
+		vertexData_trunk, shaders, textureSet,
 		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 1, tree_callback, noiseSet)
+		new c_Distributor(7, 1, 2, tree_callback, noiseSet)
 	});
 	
 	// Branches:
 
-	VerticesLoader vertexData2(vertexDir + "tree/branches.obj");
+	//VerticesLoader vertexData2(vertexDir + "tree/branches.obj");
 	std::vector<ShaderLoader> shaders2 = branchShaders;
 	std::vector<TextureLoader> textureSet2{ tex_branch };
 
 	modelIter model2 = renderer.newModel(
 		"tree_branches",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData2, shaders2, textureSet2,
+		vertexData_branches, shaders2, textureSet2,
 		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 1, tree_callback, noiseSet)
+		new c_Distributor(7, 1, 2, tree_callback, noiseSet)
 	});
 	
 	return entities;

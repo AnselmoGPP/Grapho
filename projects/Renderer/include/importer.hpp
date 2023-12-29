@@ -110,6 +110,7 @@ public:
 	VLModule* clone() override;
 };
 
+/// Process a graphics file (obj, ...) and get the meshes. <<< Problem: This takes all the meshes in each node and stores them together. However, meshes from different nodes have their own indices, all of them in the range [0, number of vertices in the mesh). Since each mesh is an independent object, they cannot be put together without messing up with the indices (they should be stored as different models). 
 class VLM_fromFile : public VLModule
 {
 	std::string path;
@@ -342,7 +343,7 @@ public:
 
 // RESOURCES --------------------------------------------------------
 
-// Encapsulates data required for loading resources (vertices, indices, shaders, textures) and loading methods.
+/// Encapsulates data required for loading resources (vertices, indices, shaders, textures) and loading methods.
 struct ResourcesLoader
 {
 	ResourcesLoader(VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, VulkanEnvironment* e);
