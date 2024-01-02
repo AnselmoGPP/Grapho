@@ -250,7 +250,7 @@ void ModelData::createGraphicsPipeline()
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = VK_TRUE;				// Specify if the depth of new fragments should be compared to the depth buffer to see if they should be discarded.
 	depthStencil.depthWriteEnable = VK_TRUE;				// Specify if the new depth of fragments that pass the depth test should actually be written to the depth buffer.
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;	// Specify the comparison that is performed to keep or discard fragments.
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;	// Specify the comparison that is performed to keep or discard fragments.
 	depthStencil.depthBoundsTestEnable = VK_FALSE;				// [Optional] Use depth bound test (allows to only keep fragments that fall within a specified depth range.
 	depthStencil.minDepthBounds = 0.0f;					// [Optional]
 	depthStencil.maxDepthBounds = 1.0f;					// [Optional]

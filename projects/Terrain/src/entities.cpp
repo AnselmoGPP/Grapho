@@ -71,7 +71,7 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 
 	modelIter model = renderer.newModel(
 		"skyBox",
-		0, 1, primitiveTopology::triangle, vt_32,
+		1, 1, primitiveTopology::triangle, vt_32,
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
 		0 );
@@ -79,7 +79,7 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
 		new c_Model_normal(model, UboType::mvp),
-		new c_ModelParams(glm::vec3(100,100,100)),
+		new c_ModelParams(),
 		new c_Move(skyOrbit)						// 1 day ≈ 30 min
 	};
 }

@@ -9,6 +9,7 @@ TODO:
 		cubemaps
 		early depth testing
 
+	Grass perpendicular to slopes
 	Darken grass below / Make roots
 	increment ambient light during day
 	Tangent computation

@@ -15,7 +15,9 @@ layout(location = 0) out vec2 fragTexCoord;
 
 void main()
 {
-	gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+	//gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+	mat4 VM = mat4(mat3(ubo.view * ubo.model));						// take away translation and scaling
+	gl_Position  = (ubo.proj * VM * vec4(inPosition, 1.0)).xyww;	// this ensures that depth == 1
 	fragTexCoord = inTexCoord;
 }
 

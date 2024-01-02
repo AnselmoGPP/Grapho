@@ -598,9 +598,9 @@ void s_Sky_XY::update(float timeStep)
 
 void s_Move::updateSkyMove(c_ModelParams* c_mParams, const c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
 {
-    c_mParams->mp[0].pos.x = c_cam->camPos.x + cos(angle) * dist;
-    c_mParams->mp[0].pos.y = c_cam->camPos.y + sin(angle) * dist;
-    c_mParams->mp[0].pos.z = c_cam->camPos.z;
+    //c_mParams->mp[0].pos.x = c_cam->camPos.x + cos(angle) * dist;
+    //c_mParams->mp[0].pos.y = c_cam->camPos.y + sin(angle) * dist;
+    //c_mParams->mp[0].pos.z = c_cam->camPos.z;
 
     c_mParams->mp[0].rotQuat = productQuat(
         getRotQuat(glm::vec3(0, 1, 0), 3 * pi / 2),
@@ -689,6 +689,8 @@ void s_Model::update(float timeStep)
     float aspectRatio = c_eng->getAspectRatio();
     glm::vec2 clipPlanes{ c_cam->nearViewPlane, c_cam->farViewPlane };
     glm::vec2 screenSize{ c_eng->getWidth(), c_eng->getHeight() };
+
+    glm::mat4 MM;
 
     for (uint32_t eId : entities)
     {
