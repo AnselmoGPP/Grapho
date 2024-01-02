@@ -209,10 +209,10 @@ void loadResourcesInfo()
 		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_waving})));
 		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
-		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_displace, sm_waving})));
-		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
+		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_waving})));
+		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering})));
 
-		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace})));
+		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{ })));
 		shaderLoaders.insert(std::pair("f_stone", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_specular, sm_roughness, sm_reduceNightLight})));
 
 		shaderLoaders.insert(std::pair("v_noPP", ShaderLoader(shadersDir + "v_noPP.vert")));

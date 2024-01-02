@@ -504,6 +504,10 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//reduceNightLight: ");
 			break;
 
+		case sm_distDithering:				// (FS) Apply dithering to distant fragments
+			findStrAndErase(shader, "//distDithering: ");
+			break;
+
 		default:
 			break;
 		}

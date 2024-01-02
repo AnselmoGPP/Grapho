@@ -3,6 +3,14 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	BTC
 	
+	learnOpenGL:
+		Selection frame (stencil testing)
+		Post-processing (framebuffers)
+		cubemaps
+		early depth testing
+
+	Darken grass below / Make roots
+	increment ambient light during day
 	Tangent computation
 	Load vertices from file: When many meshes exist in a file, different objects should be created (problem: different shaders and textures used)
 	Planet component should be singleton?

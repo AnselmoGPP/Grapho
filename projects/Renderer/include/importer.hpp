@@ -171,7 +171,8 @@ enum shaderModifier {
 	sm_verticalNormals, 
 	sm_waving, 
 	sm_displace, 
-	sm_reduceNightLight 
+	sm_reduceNightLight,
+	sm_distDithering
 };
 
 class SLModule		/// Shader Loader Module

@@ -264,7 +264,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 1, grass_callback, noiseSet)
+		new c_Distributor(7, 1, 1.7, grass_callback, noiseSet)
 	};
 }
 
