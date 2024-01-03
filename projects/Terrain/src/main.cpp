@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 		IOmanager io(1920/2, 1080/2);
 		Renderer app(update, io, 2);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
-		bool withPP = true;					// Add Post-Processing effects (atmosphere...) or not
+		bool withPP = false;					// Add Post-Processing effects (atmosphere...) or not
 
 		loadResourcesInfo();				// Load shaders & textures
 		

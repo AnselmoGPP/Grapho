@@ -452,7 +452,7 @@ protected:
 	//bool renderRequired() override;
 };
 
-class GrassSystem_planet : public GrassSystem
+class GrassSystem_planet : public GrassSystem	// <<< DELETE
 {
 public:
 	GrassSystem_planet(Renderer& renderer, float maxDist, unsigned minDepth);

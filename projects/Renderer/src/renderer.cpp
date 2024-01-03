@@ -371,7 +371,7 @@ void Renderer::createCommandBuffers()
 	}
 	
 	updateCommandBuffer = false;
-
+	
 	#if defined(DEBUG_RENDERER) || defined(DEBUG_COMMANDBUFFERS)
 		std::cout << typeid(*this).name() << "::" << __func__ << " END" << std::endl;
 	#endif

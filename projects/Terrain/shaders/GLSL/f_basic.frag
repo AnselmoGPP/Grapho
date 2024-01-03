@@ -12,7 +12,7 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[1];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0) in vec3 inPos;
+layout(location = 0) in vec3 inPos;									// world space vertex position
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUVs;
 layout(location = 3) flat in vec3 inCamPos;
@@ -26,7 +26,7 @@ void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
 	//discardAlpha: if(albedo.a < 0.6) { discard; return; }			// Discard non-visible fragments
-	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), 40, 50)) { discard; return; }
+	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), 30, 40)) { discard; return; }
 	vec3 normal = normalize(inNormal);	
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	

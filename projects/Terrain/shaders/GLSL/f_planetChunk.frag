@@ -46,7 +46,7 @@ void main()
 	if(blackRatio == 1) { outColor = vec4(0,0,0,1); return; }
 	
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
-	savePNT(inPos, inNormal, inTB3);
+	savePNT(inPos, normalize(inNormal), inTB3);
 	
 	vec3 color = mix(getTexture_GrassRock(), vec3(0,0,0), blackRatio);
 	//vec3 color = naturalMap(RADIUS, RADIUS + 150);
@@ -123,33 +123,33 @@ vec3 getTexture_GrassRock()
 		{
 			grassPar[i]  = getFragColor( 
 				triplanarTexture(texSampler[0], tf[i]).rgb * dryColor,
-				inNormal,
+				normalize(inNormal),
 				vec3(0.06, 0.06, 0.06),
 				200 );
 				
 			rockPar[i] = getFragColor(
 				triplanarTexture(texSampler[5], tf[i]).rgb,
-				inNormal,
+				normalize(inNormal),
 				vec3(0.1, 0.1, 0.1),
 				125 );
 		
 			snow1Par[i] = getFragColor(
 				triplanarTexture(texSampler[15], tf[i]).rgb,
-				inNormal,
+				normalize(inNormal),
 				vec3(0.2, 0.2, 0.2),
 				125 );
 			
 			snow2Par[i] = getFragColor(
 				triplanarTexture(texSampler[10], tf[i]).rgb,
-				inNormal,
+				normalize(inNormal),
 				vec3(0.2, 0.2, 0.2),
 				125 );
 				
 			sandPar[i] = getFragColor(
-					triplanarTexture(texSampler[25], tf[i]).rgb,
-					inNormal,
-					vec3(0.2, 0.2, 0.2),
-					125);
+				triplanarTexture(texSampler[25], tf[i]).rgb,
+				normalize(inNormal),
+				vec3(0.2, 0.2, 0.2),
+				125);
 		
 			if(ratioMix == 1.f)
 			{

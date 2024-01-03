@@ -598,9 +598,9 @@ void s_Sky_XY::update(float timeStep)
 
 void s_Move::updateSkyMove(c_ModelParams* c_mParams, const c_Move* c_mov, const c_Camera* c_cam, float angle, float dist)
 {
-    //c_mParams->mp[0].pos.x = c_cam->camPos.x + cos(angle) * dist;
-    //c_mParams->mp[0].pos.y = c_cam->camPos.y + sin(angle) * dist;
-    //c_mParams->mp[0].pos.z = c_cam->camPos.z;
+    c_mParams->mp[0].pos.x = c_cam->camPos.x + cos(angle) * dist;
+    c_mParams->mp[0].pos.y = c_cam->camPos.y + sin(angle) * dist;
+    c_mParams->mp[0].pos.z = c_cam->camPos.z;
 
     c_mParams->mp[0].rotQuat = productQuat(
         getRotQuat(glm::vec3(0, 1, 0), 3 * pi / 2),
@@ -695,6 +695,7 @@ void s_Model::update(float timeStep)
     for (uint32_t eId : entities)
     {
         c_model = (c_Model*)em->getComponent(CT::model, eId);
+        if (c_model->renderLast) c_eng->r.toLastDraw(((c_Model_normal*)c_model)->model);
 
         switch (c_model->ubo_type)
         {
@@ -777,24 +778,6 @@ void s_Model::update(float timeStep)
                     dest += size.mat4;
                     memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
                 }
-                break;
-            }
-        case UboType::grassPlanet:  // <<< DELETE
-            {
-                std::vector<Component*> c_models = em->getComponents(CT::model);
-
-                for (i = 0; i < c_models.size(); i++)   // <<< this looks for the planet component (c_Model) that has noiser
-                    if (((c_Model*)c_models[i])->ubo_type == UboType::planet && ((c_Model_planet*)c_models[i])->planet->getNoiseGen())
-                    {
-                        ((c_Model_grassPlanet*)c_model)->grass->updateState(
-                            c_cam->camPos, c_cam->view, c_cam->proj,
-                            c_cam->front, c_cam->fov,
-                            c_lights->lights,
-                            *((c_Model_planet*)c_models[i])->planet,
-                            c_eng->time);
-                        //((c_Model_grassPlanet*)c_model)->grass->toLastDraw();
-                        break;
-                    }
                 break;
             }
         default:

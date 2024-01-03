@@ -18,7 +18,7 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUVs;
 //normal: layout(location = 3) in vec2 inTan;
 
-layout(location = 0) out vec3 outPos;
+layout(location = 0) out vec3 outPos;						// world space vertex position
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUVs;
 layout(location = 3) flat out vec3 outCamPos;

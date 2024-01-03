@@ -11,7 +11,7 @@ TODO:
 
 	Grass perpendicular to slopes
 	Darken grass below / Make roots
-	increment ambient light during day
+	Increment ambient light during day
 	Tangent computation
 	Load vertices from file: When many meshes exist in a file, different objects should be created (problem: different shaders and textures used)
 	Planet component should be singleton?

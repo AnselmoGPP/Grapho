@@ -35,7 +35,6 @@ struct c_Sky;
 struct c_Model;
 	struct c_Model_normal;
 	struct c_Model_planet;
-	struct c_Model_grassPlanet;
 struct c_Move;
 struct c_ModelMatrix;
 
@@ -43,7 +42,7 @@ struct c_ModelMatrix;
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
-enum class UboType { noData, mvp, planet, grassPlanet, atmosphere, mvpncl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
+enum class UboType { noData, mvp, planet, atmosphere, mvpncl };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
 // Singletons --------------------------------------
@@ -217,16 +216,17 @@ struct c_Sky : public Component
 
 struct c_Model : public Component	//!< Its children doesn't have the same interface, so UboType enum is used to identify them.
 {
-	c_Model(UboType ubo_type) : Component(CT::model), ubo_type(ubo_type) { };
+	c_Model(UboType ubo_type, bool renderLast) : Component(CT::model), ubo_type(ubo_type), renderLast(renderLast) { };
 	virtual ~c_Model() { };
 	virtual void printInfo() const = 0;
 
 	UboType ubo_type;	//!< Tells the system what type of c_Model's child was created and how to update uniforms.
+	bool renderLast;
 };
 
 struct c_Model_normal : public c_Model
 {
-	c_Model_normal(modelIter model, UboType uboType) : c_Model(uboType), model(model) { };
+	c_Model_normal(modelIter model, UboType uboType, bool renderLast = false) : c_Model(uboType, renderLast), model(model) { };
 	~c_Model_normal() { };
 	void printInfo() const override { };
 
@@ -235,20 +235,11 @@ struct c_Model_normal : public c_Model
 
 struct c_Model_planet : public c_Model
 {
-	c_Model_planet(Planet* planet) : c_Model(UboType::planet), planet(planet) { }
+	c_Model_planet(Planet* planet) : c_Model(UboType::planet, false), planet(planet) { }
 	~c_Model_planet() { if (planet) delete planet; }
 	void printInfo() const override { }
 
 	Planet* planet;
-};
-
-struct c_Model_grassPlanet : public c_Model
-{
-	c_Model_grassPlanet(GrassSystem_planet* grass) : c_Model(UboType::grassPlanet), grass(grass) { };
-	~c_Model_grassPlanet() { /*if (grass) delete grass;*/ };
-	void printInfo() const override { };
-
-	GrassSystem_planet* grass;
 };
 
 struct ModelParams
