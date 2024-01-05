@@ -22,19 +22,19 @@ layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulka
 	LightProps light[NUMLIGHTS];
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[34];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 2) uniform sampler2D texSampler[10];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0)  		in vec3 	inPos;
 layout(location = 1)  flat	in vec3 	inCamPos;
 layout(location = 2)  		in vec3 	inNormal;
-layout(location = 3)  		in float	inSlope;
-layout(location = 4)  		in float	inDist;
-layout(location = 5)  flat	in float	inCamSqrHeight;
-layout(location = 6)		in float	inGroundHeight;
-layout(location = 7)  flat  in float    inTime;
-layout(location = 8)  flat  in float    inSoilHeight;
-layout(location = 9)  		in TB3	 	inTB3;
-layout(location = 15) flat	in LightPD	inLight[NUMLIGHTS];
+//layout(location = 3)  		in float	inSlope;
+layout(location = 3)  		in float	inDist;
+//layout(location = 4)  flat	in float	inCamSqrHeight;
+layout(location = 4)		in float	inGroundHeight;
+layout(location = 5)  flat  in float    inTime;
+//layout(location = 8)  flat  in float    inSoilHeight;
+layout(location = 6)  		in TB3	 	inTB3;
+layout(location = 12) flat	in LightPD	inLight[NUMLIGHTS];
 
 layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 
@@ -43,7 +43,7 @@ layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the 
 
 vec3  getDryColor (vec3 color, float minHeight, float maxHeight);
 vec3 getTex_Sea();
-float getTransparency(float minAlpha, float maxDist, float minHeight, float maxHeight);
+float getTransparency(float minAlpha, float maxDist);
 
 // Definitions:
 
@@ -52,7 +52,8 @@ void main()
 	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 	savePNT(inPos, inNormal, inTB3);
 	
-	outColor = vec4(getTex_Sea(), getTransparency(0.3, 50, RADIUS - 10, RADIUS - 3));
+	//outColor = vec4(cubemapTex(inCamPos, inPos, inNormal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1);
+	outColor = vec4(getTex_Sea(), getTransparency(0.5, 30));
 }
 
 vec3 getTex_Sea()
@@ -69,10 +70,10 @@ vec3 getTex_Sea()
 		//vec3 finalColor = waterColor;
 		
 		// Green water (depth map)
-		vec3 depth = triplanarNoColor_Sea(texSampler[32], SCALE_1, SPEED_1, inTime).rgb;
+		vec3 depth = triplanarNoColor_Sea(texSampler[1], SCALE_1, SPEED_1, inTime).rgb;
 		if(depth.x > 0.32)
 		{
-			ratio = getRatio(depth.x, 0.32, 0.70);		// Mix ratio
+			ratio = getRatio(depth.x, 0.32, 0.70);			// Mix ratio
 			waterColor = mix(waterColor, WATER_COL_2, ratio);
 		}
 		
@@ -84,7 +85,7 @@ vec3 getTex_Sea()
 		}
 	
 		// Foam
-		vec3 foam = triplanarTexture_Sea(texSampler[33], SCALE_1, SPEED_1, inTime).rgb;
+		vec3 foam = triplanarTexture_Sea(texSampler[2], SCALE_1, SPEED_1, inTime).rgb;
 		if(foam.x > 0.17) 
 		{
 			ratio = getRatio(foam.x, 0.17, 0.25);			// Mix ratio
@@ -101,35 +102,36 @@ vec3 getTex_Sea()
 
 	// NORMALS & LIGHT
 	
+	float reflectRatio = 0.3;
+	vec3 normal;
+	
 	//    - Close normals
 	if(inDist < DIST_1)
-		return getFragColor( 
-			waterColor,
-			triplanarNormal_Sea(texSampler[31], SCALE_1, SPEED_1, inTime),
-			SPECULARITY,
-			ROUGHNESS );
+	{
+		normal = triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, inTime);
+		
+		return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
+			+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
+	}
 	
 	//    - Mix area (close and far normals)
 	if(inDist < DIST_2)
 	{
-		vec3 normal  = triplanarNormal_Sea(texSampler[31], SCALE_1, SPEED_1, inTime);
-		vec3 normal2 = triplanarNormal_Sea(texSampler[31], SCALE_2, SPEED_2, inTime);
+		normal		 = triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, inTime);
+		vec3 normal2 = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
 		ratio        = getRatio(inDist, 150, 200);
 		normal       = mix(normal, normal2, ratio);
+		//reflectRatio = mix(reflectRatio, 0, ratio);
 		
-		return getFragColor( 
-				waterColor,
-				normal,
-				SPECULARITY,
-				ROUGHNESS );
+		return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
+			+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 	}
 	
 	//    - Far normals
-	return getFragColor(
-			waterColor,
-			triplanarNormal_Sea(texSampler[31], SCALE_2, SPEED_2, inTime),
-			SPECULARITY,
-			ROUGHNESS );
+	normal = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
+	
+	return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
+		+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 }
 
 vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
@@ -139,11 +141,8 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 	return color + increment * ratio;
 }
 
-float getTransparency(float minAlpha, float maxDist, float minHeight, float maxHeight)
+float getTransparency(float minAlpha, float maxDist)
 {
 	float ratio = getRatio(inDist, 0, maxDist);
-	ratio = getScaleRatio(
-				1.f - getRatio(inSoilHeight, minHeight, maxHeight), 
-				ratio, 1.f);
-	return ratio + minAlpha;
+	return lerp(minAlpha, 1, ratio);
 }

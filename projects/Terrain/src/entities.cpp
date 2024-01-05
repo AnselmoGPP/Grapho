@@ -1,4 +1,7 @@
-﻿#include "entities.hpp"
+﻿
+#include "physics.hpp"
+
+#include "entities.hpp"
 #include "terrain.hpp"
 
 
@@ -63,18 +66,26 @@ std::vector<Component*> EntityFactory::createReticule(ShaderLoader Vshader, Shad
 	return std::vector<Component*>{};
 }
 
-std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
 {
-	VerticesLoader vertexData(vt_32.vertexSize, v_cube.data(), 14, i_inCube);
+	//VerticesLoader vertexData(vt_32.vertexSize, v_cube.data(), 14, i_inCube);
+	VerticesLoader vertexData(vt_32.vertexSize, v_skybox.data(), 6 * 4, i_skybox);
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
+	//modelIter model = renderer.newModel(
+	//	"skyBox",
+	//	1, 1, primitiveTopology::triangle, vt_32,
+	//	vertexData, shaders, textureSet,
+	//	1, 3 * size.mat4,	// M, V, P
+	//	0 );
+
 	modelIter model = renderer.newModel(
 		"skyBox",
-		1, 1, primitiveTopology::triangle, vt_32,
+		1, 1, primitiveTopology::triangle, vt_32,	// << redundant vt_32
 		vertexData, shaders, textureSet,
 		1, 3 * size.mat4,	// M, V, P
-		0 );
+		0);
 
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
@@ -86,11 +97,12 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 
 std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
-	std::vector<float> v_sun;	// [4 * 5]
-	std::vector<uint16_t> i_sun;
-	size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
+	//std::vector<float> v_sun;	// [4 * 5]
+	//std::vector<uint16_t> i_sun;
+	//size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
 
-	VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
+	//VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
+	VerticesLoader vertexData(vt_32.vertexSize, v_YZquad.data(), 4, i_quad);
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
@@ -104,7 +116,7 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp, true),
-		new c_ModelParams(glm::vec3(10, 10, 10)),
+		new c_ModelParams(glm::vec3(7, 7, 7)),
 		new c_Move(sunOrbit)						// 1 year ≈ 6 hours
 	};
 }
@@ -183,7 +195,7 @@ std::vector<Component*> EntityFactory::createSphere(ShaderLoader Vshader, Shader
 {
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 
-	Sphere* seaSphere = new Sphere(&renderer, 100, 29, 8, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
+	Sphere* seaSphere = new Sphere(&renderer, 100, 21, 7, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
 	seaSphere->addResources(shaders, textures);
 
 	return std::vector<Component*>{ 
@@ -227,7 +239,7 @@ std::vector<Component*> EntityFactory::createPlanet(ShaderLoader Vshader, Shader
 
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 
-	Planet* planet = new Planet(&renderer, multiNoise, 100, 29, 8, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
+	Planet* planet = new Planet(&renderer, multiNoise, 100, 29, 7, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
 	planet->addResources(shaders, textures);
 	
 	return std::vector<Component*>{ 
@@ -264,14 +276,14 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 1.7, grass_callback, noiseSet)
+		new c_Distributor(6, 1, 2, true, grass_callback, noiseSet)
 	};
 }
 
 bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)
 {
 	float height = glm::distance(pos, glm::vec3(0, 0, 0));
-	if (groundSlope > 0.08 ||
+	if (groundSlope > 0.1 ||
 		height < 2010 ||
 		height > 2100)
 		return false;
@@ -308,7 +320,7 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 2, plant_callback, noiseSet)
+		new c_Distributor(6, 1, 2, true, plant_callback, noiseSet)
 	};
 }
 
@@ -352,7 +364,7 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Distributor(7, 2, 5, stone_callback, noiseSet)
+			new c_Distributor(6, 2, 5, false, stone_callback, noiseSet)
 	};
 }
 
@@ -400,7 +412,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 2, tree_callback, noiseSet)
+		new c_Distributor(6, 1, 2, false, tree_callback, noiseSet)
 	});
 	
 	// Branches:
@@ -419,7 +431,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(7, 1, 2, tree_callback, noiseSet)
+		new c_Distributor(6, 1, 2, false, tree_callback, noiseSet)
 	});
 	
 	return entities;
@@ -432,7 +444,7 @@ bool tree_callback(const glm::vec3& pos, float groundSlope, const std::vector<st
 		height < 2010 || 
 		height > 2100 ||
 		noisers[0]->getNoise(pos.x, pos.y, pos.z) < 0 ||
-		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.95)
+		noisers[1]->getNoise(pos.x, pos.y, pos.z) < 0.90)
 		return false;
 
 	return true;

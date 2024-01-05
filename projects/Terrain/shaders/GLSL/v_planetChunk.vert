@@ -34,6 +34,7 @@ void main()
 	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), 1.0);
 				    
 	outPos          = inPos;
+	if(inGapFix[0] > 0.1) outNormal *= -1; else			// show chunk limits
 	outNormal       = mat3(ubo.normalMatrix) * inNormal;
 	vec3 diff       = inPos - ubo.camPos.xyz;
 	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);

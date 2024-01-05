@@ -205,10 +205,10 @@ public:
 // Grid systems -------------------------------
 
 /**
-	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks in order to present 
-	higher resolution. The number of side vertices should be odd if you want to make them fit with an equivalent chunk but 
-	twice its size. Chunks near the camera. To make chunks' vertices fit other chunks of different depth (up to n depths), 
-	then number of side vertices must be = X·2^n + 1 (Examples for n=2: 21, 25, 29, 33, 37)
+	Creates a set of Chunk objects that make up a terrain. These Chunks are replaced with other Chunks based in LOD required. 
+	The number of side vertices should be odd if you want to make them fit with an equivalent chunk but twice its size. 
+	To make chunks' vertices fit other chunks of different depth (up to n depths), then 
+	number of side vertices must be = X·2^n + 1 (Examples for n=2: 21, 25, 29, 33, 37)
 	Process:
 		1. Constructor()
 			- Chunk::computeIndices()

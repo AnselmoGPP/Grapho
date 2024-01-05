@@ -190,17 +190,26 @@ size_t getGrid(std::vector<float>& vertexDestination, std::vector<uint16_t>& ind
 
 size_t getQuad(std::vector<float>& destVertex, std::vector<uint16_t>& destIndices, float vertSize, float horSize, float zValue)
 {
-	//destVertex = std::vector<float>{
-	//-horSize / 2,  vertSize / 2, zValue, 0, 0,		// top left
-	//-horSize / 2, -vertSize / 2, zValue, 0, 1,		// low left
-	// horSize / 2, -vertSize / 2, zValue, 1, 1,		// low right
-	// horSize / 2,  vertSize / 2, zValue, 1, 0 };		// top right
+	// XY plane
+	//destVertex = {
+	//	-horSize/2,  vertSize/2, zValue,     0, 0,		// top left
+	//	-horSize/2, -vertSize/2, zValue,     0, 1,		// low left
+	//	 horSize/2, -vertSize/2, zValue,     1, 1,		// low right
+	//	 horSize/2,  vertSize/2, zValue,     1, 0 };	// top right
+
+	// XZ plane
+	//destVertex = {
+	//	-horSize / 2,  vertSize / 2, zValue,     0, 0,		// top left
+	//	-horSize / 2, -vertSize / 2, zValue,     0, 1,		// low left
+	//	 horSize / 2, -vertSize / 2, zValue,     1, 1,		// low right
+	//	 horSize / 2,  vertSize / 2, zValue,     1, 0 };	// top right
 
 	destVertex = {
-		-horSize/2,  vertSize/2, zValue,     0, 0,		// top left
-		-horSize/2, -vertSize/2, zValue,     0, 1,		// low left
-		 horSize/2, -vertSize/2, zValue,     1, 1,		// low right
-		 horSize/2,  vertSize/2, zValue,     1, 0 };	// top right
+	-1,  0, -1,     0, 1,		// low left
+	 1,  0, -1,     1, 1,		// low right
+	 1,  0,  1,     1, 0,		// top right
+	-1,  0,  1,		0, 0 };		// top left
+
 
 	destIndices = std::vector<uint16_t>{ 0, 1, 3,  1, 2, 3 };
 
@@ -231,6 +240,14 @@ void getScreenQuad(std::vector<float>& vertices, std::vector<uint16_t>& indices,
 	indices = std::vector<uint16_t>{ 0,1,3, 1,2,3 };
 }
 
+std::vector<float> v_YZquad = {
+	0,  1, -1,	0, 1,		// low left
+	0, -1, -1,	1, 1,		// low right
+	0, -1,  1,	1, 0,		// top right
+	0,  1,  1,	0, 0 };		// top left
+
+std::vector<uint16_t> i_quad = { 0, 1, 3,  1, 2, 3 };
+
 // Skybox
 std::vector<float> v_cube =
 {
@@ -252,6 +269,48 @@ std::vector<float> v_cube =
 };
 
 std::vector<uint16_t> i_inCube = { 0, 1, 2,  1, 3, 2,  2, 3, 4,  3, 5, 4,  4, 5, 6,  5, 7, 6,  6, 7, 8,  7, 9, 8,  10, 2, 11,  2, 4, 11,  3, 12, 5,  12, 13, 5 };
+
+std::vector<float> v_skybox = {
+	// front
+	-1,  1, -1,	0, 1,
+	 1,  1, -1, 1, 1,
+	 1,  1,  1, 1, 0,
+	-1,  1,  1, 0, 0,
+	// back
+	 1, -1, -1,	0, 1,
+	-1, -1, -1, 1, 1,
+	-1, -1,  1, 1, 0,
+	 1, -1,  1, 0, 0,
+	// up
+	-1,  1,  1,	0, 1,
+	 1,  1,  1, 1, 1,
+	 1, -1,  1, 1, 0,
+	-1, -1,  1, 0, 0,
+	// down
+	-1, -1, -1,	0, 1,
+	 1, -1, -1, 1, 1,
+	 1,  1, -1, 1, 0,
+	-1,  1, -1, 0, 0,
+	// right
+	 1,  1, -1,	0, 1,
+	 1, -1, -1, 1, 1,
+	 1, -1,  1, 1, 0,
+	 1,  1,  1, 0, 0,
+	// left
+	-1, -1, -1,	0, 1,
+	-1,  1, -1, 1, 1,
+	-1,  1,  1, 1, 0,
+	-1, -1,  1, 0, 0
+};
+
+std::vector<uint16_t> i_skybox = { 
+	 0,  1,  2,    0,  2,  3, 
+	 4,  5,  6,    4,  6,  7,
+	 8,  9, 10,    8, 10, 11,
+	12, 13, 14,   12, 14, 15,
+	16, 17, 18,   16, 18, 19,
+	20, 21, 22,   20, 22, 23
+};
 
 bool ifOnce::ifBigger(float a, float b)
 {

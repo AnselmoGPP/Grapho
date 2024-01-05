@@ -34,7 +34,6 @@
 		getLength
 		getSqrLength
 		getRatio
-		getScaleRatio
 		getDirection
 		getAngle
 		getModulus
@@ -44,8 +43,11 @@
 		PointLightColor
 		SpotLightColor
 		getFragColor
-		getTex
-	Triplanar:
+	Planar texture:
+		cubeTexture
+		cubemapTex
+		getTex   (example)
+	Triplanar texture:
 		triplanarTexture
 		triplanarNoColor
 		triplanarNormal
@@ -189,12 +191,6 @@ float getRatio(float value, float min, float max, float minR, float maxR)
 	return minR + ratio * (maxR - minR);
 }
 
-// Get the value within a range for a given ratio. 
-float getScaleRatio(float ratio, float min, float max)
-{
-	return (max - min) * ratio + min;
-}
-
 // Get a direction given 2 points.
 vec3 getDirection(vec3 origin, vec3 end)
 {
@@ -211,8 +207,8 @@ float getAngle(vec3 a, vec3 b)
 // Get modulus(%) = a - (b * floor(a/b)) (https://registry.khronos.org/OpenGL-Refpages/gl4/html/mod.xhtml)
 float getModulus(float dividend, float divider) { return dividend - (divider * floor(dividend/divider)); }
 
-// Linear interpolation. Position between A and B located at ratio t [0,1]
-float lerp(float a, float b, float t) { return a + (b - a) * t; }
+// Linear interpolation. Position between a and b located at a given ratio [0,1]
+float lerp(float a, float b, float ratio) { return a + (b - a) * ratio; }
 
 vec3 lerp(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 
@@ -351,7 +347,6 @@ vec3 mixByHeight(vec3 tex_A, vec3 tex_B, float height_A, float height_B, float r
 	float b2 = max(height_A + (1-ratio) - ma, 0);
 	return (tex_B * b1 + tex_A * b2) / (b1 + b2);
 }
-
 
 // Save functions ------------------------------------------------------------------------
 // They store shader variables in this library, making them global for this library and allowing it to use them.
@@ -517,6 +512,128 @@ vec3 getFragColor(vec3 albedo, vec3 normal, vec3 specularity, float roughness)
 	}
 	
 	return result;
+}
+
+// Get axis towards a direction vector is closer.
+vec3 getMajorAxis(vec3 dir)
+{
+	vec3 mAxis = vec3(abs(dir.x), abs(dir.y), abs(dir.z));
+	
+	if(mAxis.x > mAxis.y) 
+	{
+		if(mAxis.x > mAxis.z) return normalize(vec3(dir.x, 0, 0));
+		else return normalize(vec3(0, 0, dir.z));
+	}
+	else if(mAxis.y > mAxis.z) return normalize(vec3(0, dir.y, 0));
+	else return normalize(vec3(0, 0, dir.z));
+}
+
+// Get axis towards a reflected direction vector is closer.
+//vec3 getMajorAxis(vec3 fragPos, vec3 camPos, vec3 normal)
+//{
+//	vec3 I = normalize(fragPos - camPos);
+//	vec3 R = reflect(I, normal);
+//	return getMajorAxis(R);
+//}
+
+// Get UV coordinates from str coordinates (s, t, r).
+vec2 getUVsFromCube(vec3 str)
+{
+	return vec2(
+		0.5 + 0.5 * str.x / abs(str.z), 
+		0.5 + 0.5 * str.y / abs(str.z)
+	);
+}
+
+vec3 skyboxTex(vec3 pos, sampler2D front, sampler2D back, sampler2D up, sampler2D down, sampler2D right, sampler2D left)
+{
+	vec3 R = normalize(pos);
+	vec3 majorAxis = getMajorAxis(R);
+	
+	vec2 uv;
+	
+	if(majorAxis.x != 0.f)
+	{
+		if(majorAxis.x > 0.f) {
+			uv = getUVsFromCube(vec3(-R.z, -R.y, R.x));
+			return texture(front, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(R.z, -R.y, R.x));
+			return texture(back, uv).rgb;
+			}
+	}
+	else if(majorAxis.y != 0.f)
+	{
+		if(majorAxis.y > 0.f) {
+			uv = getUVsFromCube(vec3(R.x, R.z, R.y));
+			return texture(left, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(R.x, -R.z, R.y));
+			return texture(right, uv).rgb;
+			}
+	}
+	else if(majorAxis.z != 0.f)
+	{
+		if(majorAxis.z > 0.f) {
+			uv = getUVsFromCube(vec3(R.x, -R.y, R.z));
+			return texture(up, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(-R.x, -R.y, R.z));
+			return texture(down, uv).rgb;
+			}
+	}
+	
+	return vec3(0,0,0);
+}
+
+vec3 cubemapTex(vec3 camPos, vec3 fragPos, vec3 normal, sampler2D front, sampler2D back, sampler2D up, sampler2D down, sampler2D right, sampler2D left)
+{
+	// Major axis of the reflection direction
+	vec3 I = normalize(fragPos - camPos);
+	vec3 R = reflect(I, normal);
+	vec3 majorAxis = getMajorAxis(R);
+	
+	// Variables (s, t, r), UVs, and textures
+	vec2 uv;
+	
+	if(majorAxis.x != 0.f)
+	{
+		if(majorAxis.x > 0.f) {
+			uv = getUVsFromCube(vec3(-R.z, -R.y, R.x));
+			return texture(front, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(R.z, -R.y, R.x));
+			return texture(back, uv).rgb;
+			}
+	}
+	else if(majorAxis.y != 0.f)
+	{
+		if(majorAxis.y > 0.f) {
+			uv = getUVsFromCube(vec3(R.x, R.z, R.y));
+			return texture(left, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(R.x, -R.z, R.y));
+			return texture(right, uv).rgb;
+			}
+	}
+	else if(majorAxis.z != 0.f)
+	{
+		if(majorAxis.z > 0.f) {
+			uv = getUVsFromCube(vec3(R.x, -R.y, R.z));
+			return texture(up, uv).rgb;
+			}
+		else {
+			uv = getUVsFromCube(vec3(-R.x, -R.y, R.z));
+			return texture(down, uv).rgb;
+			}
+	}
+	
+	return vec3(0,0,0);
 }
 
 // (EXAMPLE) Get fragment color given 4 texture maps (albedo, normal, specular, roughness).

@@ -11,14 +11,16 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec2 inUVs;
 
-layout(location = 0) out vec2 outUVs;
+///layout(location = 0) out vec2 outUVs;
+layout(location = 0) out vec3 outPos;
 
 void main()
 {
 	//gl_Position  = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
 	mat4 VM = mat4(mat3(ubo.view * ubo.model));				// take away translation and scaling from the ViewModel matrix
 	gl_Position  = (ubo.proj * VM * vec4(inPos, 1.0)).xyww;	// this ensures depth == 1
-	outUVs = inUVs;
+	///outUVs = inUVs;
+	outPos = inPos;
 }
 
 

@@ -3,13 +3,30 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	BTC
 	
+	Trees randomness: vary branch textures and XY scale
+	Trees in Blender are greener
+	Don't update distributed objects every time. Save them per chunk and retrieve them when needed
+	cubemap should rotate too
+	crop grass billboard
+	plant grass roots
+	fix zeros when planting grass
+	implicit derivatives for mipmap selection (https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162)
+
+	cubemap mapping
+	Analytical normals
+	sun is blinking
+
 	learnOpenGL:
 		Selection frame (stencil testing)
 		Post-processing (framebuffers)
 		cubemaps
 		early depth testing
 
-	Grass perpendicular to slopes
+	Distributor:
+		Distribution over different LOD chunks is broken (objects change).
+		Borders change
+		Alternative: Distribute over a spherical surface (analytical normal)
+
 	Darken grass below / Make roots
 	Increment ambient light during day
 	Tangent computation

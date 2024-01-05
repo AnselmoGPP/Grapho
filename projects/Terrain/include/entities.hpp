@@ -22,7 +22,7 @@ public:
 	std::vector<Component*> createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
+	std::vector<Component*> createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
 	std::vector<Component*> createPlant(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights);

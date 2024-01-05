@@ -35,7 +35,10 @@ EntityManager em;	// world
 std::map<std::string, ShaderLoader> shaderLoaders;
 std::map<std::string, VerticesLoader> verticesLoaders;
 std::map<std::string, TextureLoader> texInfos;
-std::vector<TextureLoader> planetTexInfos;	// Package of textures
+
+std::vector<TextureLoader> soilTexInfos;	// Package of textures
+std::vector<TextureLoader> seaTexInfos;		// Package of textures
+std::vector<TextureLoader> skyboxTexInfos;	// Package of textures
 
 // main ---------------------------------------------------------------------
 
@@ -53,60 +56,62 @@ int main(int argc, char* argv[])
 		IOmanager io(1920/2, 1080/2);
 		Renderer app(update, io, 2);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
-		bool withPP = false;					// Add Post-Processing effects (atmosphere...) or not
+		bool withPP = true;					// Add Post-Processing effects (atmosphere...) or not
 
 		loadResourcesInfo();				// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
-		
-		em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
-			new c_Engine(app),
-			new c_Input,
-			new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
-			new c_Sky(0.0035, 0, 0.0035+0.00028, 0, 40),
-			new c_Lights(2) });
+		{
+			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
+				new c_Engine(app),
+					new c_Input,
+					new c_Cam_Sphere,	// Sphere, Plane_free, Plane_polar_sphere
+					new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
+					new c_Lights(2) });
 
-		//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
-		em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
-		//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
-		em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], planetTexInfos));
-		em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], planetTexInfos));
-		em.addEntity("grass", eFact.createGrass(
-			shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-			{ texInfos["grass"] },
-			verticesLoaders["grass"],
-			(c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntity("plant", eFact.createPlant(
-			shaderLoaders["v_grass"], shaderLoaders["f_grass"], 
-			{ texInfos["plant"] },
-			verticesLoaders["plant"],
-			(c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntity("stone", eFact.createRock(
-			shaderLoaders["v_stone"], shaderLoaders["f_stone"], 
-			{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
-			verticesLoaders["stone"], 
-			(c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
-			{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] }, 
-			{ texInfos["bark_a"] }, { texInfos["branch_a"] },
-			verticesLoaders["trunk"], verticesLoaders["branches"],
-			(c_Lights*)em.getSComponent(CT::lights)));
-		em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], { texInfos["space_1"] }));
-		em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
-		if(withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
-		else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
+			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
+			em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
+			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
+			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
+			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
+			em.addEntity("grass", eFact.createGrass(
+				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+				{ texInfos["grass"] },
+				verticesLoaders["grass"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("plant", eFact.createPlant(
+				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+				{ texInfos["plant"] },
+				verticesLoaders["plant"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("stone", eFact.createRock(
+				shaderLoaders["v_stone"], shaderLoaders["f_stone"],
+				{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
+				verticesLoaders["stone"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
+				{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
+				{ texInfos["bark_a"] }, { texInfos["branch_a"] },
+				verticesLoaders["trunk"], verticesLoaders["branches"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], skyboxTexInfos));
+			em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
+			if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
+			else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
+		}
 
 		// SYSTEMS:
+		{
+			em.addSystem(new s_Engine);
+			em.addSystem(new s_Input);
+			em.addSystem(new s_Camera);		// s_SphereCam (1), s_PolarCam (2), s_PlaneCam (3), s_FPCam (4)
+			em.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
+			em.addSystem(new s_Lights);
+			em.addSystem(new s_Move);		// update model params
+			em.addSystem(new s_Distributor);// update model params
+			em.addSystem(new s_Model);		// update UBOs
+		}
 
-		em.addSystem(new s_Engine);
-		em.addSystem(new s_Input);
-		em.addSystem(new s_Camera);		// s_SphereCam (1), s_PolarCam (2), s_PlaneCam (3), s_FPCam (4)
-		em.addSystem(new s_Sky_XY);		// s_Sky_XY, s_Sky_XZ
-		em.addSystem(new s_Lights);
-		em.addSystem(new s_Move);		// update model params
-		em.addSystem(new s_Distributor);// update model params
-		em.addSystem(new s_Model);		// update UBOs
-		
 		#ifdef DEBUG_MAIN
 			world.printInfo();
 			std::cout << "--------------------" << std::endl;
@@ -231,12 +236,20 @@ void loadResourcesInfo()
 	// TEXTURES
 	{
 		// Special
-		texInfos.insert(std::pair("space_1", TextureLoader(texDir + "sky_box/space1.jpg")));
-		texInfos.insert(std::pair("cottage_d", TextureLoader(texDir + "models/cottage/cottage_diffuse.png")));
-		texInfos.insert(std::pair("room", TextureLoader(texDir + "models/viking_room.png")));
-		texInfos.insert(std::pair("squares", TextureLoader(texDir + "squares.png")));
-		texInfos.insert(std::pair("sun", TextureLoader(texDir + "Sun/sun2_1.png")));
-		texInfos.insert(std::pair("hud", TextureLoader(texDir + "HUD/reticule_1.png")));
+		texInfos.insert(std::pair("cottage_d",	TextureLoader(texDir + "models/cottage/cottage_diffuse.png")));
+		texInfos.insert(std::pair("room",		TextureLoader(texDir + "models/viking_room.png")));
+		texInfos.insert(std::pair("squares",	TextureLoader(texDir + "squares.png")));
+		texInfos.insert(std::pair("sun",		TextureLoader(texDir + "Sun/sun2_1.png")));
+		texInfos.insert(std::pair("hud",		TextureLoader(texDir + "HUD/reticule_1.png")));
+
+		// Skybox
+		texInfos.insert(std::pair("sb_space1",	TextureLoader(texDir + "skybox/space1.jpg")));
+		texInfos.insert(std::pair("sb_front",	TextureLoader(texDir + "skybox/example/front.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_back",	TextureLoader(texDir + "skybox/example/back.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_up",		TextureLoader(texDir + "skybox/example/up.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_down",	TextureLoader(texDir + "skybox/example/down.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_right",	TextureLoader(texDir + "skybox/example/right.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_left",	TextureLoader(texDir + "skybox/example/left.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
 
 		// Plants
 		texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/dry/grass_a.png")));
@@ -300,43 +313,66 @@ void loadResourcesInfo()
 	// TEXTURE PACKS
 	{
 		// Plants
-		planetTexInfos.push_back(texInfos["grassDry_a"]);
-		planetTexInfos.push_back(texInfos["grassDry_n"]);
-		planetTexInfos.push_back(texInfos["grassDry_s"]);
-		planetTexInfos.push_back(texInfos["grassDry_r"]);
-		planetTexInfos.push_back(texInfos["grassDry_h"]);
+		soilTexInfos.push_back(texInfos["grassDry_a"]);
+		soilTexInfos.push_back(texInfos["grassDry_n"]);
+		soilTexInfos.push_back(texInfos["grassDry_s"]);
+		soilTexInfos.push_back(texInfos["grassDry_r"]);
+		soilTexInfos.push_back(texInfos["grassDry_h"]);
 		// Rocks
-		planetTexInfos.push_back(texInfos["rocky_a"]);
-		planetTexInfos.push_back(texInfos["rocky_n"]);
-		planetTexInfos.push_back(texInfos["rocky_s"]);
-		planetTexInfos.push_back(texInfos["rocky_r"]);
-		planetTexInfos.push_back(texInfos["rocky_h"]);
+		soilTexInfos.push_back(texInfos["rocky_a"]);
+		soilTexInfos.push_back(texInfos["rocky_n"]);
+		soilTexInfos.push_back(texInfos["rocky_s"]);
+		soilTexInfos.push_back(texInfos["rocky_r"]);
+		soilTexInfos.push_back(texInfos["rocky_h"]);
 		// Snow
-		planetTexInfos.push_back(texInfos["snow_a"]);
-		planetTexInfos.push_back(texInfos["snow_n"]);
-		planetTexInfos.push_back(texInfos["snow_s"]);
-		planetTexInfos.push_back(texInfos["snow_r"]);
-		planetTexInfos.push_back(texInfos["snow_h"]);
-		planetTexInfos.push_back(texInfos["snow2_a"]);
-		planetTexInfos.push_back(texInfos["snow2_n"]);
-		planetTexInfos.push_back(texInfos["snow2_s"]);
-		planetTexInfos.push_back(texInfos["snow_r"]);	// repeated
-		planetTexInfos.push_back(texInfos["snow_h"]);	// repeated
+		soilTexInfos.push_back(texInfos["snow_a"]);
+		soilTexInfos.push_back(texInfos["snow_n"]);
+		soilTexInfos.push_back(texInfos["snow_s"]);
+		soilTexInfos.push_back(texInfos["snow_r"]);
+		soilTexInfos.push_back(texInfos["snow_h"]);
+		soilTexInfos.push_back(texInfos["snow2_a"]);
+		soilTexInfos.push_back(texInfos["snow2_n"]);
+		soilTexInfos.push_back(texInfos["snow2_s"]);
+		soilTexInfos.push_back(texInfos["snow_r"]);	// repeated
+		soilTexInfos.push_back(texInfos["snow_h"]);	// repeated
 		// Soils
-		planetTexInfos.push_back(texInfos["sandDunes_a"]);
-		planetTexInfos.push_back(texInfos["sandDunes_n"]);
-		planetTexInfos.push_back(texInfos["sandDunes_s"]);
-		planetTexInfos.push_back(texInfos["sandDunes_r"]);
-		planetTexInfos.push_back(texInfos["sandDunes_h"]);
-		planetTexInfos.push_back(texInfos["sandWavy_a"]);
-		planetTexInfos.push_back(texInfos["sandWavy_n"]);
-		planetTexInfos.push_back(texInfos["sandWavy_s"]);
-		planetTexInfos.push_back(texInfos["sandWavy_r"]);
-		planetTexInfos.push_back(texInfos["sandWavy_h"]);
-		planetTexInfos.push_back(texInfos["squares"]);
+		soilTexInfos.push_back(texInfos["sandDunes_a"]);
+		soilTexInfos.push_back(texInfos["sandDunes_n"]);
+		soilTexInfos.push_back(texInfos["sandDunes_s"]);
+		soilTexInfos.push_back(texInfos["sandDunes_r"]);
+		soilTexInfos.push_back(texInfos["sandDunes_h"]);
+		soilTexInfos.push_back(texInfos["sandWavy_a"]);
+		soilTexInfos.push_back(texInfos["sandWavy_n"]);
+		soilTexInfos.push_back(texInfos["sandWavy_s"]);
+		soilTexInfos.push_back(texInfos["sandWavy_r"]);
+		soilTexInfos.push_back(texInfos["sandWavy_h"]);
+		soilTexInfos.push_back(texInfos["squares"]);
 		// Water
-		planetTexInfos.push_back(texInfos["sea_n"]);
-		planetTexInfos.push_back(texInfos["sea_h"]);
-		planetTexInfos.push_back(texInfos["sea_foam_a"]);
+		soilTexInfos.push_back(texInfos["sea_n"]);
+		soilTexInfos.push_back(texInfos["sea_h"]);
+		soilTexInfos.push_back(texInfos["sea_foam_a"]);
+	}
+
+	{
+		seaTexInfos.push_back(texInfos["sea_n"]);
+		seaTexInfos.push_back(texInfos["sea_h"]);
+		seaTexInfos.push_back(texInfos["sea_foam_a"]);
+		seaTexInfos.push_back(texInfos["sb_space1"]);
+
+		seaTexInfos.push_back(texInfos["sb_front"]);
+		seaTexInfos.push_back(texInfos["sb_back"]);
+		seaTexInfos.push_back(texInfos["sb_up"]);
+		seaTexInfos.push_back(texInfos["sb_down"]);
+		seaTexInfos.push_back(texInfos["sb_right"]);
+		seaTexInfos.push_back(texInfos["sb_left"]);
+	}
+
+	{
+		skyboxTexInfos.push_back(texInfos["sb_front"]);
+		skyboxTexInfos.push_back(texInfos["sb_back"]);
+		skyboxTexInfos.push_back(texInfos["sb_up"]);
+		skyboxTexInfos.push_back(texInfos["sb_down"]);
+		skyboxTexInfos.push_back(texInfos["sb_right"]);
+		skyboxTexInfos.push_back(texInfos["sb_left"]);
 	}
 }

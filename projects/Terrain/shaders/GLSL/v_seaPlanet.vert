@@ -9,6 +9,7 @@
 #define MAX 200			// max. dist.
 #define WAVES 6
 #define COUNT 6
+#define APPLY_WAVES false
 
 vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
 float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
@@ -43,14 +44,11 @@ layout(location = 2) in vec3 inGapFix;
 layout(location = 0)  		out vec3	outPos;			// Vertex position.
 layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
 layout(location = 2)  		out vec3	outNormal;		// Ground normal
-layout(location = 3)  		out float	outSlope;		// Ground slope
-layout(location = 4)  		out float	outDist;		// Distace vertex-camera
-layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
-layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
-layout(location = 7)  flat  out float   outTime;
-layout(location = 8)  flat  out float   outSoilHeight;	// Dist nucleus-soilUnderCam<<<<
-layout(location = 9)  		out TB3		outTB3;			// Tangents & Bitangents
-layout(location = 15) flat	out LightPD outLight[NUMLIGHTS];
+layout(location = 3)  		out float	outDist;		// Distace vertex-camera
+layout(location = 4)		out float	outGroundHeight;// Ground height over nucleus
+layout(location = 5)  flat  out float   outTime;
+layout(location = 6)  		out TB3		outTB3;			// Tangents & Bitangents
+layout(location = 12) flat	out LightPD outLight[NUMLIGHTS];
 
 void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude);	// Adjust amplitude based on soil depth under camera. Waves are max. when soilHeight < (RADIUS - maxDepth) and min. when soilHeight > (RADIUS - minDepth)
 vec3 getSeaOptimized(inout vec3 normal, float min, float max);
@@ -60,24 +58,20 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves proje
 
 void main()
 {
-	bool waves = false;
 	//adjustWavesAmplitude(15, 1, 0.1);
 	//for(int i = 0; i < WAVES; i++) A[i] *= 0.3;
 	
 	vec3 normal     = inNormal;
 	vec3 pos;
-	if(waves) pos = getSeaOptimized(normal, MIN, MAX);
+	if(APPLY_WAVES) pos = getSeaOptimized(normal, MIN, MAX);
 	else pos = inPos;
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;
 	outDist         = getDist(pos, ubo.camPos.xyz);		// Dist. to wavy geoid
-	outCamSqrHeight = ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z;	// Assuming vec3(0,0,0) == planetCenter
 	outGroundHeight = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
-	outSlope        = 1. - dot(outNormal, normalize(pos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
 	outCamPos       = ubo.camPos.xyz;
 	outTime         = ubo.time_height[0];
-	outSoilHeight	= ubo.time_height[1];
 	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1);
 	
 	for(int i = 0; i < NUMLIGHTS; i++) 

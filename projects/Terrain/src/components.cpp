@@ -125,7 +125,7 @@ c_Cam_Plane_polar::c_Cam_Plane_polar()
 }
 
 c_Cam_Plane_polar_sphere::c_Cam_Plane_polar_sphere()
-	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1500, -1500, 0), 10, 0.001, 0.1), worldUp(glm::normalize(camPos))
+	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1500, -1500, 0), 50, 0.001, 0.1), worldUp(glm::normalize(camPos))
 {
 	// Camera looks east:
 	front = glm::normalize(glm::cross(glm::vec3(0,0,1), worldUp));
@@ -249,5 +249,5 @@ bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::
 	return true;
 }
 
-c_Distributor::c_Distributor(unsigned minDepth, unsigned rotType, unsigned maxScale, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
-	: Component(CT::distributor), minDepth(minDepth), rotType(rotType), maxScale(maxScale), itemSupported(itemSupported_callback), noisers(noisers) { };
+c_Distributor::c_Distributor(unsigned minDepth, unsigned rotType, unsigned maxScale, bool adaptToTerrainNormal, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
+	: Component(CT::distributor), minDepth(minDepth), rotType(rotType), maxScale(maxScale), adaptToTerrainNormal(adaptToTerrainNormal), itemSupported(itemSupported_callback), noisers(noisers) { };

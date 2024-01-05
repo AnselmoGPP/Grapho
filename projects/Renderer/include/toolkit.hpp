@@ -92,9 +92,15 @@ size_t getPlaneNDC(std::vector<float>& vertexDestination, std::vector<uint16_t>&
 /// Get vertex data (NDC space vertices & UVs coordinates) and indices of a screen quad. Used for draws that doesn't use MVP matrix (example: reticule or postprocessing effect).
 void getScreenQuad(std::vector<float>& vertices, std::vector<uint16_t>& indices, float radius, float zValue);
 
+// Quads
+extern std::vector<float> v_YZquad;
+extern std::vector<uint16_t> i_quad;
+
 /// Skybox
 extern std::vector<float> v_cube;
-extern std::vector<uint16_t> i_inCube;  
+extern std::vector<uint16_t> i_inCube;
+extern std::vector<float> v_skybox;
+extern std::vector<uint16_t> i_skybox;
 
 /// Get a set of vertex representing a grid square plane centered at the origin at the XY plane. 
 class SqrMesh

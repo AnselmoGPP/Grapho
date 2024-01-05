@@ -41,6 +41,7 @@
 */
 
 
+extern VertexType vt_3;						//!< (Vert)
 extern VertexType vt_32;					//!< (Vert, UV)
 extern VertexType vt_33;					//!< (Vert, Color)
 extern VertexType vt_332;					//!< (Vert, Normal, UV)
