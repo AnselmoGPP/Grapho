@@ -287,6 +287,8 @@ struct c_Distributor : public Component
 	~c_Distributor() { };
 	void printInfo() const { };
 
+	std::map<unsigned, std::vector<ModelParams>> filledChunks;	//!< Stores chunk's population (distributed objects per chunk)
+
 	unsigned minDepth;
 	unsigned rotType;			//!< Rotation type: 1 (Z axis, random), 2 (all axes, random), 3 (face cam)
 	unsigned maxScale;			//!< Randomize scale in the range [1, maxScale]

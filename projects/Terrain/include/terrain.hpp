@@ -237,15 +237,16 @@ public:
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float groundHeight);
 	void toLastDraw();														//!< Call it after updateTree(), so the correct tree is put last to draw
 	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
-	
+	bool contains(unsigned chunkId);
+
 	// Testing
 	unsigned numChunks();				//!< Number of chunks (loaded and not loaded)
 	unsigned numChunksOrdered();		//!< Number of ordered chunks (those fully constructed or pending to be so)
 	unsigned numActiveLeafChunks();		//!< Number of leaf chunks in the active tree
 
 protected:
-	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
 	std::map<std::tuple<float, float, float>, Chunk*> chunks;		//!< All chunks
+	QuadNode<Chunk*>* root[2];										//!< Active and non-active tree
 	std::vector<Chunk*> visibleLeafChunks[2];						//!< Visible leaf chunks of each tree
 	Renderer* renderer;
 	std::vector<uint16_t> indices;
@@ -367,6 +368,7 @@ public:
 	std::shared_ptr<Noiser> getNoiseGen() const;
 	float getSphereArea();							//!< Given planet radius, get sphere's area
 	glm::vec3 getBasicNormal(glm::vec3& camPos);	//!< Sphere normal at camera position
+	bool contains(unsigned chunkId);				// <<< this can be optimized if we could look for the chunk using a key (chunkId)
 	void printCounts();
 
 	const float radius;

@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 				new c_Engine(app),
 					new c_Input,
-					new c_Cam_Sphere,	// Sphere, Plane_free, Plane_polar_sphere
+					new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 					new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
 					new c_Lights(2) });
 

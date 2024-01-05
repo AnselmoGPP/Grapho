@@ -3,9 +3,9 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	BTC
 	
+	Don't update distributed objects every time. Save them per chunk and retrieve them when needed
 	Trees randomness: vary branch textures and XY scale
 	Trees in Blender are greener
-	Don't update distributed objects every time. Save them per chunk and retrieve them when needed
 	cubemap should rotate too
 	crop grass billboard
 	plant grass roots

@@ -1020,6 +1020,14 @@ void DynamicGrid::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth)
             dest.push_back(chunk);
 }
 
+bool DynamicGrid::contains(unsigned chunkId)
+{
+    for (auto it = chunks.begin(); it != chunks.end(); it++)
+        if (it->second->chunkID == chunkId) return true;
+
+    return false;
+}
+
 unsigned DynamicGrid::numActiveLeafChunks() { return visibleLeafChunks[activeTree].size(); }
 
 unsigned DynamicGrid::numChunksOrdered()
@@ -1232,6 +1240,18 @@ std::shared_ptr<Noiser> Planet::getNoiseGen() const { return noiseGen; }
 float Planet::getSphereArea() { return 4 * pi * radius * radius; }
 
 glm::vec3 Planet::getBasicNormal(glm::vec3& camPos) { return glm::normalize(camPos - nucleus); }
+
+bool Planet::contains(unsigned chunkId)
+{
+    if(planetGrid_pZ->contains(chunkId)) return true;
+    if(planetGrid_nZ->contains(chunkId)) return true;
+    if(planetGrid_pY->contains(chunkId)) return true;
+    if(planetGrid_nY->contains(chunkId)) return true;
+    if(planetGrid_pX->contains(chunkId)) return true;
+    if(planetGrid_nX->contains(chunkId)) return true;
+
+    return false;
+}
 
 void Planet::printCounts()
 {

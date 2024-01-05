@@ -807,63 +807,86 @@ void s_Distributor::update(float timeStep)
 
     std::vector<Chunk*> chunks;
     c_mPlanet->planet->getActiveLeafChunks(chunks, 0);      // Get all chunks
-    
+
     // Precalculations
     glm::vec3 camNormal = glm::normalize(c_cam->camPos - c_mPlanet->planet->nucleus);  // Cam's normal is considered the normal for all items.
     glm::vec4 latLonQuat = getLatLonRotQuat(camNormal);                                // Rotation around world coordinates for all items.
 
     // Traverse the entities
     c_ModelParams* c_mParams;   // component to update
-    const c_Distributor* c_distrib;
+    c_Distributor* c_distrib;
 
-    unsigned i, j;
+    unsigned i, j, chunkId;
     std::vector<float>* vertices;
     glm::vec3 position;
     float slope;
-    glm::vec4 randomQuat, normalQuat = {1,0,0,0};        // rotation for additional randomness / for adapting to terrain normal
+    glm::vec4 randomQuat, normalQuat = { 1,0,0,0 };        // rotation for additional randomness / for adapting to terrain normal
     glm::vec3 terrainNormal, terrainVertNormal;
     bool getNormalQuat;
+    std::vector<unsigned> keys;
 
+    // Traverse each entity
     for (uint32_t eId : entities)
     {
-        c_distrib = (c_Distributor*)em->getComponent(CT::distributor, eId);
         c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
         if (!c_mParams) continue;
+        c_distrib = (c_Distributor*)em->getComponent(CT::distributor, eId);
         getNormalQuat = c_distrib->adaptToTerrainNormal;
 
         c_mParams->mp.clear();
         normalQuat = { 1,0,0,0 };
 
-        // Traverse each chunk (that has depth >= minDepth)
+        // Traverse each chunk   <<< traverse from planet instead of copying it?
         for (i = 0; i < chunks.size(); i++)
         {
             if (chunks[i]->depth < c_distrib->minDepth) continue;
-            vertices = chunks[i]->getVertices();
+            chunkId = chunks[i]->chunkID;
 
-            // Traverse each vertex
-            for (j = 0; j < vertices->size(); j+= 9)    // terrain vertex = {3, 3, 3}
+            // If chunk's population was not found, compute it
+            if (c_distrib->filledChunks.find(chunkId) == c_distrib->filledChunks.end())
             {
-                position = glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]);
-                if (!withinFOV(position, c_cam->camPos, c_cam->front, c_cam->fov * 1.2, 5)) continue;       // is outside fov?
+                vertices = chunks[i]->getVertices();
 
-                terrainVertNormal = normalize(glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]));
-                terrainNormal     = normalize(glm::vec3((*vertices)[j + 3], (*vertices)[j + 4], (*vertices)[j + 5]));
-                slope = 1.f - glm::dot(terrainNormal, terrainVertNormal);                                   // 1 - dot(groundNormal, sphereNormal)
-                if (!c_distrib->itemSupported(position, slope, c_distrib->noisers)) continue;               // user condition
+                // Traverse each vertex (3, 3, 3) > Compute all chunk's population
+                for (j = 0; j < vertices->size(); j += 9)
+                {
+                    position = glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]);
+                    //if (!withinFOV(position, c_cam->camPos, c_cam->front, c_cam->fov * 1.2, 5)) continue;       // is outside fov?
 
-                randomQuat = getSecondQuat(position, c_distrib->rotType);   // rotation around vertical axis
-                
-                if(getNormalQuat)                                           // rotation for adapting to terrain normal
-                    if(glm::dot(terrainVertNormal, terrainNormal) < 0.99)
-                        normalQuat = getRotQuat(glm::cross(terrainVertNormal, terrainNormal), angleBetween(terrainVertNormal, terrainNormal));
+                    terrainVertNormal = normalize(glm::vec3((*vertices)[j + 0], (*vertices)[j + 1], (*vertices)[j + 2]));
+                    terrainNormal = normalize(glm::vec3((*vertices)[j + 3], (*vertices)[j + 4], (*vertices)[j + 5]));
+                    slope = 1.f - glm::dot(terrainNormal, terrainVertNormal);                                   // 1 - dot(groundNormal, sphereNormal)
+                    if (!c_distrib->itemSupported(position, slope, c_distrib->noisers)) continue;               // user condition
 
-                c_mParams->mp.push_back(ModelParams(
-                    getScale(position, c_distrib->maxScale),            // scale
-                    productQuat(randomQuat, latLonQuat, normalQuat),    // rotation
-                    position                                            // position
-                ));
+                    randomQuat = getSecondQuat(position, c_distrib->rotType);   // rotation around vertical axis
+
+                    if (getNormalQuat)                                           // rotation for adapting to terrain normal
+                        if (glm::dot(terrainVertNormal, terrainNormal) < 0.99)
+                            normalQuat = getRotQuat(glm::cross(terrainVertNormal, terrainNormal), angleBetween(terrainVertNormal, terrainNormal));
+
+                    c_distrib->filledChunks[chunkId].push_back(ModelParams(
+                        getScale(position, c_distrib->maxScale),            // scale
+                        productQuat(randomQuat, latLonQuat, normalQuat),    // rotation
+                        position));                                         // position)
+                }
+            }
+
+            // Take visible objects from storage
+            for (unsigned i = 0; i < c_distrib->filledChunks[chunkId].size(); i++)
+            {
+                if (!withinFOV(c_distrib->filledChunks[chunkId][i].pos, c_cam->camPos, c_cam->front, c_cam->fov * 1.2, 10)) continue;       // is outside fov?
+                else c_mParams->mp.push_back(c_distrib->filledChunks[chunkId][i]);
             }
         }
+
+        // Delete population from no-longer existing chunks
+        keys.clear();
+
+        for (auto it = c_distrib->filledChunks.begin(); it != c_distrib->filledChunks.end(); it++)
+            if (!c_mPlanet->planet->contains(it->first)) keys.push_back(it->first);
+
+        for(unsigned i = 0; i < keys.size(); i++)
+            c_distrib->filledChunks.erase(keys[i]);
     }
 }
 
