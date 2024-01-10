@@ -244,12 +244,12 @@ void loadResourcesInfo()
 
 		// Skybox
 		texInfos.insert(std::pair("sb_space1",	TextureLoader(texDir + "skybox/space1.jpg")));
-		texInfos.insert(std::pair("sb_front",	TextureLoader(texDir + "skybox/example/front.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("sb_back",	TextureLoader(texDir + "skybox/example/back.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("sb_up",		TextureLoader(texDir + "skybox/example/up.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("sb_down",	TextureLoader(texDir + "skybox/example/down.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("sb_right",	TextureLoader(texDir + "skybox/example/right.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
-		texInfos.insert(std::pair("sb_left",	TextureLoader(texDir + "skybox/example/left.jpg",		VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_front",	TextureLoader(texDir + "skybox/blue1/front.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_back",	TextureLoader(texDir + "skybox/blue1/back.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_up",		TextureLoader(texDir + "skybox/blue1/up.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_down",	TextureLoader(texDir + "skybox/blue1/down.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_right",	TextureLoader(texDir + "skybox/blue1/right.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
+		texInfos.insert(std::pair("sb_left",	TextureLoader(texDir + "skybox/blue1/left.jpg",	VK_FORMAT_R8G8B8A8_SRGB, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)));
 
 		// Plants
 		texInfos.insert(std::pair("grassDry_a", TextureLoader(texDir + "grass/dry/grass_a.png")));

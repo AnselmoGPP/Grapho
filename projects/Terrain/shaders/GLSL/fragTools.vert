@@ -38,13 +38,13 @@
 		getAngle
 		getModulus
 		lerp
+		reflectRay
 	Lighting:
 		directionalLightColor
 		PointLightColor
 		SpotLightColor
 		getFragColor
 	Planar texture:
-		cubeTexture
 		cubemapTex
 		getTex   (example)
 	Triplanar texture:
@@ -212,6 +212,12 @@ float lerp(float a, float b, float ratio) { return a + (b - a) * ratio; }
 
 vec3 lerp(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 
+vec3 reflectRay(vec3 camPos, vec3 fragPos, vec3 normal)
+{
+	return reflect(
+		normalize(fragPos - camPos),	// incident ray
+		normal);
+}
 
 // Graphic functions ------------------------------------------------------------------------
 
@@ -545,90 +551,44 @@ vec2 getUVsFromCube(vec3 str)
 	);
 }
 
-vec3 skyboxTex(vec3 pos, sampler2D front, sampler2D back, sampler2D up, sampler2D down, sampler2D right, sampler2D left)
+// Use a vector (fragment's position in a cube) to sample from a cubemap
+vec3 cubemapTex(vec3 pos, sampler2D front, sampler2D back, sampler2D up, sampler2D down, sampler2D right, sampler2D left)
 {
-	vec3 R = normalize(pos);
-	vec3 majorAxis = getMajorAxis(R);
+	pos = normalize(pos);
+	vec3 majorAxis = getMajorAxis(pos);
 	
 	vec2 uv;
 	
 	if(majorAxis.x != 0.f)
 	{
 		if(majorAxis.x > 0.f) {
-			uv = getUVsFromCube(vec3(-R.z, -R.y, R.x));
+			uv = getUVsFromCube(vec3(-pos.z, -pos.y, pos.x));
 			return texture(front, uv).rgb;
 			}
 		else {
-			uv = getUVsFromCube(vec3(R.z, -R.y, R.x));
+			uv = getUVsFromCube(vec3(pos.z, -pos.y, pos.x));
 			return texture(back, uv).rgb;
 			}
 	}
 	else if(majorAxis.y != 0.f)
 	{
 		if(majorAxis.y > 0.f) {
-			uv = getUVsFromCube(vec3(R.x, R.z, R.y));
+			uv = getUVsFromCube(vec3(pos.x, pos.z, pos.y));
 			return texture(left, uv).rgb;
 			}
 		else {
-			uv = getUVsFromCube(vec3(R.x, -R.z, R.y));
+			uv = getUVsFromCube(vec3(pos.x, -pos.z, pos.y));
 			return texture(right, uv).rgb;
 			}
 	}
 	else if(majorAxis.z != 0.f)
 	{
 		if(majorAxis.z > 0.f) {
-			uv = getUVsFromCube(vec3(R.x, -R.y, R.z));
+			uv = getUVsFromCube(vec3(pos.x, -pos.y, pos.z));
 			return texture(up, uv).rgb;
 			}
 		else {
-			uv = getUVsFromCube(vec3(-R.x, -R.y, R.z));
-			return texture(down, uv).rgb;
-			}
-	}
-	
-	return vec3(0,0,0);
-}
-
-vec3 cubemapTex(vec3 camPos, vec3 fragPos, vec3 normal, sampler2D front, sampler2D back, sampler2D up, sampler2D down, sampler2D right, sampler2D left)
-{
-	// Major axis of the reflection direction
-	vec3 I = normalize(fragPos - camPos);
-	vec3 R = reflect(I, normal);
-	vec3 majorAxis = getMajorAxis(R);
-	
-	// Variables (s, t, r), UVs, and textures
-	vec2 uv;
-	
-	if(majorAxis.x != 0.f)
-	{
-		if(majorAxis.x > 0.f) {
-			uv = getUVsFromCube(vec3(-R.z, -R.y, R.x));
-			return texture(front, uv).rgb;
-			}
-		else {
-			uv = getUVsFromCube(vec3(R.z, -R.y, R.x));
-			return texture(back, uv).rgb;
-			}
-	}
-	else if(majorAxis.y != 0.f)
-	{
-		if(majorAxis.y > 0.f) {
-			uv = getUVsFromCube(vec3(R.x, R.z, R.y));
-			return texture(left, uv).rgb;
-			}
-		else {
-			uv = getUVsFromCube(vec3(R.x, -R.z, R.y));
-			return texture(right, uv).rgb;
-			}
-	}
-	else if(majorAxis.z != 0.f)
-	{
-		if(majorAxis.z > 0.f) {
-			uv = getUVsFromCube(vec3(R.x, -R.y, R.z));
-			return texture(up, uv).rgb;
-			}
-		else {
-			uv = getUVsFromCube(vec3(-R.x, -R.y, R.z));
+			uv = getUVsFromCube(vec3(-pos.x, -pos.y, pos.z));
 			return texture(down, uv).rgb;
 			}
 	}

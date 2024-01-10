@@ -111,7 +111,7 @@ vec3 getTex_Sea()
 		normal = triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, inTime);
 		
 		return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-			+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
+			+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 	}
 	
 	//    - Mix area (close and far normals)
@@ -121,17 +121,16 @@ vec3 getTex_Sea()
 		vec3 normal2 = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
 		ratio        = getRatio(inDist, 150, 200);
 		normal       = mix(normal, normal2, ratio);
-		//reflectRatio = mix(reflectRatio, 0, ratio);
 		
 		return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-			+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
+			+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 	}
 	
 	//    - Far normals
 	normal = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
 	
 	return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-		+ reflectRatio * cubemapTex(inCamPos, inPos, normal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
+		+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 }
 
 vec3 getDryColor(vec3 color, float minHeight, float maxHeight)

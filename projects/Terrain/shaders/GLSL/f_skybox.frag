@@ -13,7 +13,7 @@ layout(location = 0) out vec4 outColor;				// layout(location=0) specifies the i
 
 void main()
 {
-	outColor.xyz = skyboxTex(inPos, texSampler[0], texSampler[1], texSampler[2], texSampler[3], texSampler[4], texSampler[5]);
+	outColor.xyz = cubemapTex(inPos, texSampler[0], texSampler[1], texSampler[2], texSampler[3], texSampler[4], texSampler[5]);
 	outColor.w = 1;
 	//outColor = texture(texSampler, inUVs);
 	

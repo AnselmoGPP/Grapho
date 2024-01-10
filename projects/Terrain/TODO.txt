@@ -1,30 +1,36 @@
 TODO:
-	RONALD
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
-	BTC
 	
-	Don't update distributed objects every time. Save them per chunk and retrieve them when needed
+	- Second thread: Create & delete objects in the same order they have been asked
+	- Debug threading conflict
+	Billboards have normals that always look to the light source (sun) side
+	Pass data to modelObjecs in structs
+	cubemap should rotate too
+	distributor saves population (make it faster by looking for chunkId as key of a std::map)
 	Trees randomness: vary branch textures and XY scale
 	Trees in Blender are greener
-	cubemap should rotate too
 	crop grass billboard
 	plant grass roots
-	fix zeros when planting grass
 	implicit derivatives for mipmap selection (https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162)
 
-	cubemap mapping
 	Analytical normals
 	sun is blinking
 
 	learnOpenGL:
 		Selection frame (stencil testing)
 		Post-processing (framebuffers)
-		cubemaps
 		early depth testing
+		Use gl_fragCoord.z for distance
+		- UBOs
+		Post-processing to a framebuffer
+		Geometry shader
+		- Instancing
+		Custom anti-aliasing
+		- Deferred shading / parallelism problem
 
 	Distributor:
-		Distribution over different LOD chunks is broken (objects change).
-		Borders change
+		x - Distribution over different LOD chunks is broken (objects change).
+		x - Borders change
 		Alternative: Distribute over a spherical surface (analytical normal)
 
 	Darken grass below / Make roots

@@ -32,7 +32,7 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 proj;
     mat4 normalMatrix;			// mat3
 	vec4 camPos;				// vec3
-	vec4 time_height;			// float, float (dist nucleus-soilUnderCam)
+	vec4 time;					// float
 	vec4 sideDepthsDiff;
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
@@ -71,13 +71,13 @@ void main()
 	outDist         = getDist(pos, ubo.camPos.xyz);		// Dist. to wavy geoid
 	outGroundHeight = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
 	outCamPos       = ubo.camPos.xyz;
-	outTime         = ubo.time_height[0];
+	outTime         = ubo.time[0];
 	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1);
 	
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
-		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
+		outLight[i].position.xyz  = ubo.light[i].position.xyz;					// for point & spot light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);		// for directional & spot light
 	}
 	
 	outTB3 = getTB3(normal);
@@ -85,7 +85,7 @@ void main()
 
 void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude)
 {
-	float ratio = minAmplitude + 1.f - getRatio(ubo.time_height[1], RADIUS - maxDepth, RADIUS - minDepth);
+	float ratio = minAmplitude + 1.f - getRatio(ubo.time[1], RADIUS - maxDepth, RADIUS - minDepth);
 	for(int i = 0; i < WAVES; i++) A[i] *= ratio;
 }
 
@@ -140,8 +140,6 @@ vec3 getSphereDir(vec3 planeDir, vec3 normal)
 // Gerstner waves applied over a sphere, perpendicular to normal
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 {
-	float time       = ubo.time_height[0];
-		
 	vec3 newPos      = pos;
 	vec3 newNormal   = normal;
 	//float multiplier = 0.9;
@@ -159,8 +157,8 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 		arcDist = getAngle(-dir[i], up) * RADIUS;
 		rotAxis = cross(dir[i], up);
 		
-		horDisp = cos(w[i] * arcDist + speed[i] * time);
-		verDisp = sin(w[i] * arcDist + speed[i] * time);
+		horDisp = cos(w[i] * arcDist + speed[i] * ubo.time.x);
+		verDisp = sin(w[i] * arcDist + speed[i] * ubo.time.x);
 		
 		// Vertex
 		rotAng  = (Q(i) * A[i]) * horDisp / RADIUS;		
@@ -192,7 +190,6 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 	float A          = AMPLITUDE;				// Amplitude
 	float steepness  = STEEPNESS;				// [0,1]
 	float Q          = steepness * 1 / (w * A);	// Steepness [0, 1/(w·A)] (bigger values produce loops)
-	float time       = ubo.time_height[0];
 	const int count  = 6;
 		
 	vec3 dir[count]  = { vec3(1,0,0), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(-SR05, 0, SR05) };
@@ -204,8 +201,8 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 	
 	for(int i = 0; i < count; i++)
 	{
-		cosVal = cos(w * dot(dir[i], pos) + speed * time);
-		sinVal = sin(w * dot(dir[i], pos) + speed * time);
+		cosVal = cos(w * dot(dir[i], pos) + speed * ubo.time.x);
+		sinVal = sin(w * dot(dir[i], pos) + speed * ubo.time.x);
 		
 		newPos.x += Q * A * dir[i].x * cosVal;
 		newPos.y += Q * A * dir[i].y * cosVal;
@@ -232,7 +229,6 @@ vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal)
 // Gerstner waves applied over a 2D surface
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal)
 {
-	float time      = ubo.time_height[0];
 	float speed     = 3;
 	float w         = 0.010;			// Frequency (number of cycles in 2π)
 	float A         = 100;				// Amplitude
@@ -245,8 +241,8 @@ vec3 GerstnerWaves(vec3 pos, inout vec3 normal)
 	
 	for(int i = 0; i < count; i++)
 	{
-		cosVal = cos(w * dot(dir[i], pos) + speed * time);
-		sinVal = sin(w * dot(dir[i], pos) + speed * time);
+		cosVal = cos(w * dot(dir[i], pos) + speed * ubo.time.x);
+		sinVal = sin(w * dot(dir[i], pos) + speed * ubo.time.x);
 		
 		newPos.x += A * Q * dir[i].x * cosVal;
 		newPos.y += A * Q * dir[i].y * cosVal;

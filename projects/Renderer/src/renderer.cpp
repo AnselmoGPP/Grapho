@@ -251,10 +251,10 @@ void Renderer::createCommandBuffers()
 	allocInfo.commandBufferCount	= (uint32_t)commandBuffers.size();		// Number of buffers to allocate.
 
 	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-
+	std::cout << "alloc 2.1." << std::endl;
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-	
+	std::cout << "alloc 2.2." << std::endl;
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
