@@ -16,7 +16,7 @@ layout(set = 0, binding = 0) uniform ubobject {
 	vec4 camPos_time;			// camPos + time
 	vec4 modelPos_gSlope;		// vec3 + float
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
-} ubo;
+} ubo[500];
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
@@ -32,10 +32,11 @@ layout(location = 6) flat out LightPD outLight[NUMLIGHTS];	// light positions & 
 
 void main()
 {
+	
 	vec3 pos      = inPos;												// position without MVP matrix applied yet
-	vec3 modelPos = ubo.modelPos_gSlope.xyz;
-	float gSlope  = ubo.modelPos_gSlope.a;
-	float sqrDist = getSqrDist(modelPos, ubo.camPos_time.xyz);			// dist modelPos-camPos
+	vec3 modelPos = ubo[gl_InstanceID].modelPos_gSlope.xyz;
+	float gSlope  = ubo[gl_InstanceID].modelPos_gSlope.a;
+	float sqrDist = getSqrDist(modelPos, ubo[gl_InstanceID].camPos_time.xyz);			// dist modelPos-camPos
 	float height  = getLength(modelPos);
 	
 	// Translation
@@ -54,7 +55,7 @@ void main()
 	//pos.y *= 1.5;		// hor. scale
 	
 	// Wind
-	float time = ubo.camPos_time.a + (modelPos.x + modelPos.y + modelPos.z);				// add some randomness to the time
+	float time = ubo[gl_InstanceID].camPos_time.a + (modelPos.x + modelPos.y + modelPos.z);				// add some randomness to the time
 	pos += getRatio(inPos.x, 0, xScale) * vec3(0,0,1) * sin(2 * time) * (0.02 * xScale);	// speed (2), amplitude (0.02), move axis (0,0,1)
 	
 	// Final position
@@ -63,30 +64,30 @@ void main()
 		float ratio = 1.f - getRatio(sqrDist, 0, 2*2);	// 2*X: max distance from where cam moves grass
 		ratio *= pos.x; 								// don't move roots
 		
-		vec3 displacementDir = normalize(modelPos - ubo.camPos_time.xyz);
+		vec3 displacementDir = normalize(modelPos - ubo[gl_InstanceID].camPos_time.xyz);
 		vec3 sphereNormal = normalize(modelPos);
 		vec3 right = normalize(cross(displacementDir, sphereNormal));
 		displacementDir = normalize(cross(sphereNormal, right));
 		
-		vec4 vertexPos = ubo.model * vec4(pos, 1.0);	// apply MVP to position
+		vec4 vertexPos = ubo[gl_InstanceID].model * vec4(pos, 1.0);	// apply MVP to position
 		vertexPos.xyz += displacementDir * ratio * 2;	// 2: max grass displacement
-		gl_Position = ubo.proj * ubo.view * vertexPos;
+		gl_Position = ubo[gl_InstanceID].proj * ubo[gl_InstanceID].view * vertexPos;
 	}
 	else 
-		gl_Position = ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
+		gl_Position = ubo[gl_InstanceID].proj * ubo[gl_InstanceID].view * ubo[gl_InstanceID].model * vec4(pos, 1.0);
 	
 	// Others
 	//gl_Position = ubo.proj * ubo.view * ubo.model * vec4(pos, 1.0);
-	outPos      = (ubo.model * vec4(pos, 1.0)).xyz;
-	outNormal   = mat3(ubo.normalMatrix) * inNormal;
+	outPos      = (ubo[gl_InstanceID].model * vec4(pos, 1.0)).xyz;
+	outNormal   = mat3(ubo[gl_InstanceID].normalMatrix) * inNormal;
 	outUVs      = inUVs;
-	outCamPos   = ubo.camPos_time.xyz;
+	outCamPos   = ubo[gl_InstanceID].camPos_time.xyz;
 	outModelPos = modelPos;
-	outSqrDist  = getSqrDist(ubo.camPos_time.xyz, (ubo.model * vec4(pos, 1.0)).xyz);
+	outSqrDist  = getSqrDist(ubo[gl_InstanceID].camPos_time.xyz, (ubo[gl_InstanceID].model * vec4(pos, 1.0)).xyz);
 	
 	for(int i = 0; i < NUMLIGHTS; i++) 
 	{
-		outLight[i].position.xyz  = ubo.light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);			// for directional & spot light
+		outLight[i].position.xyz  = ubo[gl_InstanceID].light[i].position.xyz;						// for point & spot light
+		outLight[i].direction.xyz = normalize(ubo[gl_InstanceID].light[i].direction.xyz);			// for directional & spot light
 	}
 }

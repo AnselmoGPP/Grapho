@@ -8,38 +8,18 @@
 Sizes size;
 
 
-// Dynamic Uniform Buffer Objects -----------------------------------------------------------------
+// (Set of) Uniform Buffer Objects -----------------------------------------------------------------
 
-/// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, dynamicOffsets).
-UBO::UBO(VulkanEnvironment* e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment)
-	: e(e), numDynUBOs(numDynUBOs), range(0)
-{	
-	if (dynUBOsize)
-		range = minUBOffsetAlignment * (1 + dynUBOsize / minUBOffsetAlignment);
+/// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, offsets).
+UBO::UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t UBOsize, VkDeviceSize minUBOffsetAlignment)
+	: e(e), 
+	maxUBOcount(maxUBOcount), 
+	range(UBOsize ? minUBOffsetAlignment * (1 + UBOsize / minUBOffsetAlignment) : 0),
+	totalBytes(range * maxUBOcount),
+	ubo(totalBytes)
+{ }
 
-	totalBytes = range * numDynUBOs;
-	ubo.resize(totalBytes);
-
-	dynamicOffsets.resize(numDynUBOs);
-	for (size_t i = 0; i < numDynUBOs; i++)
-		dynamicOffsets[i] = i * range;
-}
-
-uint8_t* UBO::getUBOptr(size_t dynUBO) { return ubo.data() + dynUBO * range; }
-
-void UBO::resizeUBO(size_t newNumDynUBOs)// <<< what to do in modelData if uboType == 0
-{	
-	numDynUBOs = newNumDynUBOs;
-
-	totalBytes = range * numDynUBOs;
-
-	ubo.resize(totalBytes);
-
-	size_t oldSize = dynamicOffsets.size();
-	dynamicOffsets.resize(numDynUBOs);
-	for (size_t i = oldSize; i < numDynUBOs; i++)
-		dynamicOffsets[i] = i * range;
-}
+uint8_t* UBO::getUBOptr(size_t UBOindex) { return ubo.data() + UBOindex * range; }
 
 // (21)
 void UBO::createUniformBuffers()
@@ -53,7 +33,7 @@ void UBO::createUniformBuffers()
 		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 			createBuffer(
 				e,
-				numDynUBOs == 0 ? range : totalBytes,
+				maxUBOcount == 0 ? range : totalBytes,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				uniformBuffers[i],

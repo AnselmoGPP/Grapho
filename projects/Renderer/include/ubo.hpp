@@ -18,7 +18,7 @@
 		- The variables or members of structs that you pass to the shader have to be aligned with 16 bytes (but variables or struct members created inside the shader doesn't).
 		- Due to the 16-bytes alignment requirement, you should pass variables that fit 16 bytes (example: vec4, float[4], int[4]...) or fit your variables in packages of 16 bytes (example: float + int + vec2).
 
-	Dynamic UBO:
+	UBO:
 		|--------------------------------minUBOffsetAlignment(256)-----------------------------|
 		|---------16---------||---------16---------||---------16---------||---------16---------|
 	Data passed:
@@ -127,26 +127,24 @@ struct Material
 */
 struct UBO
 {
-	UBO(VulkanEnvironment* e, size_t numDynUBOs, size_t dynUBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: dynUBOcount (number of dynamic UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each dynamic UBO required by the GPU).
+private:
+	VulkanEnvironment* e;
+
+public:
+	UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t UBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: maxUBOcount (max. number of UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
 	~UBO() = default;
 
-	uint8_t* getUBOptr(size_t dynUBO);
-	void resizeUBO(size_t newNumDynUBOs);				//!< Set the number of dynamic UBO in the UBO. This doesn't create new Uniform buffer.
-
-	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
-	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
-
-	size_t						numDynUBOs;				//!< Number of dynamic UBOs
-	VkDeviceSize				range;					//!< Size (bytes) of each aligned dynamic UBO (example: 4) (at least, minUBOffsetAlignment)
-	size_t						totalBytes;				//!< Size (bytes) of the set of dynamic UBOs (example: 12)
-	std::vector<uint32_t>		dynamicOffsets;			//!< Offsets (bytes) of each dynamic UBO
+	const size_t				maxUBOcount;			//!< Number of UBOs
+	VkDeviceSize				range;					//!< Size (bytes) of each aligned UBO (example: 4) (at least, minUBOffsetAlignment)
+	size_t						totalBytes;				//!< Size (bytes) of the set of UBOs (example: 12)
 
 	std::vector<uint8_t>		ubo;					//!< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
 	std::vector<VkBuffer>		uniformBuffers;			//!< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
 	std::vector<VkDeviceMemory>	uniformBuffersMemory;	//!< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
-private:
-	VulkanEnvironment* e;
+	uint8_t* getUBOptr(size_t UBOindex);
+	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
+	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 };
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)

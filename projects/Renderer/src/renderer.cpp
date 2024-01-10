@@ -251,10 +251,12 @@ void Renderer::createCommandBuffers()
 	allocInfo.commandBufferCount	= (uint32_t)commandBuffers.size();		// Number of buffers to allocate.
 
 	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-	std::cout << "alloc 2.1." << std::endl;
+	
+	//std::cout << "alloc 2.1." << std::endl;
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-	std::cout << "alloc 2.2." << std::endl;
+	//std::cout << "alloc 2.2." << std::endl;
+
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -307,28 +309,40 @@ void Renderer::createCommandBuffers()
 					std::cout << "         Model: " << it->name << std::endl;
 				#endif
 				
-				if (it->layer != j || !it->activeRenders) continue;
+				if (it->layer != j || !it->activeInstances) continue;
 				
 				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
 
 				if (it->vert.indexCount)	// has indices (it doesn't if data represents points)
 					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-				
-				for (size_t k = 0; k < it->activeRenders; k++)	// for each RENDERING
-				{
-					commandsCount++;
-					
-					if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
-						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[k]);
-					else
-						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-					
-					if (it->vert.indexCount)		// has indices
-						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
-					else
-						vkCmdDraw(commandBuffers[i], it->vert.vertexCount, 1, 0, 0);
-				}
+
+				if (it->vsUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);// it->vsUBO.offsets.data());
+				else
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
+
+				if (it->vert.indexCount)		// has indices
+					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), it->activeInstances, 0, 0, 0);
+				else
+					vkCmdDraw(commandBuffers[i], it->vert.vertexCount, it->activeInstances, 0, 0);
+
+				commandsCount++;
+
+				//for (size_t k = 0; k < it->activeRenders; k++)	// for each RENDERING
+				//{
+				//	commandsCount++;
+				//	
+				//	if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+				//		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[k]);
+				//	else
+				//		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
+				//	
+				//	if (it->vert.indexCount)		// has indices
+				//		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
+				//	else
+				//		vkCmdDraw(commandBuffers[i], it->vert.vertexCount, 1, 0, 0);
+				//}
 			}
 		}
 		
@@ -356,11 +370,11 @@ void Renderer::createCommandBuffers()
 				std::cout << "   Model: " << it->name << std::endl;
 			#endif
 			
-			if (!it->activeRenders) continue;
+			if (!it->activeInstances) continue;
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[0]);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);// &it->vsUBO.offsets[0]);
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
 		}
 		
@@ -749,9 +763,9 @@ void Renderer::setRenders(modelIter model, size_t numberOfRenders)
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	
-	if (numberOfRenders != model->activeRenders)
+	if (numberOfRenders != model->activeInstances)
 	{
-		model->setRenderCount(numberOfRenders);
+		model->setActiveInstancesCount(numberOfRenders);
 
 		updateCommandBuffer = true;		//We are flagging commandBuffer for update assuming that our model is in list "model"
 	}
@@ -819,12 +833,12 @@ void Renderer::updateStates(uint32_t currentImage)
 	for (i = 0; i < e.c.numRenderPasses; i++)
 		for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 		{
-			if (it->vsDynUBO.totalBytes)
+			if (it->vsUBO.totalBytes)
 			{
 				void* data;
-				vkMapMemory(e.c.device, it->vsDynUBO.uniformBuffersMemory[currentImage], 0, it->vsDynUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-				memcpy(data, it->vsDynUBO.ubo.data(), it->vsDynUBO.totalBytes);													// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-				vkUnmapMemory(e.c.device, it->vsDynUBO.uniformBuffersMemory[currentImage]);										// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+				vkMapMemory(e.c.device, it->vsUBO.uniformBuffersMemory[currentImage], 0, it->vsUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+				memcpy(data, it->vsUBO.ubo.data(), it->vsUBO.totalBytes);													// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+				vkUnmapMemory(e.c.device, it->vsUBO.uniformBuffersMemory[currentImage]);										// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 			}
 
 			if (it->fsUBO.totalBytes)
@@ -864,7 +878,7 @@ void Renderer::toLastDraw(modelIter model)
 
 TimerSet& Renderer::getTimer() { return timer; }
 
-size_t Renderer::getRendersCount(modelIter model) { return model->activeRenders; }
+size_t Renderer::getRendersCount(modelIter model) { return model->activeInstances; }
 
 size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); }
 

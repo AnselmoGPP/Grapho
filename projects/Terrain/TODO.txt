@@ -1,10 +1,15 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
+	UBO::UBOcount should be fixed because it's fixed in the shader. This should represent the maximum possible number of descriptors
+	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
+
+	- Pass data to modelObjecs in structs
+	- Store GPU features and properties in a struc easily accessible for consulting (maxUniformBufferRange...)
+	-> Change activeRenders to instanceCount / Check with maxUniformBufferRange
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict
 	Billboards have normals that always look to the light source (sun) side
-	Pass data to modelObjecs in structs
 	cubemap should rotate too
 	distributor saves population (make it faster by looking for chunkId as key of a std::map)
 	Trees randomness: vary branch textures and XY scale
@@ -24,7 +29,7 @@ TODO:
 		- UBOs
 		Post-processing to a framebuffer
 		Geometry shader
-		- Instancing
+		-> Instancing
 		Custom anti-aliasing
 		- Deferred shading / parallelism problem
 

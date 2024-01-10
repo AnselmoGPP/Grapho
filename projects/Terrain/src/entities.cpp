@@ -268,7 +268,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 		"grass",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		4000, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
 		0, 0,
 		VK_CULL_MODE_NONE);
@@ -312,7 +312,7 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 		"plant",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
 		0, 0,
 		VK_CULL_MODE_NONE);
@@ -358,7 +358,7 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 		"rock",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData, shaders, textureSet,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	return std::vector<Component*>{
@@ -406,7 +406,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 		"tree_trunk",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData_trunk, shaders, textureSet,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 
@@ -425,7 +425,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 		"tree_branches",
 		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
 		vertexData_branches, shaders2, textureSet2,
-		1, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
 		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
 
 	entities.push_back(std::vector<Component*>{ 

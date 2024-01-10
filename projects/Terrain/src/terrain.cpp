@@ -70,9 +70,9 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
         transparency);
 
     uint8_t* dest;
-    for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
+    for (size_t i = 0; i < model->activeInstances; i++)
     {
-        dest = model->vsDynUBO.getUBOptr(i);
+        dest = model->vsUBO.getUBOptr(i);
         memcpy(dest, &getModelMatrix(), size.mat4);
         dest += size.mat4;
         //memcpy(dest, &view, mat4size);
@@ -106,9 +106,9 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
     uint8_t* dest;
 
-    for (size_t i = 0; i < model->vsDynUBO.numDynUBOs; i++)
+    for (size_t i = 0; i < model->activeInstances; i++)
     {
-        dest = model->vsDynUBO.getUBOptr(i);
+        dest = model->vsUBO.getUBOptr(i);
 
         //memcpy(dest, &modelMatrix(), size.mat4);
         dest += size.mat4;
@@ -858,7 +858,7 @@ void DynamicGrid::removeFarChunks(unsigned relDist, glm::vec3 camPosNow)
         targetDist = it->second->getHorChunkSide() * relDist;
         chunk = it->second;
         
-        if(chunk->isVisible && (!chunk->modelOrdered || !chunk->model->activeRenders))    // traverse chunks that are not in the active tree
+        if(chunk->isVisible && (!chunk->modelOrdered || !chunk->model->activeInstances))    // traverse chunks that are not in the active tree
         {
             center = getChunkCenter(it->second);    // it->second->getGroundCenter();
             distVec.x = center.x - camPosNow.x;
@@ -1470,7 +1470,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         model = getModelMatrix(sca[i], rot[i], pos[i]);
         modelNormals = getModelMatrixForNormals(model);
 
-        dest = grassModel->vsDynUBO.getUBOptr(i);
+        dest = grassModel->vsUBO.getUBOptr(i);
 
         memcpy(dest, &model, size.mat4);
         dest += size.mat4;

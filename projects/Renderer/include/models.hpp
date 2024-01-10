@@ -99,7 +99,7 @@ class ModelData
 
 public:
 	/// Construct an object for rendering
-	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode);
+	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode);
 
 	virtual ~ModelData();
 
@@ -119,7 +119,7 @@ public:
 
 	VertexData					 vert;					//!< Vertex data + Indices
 
-	UBO							 vsDynUBO;				//!< Stores the set of dynamic UBOs that will be passed to the vertex shader
+	UBO							 vsUBO;					//!< Stores the set of UBOs that will be passed to the vertex shader
 	UBO							 fsUBO;					//!< Stores the UBO that will be passed to the fragment shader
 	VkDescriptorSetLayout		 descriptorSetLayout;	//!< Opaque handle to a descriptor set layout object (combines all of the descriptor bindings).
 	VkDescriptorPool			 descriptorPool;		//!< Opaque handle to a descriptor pool object.
@@ -127,15 +127,15 @@ public:
 
 	const uint32_t				 renderPassIndex;		//!< Index of the renderPass used (0 for rendering geometry, 1 for post processing)
 	size_t						 layer;					//!< Layer where this model will be drawn (Painter's algorithm).
-	size_t						 activeRenders;			//!< Number of renderings (<= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
+	size_t						 activeInstances;		//!< Number of renderings (<= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 
 	ResourcesLoader* resLoader;							//!< Info used for loading resources (vertices, indices, shaders, textures). When resources are loaded, this is set to nullptr.
 	bool fullyConstructed;								//!< Flags if this object has been fully constructed (i.e. has a model loaded into Vulkan).
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
 	const std::string name;								//!< For debugging purposes.
 
-	/// Set number of renderings (>= vsDynUBO.dynBlocksCount).
-	void setRenderCount(size_t numRenders);
+	/// Set number of active instances (>= vsDynUBO.dynBlocksCount).
+	void setActiveInstancesCount(size_t activeInstancesCount);
 };
 
 #endif

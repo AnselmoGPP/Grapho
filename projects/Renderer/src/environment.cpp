@@ -1133,10 +1133,11 @@ VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandPool = commandPool;
 	allocInfo.commandBufferCount = 1;
-	std::cout << "alloc 1.1." << std::endl;
+	//std::cout << "alloc 1.1." << std::endl;
 	VkCommandBuffer commandBuffer;
 	vkAllocateCommandBuffers(c.device, &allocInfo, &commandBuffer);
-	std::cout << "alloc 1.2." << std::endl;
+	//std::cout << "alloc 1.2." << std::endl;
+	
 	// Start recording the command buffer.
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

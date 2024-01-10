@@ -3,18 +3,18 @@
 #include "commons.hpp"
 
 
-ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t activeRenders, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
+ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
 	: name(modelName),
 	e(&environment),
 	primitiveTopology(primitiveTopology),
 	vertexType(vertexType),
 	hasTransparencies(transparency),
 	cullMode(cullMode),
-	vsDynUBO(e, numDynUBOs_vs, dynUBOsize_vs, e->c.minUniformBufferOffsetAlignment),
-	fsUBO(e, dynUBOsize_fs ? 1 : 0, dynUBOsize_fs, e->c.minUniformBufferOffsetAlignment),
+	vsUBO(e, UBOcount_vs, UBOsize_vs, e->c.minUniformBufferOffsetAlignment),
+	fsUBO(e, UBOsize_fs ? 1 : 0, UBOsize_fs, e->c.minUniformBufferOffsetAlignment),
 	renderPassIndex(renderPassIndex),
 	layer(layer),
-	activeRenders(activeRenders),
+	activeInstances(instanceCount),
 	fullyConstructed(false),
 	inModels(false)
 {
@@ -58,12 +58,12 @@ ModelData& ModelData::fullConstruction(std::list<Shader>& loadedShaders, std::li
 	
 	createDescriptorSetLayout();
 	createGraphicsPipeline();
-		
-	vsDynUBO.createUniformBuffers();
+
+	vsUBO.createUniformBuffers();
 	fsUBO.createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
-	
+
 	//fullyConstructed = true;
 	return *this;
 }
@@ -79,12 +79,12 @@ void ModelData::createDescriptorSetLayout()
 	uint32_t bindNumber = 0;
 
 	//	Dynamic Uniform buffer descriptor (vertex shader)
-	if (vsDynUBO.range)
+	if (vsUBO.range)
 	{
 		VkDescriptorSetLayoutBinding vsUboLayoutBinding{};
 		vsUboLayoutBinding.binding = bindNumber++;
-		vsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;	// VK_DESCRIPTOR_TYPE_ ... UNIFORM_BUFFER, UNIFORM_BUFFER_DYNAMIC
-		vsUboLayoutBinding.descriptorCount = 1;											// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each of bone in a skeleton for skeletal animation).
+		vsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;			// VK_DESCRIPTOR_TYPE_ ... UNIFORM_BUFFER, UNIFORM_BUFFER_DYNAMIC
+		vsUboLayoutBinding.descriptorCount = vsUBO.maxUBOcount;							// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each bone in a skeleton for skeletal animation).
 		vsUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;						// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
 		vsUboLayoutBinding.pImmutableSamplers = nullptr;								// [Optional] Only relevant for image sampling related descriptors.
 
@@ -352,9 +352,9 @@ void ModelData::createDescriptorPool()
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	VkDescriptorPoolSize pool;
 
-	if (vsDynUBO.range)
+	if (vsUBO.range)
 	{
-		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;					// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+		pool.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;								// VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER or VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());	// Number of descriptors of this type to allocate
 		poolSizes.push_back(pool);
 	}
@@ -398,7 +398,7 @@ void ModelData::createDescriptorSets()
 	#ifdef DEBUG_MODELS
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
-	
+
 	descriptorSets.resize(e->swapChain.images.size());
 
 	std::vector<VkDescriptorSetLayout> layouts(e->swapChain.images.size(), descriptorSetLayout);
@@ -417,11 +417,17 @@ void ModelData::createDescriptorSets()
 	// Populate each descriptor set.
 	for (size_t i = 0; i < e->swapChain.images.size(); i++)
 	{
+		VkDescriptorBufferInfo descriptorInfo;		// Info about one descriptors
+
 		// UBO vertex shader
-		VkDescriptorBufferInfo bufferInfo_vs{};
-		if (vsDynUBO.range) bufferInfo_vs.buffer = vsDynUBO.uniformBuffers[i];
-		bufferInfo_vs.offset = 0;
-		bufferInfo_vs.range = vsDynUBO.range;
+		std::vector< VkDescriptorBufferInfo> bufferInfo_vs;
+		for (unsigned j = 0; j < vsUBO.maxUBOcount; j++)
+		{
+			if (vsUBO.range) descriptorInfo.buffer = vsUBO.uniformBuffers[i];
+			descriptorInfo.offset = j * vsUBO.range;
+			descriptorInfo.range = vsUBO.range;
+			bufferInfo_vs.push_back(descriptorInfo);
+		}
 
 		// UBO fragment shader
 		VkDescriptorBufferInfo bufferInfo_fs{};
@@ -449,16 +455,16 @@ void ModelData::createDescriptorSets()
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;
 		uint32_t binding = 0;
-
-		if (vsDynUBO.range)
+		
+		if (vsUBO.range)
 		{
 			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptor.dstSet = descriptorSets[i];
 			descriptor.dstBinding = binding++;
 			descriptor.dstArrayElement = 0;
-			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-			descriptor.descriptorCount = 1;
-			descriptor.pBufferInfo = &bufferInfo_vs;
+			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptor.descriptorCount = vsUBO.maxUBOcount;
+			descriptor.pBufferInfo = bufferInfo_vs.data();
 			descriptor.pImageInfo = nullptr;
 			descriptor.pTexelBufferView = nullptr;
 			descriptor.pNext = nullptr;
@@ -526,7 +532,7 @@ void ModelData::recreate_Pipeline_Descriptors()
 
 	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
-	vsDynUBO.createUniformBuffers();	// Uniform buffers depend on the number of swap chain images.
+	vsUBO.createUniformBuffers();	// Uniform buffers depend on the number of swap chain images.
 	fsUBO.createUniformBuffers();
 	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
 	createDescriptorSets();				// Descriptor sets
@@ -543,7 +549,7 @@ void ModelData::cleanup_Pipeline_Descriptors()
 	vkDestroyPipelineLayout(e->c.device, pipelineLayout, nullptr);
 
 	// Uniform buffers & memory
-	vsDynUBO.destroyUniformBuffers();
+	vsUBO.destroyUniformBuffers();
 	fsUBO.destroyUniformBuffers();
 
 	// Descriptor pool & Descriptor set (When a descriptor pool is destroyed, all descriptor-sets allocated from the pool are implicitly/automatically freed and become invalid)
@@ -582,26 +588,30 @@ void ModelData::deleteLoader()
 	}
 }
 
-void ModelData::setRenderCount(size_t numRenders)
+void ModelData::setActiveInstancesCount(size_t activeInstancesCount)
 {
 	#ifdef DEBUG_MODELS
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 	
-	this->activeRenders = numRenders;
+	this->activeInstances = activeInstancesCount;
 
-	if (numRenders > vsDynUBO.numDynUBOs)
+	if (activeInstancesCount > vsUBO.maxUBOcount)
 	{
-		vsDynUBO.resizeUBO(numRenders);
+		std::cout << "The number of rendered instances (" << name << ") cannot be higher than " << vsUBO.maxUBOcount << std::endl;
+		this->activeInstances = vsUBO.maxUBOcount;
+		return;
 
-		if (fullyConstructed)
-		{
-			vsDynUBO.destroyUniformBuffers();
-			vkDestroyDescriptorPool(e->c.device, descriptorPool, nullptr);	// Descriptor-Sets are automatically freed when the descriptor pool is destroyed.
+		//vsUBO.resizeUBO(activeInstancesCount);
 
-			vsDynUBO.createUniformBuffers();	// Create a UBO with the new size
-			createDescriptorPool();				// Required for creating descriptor sets
-			createDescriptorSets();				// Contains the UBO
-		}
+		//if (fullyConstructed)
+		//{
+		//	vsUBO.destroyUniformBuffers();
+		//	vkDestroyDescriptorPool(e->c.device, descriptorPool, nullptr);	// Descriptor-sets are automatically freed when the descriptor pool is destroyed.
+		//
+		//	vsUBO.createUniformBuffers();		// Create a UBO with the new size
+		//	createDescriptorPool();				// Required for creating descriptor sets
+		//	createDescriptorSets();				// Contains the UBO
+		//}
 	}
 }
