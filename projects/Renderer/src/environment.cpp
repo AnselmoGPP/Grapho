@@ -52,6 +52,9 @@ void DeviceData::fillWithDeviceData(VkPhysicalDevice physicalDevice)
 	deviceType = deviceProperties.deviceType;
 	deviceName = std::string(deviceProperties.deviceName);
 
+	maxUniformBufferRange = deviceProperties.limits.maxUniformBufferRange;
+	maxPerStageDescriptorUniformBuffers = deviceProperties.limits.maxPerStageDescriptorUniformBuffers;
+	maxDescriptorSetUniformBuffers = deviceProperties.limits.maxDescriptorSetUniformBuffers;
 	maxImageDimension2D = deviceProperties.limits.maxImageDimension2D;
 	maxMemoryAllocationCount = deviceProperties.limits.maxMemoryAllocationCount;
 	framebufferColorSampleCounts = deviceProperties.limits.framebufferColorSampleCounts;
@@ -75,6 +78,9 @@ void DeviceData::printData()
 		<< "   deviceType: " << deviceType << '\n'
 		<< "   deviceName: " << deviceName << '\n'
 			   
+		<< "   maxUniformBufferRange: " << maxUniformBufferRange << '\n'
+		<< "   maxPerStageDescriptorUniformBuffers: " << maxPerStageDescriptorUniformBuffers << '\n'
+		<< "   maxDescriptorSetUniformBuffers: " << maxDescriptorSetUniformBuffers << '\n'
 		<< "   maxImageDimension2D: " << maxImageDimension2D << '\n'
 		<< "   maxMemoryAllocationCount: " << maxMemoryAllocationCount << '\n'
 		<< "   framebufferColorSampleCounts: " << framebufferColorSampleCounts << '\n'
@@ -475,8 +481,7 @@ void VulkanCore::pickPhysicalDevice()
 		throw std::runtime_error("Failed to find a suitable GPU!");
 
 	// Save device properties and features.
-	deviceData.fillWithDeviceData(physicalDevice);
-	deviceData.printData();
+	deviceData.fillWithDeviceData(physicalDevice);	
 	msaaSamples = getMaxUsableSampleCount(!add_MSAA);
 
 	#ifdef DEBUG_ENV_INFO

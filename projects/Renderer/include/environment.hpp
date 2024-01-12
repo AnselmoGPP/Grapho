@@ -85,6 +85,9 @@ struct DeviceData
 	VkPhysicalDeviceType deviceType;
 	std::string deviceName;
 
+	uint32_t maxUniformBufferRange;						//!< Max. uniform buffer object size (https://community.khronos.org/t/uniform-buffer-not-big-enough-how-to-handle/103981)
+	uint32_t maxPerStageDescriptorUniformBuffers;
+	uint32_t maxDescriptorSetUniformBuffers;
 	uint32_t maxImageDimension2D;						//!< Useful for selecting a physical device
 	uint32_t maxMemoryAllocationCount;					//!< Max. number of valid memory objects
 	VkSampleCountFlags framebufferColorSampleCounts;	//!< Useful for getting max. number of MSAA

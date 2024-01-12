@@ -5,7 +5,6 @@ TODO:
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
 	-Delete GrassSystem
 
-	-> Change activeRenders to instanceCount / Check with maxUniformBufferRange
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict
 	Billboards have normals that always look to the light source (sun) side
@@ -18,7 +17,7 @@ TODO:
 	implicit derivatives for mipmap selection (https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162)
 
 	Analytical normals
-	sun is blinking
+	Bug: sun is blinking
 
 	learnOpenGL:
 		Selection frame (stencil testing)
@@ -28,14 +27,9 @@ TODO:
 		- UBOs
 		Post-processing to a framebuffer
 		Geometry shader
-		-> Instancing
+		x - Instancing
 		Custom anti-aliasing
 		- Deferred shading / parallelism problem
-
-	Distributor:
-		x - Distribution over different LOD chunks is broken (objects change).
-		x - Borders change
-		Alternative: Distribute over a spherical surface (analytical normal)
 
 	Darken grass below / Make roots
 	Increment ambient light during day
