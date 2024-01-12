@@ -3,6 +3,47 @@
 #include "commons.hpp"
 
 
+ModelDataInfo::ModelDataInfo()
+	: name("noName"),
+	layer(1),
+	activeInstances(0),
+	topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
+	vertexType(vt_332),
+	verticesLoader(nullptr),
+	shadersInfo(nullptr),
+	texturesInfo(nullptr),
+	maxDescriptorsCount_vs(1),
+	maxDescriptorsCount_fs(1), 
+	UBOsize_vs(8),
+	UBOsize_fs(8),
+	transparency(false),
+	renderPassIndex(0),
+	cullMode(VK_CULL_MODE_BACK_BIT)
+{ }
+
+
+ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
+	: e(&environment),
+	name(modelInfo.name),
+	primitiveTopology(modelInfo.topology),
+	vertexType(modelInfo.vertexType),
+	hasTransparencies(modelInfo.transparency),
+	cullMode(modelInfo.cullMode),
+	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.UBOsize_vs, e->c.minUniformBufferOffsetAlignment),
+	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.minUniformBufferOffsetAlignment),
+	renderPassIndex(modelInfo.renderPassIndex),
+	layer(modelInfo.layer),
+	activeInstances(modelInfo.activeInstances),
+	fullyConstructed(false),
+	inModels(false)
+{
+	#ifdef DEBUG_MODELS
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
+	#endif
+
+	resLoader = new ResourcesLoader(*modelInfo.verticesLoader, *modelInfo.shadersInfo, *modelInfo.texturesInfo, e);
+}
+
 ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
 	: name(modelName),
 	e(&environment),
@@ -19,7 +60,7 @@ ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size
 	inModels(false)
 {
 	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << modelName << ')' << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 
 	resLoader = new ResourcesLoader(verticesLoader, shadersInfo, texturesInfo, e);

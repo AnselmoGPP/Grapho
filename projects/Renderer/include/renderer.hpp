@@ -192,7 +192,8 @@ public:
 		@param transparency
 	*/
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
-	modelIter newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0, VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT);
+	modelIter newModel(ModelDataInfo& modelInfo);
+	modelIter newModelX(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency = 0, uint32_t renderPassIndex = 0, VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT);
 
 	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes. Note: When the app closes, it destroys Renderer. Thus, don't use this method at app-closing (like in an object destructor): if Renderer is destroyed first, the app may crash.
 	void deleteModel(modelIter model);

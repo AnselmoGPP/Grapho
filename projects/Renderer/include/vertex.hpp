@@ -33,8 +33,8 @@ public:
 	~VertexType();
 	VertexType& operator=(const VertexType& obj);				//!< Copy assignment operator overloading. Required for copying a VertexSet object.
 
-	VkVertexInputBindingDescription getBindingDescription();					//!< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
-	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();	//!< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
+	VkVertexInputBindingDescription getBindingDescription() const;						//!< Used for passing the binding number and the vertex stride (usually, vertexSize) to the graphics pipeline.
+	std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const;	//!< Used for passing the format, location and offset of each vertex attribute to the graphics pipeline.
 
 	std::vector<VkFormat> attribsFormats;			//!< Format (VkFormat) of each vertex attribute. E.g.: VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT...
 	std::vector<size_t> attribsSizes;				//!< Size of each attribute type. E.g.: 3 * sizeof(float)...

@@ -29,7 +29,7 @@ VertexType& VertexType::operator=(const VertexType& obj)
 	return *this;
 }
 
-VkVertexInputBindingDescription VertexType::getBindingDescription()
+VkVertexInputBindingDescription VertexType::getBindingDescription() const
 {
 	VkVertexInputBindingDescription bindingDescription{};
 	bindingDescription.binding = 0;									// Index of the binding in the array of bindings. We have a single array, so we only have one binding.
@@ -39,7 +39,7 @@ VkVertexInputBindingDescription VertexType::getBindingDescription()
 	return bindingDescription;
 }
 
-std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescriptions()
+std::vector<VkVertexInputAttributeDescription> VertexType::getAttributeDescriptions() const
 {
 	VkVertexInputAttributeDescription vertexAttrib;
 	uint32_t location = 0;

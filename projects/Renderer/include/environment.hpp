@@ -86,6 +86,8 @@ public:
 	VkPhysicalDevice			physicalDevice;		//!< Opaque handle to a physical device object.
 	VkSampleCountFlagBits		msaaSamples;		//!< Number of samples for MSAA (MultiSampling AntiAliasing)
 	VkDevice					device;				//!< Opaque handle to a device object.
+	VkPhysicalDeviceProperties	deviceProperties;	//!< Device properties: Name, type, supported Vulkan version...
+	VkPhysicalDeviceFeatures	deviceFeatures;		//!< Device features: Texture compression, 64 bit floats, multi-viewport rendering...
 
 	VkQueue						graphicsQueue;		//!< Opaque handle to a queue object (computer graphics).
 	VkQueue						presentQueue;		//!< Opaque handle to a queue object (presentation to window surface).

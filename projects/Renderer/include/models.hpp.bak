@@ -26,25 +26,23 @@
 class ModelData;
 typedef std::list<ModelData>::iterator modelIter;
 
-struct ModelDataInfo
+struct ModelDataConfig
 {
-	ModelDataInfo();
-
-	const char* name;
-	size_t layer;
-	size_t activeInstances;						// <= maxDescriptorsCount_vs
-	VkPrimitiveTopology topology;
-	VertexType vertexType;
-	VerticesLoader* verticesLoader;
-	std::vector<ShaderLoader>* shadersInfo;
-	std::vector<TextureLoader>* texturesInfo;
-	size_t maxDescriptorsCount_vs;				// max. number of active instances
-	size_t maxDescriptorsCount_fs;
-	size_t UBOsize_vs;
-	size_t UBOsize_fs;
-	bool transparency;
-	uint32_t renderPassIndex;
-	VkCullModeFlagBits cullMode;
+	const char* modelName;
+	//VulkanEnvironment& environment;
+	size_t layer = 0;
+	size_t activeRenders = 0;
+	VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	const VertexType& vertexType;
+	//VerticesLoader& verticesLoader;
+	//std::vector<ShaderLoader>& shadersInfo;
+	//std::vector<TextureLoader>& texturesInfo;
+	size_t numDynUBOs_vs;
+	size_t dynUBOsize_vs;
+	size_t dynUBOsize_fs;
+	bool transparency = false;
+	uint32_t renderPassIndex = 0;
+	VkCullModeFlagBits cullMode = VK_CULL_MODE_BACK_BIT;
 };
 
 /**
@@ -55,8 +53,8 @@ struct ModelDataInfo
 */
 class ModelData
 {
-	VulkanEnvironment* e;
 	const VkPrimitiveTopology primitiveTopology;	    //!< Primitive topology (VK_PRIMITIVE_TOPOLOGY_ ... POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP). Used when creating the graphics pipeline.
+	VulkanEnvironment* e;
 	VertexType vertexType;
 	std::vector<shaderIter> shaders;		//!< Vertex shader (0), Fragment shader (1)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
@@ -101,7 +99,6 @@ class ModelData
 
 public:
 	/// Construct an object for rendering
-	ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo);
 	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode);
 
 	virtual ~ModelData();

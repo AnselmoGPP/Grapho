@@ -3,8 +3,8 @@ TODO:
 	
 	UBO::UBOcount should be fixed because it's fixed in the shader. This should represent the maximum possible number of descriptors
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
+	-Delete GrassSystem
 
-	- Pass data to modelObjecs in structs
 	- Store GPU features and properties in a struc easily accessible for consulting (maxUniformBufferRange...)
 	-> Change activeRenders to instanceCount / Check with maxUniformBufferRange
 	- Second thread: Create & delete objects in the same order they have been asked

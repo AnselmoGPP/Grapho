@@ -110,6 +110,7 @@ protected:
 
 	glm::vec3 getVertex(size_t position) const;
 	glm::vec3 getNormal(size_t position) const;
+	glm::vec3 getMajorAxis(glm::vec3 dir);
 	virtual void computeSizes() = 0;		//!< Compute base size and chunk size
 
 public:
@@ -120,9 +121,12 @@ public:
 	bool modelOrdered;				//!< If true, the model creation has been ordered with app->newModel()
 	bool isVisible;					//!< Used during tree construction and loading for not rendering non-visible chunks in DynamicGrid.
 
+	// ID data
+	const glm::vec3 majorAxis;		//!< Axis towards the chunk looks the most: 1 (x), 2, (-x), 3 (y), 4 (-y), 5 (z), 6 (-z)
 	const unsigned depth;			//!< Range: [0, n]. Depth of this chunk. Each depth represent a lod (for a grid of chunks with different lod).
+	const unsigned chunkID;			//!< Range: [1, x]. Unique number per chunk per depth. Useful for computing sideDepths.
+
 	glm::vec4 sideDepths;			//!< Range: [0, x]. Depth of neighbouring chunks (right, left, up, down). Useful for adjusting chunk borders to neighboring chunks.
-	unsigned chunkID;				//!< Range: [1, x]. Unique number per chunk per depth. Useful for computing sideDepths.
 
 	virtual void computeTerrain(bool computeIndices) = 0;
 	static void computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex);		//!< Used for computing indices and saving them in a member or non-member buffer, which is passed by reference. 

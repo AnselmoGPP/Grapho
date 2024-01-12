@@ -5,7 +5,8 @@
 #include "terrain.hpp"
 
 
-EntityFactory::EntityFactory(Renderer& renderer) : MainEntityFactory(), renderer(renderer) { };
+EntityFactory::EntityFactory(Renderer& renderer) 
+	: MainEntityFactory(), renderer(renderer) { };
 
 std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
@@ -17,14 +18,22 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"noPP",
-		2, 1, primitiveTopology::triangle, vt_32,		// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
-		vertexData, shaders, textureSet,
-		1, 1,											// <<< ModelSet doesn't work if there is no dynUBO_vs
-		0,
-		false,
-		1);
+	ModelDataInfo modelInfo;
+	modelInfo.name = "noPP";
+	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
+	modelInfo.UBOsize_vs = 1;
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 1;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::noData) 
@@ -47,14 +56,22 @@ std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, Sh
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ texOD, texDV };
 
-	modelIter model = renderer.newModel(
-		"atmosphere",
-		2, 1, primitiveTopology::triangle, vt_32,
-		vertexData, shaders, textureSet,
-		1, 2 * size.mat4 + 8 * size.vec4,
-		0,
-		false,
-		1);
+	ModelDataInfo modelInfo;
+	modelInfo.name = "atmosphere";
+	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
+	modelInfo.UBOsize_vs = 2 * size.mat4 + 8 * size.vec4;
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 1;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::atmosphere) 
@@ -73,19 +90,23 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	//modelIter model = renderer.newModel(
-	//	"skyBox",
-	//	1, 1, primitiveTopology::triangle, vt_32,
-	//	vertexData, shaders, textureSet,
-	//	1, 3 * size.mat4,	// M, V, P
-	//	0 );
+	ModelDataInfo modelInfo;
+	modelInfo.name = "skyBox";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
-	modelIter model = renderer.newModel(
-		"skyBox",
-		1, 1, primitiveTopology::triangle, vt_32,	// << redundant vt_32
-		vertexData, shaders, textureSet,
-		1, 3 * size.mat4,	// M, V, P
-		0);
+	modelIter model = renderer.newModel(modelInfo);
 
 	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
 	return std::vector<Component*> {
@@ -97,22 +118,26 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 
 std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
-	//std::vector<float> v_sun;	// [4 * 5]
-	//std::vector<uint16_t> i_sun;
-	//size_t numVertex = getQuad(v_sun, i_sun, 1.f, 1.f, 0.f);		// LOOK dynamic adjustment of reticule size when window is resized
-
-	//VerticesLoader vertexData(vt_32.vertexSize, v_sun.data(), numVertex, i_sun);
 	VerticesLoader vertexData(vt_32.vertexSize, v_YZquad.data(), 4, i_quad);
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"sun",
-		1, 1, primitiveTopology::triangle, vt_32,
-		vertexData, shaders, textureSet,
-		1, 3 * size.mat4,	// M, V, P
-		0,
-		true);
+	ModelDataInfo modelInfo;
+	modelInfo.name = "sun";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = true;
+	modelInfo.renderPassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp, true),
@@ -133,12 +158,22 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"grid",
-		1, 1, primitiveTopology::line, vt_33,
-		vertexData, shaders, textureSet,
-		1, 3 * size.mat4,	// M, V, P
-		0 );
+	ModelDataInfo modelInfo;
+	modelInfo.name = "grid";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	modelInfo.vertexType = vt_33;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp),
@@ -157,17 +192,58 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"axis",
-		1, 1, primitiveTopology::line, vt_33,
-		vertexData, shaders, textureSet,
-		1, 3 * size.mat4,	// M, V, P
-		0 );
+	ModelDataInfo modelInfo;
+	modelInfo.name = "axis";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	modelInfo.vertexType = vt_33;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
+
+	return std::vector<Component*> {
+		new c_Model_normal(model, UboType::mvp),
+			new c_ModelParams()
+	};
+	/*
+	std::vector<float> v_axis;
+	std::vector<uint16_t> i_axis;
+	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);		// getAxis(), getLongAxis()
+
+	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	ModelDataInfo modelInfo;
+	modelInfo.name = "axis";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	modelInfo.vertexType = vt_33;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp),
 		new c_ModelParams()
 	};
+	*/
 }
 
 std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
@@ -178,12 +254,22 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"points",
-		1, 1, primitiveTopology::point, vt_33,
-		vertexData, shaders, textureSet,
-		1, 3 * size.mat4,	// M, V, P
-		0 );
+	ModelDataInfo modelInfo;
+	modelInfo.name = "points";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	modelInfo.vertexType = vt_33;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;
+	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::mvp),
@@ -264,14 +350,23 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"grass",
-		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData, shaders, textureSet,
-		4000, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
-		0, 0,
-		VK_CULL_MODE_NONE);
+	ModelDataInfo modelInfo;
+	modelInfo.name = "grass";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 5000;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_NONE;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
@@ -308,14 +403,23 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"plant",
-		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData, shaders, textureSet,
-		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps),									// n * LightProps (6*vec4)
-		0, 0,
-		VK_CULL_MODE_NONE);
+	ModelDataInfo modelInfo;
+	modelInfo.name = "plant";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_NONE;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
@@ -354,12 +458,23 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
-	modelIter model = renderer.newModel(
-		"rock",
-		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData, shaders, textureSet,
-		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
+	ModelDataInfo modelInfo;
+	modelInfo.name = "rock";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
@@ -402,12 +517,23 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	std::vector<ShaderLoader> shaders = trunkShaders;
 	std::vector<TextureLoader> textureSet{ tex_trunk };
 
-	modelIter model = renderer.newModel(
-		"tree_trunk",
-		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData_trunk, shaders, textureSet,
-		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
+	ModelDataInfo modelInfo;
+	modelInfo.name = "tree_trunk";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData_trunk;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+
+	modelIter model = renderer.newModel(modelInfo);
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
@@ -421,12 +547,23 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	std::vector<ShaderLoader> shaders2 = branchShaders;
 	std::vector<TextureLoader> textureSet2{ tex_branch };
 
-	modelIter model2 = renderer.newModel(
-		"tree_branches",
-		1, 1, primitiveTopology::triangle, vt_332,	// <<< vt_332 is required when loading data from file
-		vertexData_branches, shaders2, textureSet2,
-		500, 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir),	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-		c_lights->lights.numLights * sizeof(LightProps));									// n * LightProps (6*vec4)
+	modelInfo;
+	modelInfo.name = "tree_branches";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData_branches;
+	modelInfo.shadersInfo = &shaders2;
+	modelInfo.texturesInfo = &textureSet2;
+	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+
+	modelIter model2 = renderer.newModel(modelInfo);
 
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),

@@ -41,11 +41,11 @@
 */
 
 
-extern const VertexType vt_3;						//!< (Vert)
-extern const VertexType vt_32;					//!< (Vert, UV)
-extern const VertexType vt_33;					//!< (Vert, Color)
-extern const VertexType vt_332;					//!< (Vert, Normal, UV)
-extern const VertexType vt_333;					//!< (Vert, Normal, vertexFixes)
+extern VertexType vt_3;						//!< (Vert)
+extern VertexType vt_32;					//!< (Vert, UV)
+extern VertexType vt_33;					//!< (Vert, Color)
+extern VertexType vt_332;					//!< (Vert, Normal, UV)
+extern VertexType vt_333;					//!< (Vert, Normal, vertexFixes)
 
 class Shader;
 class Texture;
@@ -76,7 +76,7 @@ struct VertexData
 	VkDeviceMemory				 indexBufferMemory;		//!< Opaque handle to a device memory object (here, memory for the index buffer).
 };
 
-/// (ADT) Vertices Loader Module (VLM) used in VerticesLoader for loading vertices from any source.
+/// Vertices Loader Module (VLM) used in VerticesLoader for loading vertices from any source.
 class VLModule
 {
 protected:

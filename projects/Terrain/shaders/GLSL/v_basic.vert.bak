@@ -11,7 +11,7 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 normalMatrix;			// mat3
 	vec4 camPos_t;				// camPos (vec3) + time (float)
 	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
-} ubo[1];						// [i]: array of descriptors
+} ubo[500];
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;

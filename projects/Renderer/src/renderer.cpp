@@ -328,21 +328,6 @@ void Renderer::createCommandBuffers()
 					vkCmdDraw(commandBuffers[i], it->vert.vertexCount, it->activeInstances, 0, 0);
 
 				commandsCount++;
-
-				//for (size_t k = 0; k < it->activeRenders; k++)	// for each RENDERING
-				//{
-				//	commandsCount++;
-				//	
-				//	if (it->vsDynUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
-				//		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 1, &it->vsDynUBO.dynamicOffsets[k]);
-				//	else
-				//		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-				//	
-				//	if (it->vert.indexCount)		// has indices
-				//		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), 1, 0, 0, 0);
-				//	else
-				//		vkCmdDraw(commandBuffers[i], it->vert.vertexCount, 1, 0, 0);
-				//}
 			}
 		}
 		
@@ -686,7 +671,18 @@ void Renderer::cleanup()
 	#endif
 }
 
-modelIter Renderer::newModel(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
+modelIter Renderer::newModel(ModelDataInfo& modelInfo)
+{
+	#ifdef DEBUG_RENDERER
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
+	#endif
+
+	const std::lock_guard<std::mutex> lock(worker.mutLoad);
+	
+	return modelsToLoad.emplace(modelsToLoad.cend(), e, modelInfo);
+}
+
+modelIter Renderer::newModelX(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;

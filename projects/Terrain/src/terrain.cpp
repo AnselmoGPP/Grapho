@@ -1,5 +1,6 @@
 ﻿#include <algorithm>
 #include <random>
+#include <string>
 
 #include "physics.hpp"
 
@@ -10,19 +11,20 @@
 // Chunk ----------------------------------------------------------------------
 
 Chunk::Chunk(Renderer& renderer, glm::vec3 center, float stride, unsigned numHorVertex, unsigned numVertVertex, unsigned depth, unsigned chunkID)
-    : renderer(renderer), 
+    : renderer(renderer),
     baseCenter(center),
     geoideCenter(center),
-    groundCenter(center),   // defined more precisely in subclass' constructor
-    stride(stride), 
-    numHorVertex(numHorVertex), 
-    numVertVertex(numVertVertex), 
-    numAttribs(9), 
-    vertexData(nullptr), 
-    depth(depth), 
-    modelOrdered(false), 
-    isVisible(true), 
-    chunkID(chunkID) { }
+    groundCenter(center),       // defined more precisely in subclass' constructor
+    stride(stride),
+    numHorVertex(numHorVertex),
+    numVertVertex(numVertVertex),
+    numAttribs(9),
+    vertexData(nullptr),
+    depth(depth),
+    modelOrdered(false),
+    isVisible(true),
+    chunkID(chunkID),
+    majorAxis(getMajorAxis(baseCenter)) { }
 
 Chunk::~Chunk()
 {
@@ -51,6 +53,19 @@ glm::vec3 Chunk::getNormal(size_t position) const
         vertex[position * numAttribs + 5] ); 
 };
 
+glm::vec3 Chunk::getMajorAxis(glm::vec3 dir)
+{
+    glm::vec3 mAxis = glm::vec3(abs(dir.x), abs(dir.y), abs(dir.z));
+
+    if (mAxis.x > mAxis.y)
+    {
+        if (mAxis.x > mAxis.z) return glm::normalize(glm::vec3(dir.x, 0, 0));
+        else return glm::normalize(glm::vec3(0, 0, dir.z));
+    }
+    else if (mAxis.y > mAxis.z) return glm::normalize(glm::vec3(0, dir.y, 0));
+    else return glm::normalize(glm::vec3(0, 0, dir.z));
+}
+
 void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency)
 {
     // <<< Compute terrain and render here. No need to store vertices, indices or VertexInfo in Chunk object.
@@ -58,16 +73,31 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     vertexData = new VerticesLoader(
         vt_333.vertexSize,
         vertex.data(), 
-        numHorVertex * numVertVertex, 
+        numHorVertex * numVertVertex,
         indices ? *indices : this->indices);
+    
+    std::string chunkName = std::string("chunk_") + 
+        "[" + std::to_string((int)majorAxis.x) + "," + std::to_string((int)majorAxis.y) + "," + std::to_string((int)majorAxis.z) + "]_" +
+        std::to_string(this->depth) + "_" + 
+        std::to_string(this->chunkID);
 
-    model = renderer.newModel(
-        "chunk",
-        1, 1, primitiveTopology::triangle, vt_333,
-        *vertexData, shaders, textures,
-        1, 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir),   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
-        numLights * sizeof(LightProps),                                       // n * LightProps (6*vec4)
-        transparency);
+    ModelDataInfo modelInfo;
+    modelInfo.name = chunkName.c_str();
+    modelInfo.layer = 1;
+    modelInfo.activeInstances = 1;
+    modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    modelInfo.vertexType = vt_333;
+    modelInfo.verticesLoader = vertexData;
+    modelInfo.shadersInfo = &shaders;
+    modelInfo.texturesInfo = &textures;
+    modelInfo.maxDescriptorsCount_vs = 1;
+    modelInfo.UBOsize_vs = 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir);   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
+    modelInfo.UBOsize_fs = numLights * sizeof(LightProps);                                    // n * LightProps (6*vec4)
+    modelInfo.transparency = transparency;
+    modelInfo.renderPassIndex = 0;
+    modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    
+    model = renderer.newModel(modelInfo);
 
     uint8_t* dest;
     for (size_t i = 0; i < model->activeInstances; i++)
@@ -1356,15 +1386,15 @@ void GrassSystem::createGrassModel(std::vector<ShaderLoader>& shaders, std::vect
     //std::vector<ShaderLoader> shaders{ ShaderLoaders[8], ShaderLoaders[9] };
     //std::vector<TextureLoader> textures{ texInfos[37] };
 
-    grassModel = renderer.newModel(
-        "grass",
-        1, 5, primitiveTopology::triangle, vt_332,
-        vertexData, shaders, textures,
-        5, 4 * size.mat4 + 2 * size.vec4 + lights->posDirBytes,     // M, V, P, MN, camPos + time, centerPos, lights
-        lights->propsBytes,                                         // lights, centerPos
-        false,
-        0,
-        VK_CULL_MODE_NONE);
+    //grassModel = renderer.newModel(
+    //    "grass",
+    //    1, 5, primitiveTopology::triangle, vt_332,
+    //    vertexData, shaders, textures,
+    //    5, 4 * size.mat4 + 2 * size.vec4 + lights->posDirBytes,     // M, V, P, MN, camPos + time, centerPos, lights
+    //    lights->propsBytes,                                         // lights, centerPos
+    //    false,
+    //    0,
+    //    VK_CULL_MODE_NONE);
     
     modelOrdered = true;
 }
