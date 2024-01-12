@@ -5,7 +5,6 @@ TODO:
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
 	-Delete GrassSystem
 
-	- Store GPU features and properties in a struc easily accessible for consulting (maxUniformBufferRange...)
 	-> Change activeRenders to instanceCount / Check with maxUniformBufferRange
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict

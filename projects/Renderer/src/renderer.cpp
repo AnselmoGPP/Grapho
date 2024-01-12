@@ -682,27 +682,6 @@ modelIter Renderer::newModel(ModelDataInfo& modelInfo)
 	return modelsToLoad.emplace(modelsToLoad.cend(), e, modelInfo);
 }
 
-modelIter Renderer::newModelX(const char* modelName, size_t layer, size_t numRenderings, primitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& VerticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t numDynUBOs_vs, size_t dynUBOsize_vs, size_t dynUBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
-{
-	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
-	#endif
-
-	const std::lock_guard<std::mutex> lock(worker.mutLoad);
-	
-	return modelsToLoad.emplace(
-		modelsToLoad.cend(),
-		modelName, e, 
-		layer, numRenderings, 
-		(VkPrimitiveTopology) primitiveTopology,
-		vertexType,
-		VerticesLoader, shadersInfo, texturesInfo,
-		numDynUBOs_vs, dynUBOsize_vs, dynUBOsize_fs,
-		transparency,
-		renderPassIndex,
-		cullMode);
-}
-
 void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowing the iterator (no need to check lists)?
 {
 	#ifdef DEBUG_RENDERER
@@ -888,6 +867,6 @@ size_t Renderer::loadedTextures() { return textures.size(); }
 
 IOmanager& Renderer::getIOManager() { return io; }
 
-int Renderer::getMaxMemoryAllocationCount() { return e.c.getMaxMemoryAllocationCount(); }
+int Renderer::getMaxMemoryAllocationCount() { return e.c.deviceData.maxMemoryAllocationCount; }
 
 int Renderer::getMemAllocObjects() { return e.c.memAllocObjects; }

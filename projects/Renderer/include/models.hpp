@@ -102,7 +102,6 @@ class ModelData
 public:
 	/// Construct an object for rendering
 	ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo);
-	ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode);
 
 	virtual ~ModelData();
 

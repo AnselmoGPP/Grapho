@@ -69,6 +69,34 @@ struct SwapChain
 	VkExtent2D									extent;
 };
 
+struct DeviceData
+{
+	void fillWithDeviceData(VkPhysicalDevice physicalDevice);
+	void printData();
+
+	VkPhysicalDeviceProperties	deviceProperties;	//!< Device properties: Name, type, supported Vulkan version...
+	VkPhysicalDeviceFeatures	deviceFeatures;		//!< Device features: Texture compression, 64 bit floats, multi-viewport rendering...
+
+	// Properties (redundant)
+	uint32_t apiVersion;
+	uint32_t driverVersion;
+	uint32_t vendorID;
+	uint32_t deviceID;
+	VkPhysicalDeviceType deviceType;
+	std::string deviceName;
+
+	uint32_t maxImageDimension2D;						//!< Useful for selecting a physical device
+	uint32_t maxMemoryAllocationCount;					//!< Max. number of valid memory objects
+	VkSampleCountFlags framebufferColorSampleCounts;	//!< Useful for getting max. number of MSAA
+	VkSampleCountFlags framebufferDepthSampleCounts;	//!< Useful for getting max. number of MSAA
+	VkDeviceSize minUniformBufferOffsetAlignment;		//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
+
+	// Features (redundant)
+	VkBool32 samplerAnisotropy;							//!< Does physical device supports Anisotropic Filtering (AF)?
+	VkBool32 largePoints;
+	VkBool32 wideLines;
+};
+
 
 class VulkanCore
 {
@@ -84,18 +112,13 @@ public:
 	VkSurfaceKHR				surface;			//!< Opaque handle to a surface object (abstract type of surface to present rendered images to)
 
 	VkPhysicalDevice			physicalDevice;		//!< Opaque handle to a physical device object.
-	VkSampleCountFlagBits		msaaSamples;		//!< Number of samples for MSAA (MultiSampling AntiAliasing)
+	VkSampleCountFlagBits		msaaSamples;		//!< Number of samples used for MSAA (MultiSampling AntiAliasing)
 	VkDevice					device;				//!< Opaque handle to a device object.
-	VkPhysicalDeviceProperties	deviceProperties;	//!< Device properties: Name, type, supported Vulkan version...
-	VkPhysicalDeviceFeatures	deviceFeatures;		//!< Device features: Texture compression, 64 bit floats, multi-viewport rendering...
+	DeviceData					deviceData;			//!< Physical device properties and features.
 
 	VkQueue						graphicsQueue;		//!< Opaque handle to a queue object (computer graphics).
 	VkQueue						presentQueue;		//!< Opaque handle to a queue object (presentation to window surface).
 
-	bool supportsAF;								//!< Does physical device supports Anisotropic Filtering (AF)?
-	VkDeviceSize minUniformBufferOffsetAlignment;	//!< Useful for aligning dynamic descriptor sets (usually == 32 or 256)
-
-	uint32_t getMaxMemoryAllocationCount();			//!< Max. number of valid memory objects
 	int memAllocObjects;							//!< Number of memory allocated objects (must be <= maxMemoryAllocationCount). Incremented each vkAllocateMemory call; decremented each vkFreeMemory call.
 
 	SwapChainSupportDetails	querySwapChainSupport();
@@ -122,10 +145,6 @@ private:
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	int evaluateDevice(VkPhysicalDevice device);
 	VkSampleCountFlagBits getMaxUsableSampleCount(bool getMinimum);
-	VkDeviceSize getMinUniformBufferOffsetAlignment();
-	VkBool32 supportsAnisotropicFiltering();
-	VkBool32 largePointsSupported();
-	VkBool32 wideLinesSupported();
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 

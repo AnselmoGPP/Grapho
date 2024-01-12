@@ -29,8 +29,8 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	vertexType(modelInfo.vertexType),
 	hasTransparencies(modelInfo.transparency),
 	cullMode(modelInfo.cullMode),
-	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.UBOsize_vs, e->c.minUniformBufferOffsetAlignment),
-	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.minUniformBufferOffsetAlignment),
+	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.UBOsize_vs, e->c.deviceData.minUniformBufferOffsetAlignment),
+	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.deviceData.minUniformBufferOffsetAlignment),
 	renderPassIndex(modelInfo.renderPassIndex),
 	layer(modelInfo.layer),
 	activeInstances(modelInfo.activeInstances),
@@ -42,28 +42,6 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	#endif
 
 	resLoader = new ResourcesLoader(*modelInfo.verticesLoader, *modelInfo.shadersInfo, *modelInfo.texturesInfo, e);
-}
-
-ModelData::ModelData(const char* modelName, VulkanEnvironment& environment, size_t layer, size_t instanceCount, VkPrimitiveTopology primitiveTopology, const VertexType& vertexType, VerticesLoader& verticesLoader, std::vector<ShaderLoader>& shadersInfo, std::vector<TextureLoader>& texturesInfo, size_t UBOcount_vs, size_t UBOsize_vs, size_t UBOsize_fs, bool transparency, uint32_t renderPassIndex, VkCullModeFlagBits cullMode)
-	: name(modelName),
-	e(&environment),
-	primitiveTopology(primitiveTopology),
-	vertexType(vertexType),
-	hasTransparencies(transparency),
-	cullMode(cullMode),
-	vsUBO(e, UBOcount_vs, UBOsize_vs, e->c.minUniformBufferOffsetAlignment),
-	fsUBO(e, UBOsize_fs ? 1 : 0, UBOsize_fs, e->c.minUniformBufferOffsetAlignment),
-	renderPassIndex(renderPassIndex),
-	layer(layer),
-	activeInstances(instanceCount),
-	fullyConstructed(false),
-	inModels(false)
-{
-	#ifdef DEBUG_MODELS
-		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
-	#endif
-
-	resLoader = new ResourcesLoader(verticesLoader, shadersInfo, texturesInfo, e);
 }
 
 ModelData::~ModelData()

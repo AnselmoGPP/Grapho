@@ -39,6 +39,53 @@ void SwapChain::destroy(VkDevice device)
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
+void DeviceData::fillWithDeviceData(VkPhysicalDevice physicalDevice)
+{
+	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+
+	deviceType = deviceProperties.deviceType;
+	apiVersion = deviceProperties.apiVersion;
+	driverVersion = deviceProperties.driverVersion;
+	vendorID = deviceProperties.vendorID;
+	deviceID = deviceProperties.deviceID;
+	deviceType = deviceProperties.deviceType;
+	deviceName = std::string(deviceProperties.deviceName);
+
+	maxImageDimension2D = deviceProperties.limits.maxImageDimension2D;
+	maxMemoryAllocationCount = deviceProperties.limits.maxMemoryAllocationCount;
+	framebufferColorSampleCounts = deviceProperties.limits.framebufferColorSampleCounts;
+	framebufferDepthSampleCounts = deviceProperties.limits.framebufferDepthSampleCounts;
+	minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+
+	//   - Features (redundant)
+	samplerAnisotropy = deviceFeatures.samplerAnisotropy;
+	largePoints = deviceFeatures.largePoints;
+	wideLines = deviceFeatures.wideLines;
+}
+
+void DeviceData::printData()
+{
+	std::cout
+		<< "Device data:" << '\n'
+		<< "   apiVersion: " << apiVersion << '\n'
+		<< "   driverVersion: " << driverVersion << '\n'
+		<< "   vendorID: " << vendorID << '\n'
+		<< "   deviceID: " << deviceID << '\n'
+		<< "   deviceType: " << deviceType << '\n'
+		<< "   deviceName: " << deviceName << '\n'
+			   
+		<< "   maxImageDimension2D: " << maxImageDimension2D << '\n'
+		<< "   maxMemoryAllocationCount: " << maxMemoryAllocationCount << '\n'
+		<< "   framebufferColorSampleCounts: " << framebufferColorSampleCounts << '\n'
+		<< "   framebufferDepthSampleCounts: " << framebufferDepthSampleCounts << '\n'
+		<< "   minUniformBufferOffsetAlignment: " << minUniformBufferOffsetAlignment << '\n'
+			   
+		<< "   samplerAnisotropy: " << samplerAnisotropy << '\n'
+		<< "   largePoints: " << largePoints << '\n'
+		<< "   wideLines: " << wideLines << '\n';
+}
+
 //VkSwapchainKHR							swapChain;				//!< Swap chain object.
 //std::vector<VkImage>						swapChainImages;		//!< List. Opaque handle to an image object.
 //std::vector<VkImageView>					swapChainImageViews;	//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
@@ -60,9 +107,6 @@ VulkanCore::VulkanCore(IOmanager& io)
 	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
-
-	minUniformBufferOffsetAlignment = getMinUniformBufferOffsetAlignment();
-	supportsAF = supportsAnisotropicFiltering();
 }
 
 VulkanEnvironment::VulkanEnvironment(IOmanager& io)
@@ -426,20 +470,18 @@ void VulkanCore::pickPhysicalDevice()
 	}
 
 	if (candidates.rbegin()->first > 0)					// Check if the best candidate has score > 0
-	{
 		physicalDevice = candidates.rbegin()->second;
-		msaaSamples = getMaxUsableSampleCount(!add_MSAA);
-	}
 	else
 		throw std::runtime_error("Failed to find a suitable GPU!");
 
+	// Save device properties and features.
+	deviceData.fillWithDeviceData(physicalDevice);
+	deviceData.printData();
+	msaaSamples = getMaxUsableSampleCount(!add_MSAA);
+
 	#ifdef DEBUG_ENV_INFO
-		std::cout << "   Device features: " << std::endl;
-		std::cout << "      MSAA samples: " << msaaSamples << std::endl;
-		std::cout << "      Anisotropic filtering: " << (supportsAnisotropicFiltering() ? "Yes" : "No") << std::endl;
-		std::cout << "      Minimum uniform buffer offset alignment: " << getMinUniformBufferOffsetAlignment() << std::endl;
-		std::cout << "      Large points supported: " << (largePointsSupported() ? "Yes" : "No") << std::endl;
-		std::cout << "      Wide lines supported: " << (wideLinesSupported() ? "Yes" : "No") << std::endl;
+		deviceData.printData();
+		std::cout << "   MSAA samples: " << msaaSamples << std::endl;
 	#endif
 }
 
@@ -487,7 +529,7 @@ int VulkanCore::evaluateDevice(VkPhysicalDevice device)
 	if (deviceFeatures.samplerAnisotropy) score += 1;	// Anisotropic filtering
 	if (deviceFeatures.largePoints) score += 1;
 	if (deviceFeatures.wideLines) score += 1;
-	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete GPUs have better performance (and integrated GPUs, worse).
+	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;	// Discrete (dedicated) GPUs have better performance (and integrated GPUs, worse).
 	score += deviceProperties.limits.maxImageDimension2D;									// Maximum size of textures.
 	
 	#ifdef DEBUG_ENV_INFO
@@ -534,13 +576,6 @@ QueueFamilyIndices VulkanCore::findQueueFamilies(VkPhysicalDevice device)
 }
 
 QueueFamilyIndices VulkanCore::findQueueFamilies() { return findQueueFamilies(physicalDevice); }
-
-uint32_t VulkanCore::getMaxMemoryAllocationCount()
-{
-	VkPhysicalDeviceProperties deviceProperties;
-	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-	return deviceProperties.limits.maxMemoryAllocationCount;
-}
 
 void VulkanCore::destroy()
 {
@@ -612,10 +647,7 @@ VkSampleCountFlagBits VulkanCore::getMaxUsableSampleCount(bool getMinimum)
 {
 	if (getMinimum) return VK_SAMPLE_COUNT_1_BIT;
 
-	VkPhysicalDeviceProperties physicalDeviceProperties;
-	vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-	VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+	VkSampleCountFlags counts = deviceData.framebufferColorSampleCounts & deviceData.framebufferDepthSampleCounts;
 
 	if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
 	if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
@@ -655,9 +687,9 @@ void VulkanCore::createLogicalDevice()
 
 	// Enable the features from the physical device that you will use (geometry shaders...)
 	VkPhysicalDeviceFeatures deviceFeatures{};
-	deviceFeatures.samplerAnisotropy = VK_TRUE;								// Anisotropic filtering is an optional device feature (most modern graphics cards support it, but we should check it in isDeviceSuitable)
-	deviceFeatures.sampleRateShading = (add_SS ? VK_TRUE : VK_FALSE);		// Enable sample shading feature for the device
-	deviceFeatures.wideLines = (wideLinesSupported() ? VK_TRUE : VK_FALSE);	// Enable line width configuration (in VkPipeline)
+	deviceFeatures.samplerAnisotropy = deviceData.samplerAnisotropy ? VK_TRUE : VK_FALSE;	// Anisotropic filtering is an optional device feature (most modern graphics cards support it, but we should check it in isDeviceSuitable)
+	deviceFeatures.sampleRateShading = (add_SS ? VK_TRUE : VK_FALSE);						// Enable sample shading feature for the device
+	deviceFeatures.wideLines = (deviceData.wideLines ? VK_TRUE : VK_FALSE);					// Enable line width configuration (in VkPipeline)
 
 	// Describe queue parameters
 	VkDeviceCreateInfo createInfo{};
@@ -2191,35 +2223,4 @@ void VulkanEnvironment::createFramebuffers_PP()
 		if (vkCreateFramebuffer(c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
-}
-
-
-// Independent methods ----------------------------------------------
-
-VkDeviceSize VulkanCore::getMinUniformBufferOffsetAlignment()
-{
-	VkPhysicalDeviceProperties deviceProperties;
-	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-	return deviceProperties.limits.minUniformBufferOffsetAlignment;
-}
-
-VkBool32 VulkanCore::supportsAnisotropicFiltering()
-{
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-	return deviceFeatures.samplerAnisotropy;
-}
-
-VkBool32 VulkanCore::largePointsSupported()
-{
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-	return deviceFeatures.largePoints;
-}
-
-VkBool32 VulkanCore::wideLinesSupported()
-{
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-	return deviceFeatures.wideLines;
 }

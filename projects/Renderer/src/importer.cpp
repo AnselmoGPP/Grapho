@@ -716,7 +716,7 @@ VkSampler TLModule::createTextureSampler(uint32_t mipLevels)
 	samplerInfo.addressModeV = addressMode;
 	samplerInfo.addressModeW = addressMode;
 
-	if (e->c.supportsAF)		// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
+	if (e->c.deviceData.samplerAnisotropy)						// If anisotropic filtering is available (see isDeviceSuitable) <<<<<
 	{
 		samplerInfo.anisotropyEnable = VK_TRUE;							// Specify if anisotropic filtering should be used
 		VkPhysicalDeviceProperties properties{};
