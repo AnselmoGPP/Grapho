@@ -31,7 +31,7 @@ void main()
 {
 	vec3 pos = inPos;
 	//displace: pos.x += 0.2;
-	//waving: pos += vec3(1,0,0) * sin(2 * (ubo[i].camPos_t.w + ubo[i].model[0][0])) * (0.01 * inPos.z);	// speed (2), amplitude (0.02), move axis (0,0,1)
+	//waving: pos += vec3(1,0,0) * sin(<speed> * (ubo[i].camPos_t.w + ubo[i].model[0][0])) * (<amplitude> * inPos.z);	// move axis (0,0,1)
 	
 	gl_Position = ubo[i].proj * ubo[i].view * ubo[i].model * vec4(pos, 1.0);
 	outPos = (ubo[i].model * vec4(pos, 1.0)).xyz;

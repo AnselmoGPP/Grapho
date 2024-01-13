@@ -4,6 +4,8 @@
 
 #define NUMLIGHTS 2
 
+layout(early_fragment_tests) in;
+
 struct Light
 {
     int type;			// int   0: no light   1: directional   2: point   3: spot

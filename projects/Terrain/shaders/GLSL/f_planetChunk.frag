@@ -9,6 +9,8 @@
 #define DIST_1 5
 #define DIST_2 8
 
+layout(early_fragment_tests) in;
+
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
 	LightProps light[NUMLIGHTS];

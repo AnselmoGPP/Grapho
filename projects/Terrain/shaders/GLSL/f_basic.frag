@@ -4,6 +4,7 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
+//earlyDepthTest: layout(early_fragment_tests) in;
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
@@ -26,7 +27,7 @@ void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
 	//discardAlpha: if(albedo.a < 0.6) { discard; return; }			// Discard non-visible fragments
-	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), 40, 50)) { discard; return; }
+	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), near, far)) { discard; return; }
 	vec3 normal = normalize(inNormal);	
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	

@@ -169,11 +169,14 @@ enum shaderModifier {
 	sm_roughness, 
 	sm_backfaceNormals, 
 	sm_discardAlpha, 
-	sm_verticalNormals, 
-	sm_waving, 
+	sm_verticalNormals,
+	sm_waving_weak,
+	sm_waving_strong,
 	sm_displace, 
 	sm_reduceNightLight,
-	sm_distDithering
+	sm_distDithering_near,
+	sm_distDithering_far,
+	sm_earlyDepthTest
 };
 
 class SLModule		/// Shader Loader Module

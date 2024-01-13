@@ -371,7 +371,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 1, 2, true, grass_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, true, grass_callback, noiseSet)
 	};
 }
 
@@ -424,7 +424,7 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 1, 2, true, plant_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, plant_callback, noiseSet)
 	};
 }
 
@@ -479,7 +479,7 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Distributor(6, 2, 5, false, stone_callback, noiseSet)
+			new c_Distributor(6, 6, allAxesRandom, 5, false, stone_callback, noiseSet)
 	};
 }
 
@@ -538,7 +538,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 1, 2, false, tree_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, tree_callback, noiseSet)
 	});
 	
 	// Branches:
@@ -568,10 +568,52 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 1, 2, false, tree_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, tree_callback, noiseSet)
 	});
 	
 	return entities;
+}
+
+std::vector<Component*> EntityFactory::createTreeBillboard(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights)
+{
+	const LightSet* lights;
+	if (c_lights) lights = &c_lights->lights;
+	else {
+		std::cout << "No c_Light component found" << std::endl;
+		return std::vector<Component*>();
+	}
+
+	std::vector<std::shared_ptr<Noiser>> noiseSet;
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 1, 1115));
+	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 1116));
+
+	//VerticesLoader vertexData(vertexDir + "grass.obj");
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	ModelDataInfo modelInfo;
+	modelInfo.name = "treeBB";
+	modelInfo.layer = 1;
+	modelInfo.activeInstances = 0;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_NONE;
+
+	modelIter model = renderer.newModel(modelInfo);
+
+	return std::vector<Component*>{
+		new c_Model_normal(model, UboType::mvpncl),
+			new c_ModelParams(),
+			new c_Distributor(5, 4, zAxisRandom, 2, false, tree_callback, noiseSet)
+	};
 }
 
 bool tree_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers)

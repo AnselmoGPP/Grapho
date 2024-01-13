@@ -492,9 +492,16 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//verticalNormals: ");
 			break;
 
-		case sm_waving:					// (VS) Make mesh wave (wind)
+		case sm_waving_weak:					// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
+			findStrAndReplace(shader, "<speed>", "2");
+			findStrAndReplace(shader, "<amplitude>", "0.01");
+			break;
+
+		case sm_waving_strong:					// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
+			findStrAndReplace(shader, "<speed>", "3");
+			findStrAndReplace(shader, "<amplitude>", "0.02");
 			break;
 
 		case sm_displace:					// (VS) Move vertex aside a bit (0.2 meter towards x-axis)
@@ -505,8 +512,18 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//reduceNightLight: ");
 			break;
 
-		case sm_distDithering:				// (FS) Apply dithering to distant fragments
+		case sm_distDithering_near:			// (FS) Apply dithering to distant fragments
 			findStrAndErase(shader, "//distDithering: ");
+			findStrAndReplace(shader, "near, far", "50, 60");
+			break;
+
+		case sm_distDithering_far:			// (FS) Apply dithering to distant fragments
+			findStrAndErase(shader, "//distDithering: ");
+			findStrAndReplace(shader, "near, far", "100, 130");
+			break;
+
+		case sm_earlyDepthTest:				// (FS) Apply Early Depth/Fragment Test
+			findStrAndErase(shader, "//earlyDepthTest: ");
 			break;
 
 		default:

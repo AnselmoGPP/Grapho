@@ -3,8 +3,10 @@ TODO:
 	
 	UBO::UBOcount should be fixed because it's fixed in the shader. This should represent the maximum possible number of descriptors
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
-	-Delete GrassSystem
 
+	Distributor: Make it fill even between vertices
+
+	-> Make billboard trees for far distances > Delete GrassSystem
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict
 	Billboards have normals that always look to the light source (sun) side
@@ -16,18 +18,18 @@ TODO:
 	plant grass roots
 	implicit derivatives for mipmap selection (https://community.khronos.org/t/artifact-in-the-limit-between-textures/109162)
 
+	Increase normals intensity
 	Analytical normals
 	Bug: sun is blinking
 
 	learnOpenGL:
+		GLSL
 		Selection frame (stencil testing)
 		Post-processing (framebuffers)
-		early depth testing
 		Use gl_fragCoord.z for distance
-		- UBOs
+		-> UBOs
 		Post-processing to a framebuffer
 		Geometry shader
-		x - Instancing
 		Custom anti-aliasing
 		- Deferred shading / parallelism problem
 
@@ -455,3 +457,4 @@ Join all meshes together (Ctrl + J)
 Shade smooth
 Forward axis: Y (default: -Z)
 Up axis: Z (default: Y)
+Selected only

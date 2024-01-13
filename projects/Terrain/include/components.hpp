@@ -274,12 +274,15 @@ struct c_Move : public Component
 
 bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);
 
+enum RotType {zAxisRandom, allAxesRandom, faceCam};
+
 /// Determines the distribution over a surface of one or more instances of the same model (or set of models).
 struct c_Distributor : public Component
 {
 	c_Distributor(
+		unsigned maxDepth,
 		unsigned minDepth, 
-		unsigned rotType,
+		RotType rotType,
 		unsigned maxScale,
 		bool adaptToTerrainNormal = false,
 		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback, 
@@ -289,8 +292,8 @@ struct c_Distributor : public Component
 
 	std::map<unsigned, std::vector<ModelParams>> filledChunks;	//!< Stores chunk's population (distributed objects per chunk)
 
-	unsigned minDepth;
-	unsigned rotType;			//!< Rotation type: 1 (Z axis, random), 2 (all axes, random), 3 (face cam)
+	unsigned maxDepth, minDepth;
+	RotType rotType;			//!< Rotation type: 1 (Z axis, random), 2 (all axes, random), 3 (face cam)
 	unsigned maxScale;			//!< Randomize scale in the range [1, maxScale]
 	bool adaptToTerrainNormal;	//!< Put object's vertical at terrain's normal
 

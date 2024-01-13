@@ -127,7 +127,7 @@ class s_Distributor : public System
     glm::vec4 getLatLonRotQuat(glm::vec3& normal);                                      //!< Rotation angles for grass to be vertically planted on ground (based on normal under camera).
     glm::vec3 getProjectionOnPlane(glm::vec3& normal, glm::vec3& vec);
     c_Model_planet* getPlanetComponent();                                               //!< Returns c_Model component that is UboType::planet and has no noise generator.
-    glm::vec4 getSecondQuat(const glm::vec3& pos, unsigned rotationType);
+    glm::vec4 getSecondQuat(const glm::vec3& pos, RotType rotationType);
     glm::vec3 getScale(const glm::vec3& pos, unsigned maxScale);
 
 public:

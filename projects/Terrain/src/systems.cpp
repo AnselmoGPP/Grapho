@@ -839,7 +839,7 @@ void s_Distributor::update(float timeStep)
         // Traverse each chunk   <<< traverse from planet instead of copying it?
         for (i = 0; i < chunks.size(); i++)
         {
-            if (chunks[i]->depth < c_distrib->minDepth) continue;
+            if (chunks[i]->depth < c_distrib->minDepth || chunks[i]->depth > c_distrib->maxDepth) continue;
             chunkId = chunks[i]->chunkID;
 
             // If chunk's population was not found, compute it
@@ -945,20 +945,20 @@ c_Model_planet* s_Distributor::getPlanetComponent()
     return nullptr;
 }
 
-glm::vec4 s_Distributor::getSecondQuat(const glm::vec3& pos, unsigned rotationType)
+glm::vec4 s_Distributor::getSecondQuat(const glm::vec3& pos, RotType rotationType)
 {
     switch (rotationType)
     {
-    case 1:     // Z axis, random
+    case zAxisRandom:     // Z axis, random
         return getRotQuat(zAxis, pos.x * pos.y * pos.z + pos.x + pos.y + pos.z);
         break;
-    case 2:     // all axes, random
+    case allAxesRandom:     // all axes, random
         return productQuat(
             getRotQuat(xAxis, pos.x * pos.y + pos.z),
             getRotQuat(yAxis, pos.x * pos.z + pos.y),
             getRotQuat(zAxis, pos.y * pos.z + pos.x));
         break;
-    case 3:     // face cam
+    case faceCam:     // face cam
         return noRotQuat;
         break;
     default:

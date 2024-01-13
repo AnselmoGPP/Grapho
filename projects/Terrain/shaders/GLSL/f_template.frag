@@ -4,6 +4,8 @@
 
 #define NUMLIGHTS 2
 
+layout(early_fragment_tests) in;
+
 struct LightPD
 {
     vec4 position;		// vec3
