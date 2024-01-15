@@ -5,6 +5,7 @@ TODO:
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
 
 	Distributor: Make it fill even between vertices
+		Far trees doesn't fit all near trees (in position and size)
 
 	-> Make billboard trees for far distances > Delete GrassSystem
 	- Second thread: Create & delete objects in the same order they have been asked

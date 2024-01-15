@@ -514,7 +514,7 @@ void SLModule::applyModifications(std::string& shader)
 
 		case sm_distDithering_near:			// (FS) Apply dithering to distant fragments
 			findStrAndErase(shader, "//distDithering: ");
-			findStrAndReplace(shader, "near, far", "50, 60");
+			findStrAndReplace(shader, "near, far", "40, 50");
 			break;
 
 		case sm_distDithering_far:			// (FS) Apply dithering to distant fragments

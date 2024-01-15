@@ -371,7 +371,7 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 6, zAxisRandom, 2, true, grass_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, true, 0, grass_callback, noiseSet)
 	};
 }
 
@@ -424,7 +424,7 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 6, zAxisRandom, 2, false, plant_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, plant_callback, noiseSet)
 	};
 }
 
@@ -479,7 +479,7 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Distributor(6, 6, allAxesRandom, 5, false, stone_callback, noiseSet)
+			new c_Distributor(6, 6, allAxesRandom, 5, false, 0, stone_callback, noiseSet)
 	};
 }
 
@@ -538,7 +538,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 6, zAxisRandom, 2, false, tree_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, tree_callback, noiseSet)
 	});
 	
 	// Branches:
@@ -568,7 +568,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	entities.push_back(std::vector<Component*>{ 
 		new c_Model_normal(model2, UboType::mvpncl),
 		new c_ModelParams(),
-		new c_Distributor(6, 6, zAxisRandom, 2, false, tree_callback, noiseSet)
+		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, tree_callback, noiseSet)
 	});
 	
 	return entities;
@@ -612,7 +612,7 @@ std::vector<Component*> EntityFactory::createTreeBillboard(ShaderLoader Vshader,
 	return std::vector<Component*>{
 		new c_Model_normal(model, UboType::mvpncl),
 			new c_ModelParams(),
-			new c_Distributor(5, 4, zAxisRandom, 2, false, tree_callback, noiseSet)
+			new c_Distributor(5, 4, zAxisRandom, 2, false, 1, tree_callback, noiseSet)
 	};
 }
 

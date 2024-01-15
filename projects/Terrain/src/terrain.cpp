@@ -1043,7 +1043,7 @@ void DynamicGrid::updateVisibilityState() { }
 
 bool DynamicGrid::isVisible(const Chunk* chunk) { return true; }
 
-void DynamicGrid::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth)
+void DynamicGrid::getActiveLeafChunks(std::vector<const Chunk*>& dest, unsigned depth)
 {
     for (Chunk* chunk : visibleLeafChunks[activeTree])
         if (chunk->depth >= depth)
@@ -1303,7 +1303,7 @@ float Planet::getGroundHeight(const glm::vec3& camPos)
     return 0;
 }
 
-void Planet::getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const
+void Planet::getActiveLeafChunks(std::vector<const Chunk*>& dest, unsigned depth) const
 {
     planetGrid_pZ->getActiveLeafChunks(dest, depth);
     planetGrid_nZ->getActiveLeafChunks(dest, depth);
@@ -1569,7 +1569,7 @@ void GrassSystem_planet::getGrassItems_average(const Planet& planet)
 
     // Get vertices for grass
     chunks.clear();
-    planet.getActiveLeafChunks(chunks, minDepth);
+    ///planet.getActiveLeafChunks(chunks, minDepth);
     chunksCount = chunks.size();
 
     // Fill parameters for each grass bunch
@@ -1580,7 +1580,7 @@ void GrassSystem_planet::getGrassItems_average(const Planet& planet)
 
     for (int i = 0; i < chunks.size(); i++)
     {
-        vert = chunks[i]->getVertices();
+        ///vert = chunks[i]->getVertices();
 
         for (int j = 0; j < vert->size(); j += 9)
         {
@@ -1670,7 +1670,7 @@ void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet)
     
     // Get vertices for grass
     chunks.clear();
-    planet.getActiveLeafChunks(chunks, minDepth);
+    ///planet.getActiveLeafChunks(chunks, minDepth);
     chunksCount = chunks.size();
 
     // Fill parameters for each grass bunch
@@ -1681,7 +1681,7 @@ void GrassSystem_planet::getGrassItems_fullGrass(const Planet& planet)
     
     for (int i = 0; i < chunks.size(); i++)     // for each chunk
     {
-        vert = chunks[i]->getVertices();
+        //vert = chunks[i]->getVertices();
 
         for (int j = 0; j < vert->size(); j += 9)   // for each vertex
         {
@@ -1775,7 +1775,7 @@ glm::vec3 GrassSystem_planet::getProjectionOnPlane(glm::vec3& normal, glm::vec3&
 bool GrassSystem_planet::renderRequired(const Planet& planet)
 {
     std::vector<Chunk*> availableChunks;
-    planet.getActiveLeafChunks(availableChunks, minDepth);
+    ///planet.getActiveLeafChunks(availableChunks, minDepth);
 
     if (availableChunks.size() == chunksCount) return false;
     else return true;

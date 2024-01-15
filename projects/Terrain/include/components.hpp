@@ -285,6 +285,7 @@ struct c_Distributor : public Component
 		RotType rotType,
 		unsigned maxScale,
 		bool adaptToTerrainNormal = false,
+		unsigned subGeometry = 1,
 		bool(*grassSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers) = itemSupported_callback, 
 		std::vector<std::shared_ptr<Noiser>> noisers = std::vector<std::shared_ptr<Noiser>>() );
 	~c_Distributor() { };
@@ -296,6 +297,7 @@ struct c_Distributor : public Component
 	RotType rotType;			//!< Rotation type: 1 (Z axis, random), 2 (all axes, random), 3 (face cam)
 	unsigned maxScale;			//!< Randomize scale in the range [1, maxScale]
 	bool adaptToTerrainNormal;	//!< Put object's vertical at terrain's normal
+	unsigned subGeometry;		//!< Check distribution for additional vertices (this is like incrementing the resolution of the chunk)
 
 	bool(*itemSupported) (const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);	//!< Evaluated each item's posible position. Callback used by the client for evaluating world-related conditions and forcing or negating item rendering.
 

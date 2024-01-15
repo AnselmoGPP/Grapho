@@ -805,7 +805,7 @@ void s_Distributor::update(float timeStep)
     c_Model_planet* c_mPlanet = getPlanetComponent();
     if (!c_mPlanet) return;
 
-    std::vector<Chunk*> chunks;
+    std::vector<const Chunk*> chunks;
     c_mPlanet->planet->getActiveLeafChunks(chunks, 0);      // Get all chunks
 
     // Precalculations
@@ -817,7 +817,8 @@ void s_Distributor::update(float timeStep)
     c_Distributor* c_distrib;
 
     unsigned i, j, chunkId;
-    std::vector<float>* vertices;
+    const std::vector<float>* vertices;
+    std::vector<float> vertices_subGeometry;
     glm::vec3 position;
     float slope;
     glm::vec4 randomQuat, normalQuat = { 1,0,0,0 };        // rotation for additional randomness / for adapting to terrain normal
@@ -836,14 +837,13 @@ void s_Distributor::update(float timeStep)
         c_mParams->mp.clear();
         normalQuat = { 1,0,0,0 };
 
-        // Traverse each chunk   <<< traverse from planet instead of copying it?
+        // Traverse each chunk
         for (i = 0; i < chunks.size(); i++)
         {
             if (chunks[i]->depth < c_distrib->minDepth || chunks[i]->depth > c_distrib->maxDepth) continue;
             chunkId = chunks[i]->chunkID;
 
-            // If chunk's population was not found, compute it
-            if (c_distrib->filledChunks.find(chunkId) == c_distrib->filledChunks.end())
+            if (c_distrib->filledChunks.find(chunkId) == c_distrib->filledChunks.end()) // If chunk's population was not found, compute it
             {
                 vertices = chunks[i]->getVertices();
 
@@ -868,6 +868,11 @@ void s_Distributor::update(float timeStep)
                         getScale(position, c_distrib->maxScale),            // scale
                         productQuat(randomQuat, latLonQuat, normalQuat),    // rotation
                         position));                                         // position)
+                }
+
+                if (c_distrib->subGeometry)     // Compute population for additional vertices (between the existing ones).
+                {
+                    
                 }
             }
 
@@ -985,7 +990,7 @@ glm::vec3 s_Distributor::getScale(const glm::vec3& pos, unsigned maxScale)
 
 bool s_Distributor::renderRequired(const Planet& planet, float minDepth, unsigned chunksCount)
 {
-    std::vector<Chunk*> availableChunks;
+    std::vector<const Chunk*> availableChunks;
     planet.getActiveLeafChunks(availableChunks, minDepth);
 
     if (availableChunks.size() == chunksCount) return false;

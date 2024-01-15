@@ -249,5 +249,5 @@ bool itemSupported_callback(const glm::vec3& pos, float groundSlope, const std::
 	return true;
 }
 
-c_Distributor::c_Distributor(unsigned maxDepth, unsigned minDepth, RotType rotType, unsigned maxScale, bool adaptToTerrainNormal, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
-	: Component(CT::distributor), maxDepth(maxDepth), minDepth(minDepth), rotType(rotType), maxScale(maxScale), adaptToTerrainNormal(adaptToTerrainNormal), itemSupported(itemSupported_callback), noisers(noisers) { };
+c_Distributor::c_Distributor(unsigned maxDepth, unsigned minDepth, RotType rotType, unsigned maxScale, bool adaptToTerrainNormal, unsigned subGeometry, bool(*itemSupported_callback)(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers), std::vector<std::shared_ptr<Noiser>> noisers)
+	: Component(CT::distributor), maxDepth(maxDepth), minDepth(minDepth), rotType(rotType), maxScale(maxScale), adaptToTerrainNormal(adaptToTerrainNormal), subGeometry(subGeometry), itemSupported(itemSupported_callback), noisers(noisers) { };

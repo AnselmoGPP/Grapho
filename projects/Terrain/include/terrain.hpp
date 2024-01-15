@@ -138,12 +138,12 @@ public:
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
-	glm::vec3 getGeoideCenter() { return geoideCenter; }
-	glm::vec3 getGroundCenter() { return groundCenter; }
-	unsigned getNumVertex()		{ return numHorVertex * numVertVertex; }
-	float getHorChunkSide()		{ return horChunkSize; };
-	float getHorBaseSide()		{ return horBaseSize; };
-	std::vector<float>* getVertices() { return &vertex; }
+	glm::vec3 getGeoideCenter() const{ return geoideCenter; }
+	glm::vec3 getGroundCenter() const { return groundCenter; }
+	unsigned getNumVertex() const { return numHorVertex * numVertVertex; }
+	float getHorChunkSide() const { return horChunkSize; };
+	float getHorBaseSide() const { return horBaseSize; };
+	const std::vector<float>* getVertices() const { return &vertex; }
 };
 
 /// Plain chunk with noise
@@ -240,7 +240,7 @@ public:
 	void updateTree(glm::vec3 newCamPos, unsigned numLights);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float groundHeight);
 	void toLastDraw();														//!< Call it after updateTree(), so the correct tree is put last to draw
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
+	void getActiveLeafChunks(std::vector<const Chunk*>& dest, unsigned depth);	//!< Get active chunks with depth >= X in the active tree 
 	bool contains(unsigned chunkId);
 
 	// Testing
@@ -368,7 +368,7 @@ public:
 	void updateState(const glm::vec3& camPos, const glm::mat4& view, const glm::mat4& proj, const LightSet& lights, float frameTime, float groundHeight);	//!< Update tree and UBOs
 	void toLastDraw();
 	float getGroundHeight(const glm::vec3& camPos);
-	void getActiveLeafChunks(std::vector<Chunk*>& dest, unsigned depth) const;
+	void getActiveLeafChunks(std::vector<const Chunk*>& dest, unsigned depth) const;
 	std::shared_ptr<Noiser> getNoiseGen() const;
 	float getSphereArea();							//!< Given planet radius, get sphere's area
 	glm::vec3 getBasicNormal(glm::vec3& camPos);	//!< Sphere normal at camera position
