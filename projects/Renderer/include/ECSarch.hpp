@@ -10,15 +10,20 @@
 
 //#define DEBUG_ECS
 
-struct Component;
-class  Entity;
-class  EntityManager;
-class  System;
-class  EntityFactory;
 
+// Prototypes ----------
+
+class Entity;
+struct Component;
+class System;
+class EntityManager;
+class MainEntityFactory;
+
+
+// Definitions ----------
 
 // Component type (CT). Used for identifying the type of component.
-extern enum class CT
+enum class CT
 {
     engine,
     input,

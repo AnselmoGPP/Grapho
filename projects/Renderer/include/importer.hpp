@@ -41,15 +41,41 @@
 */
 
 
-extern const VertexType vt_3;						//!< (Vert)
+// Definitions ----------
+
+struct VertexData;
+class VerticesLoader;
+class VLModule;
+	class VLM_fromFile;
+	class VLM_fromBuffer;
+
+class Shader;
+class ShaderLoader;
+class SLModule;
+	class SLM_fromFile;
+	class SLM_fromBuffer;
+enum shaderModifier;
+class ShaderIncluder;
+
+class Texture;
+class TextureLoader;
+class TLModule;
+	class TLM_fromFile;
+	class TLM_fromBuffer;
+
+struct ResourcesLoader;
+
+class OpticalDepthTable;
+class DensityVector;
+
+
+// Objects ----------
+
+extern const VertexType vt_3;					//!< (Vert)
 extern const VertexType vt_32;					//!< (Vert, UV)
 extern const VertexType vt_33;					//!< (Vert, Color)
 extern const VertexType vt_332;					//!< (Vert, Normal, UV)
 extern const VertexType vt_333;					//!< (Vert, Normal, vertexFixes)
-
-class Shader;
-class Texture;
-class TextureLoader;
 
 typedef std::list<Shader >::iterator shaderIter;
 typedef std::list<Texture>::iterator texIter;
@@ -57,8 +83,8 @@ typedef std::list<Texture>::iterator texIter;
 extern std::vector<TextureLoader> noTextures;		//!< Vector with 0 TextureLoader objects
 extern std::vector<uint16_t   > noIndices;			//!< Vector with 0 indices
 
-struct ResourcesLoader;
 
+// Definitions ----------
 
 // VERTICES --------------------------------------------------------
 

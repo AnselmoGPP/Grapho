@@ -12,6 +12,22 @@
 
 #include "environment.hpp"
 
+
+// Prototypes ----------
+
+struct Sizes;
+
+struct LightSet;
+struct LightPosDir;
+struct LightProps;
+enum lightProps;
+
+struct Material;
+struct UBO;
+
+
+// Definitions ----------
+
 /*
 	UBO memory organization in the GPU: 
 		- The UBO has to be aligned with "minUBOffsetAlignment" bytes.

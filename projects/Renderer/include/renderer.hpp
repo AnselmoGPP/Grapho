@@ -17,6 +17,16 @@
 //#define DEBUG_RENDERLOOP
 //#define DEBUG_WORKER
 
+
+// Prototypes ----------
+
+class Renderer;
+class LoadingWorker;
+enum primitiveTopology;
+
+
+// Definitions ----------
+
 /// Used for the user to specify what primitive type represents the vertex data. 
 enum primitiveTopology {
 	point		= VK_PRIMITIVE_TOPOLOGY_POINT_LIST,

@@ -23,8 +23,24 @@ const bool enableValidationLayers = false;
 
 typedef std::vector<VkFramebuffer> framebufferSet;
 
+
+// Prototypes ----------
+
 class VulkanCore;
 class VulkanEnvironment;
+
+struct QueueFamilyIndices;
+struct SwapChainSupportDetails;
+struct Image;
+struct SwapChain;
+struct DeviceData;
+
+class RenderingWorkflow;
+class RW_MSAA_PP;
+class RW_PP;
+
+
+// Definitions ----------
 
 /// Structure for storing vector indices of the queue families we want. 
 /** Note that graphicsFamilyand presentFamily could refer to the same queue family, but we included them separately because sometimes they are in different queue families. */
@@ -157,6 +173,49 @@ private:
 };
 
 
+/**
+	@brief Set the system of render passes and framebuffers used.
+
+	Tells Vulkan the framebuffer attachments that will be used while rendering (color, depth, multisampled images). A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
+	- Subpasses : A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example : a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance.
+	- Attachment references : Every subpass references one or more of the attachments that we've described.
+*/
+class RenderingWorkflow
+{
+protected:
+	VulkanEnvironment& e;
+
+public:
+	RenderingWorkflow(VulkanEnvironment& e) : e(e) { }
+
+	virtual void createRenderPass() = 0;		/// A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
+	virtual void createImageResources() = 0;
+	virtual void createFramebuffers() = 0;		/// Define the swap chain framebuffers and their attachments (color/swapChain image, depth image, MSAA image)
+};
+
+/// Rendering workflow containing MSAA and Post-processing.
+class RW_MSAA_PP : public RenderingWorkflow
+{
+public:
+	RW_MSAA_PP(VulkanEnvironment& e) : RenderingWorkflow(e) { }
+
+	void createRenderPass();
+	void createImageResources();
+	void createFramebuffers();
+};
+
+/// Rendering workflow containing Post-processing (no MSAA).
+class RW_PP : public RenderingWorkflow
+{
+public:
+	RW_PP(VulkanEnvironment& e) : RenderingWorkflow(e) { }
+
+	void createRenderPass();
+	void createImageResources();
+	void createFramebuffers();
+};
+
+
 class VulkanEnvironment
 {
 	IOmanager& io;
@@ -202,9 +261,7 @@ private:
 
 	void createCommandPool();
 
-	void createRenderPass();
-	void createImageResources();
-	void createFramebuffers();
+	std::shared_ptr<RenderingWorkflow> rw;
 
 	// Helper methods:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
@@ -212,18 +269,6 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	bool hasStencilComponent(VkFormat format);
-
-	void createRenderPass_PP();
-	void createImageResources_PP();
-	void createFramebuffers_PP();
-
-	void createRenderPass_MS_PP();
-	void createImageResources_MS_PP();
-	void createFramebuffers_MS_PP();
-
-	void createRenderPass_2x2();
-	void createImageResources_2x2();
-	void createFramebuffers_2x2();
 };
 
 #endif
