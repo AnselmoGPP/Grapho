@@ -43,7 +43,7 @@ void DeviceData::fillWithDeviceData(VkPhysicalDevice physicalDevice)
 {
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-
+	
 	deviceType = deviceProperties.deviceType;
 	apiVersion = deviceProperties.apiVersion;
 	driverVersion = deviceProperties.driverVersion;
@@ -61,10 +61,31 @@ void DeviceData::fillWithDeviceData(VkPhysicalDevice physicalDevice)
 	framebufferDepthSampleCounts = deviceProperties.limits.framebufferDepthSampleCounts;
 	minUniformBufferOffsetAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
 
-	//   - Features (redundant)
 	samplerAnisotropy = deviceFeatures.samplerAnisotropy;
 	largePoints = deviceFeatures.largePoints;
 	wideLines = deviceFeatures.wideLines;
+
+	/// Find the right format for a depth image. Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil).
+	depthFormat = findSupportedFormat(physicalDevice,
+						{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+						VK_IMAGE_TILING_OPTIMAL,
+						VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+VkFormat DeviceData::findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props;												// Contains 3 fields: linearTilingFeatures (linear tiling), optimalTilingFeatures (optimal tiling), bufferFeatures (buffers).
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);	// Query the support of a format
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+			return format;
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+			return format;
+	}
+
+	throw std::runtime_error("Failed to find supported format!");
 }
 
 void DeviceData::printData()
@@ -116,7 +137,7 @@ VulkanCore::VulkanCore(IOmanager& io)
 }
 
 VulkanEnvironment::VulkanEnvironment(IOmanager& io)
-	: c(io), io(io), inputAttachmentCount(2)
+	: c(io), io(io)
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -935,18 +956,6 @@ VkImageView VulkanEnvironment::createImageView(VkImage image, VkFormat format, V
 	return imageView;
 }
 
-/// Find the right format for a depth image.
-/** Select a format with a depth component that supports usage as depth attachment. We don't need a specific format because we won't be directly accessing the texels from the program. It just needs to have a reasonable accuracy (usually, at least 24 bits). Several formats fit this requirement: VK_FORMAT_ ... D32_SFLOAT (32-bit signed float depth), D32_SFLOAT_S8_UINT (32-bit signed float depth and 8 bit stencil), D24_UNORM_S8_UINT (24-bit float depth and 8 bit stencil). */
-VkFormat VulkanEnvironment::findDepthFormat()
-{
-	return findSupportedFormat(
-		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
-//IOmanager* VulkanEnvironment::getWindowManager() { return c.getWindowManager(); }
-
 /**
 * 	@brief Finds the right type of memory to use, depending upon the requirements of the buffer and our own application requiremnts.
 *	
@@ -970,30 +979,6 @@ uint32_t VulkanEnvironment::findMemoryType(uint32_t typeFilter, VkMemoryProperty
 	}
 
 	throw std::runtime_error("Failed to find suitable memory type!");
-}
-
-/**
-*	@brief Take a list of candidate formats in order from most desirable to least desirable, and check which is the first one that is supported.
-* 
-*	@param candidates
-*	@param tiling The support of a format depends on the tiling mode.
-*	@param features The support of a format depends on the usage.
-*	@return
-*/
-VkFormat VulkanEnvironment::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat format : candidates)
-	{
-		VkFormatProperties props;												// Contains 3 fields: linearTilingFeatures (linear tiling), optimalTilingFeatures (optimal tiling), bufferFeatures (buffers).
-		vkGetPhysicalDeviceFormatProperties(c.physicalDevice, format, &props);	// Query the support of a format
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-			return format;
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-			return format;
-	}
-
-	throw std::runtime_error("Failed to find supported format!");
 }
 
 // (11) <<<
@@ -1197,9 +1182,7 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
 	// Destroy attachments (images)
-	color_1.destroy(this);
-	depth.destroy(this);
-	color_2.destroy(this);
+	rw->destroyAttachments();
 
 	// Framebuffers
 	for (auto framebuffer : framebuffers)
@@ -1234,6 +1217,12 @@ void VulkanEnvironment::cleanup()
 	vkDestroyCommandPool(c.device, commandPool, nullptr);
 	cleanup_Images_RenderPass_SwapChain();
 	c.destroy();
+}
+
+RW_MSAA_PP::RW_MSAA_PP(VulkanEnvironment& e) : RenderingWorkflow(e)
+{
+	inputAttsPerRP.resize(2);
+	inputAttsPerRP[1] = std::vector<Image*>{ &color_1, &depth };
 }
 
 void RW_MSAA_PP::createRenderPass()
@@ -1289,7 +1278,7 @@ void RW_MSAA_PP::createRenderPass()
 	colorAttachmentRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;		// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
 
 	// Depth attachment (RP 1)
-	depthAttachment.format = e.findDepthFormat();									// Should be same format as the depth image
+	depthAttachment.format = e.c.deviceData.depthFormat;						// Should be same format as the depth image
 	depthAttachment.samples = e.c.msaaSamples;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					// VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
@@ -1422,7 +1411,7 @@ void RW_MSAA_PP::createImageResources()
 #endif
 
 	VkFormat colorFormat = e.swapChain.imageFormat;
-	VkFormat depthFormat = e.findDepthFormat();
+	VkFormat depthFormat = e.c.deviceData.depthFormat;
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1456,13 +1445,13 @@ void RW_MSAA_PP::createImageResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		e.color_1.image,
-		e.color_1.memory);
+		color_1.image,
+		color_1.memory);
 
-	e.color_1.view = e.createImageView(e.color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	color_1.view = e.createImageView(color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 	// Create sampler
-	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &e.color_1.sampler) != VK_SUCCESS)
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &color_1.sampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create resolve color sampler!");
 
 
@@ -1476,16 +1465,16 @@ void RW_MSAA_PP::createImageResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		e.depth.image,
-		e.depth.memory);
+		depth.image,
+		depth.memory);
 
-	e.depth.view = e.createImageView(e.depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+	depth.view = e.createImageView(depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
-	e.transitionImageLayout(e.depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+	e.transitionImageLayout(depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 
 	// Create sampler
-	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &e.depth.sampler) != VK_SUCCESS)
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create depth sampler!");
 
 
@@ -1500,10 +1489,10 @@ void RW_MSAA_PP::createImageResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,				// DEVICE_LOCAL: Memory will be used exclusively by the device, rather than being mappable to host memory. Better performance.
-		e.color_2.image,
-		e.color_2.memory);
+		color_2.image,
+		color_2.memory);
 
-	e.color_2.view = e.createImageView(e.color_2.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	color_2.view = e.createImageView(color_2.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 void RW_MSAA_PP::createFramebuffers()
@@ -1519,7 +1508,7 @@ void RW_MSAA_PP::createFramebuffers()
 	for (size_t i = 0; i < e.swapChain.views.size(); i++)
 	{
 		// Framebuffers 1 (multisampled basic color)
-		attachments = std::vector<VkImageView>{ e.color_1.view, e.depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
 
 		VkFramebufferCreateInfo framebufferInfo_1{};
 		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1534,7 +1523,7 @@ void RW_MSAA_PP::createFramebuffers()
 			throw std::runtime_error("Failed to create framebuffer 1!");
 
 		// Framebuffers 2 (multisampled postprocessing)
-		attachments = std::vector<VkImageView>{ e.color_1.view, e.depth.view, e.color_2.view, e.swapChain.views[i] };
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, color_2.view, e.swapChain.views[i] };
 
 		VkFramebufferCreateInfo framebufferInfo_2{};
 		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1548,6 +1537,19 @@ void RW_MSAA_PP::createFramebuffers()
 		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &e.framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
+}
+
+void RW_MSAA_PP::destroyAttachments()
+{
+	color_1.destroy(&e);
+	depth.destroy(&e);
+	color_2.destroy(&e);
+}
+
+RW_PP::RW_PP(VulkanEnvironment& e) : RenderingWorkflow(e)
+{
+	inputAttsPerRP.resize(2);
+	inputAttsPerRP[1] = std::vector<Image*>{&color_1, &depth};
 }
 
 void RW_PP::createRenderPass()
@@ -1590,7 +1592,7 @@ void RW_PP::createRenderPass()
 
 	// Depth attachment (RP 1)
 	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = e.findDepthFormat();							// Should be same format as the depth image
+	depthAttachment.format = e.c.deviceData.depthFormat;				// Should be same format as the depth image
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
@@ -1713,7 +1715,7 @@ void RW_PP::createImageResources()
 #endif
 
 	VkFormat colorFormat = e.swapChain.imageFormat;
-	VkFormat depthFormat = e.findDepthFormat();
+	VkFormat depthFormat = e.c.deviceData.depthFormat;
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1747,12 +1749,12 @@ void RW_PP::createImageResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		e.color_1.image,
-		e.color_1.memory);
+		color_1.image,
+		color_1.memory);
 
-	e.color_1.view = e.createImageView(e.color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	color_1.view = e.createImageView(color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
-	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &e.color_1.sampler) != VK_SUCCESS)
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &color_1.sampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create resolve color sampler!");
 
 	// Depth -------------------------------------
@@ -1766,20 +1768,18 @@ void RW_PP::createImageResources()
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		e.depth.image,
-		e.depth.memory);
+		depth.image,
+		depth.memory);
 
-	e.depth.view = e.createImageView(e.depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+	depth.view = e.createImageView(depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
-	e.transitionImageLayout(e.depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+	e.transitionImageLayout(depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 
-	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &e.depth.sampler) != VK_SUCCESS)
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create depth sampler!");
 }
 
-// (14)
-/// Create the swap chain framebuffers (by attaching to each of them the MSAA image, depth image, and swap chain image).
 void RW_PP::createFramebuffers()
 {
 #ifdef DEBUG_ENV_CORE
@@ -1796,7 +1796,7 @@ void RW_PP::createFramebuffers()
 		VkFramebufferCreateInfo framebufferInfo_1{};
 		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo_1.renderPass = e.renderPass[0];								// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-		attachments = std::vector<VkImageView>{ e.color_1.view, e.depth.view };
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view };
 		framebufferInfo_1.attachmentCount = attachments.size();
 		framebufferInfo_1.pAttachments = attachments.data();						// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
 		framebufferInfo_1.width = e.swapChain.extent.width;
@@ -1810,7 +1810,7 @@ void RW_PP::createFramebuffers()
 		VkFramebufferCreateInfo framebufferInfo_2{};
 		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo_2.renderPass = e.renderPass[1];
-		attachments = std::vector<VkImageView>{ e.color_1.view, e.depth.view, e.swapChain.views[i] };
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, e.swapChain.views[i] };
 		framebufferInfo_2.attachmentCount = attachments.size();
 		framebufferInfo_2.pAttachments = attachments.data();
 		framebufferInfo_2.width = e.swapChain.extent.width;
@@ -1820,4 +1820,341 @@ void RW_PP::createFramebuffers()
 		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &e.framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
 	}
+}
+
+void RW_PP::destroyAttachments()
+{
+	color_1.destroy(&e);
+	depth.destroy(&e);
+	color_2.destroy(&e);
+}
+
+RW_DS::RW_DS(VulkanEnvironment& e) : RenderingWorkflow(e)
+{
+	inputAttsPerRP.resize(2);
+	inputAttsPerRP[1] = std::vector<Image*>{ &position, &albedo, &normal, &specRoug };
+}
+
+void RW_DS::createRenderPass()
+{
+	#ifdef DEBUG_ENV_CORE
+		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+	#endif
+
+	/*
+		Process for MultiSampling + PostProcessing:
+
+		Render pass 1:
+			Subpass A attachments:
+				shader -> colorResolveAttachment: Final color (many samplers)
+				shader -> depthAttachment[n]: Depth (many samplers)
+				X - msaaColorAttachment[n]: Color attachment for multisampling (not used: only 1 sample)
+		Render pass 2:
+			Subpass B attachments:
+				shader -> colorResolveAttachment: Final color (many samples)
+					colorResolveAttachment: Final color from RP 1 (input attachments)
+					depthAttachment: Depth from RP 1 (input attachments)
+				msaa -> colorAttachmentPP: Final color (swapChainImageView)
+	*/
+
+	// Attachments -------------------------
+
+	VkAttachmentDescription colorAttachment_1{};	// SP1, 
+	VkAttachmentReference colorAttachmentRef_1{};
+	VkAttachmentDescription depthAttachment{};
+	VkAttachmentReference depthAttachmentRef{};
+
+	VkAttachmentDescription colorInputAtt_1;		// SP2
+	VkAttachmentReference colorInputAttRef_1;
+	VkAttachmentDescription depthInputAtt;
+	VkAttachmentReference depthInputAttRef;
+
+	VkAttachmentDescription colorAttachment_2{};
+	VkAttachmentReference colorAttachmentRef_2{};
+	VkAttachmentDescription colorResolveAttachment{};
+	VkAttachmentReference colorResolveAttachmentRef{};
+
+	// Color attachment 1 (basic multisampling rendering) (RP 1)
+	colorAttachment_1.format = e.swapChain.imageFormat;
+	colorAttachment_1.samples = e.c.msaaSamples;								// Single color buffer attachment, or many (multisampling).
+	colorAttachment_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;						// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
+	colorAttachment_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
+	colorAttachment_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// What to do with the stencil data in the attachment before rendering.
+	colorAttachment_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;		// What to do with the stencil data in the attachment after rendering.
+	colorAttachment_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
+	colorAttachment_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
+
+	colorAttachmentRef_1.attachment = 0;										// Specify which attachment to reference by its index in the attachment descriptions array.
+	colorAttachmentRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;		// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
+
+	// Depth attachment (RP 1)
+	depthAttachment.format = e.c.deviceData.depthFormat;						// Should be same format as the depth image
+	depthAttachment.samples = e.c.msaaSamples;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					// VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// We don't care about previous depth contents
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	// Input attachment (color) (from previous render pass)
+	colorInputAtt_1 = colorAttachment_1;
+	colorInputAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorInputAtt_1.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	colorInputAttRef_1 = colorAttachmentRef_1;
+	colorInputAttRef_1.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	colorInputAttRef_1.attachment = 0;
+
+	// Input attachment (depth) (from previous render pass)
+	depthInputAtt = depthAttachment;
+	depthInputAtt.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthInputAtt.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	depthInputAttRef = depthAttachmentRef;
+	depthInputAttRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	depthInputAttRef.attachment = 1;
+
+	// Color attachment 2 (Multisample postprocessing) (RP 2)
+	colorAttachment_2.format = e.swapChain.imageFormat;
+	colorAttachment_2.samples = e.c.msaaSamples;
+	colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;// VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment_2.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment_2.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment_2.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment_2.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	colorAttachmentRef_2.attachment = 2;									// Specify which attachment to reference by its index in the attachment descriptions array.
+	colorAttachmentRef_2.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
+
+	// Final resolved color attachment (RP 2)
+	colorResolveAttachment.format = e.swapChain.imageFormat;
+	colorResolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorResolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorResolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorResolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorResolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorResolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorResolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	colorResolveAttachmentRef.attachment = 3;
+	colorResolveAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Render pass 1 (basic multisample rendering) -------------------------
+
+	VkSubpassDescription subpass{};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef_1;				// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
+	subpass.pResolveAttachments = nullptr;							// Attachments used for resolving multisampling color attachments.
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;			// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
+	subpass.inputAttachmentCount;
+	subpass.pInputAttachments;										// Attachments read from a shader.
+	subpass.preserveAttachmentCount;
+	subpass.pPreserveAttachments;									// Attachment not used by this subpass, but for which the data must be preserved.
+
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;																			// VK_SUBPASS_EXTERNAL: Refers to the implicit subpass before or after the render pass depending on whether it is specified in srcSubpass or dstSubpass.
+	dependency.dstSubpass = 0;																							// Index of our subpass. The dstSubpass must always be higher than srcSubpass to prevent cycles in the dependency graph (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait (for the swap chain to finish reading from the image).
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait. 
+	dependency.srcAccessMask = 0;																							// Operations that wait.
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;			// Operations that wait (they involve the writing of the color attachment).
+
+	VkRenderPassCreateInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments = { colorAttachment_1, depthAttachment };		// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;				// Array of subpasses
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;			// Array of dependencies.
+
+	if (vkCreateRenderPass(e.c.device, &renderPassInfo, nullptr, &e.renderPass[0]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+
+	// Render pass 2 (Multisample Postprocessing) -------------------------
+
+	VkSubpassDescription subpass2{};
+	subpass2.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass2.colorAttachmentCount = 1;
+	subpass2.pColorAttachments = &colorAttachmentRef_2;
+	subpass2.pResolveAttachments = &colorResolveAttachmentRef;
+	subpass2.pDepthStencilAttachment = nullptr;
+	std::vector<VkAttachmentReference> inputAttachments = { colorInputAttRef_1, depthInputAttRef };
+	subpass2.inputAttachmentCount = inputAttachments.size();
+	subpass2.pInputAttachments = inputAttachments.data();	// <<< Can't input attachments read per-sample? Only per-pixel?
+	subpass2.preserveAttachmentCount;
+	subpass2.pPreserveAttachments;
+
+	VkSubpassDependency dependency2{};
+	dependency2.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency2.dstSubpass = 0;
+	dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency2.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency2.srcAccessMask = 0;
+	dependency2.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo renderPassInfo2{};
+	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments2 = { colorInputAtt_1, depthInputAtt, colorAttachment_2, colorResolveAttachment };
+	renderPassInfo2.attachmentCount = static_cast<uint32_t>(attachments2.size());
+	renderPassInfo2.pAttachments = attachments2.data();
+	renderPassInfo2.subpassCount = 1;
+	renderPassInfo2.pSubpasses = &subpass2;				// Array of subpasses
+	renderPassInfo2.dependencyCount = 1;
+	renderPassInfo2.pDependencies = &dependency2;		// Array of dependencies.
+
+	if (vkCreateRenderPass(e.c.device, &renderPassInfo2, nullptr, &e.renderPass[1]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+}
+
+void RW_DS::createImageResources()
+{
+#ifdef DEBUG_ENV_CORE
+	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+#endif
+
+	VkFormat colorFormat = e.swapChain.imageFormat;
+	VkFormat depthFormat = e.c.deviceData.depthFormat;
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 1.0f;
+
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	samplerInfo.minLod = 0.f;
+	samplerInfo.maxLod = 0.f;
+	samplerInfo.mipLodBias = 0.0f;
+
+	// Color_1 -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		e.c.msaaSamples,
+		colorFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		color_1.image,
+		color_1.memory);
+
+	color_1.view = e.createImageView(color_1.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	// Create sampler
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &color_1.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+
+	// Depth -------------------------------------
+
+	e.createImage(e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		e.c.msaaSamples,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depth.image,
+		depth.memory);
+
+	depth.view = e.createImageView(depth.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+
+	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
+	e.transitionImageLayout(depth.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+
+	// Create sampler
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create depth sampler!");
+
+
+	// Color_2 -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		e.c.msaaSamples,
+		colorFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,				// DEVICE_LOCAL: Memory will be used exclusively by the device, rather than being mappable to host memory. Better performance.
+		color_2.image,
+		color_2.memory);
+
+	color_2.view = e.createImageView(color_2.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+}
+
+void RW_DS::createFramebuffers()
+{
+#ifdef DEBUG_ENV_CORE
+	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+#endif
+
+	e.framebuffers.resize(e.swapChain.views.size());
+	std::vector<VkImageView> attachments;
+
+	// Framebuffers (2) for each swapChainImage
+	for (size_t i = 0; i < e.swapChain.views.size(); i++)
+	{
+		// Framebuffers 1 (multisampled basic color)
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
+
+		VkFramebufferCreateInfo framebufferInfo_1{};
+		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_1.renderPass = e.renderPass[0];							// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+		framebufferInfo_1.attachmentCount = attachments.size();
+		framebufferInfo_1.pAttachments = attachments.data();					// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+		framebufferInfo_1.width = e.swapChain.extent.width;
+		framebufferInfo_1.height = e.swapChain.extent.height;
+		framebufferInfo_1.layers = 1;											// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+
+		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_1, nullptr, &e.framebuffers[i][0]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 1!");
+
+		// Framebuffers 2 (multisampled postprocessing)
+		attachments = std::vector<VkImageView>{ color_1.view, depth.view, color_2.view, e.swapChain.views[i] };
+
+		VkFramebufferCreateInfo framebufferInfo_2{};
+		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_2.renderPass = e.renderPass[1];
+		framebufferInfo_2.attachmentCount = attachments.size();
+		framebufferInfo_2.pAttachments = attachments.data();
+		framebufferInfo_2.width = e.swapChain.extent.width;
+		framebufferInfo_2.height = e.swapChain.extent.height;
+		framebufferInfo_2.layers = 1;
+
+		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &e.framebuffers[i][1]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 2!");
+	}
+}
+
+void RW_DS::destroyAttachments()
+{
+	position.destroy(&e);
+	albedo.destroy(&e);
+	normal.destroy(&e);
+	specRoug.destroy(&e);
+	depth.destroy(&e);
+	finalColor.destroy(&e);
 }

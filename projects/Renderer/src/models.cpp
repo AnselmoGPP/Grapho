@@ -142,7 +142,7 @@ void ModelData::createDescriptorSetLayout()
 		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
 		inputAttachmentLayoutBinding.binding = bindNumber++;
 		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		inputAttachmentLayoutBinding.descriptorCount = e->inputAttachmentCount;
+		inputAttachmentLayoutBinding.descriptorCount = e->rw->inputAttsPerRP[renderPassIndex].size();
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -436,10 +436,9 @@ void ModelData::createDescriptorSets()
 	// Populate each descriptor set.
 	for (size_t i = 0; i < e->swapChain.images.size(); i++)
 	{
-		VkDescriptorBufferInfo descriptorInfo;		// Info about one descriptors
-
 		// UBO vertex shader
 		std::vector< VkDescriptorBufferInfo> bufferInfo_vs;
+		VkDescriptorBufferInfo descriptorInfo;		// Info about one descriptors
 		for (unsigned j = 0; j < vsUBO.maxUBOcount; j++)
 		{
 			if (vsUBO.range) descriptorInfo.buffer = vsUBO.uniformBuffers[i];
@@ -463,13 +462,13 @@ void ModelData::createDescriptorSets()
 		}
 
 		// Input attachments
-		std::vector<VkDescriptorImageInfo> inputAttachInfo(2);
-		inputAttachInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[0].imageView = e->color_1.view;
-		inputAttachInfo[0].sampler = e->color_1.sampler;
-		inputAttachInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		inputAttachInfo[1].imageView = e->depth.view;
-		inputAttachInfo[1].sampler = e->depth.sampler;
+		std::vector<VkDescriptorImageInfo> inputAttachInfo(e->rw->inputAttsPerRP[renderPassIndex].size());
+		for (unsigned i = 0; i < inputAttachInfo.size(); i++)
+		{
+			inputAttachInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			inputAttachInfo[i].imageView = e->rw->inputAttsPerRP[renderPassIndex][i]->view;
+			inputAttachInfo[i].sampler = e->rw->inputAttsPerRP[renderPassIndex][i]->sampler;
+		}
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
 		VkWriteDescriptorSet descriptor;

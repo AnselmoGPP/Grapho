@@ -114,6 +114,13 @@ struct DeviceData
 	VkBool32 samplerAnisotropy;							//!< Does physical device supports Anisotropic Filtering (AF)?
 	VkBool32 largePoints;
 	VkBool32 wideLines;
+
+	// Others
+	VkFormat depthFormat;
+
+private:
+	/// Take a list of candidate formats in order from most desirable to least desirable, and check which is the first one that is supported. The support of a format depends on the tiling mode and on the usage (features).
+	VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 };
 
 
@@ -185,34 +192,71 @@ class RenderingWorkflow
 protected:
 	VulkanEnvironment& e;
 
-public:
-	RenderingWorkflow(VulkanEnvironment& e) : e(e) { }
-
 	virtual void createRenderPass() = 0;		/// A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
 	virtual void createImageResources() = 0;
 	virtual void createFramebuffers() = 0;		/// Define the swap chain framebuffers and their attachments (color/swapChain image, depth image, MSAA image)
+	virtual void destroyAttachments() = 0;
+
+public:
+	RenderingWorkflow(VulkanEnvironment& e) : e(e) { }
+
+	std::vector< std::vector<Image*>> inputAttsPerRP;			//!< Input attachments per Render pass (initialize in subclass)
+
+	friend VulkanEnvironment;
 };
 
 /// Rendering workflow containing MSAA and Post-processing.
 class RW_MSAA_PP : public RenderingWorkflow
 {
-public:
-	RW_MSAA_PP(VulkanEnvironment& e) : RenderingWorkflow(e) { }
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
+	void destroyAttachments() override;
 
-	void createRenderPass();
-	void createImageResources();
-	void createFramebuffers();
+public:
+	RW_MSAA_PP(VulkanEnvironment& e);
+
+	Image color_1;							// Basic color (one or more samples)
+	Image depth;							// Depth buffer (one or more samples)
+	Image color_2;							// For postprocessing multiple samples (if used)
 };
 
 /// Rendering workflow containing Post-processing (no MSAA).
 class RW_PP : public RenderingWorkflow
 {
-public:
-	RW_PP(VulkanEnvironment& e) : RenderingWorkflow(e) { }
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
+	void destroyAttachments() override;
 
-	void createRenderPass();
-	void createImageResources();
-	void createFramebuffers();
+public:
+	RW_PP(VulkanEnvironment& e);
+
+	Image color_1;							// Basic color (one or more samples)
+	Image depth;							// Depth buffer (one or more samples)
+	Image color_2;							// For postprocessing multiple samples (if used)
+};
+
+/// Rendering workflow containing Deferred rendering/shading
+class RW_DS : public RenderingWorkflow
+{
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
+	void destroyAttachments() override;
+
+public:
+	RW_DS(VulkanEnvironment& e);
+
+	Image position;
+	Image albedo;
+	Image normal;
+	Image specRoug;		// Specularity & Roughness
+	Image depth;
+	Image finalColor;
 };
 
 
@@ -232,8 +276,6 @@ public:
 	VkCommandBuffer	beginSingleTimeCommands();
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
-	VkFormat		findDepthFormat();
-	//IOmanager*		getWindowManager();
 
 	void			recreate_Images_RenderPass_SwapChain();
 	void			cleanup_Images_RenderPass_SwapChain();
@@ -242,15 +284,11 @@ public:
 	// Main member variables:
 	VkCommandPool commandPool;				//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
+	std::shared_ptr<RenderingWorkflow> rw;
 	VkRenderPass renderPass[2];				//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	Image color_1;							// Basic color (one or more samples)
-	Image depth;							// Depth buffer (one or more samples)
-	Image color_2;							// For postprocessing multiple samples (if used)
 	SwapChain swapChain;					// Final color. Swapchain elements.
 
 	std::vector<std::array<VkFramebuffer, 2>> framebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
-
-	const uint32_t inputAttachmentCount;
 
 	std::mutex queueMutex;					//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
 	std::mutex mutCommandPool;				//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
@@ -261,13 +299,10 @@ private:
 
 	void createCommandPool();
 
-	std::shared_ptr<RenderingWorkflow> rw;
-
 	// Helper methods:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	bool hasStencilComponent(VkFormat format);
 };
 

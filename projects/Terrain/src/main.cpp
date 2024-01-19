@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 			world.printInfo();
 			std::cout << "--------------------" << std::endl;
 		#endif
-
+			std::cout << "To Main()" << std::endl;
 		app.renderLoop();		// Start rendering
 
 		if (0) throw "Test exception";
