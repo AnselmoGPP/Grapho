@@ -8,6 +8,38 @@
 EntityFactory::EntityFactory(Renderer& renderer) 
 	: MainEntityFactory(), renderer(renderer) { };
 
+std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+{
+	std::vector<float> v_quad;	// [4 * 5]
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(v_quad, i_quad, 1.f, 0.5);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
+
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
+	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	std::vector<TextureLoader> textureSet{ textures };
+
+	ModelDataInfo modelInfo;
+	modelInfo.name = "noPP";
+	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &shaders;
+	modelInfo.texturesInfo = &textureSet;
+	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
+	modelInfo.UBOsize_vs = 1;
+	modelInfo.UBOsize_fs = 0;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 1;
+
+	modelIter model = renderer.newModel(modelInfo);
+
+	return std::vector<Component*> {
+		new c_Model_normal(model, UboType::noData)
+	};
+}
+
 std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
 {
 	std::vector<float> v_quad;	// [4 * 5]

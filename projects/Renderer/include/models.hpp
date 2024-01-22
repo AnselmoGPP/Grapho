@@ -19,9 +19,6 @@
 #include "importer.hpp"
 #include "commons.hpp"
 
-//#define DEBUG_MODELS
-
-#define LINE_WIDTH 1.0f
 
 class ModelData;
 typedef std::list<ModelData>::iterator modelIter;
@@ -44,6 +41,7 @@ struct ModelDataInfo
 	size_t UBOsize_fs;
 	bool transparency;
 	uint32_t renderPassIndex;
+	uint32_t subpassIndex;
 	VkCullModeFlagBits cullMode;
 };
 
@@ -114,7 +112,7 @@ public:
 	/// Creates graphic pipeline and descriptor sets. Called for window resizing (by Renderer::recreateSwapChain()).
 	void recreate_Pipeline_Descriptors();
 
-	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing at drawing time to alter the behavior of your shaders without having to recreate them).
+	VkPipelineLayout			 pipelineLayout;		//!< Pipeline layout. Allows to use uniform values in shaders (globals similar to dynamic state variables that can be changed at drawing time to alter the behavior of your shaders without having to recreate them).
 	VkPipeline					 graphicsPipeline;		//!< Opaque handle to a pipeline object.
 
 	std::vector<texIter>		 textures;				//!< Set of textures used by this model.
@@ -128,6 +126,7 @@ public:
 	std::vector<VkDescriptorSet> descriptorSets;		//!< List. Opaque handle to a descriptor set object. One for each swap chain image.
 
 	const uint32_t				 renderPassIndex;		//!< Index of the renderPass used (0 for rendering geometry, 1 for post processing)
+	const uint32_t				 subpassIndex;
 	size_t						 layer;					//!< Layer where this model will be drawn (Painter's algorithm).
 	size_t						 activeInstances;		//!< Number of renderings (<= vsDynUBO.dynBlocksCount). Can be set with setRenderCount.
 

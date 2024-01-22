@@ -12,11 +12,6 @@
 #include "timer.hpp"
 #include "commons.hpp"
 
-//#define DEBUG_RENDERER
-//#define DEBUG_COMMANDBUFFERS
-//#define DEBUG_RENDERLOOP
-//#define DEBUG_WORKER
-
 
 // Prototypes ----------
 
@@ -103,7 +98,6 @@ class Renderer
 
 	LoadingWorker				worker;
 
-	const uint32_t				numRenderPasses;			//!< Number of render passes (2)
 	const size_t				numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIter>		lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 

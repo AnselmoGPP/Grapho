@@ -77,7 +77,7 @@ void VLModule::createVertexBuffer(const VertexSet& rawVertices, VertexData& resu
 	#ifdef DEBUG_RESOURCES
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
+	
 	// Create a staging buffer (host visible buffer used as temporary buffer for mapping and copying the vertex data) (https://vkguide.dev/docs/chapter-5/memory_transfers/)
 	VkDeviceSize   bufferSize = rawVertices.totalBytes();	// sizeof(vertices[0])* vertices.size();
 	VkBuffer	   stagingBuffer;

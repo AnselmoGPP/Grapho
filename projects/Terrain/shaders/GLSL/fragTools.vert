@@ -354,6 +354,16 @@ vec3 mixByHeight(vec3 tex_A, vec3 tex_B, float height_A, float height_B, float r
 	return (tex_B * b1 + tex_A * b2) / (b1 + b2);
 }
 
+// Mix 2 floats based on their height maps.
+float mixByHeight(float f_A, float f_B, float height_A, float height_B, float ratio, float depth)
+{
+	float ma = max(height_B  + ratio, height_A + (1-ratio)) - depth;
+	float b1 = max(height_B  + ratio     - ma, 0);
+	float b2 = max(height_A + (1-ratio) - ma, 0);
+	return (f_B * b1 + f_A * b2) / (b1 + b2);
+}
+
+
 // Save functions ------------------------------------------------------------------------
 // They store shader variables in this library, making them global for this library and allowing it to use them.
 

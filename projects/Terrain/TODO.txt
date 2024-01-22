@@ -4,9 +4,15 @@ TODO:
 	UBO::UBOcount should be fixed because it's fixed in the shader. This should represent the maximum possible number of descriptors
 	FSs descriptor set only can have 1 descriptor (see createDescriptorSets)
 
+	DS: pass tangents/bitangents to G-buffer?
+	DS: Get rid of 
+		savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
+		savePNT(inPos, normalize(inNormal), inTB3);
+
 	Distributor: Make it fill even between vertices
 		Far trees doesn't fit all near trees (in position and size)
 
+	- Put debugging macros in commons.hpp
 	-> Make billboard trees for far distances > Delete GrassSystem
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict

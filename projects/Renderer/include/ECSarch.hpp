@@ -8,8 +8,7 @@
 #include <memory>
 //#include <initializer_list>
 
-//#define DEBUG_ECS
-
+#include "commons.hpp"
 
 // Prototypes ----------
 

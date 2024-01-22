@@ -210,7 +210,6 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	:
 	e(io),
 	io(io),
-	numRenderPasses(2),
 	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
@@ -703,7 +702,7 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 
 			// Look in Renderer::models
-			for(unsigned rpi = 0; rpi < numRenderPasses; rpi ++)
+			for(unsigned rpi = 0; rpi < e.rw->renderPassCount; rpi ++)
 				for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)
 					if (it == model)
 					{

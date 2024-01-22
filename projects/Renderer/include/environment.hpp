@@ -11,8 +11,6 @@
 
 #include "input.hpp"
 
-//#define DEBUG_ENV_INFO			// Basic info
-//#define DEBUG_ENV_CORE			// Standards: NDEBUG, _DEBUG
 #define VAL_LAYERS					// Enable Validation layers
 
 #ifdef VAL_LAYERS
@@ -129,8 +127,8 @@ class VulkanCore
 public:
 	VulkanCore(IOmanager& io);
 
-	const bool add_MSAA = true;			//!< Shader MSAA (MultiSample AntiAliasing). 
-	const bool add_SS = true;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
+	const bool add_MSAA = false;			//!< Shader MSAA (MultiSample AntiAliasing). 
+	const bool add_SS   = false;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
 	const unsigned numRenderPasses = 2;	//!< Number of render passes
 
 	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
@@ -198,9 +196,13 @@ protected:
 	virtual void destroyAttachments() = 0;
 
 public:
-	RenderingWorkflow(VulkanEnvironment& e) : e(e) { }
+	RenderingWorkflow(VulkanEnvironment& e, uint32_t renderPassCount, std::initializer_list<uint32_t> subpassCount) 
+		: e(e), renderPassCount(renderPassCount), subpassCount(subpassCount) { }
 
-	std::vector< std::vector<Image*>> inputAttsPerRP;			//!< Input attachments per Render pass (initialize in subclass)
+	const uint32_t renderPassCount;
+	const std::vector<uint32_t> subpassCount;
+	std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
+	std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
 
 	friend VulkanEnvironment;
 };
@@ -256,7 +258,7 @@ public:
 	Image normal;
 	Image specRoug;		// Specularity & Roughness
 	Image depth;
-	Image finalColor;
+	//Image finalColor;	// swapchain.image[i]
 };
 
 
@@ -272,7 +274,7 @@ public:
 
 	void			createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 	uint32_t		findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-	void			transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+	void			transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);	//!< Submit a pipeline barrier. It specifies when a transition happens: when the pipeline finishes (source) and the next one starts (destination). No command may start before it finishes transitioning. Commands come at the top of the pipeline (first stage), shaders are executed in order, and commands retire at the bottom of the pipeline (last stage), when execution finishes. This barrier will wait for everything to finish and block any work from starting.
 	VkCommandBuffer	beginSingleTimeCommands();
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);

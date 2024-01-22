@@ -21,7 +21,6 @@
 #include "environment.hpp"
 #include "vertex.hpp"
 
-//#define DEBUG_RESOURCES
 
 /*
 	A VerticesLoader, ShaderLoader and TextureLoader objects are passed to our ModelData.

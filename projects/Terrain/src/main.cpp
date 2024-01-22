@@ -50,10 +50,11 @@ int main(int argc, char* argv[])
 		TimerSet time;
 		std::cout << "--------------------" << std::endl << time.getDate() << std::endl;
 	#endif
-
+	
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
 	{
 		IOmanager io(1920/2, 1080/2);
+		
 		Renderer app(update, io, 2);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
 		bool withPP = true;					// Add Post-Processing effects (atmosphere...) or not
@@ -61,6 +62,8 @@ int main(int argc, char* argv[])
 		loadResourcesInfo();				// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
+		bool deferredShading = true;
+		if(!deferredShading)
 		{
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 				new c_Engine(app),
@@ -104,7 +107,19 @@ int main(int argc, char* argv[])
 			if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 			else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		}
+		else
+		{
+			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
+				new c_Engine(app),
+				new c_Input,
+				new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
+				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
+				new c_Lights(2) });
 
+			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
+			
+			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders["v_lightingPass"], shaderLoaders["f_lightingPass"], { }));
+		}
 		// SYSTEMS:
 		{
 			em.addSystem(new s_Engine);
@@ -121,7 +136,7 @@ int main(int argc, char* argv[])
 			world.printInfo();
 			std::cout << "--------------------" << std::endl;
 		#endif
-			std::cout << "To Main()" << std::endl;
+		
 		app.renderLoop();		// Start rendering
 
 		if (0) throw "Test exception";
@@ -202,6 +217,9 @@ void loadResourcesInfo()
 		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "v_planetChunk.vert")));
 		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "f_planetChunk.frag")));
 
+		shaderLoaders.insert(std::pair("v_planetChunk2", ShaderLoader(shadersDir + "DS/v_planetChunk.vert")));
+		shaderLoaders.insert(std::pair("f_planetChunk2", ShaderLoader(shadersDir + "DS/f_planetChunk.frag")));
+
 		shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "v_sun.vert")));
 		shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "f_sun.frag")));
 
@@ -231,6 +249,9 @@ void loadResourcesInfo()
 
 		shaderLoaders.insert(std::pair("v_noPP", ShaderLoader(shadersDir + "v_noPP.vert")));
 		shaderLoaders.insert(std::pair("f_noPP", ShaderLoader(shadersDir + "f_noPP.frag")));
+
+		shaderLoaders.insert(std::pair("v_lightingPass", ShaderLoader(shadersDir + "DS/v_lightingPass.vert")));
+		shaderLoaders.insert(std::pair("f_lightingPass", ShaderLoader(shadersDir + "DS/f_lightingPass.frag")));
 	}
 
 	// VERTICES

@@ -18,6 +18,7 @@ ModelDataInfo::ModelDataInfo()
 	UBOsize_fs(8),
 	transparency(false),
 	renderPassIndex(0),
+	subpassIndex(0),
 	cullMode(VK_CULL_MODE_BACK_BIT)
 { }
 
@@ -32,6 +33,7 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.UBOsize_vs, e->c.deviceData.minUniformBufferOffsetAlignment),
 	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.deviceData.minUniformBufferOffsetAlignment),
 	renderPassIndex(modelInfo.renderPassIndex),
+	subpassIndex(modelInfo.subpassIndex),
 	layer(modelInfo.layer),
 	activeInstances(modelInfo.activeInstances),
 	fullyConstructed(false),
@@ -137,12 +139,12 @@ void ModelData::createDescriptorSetLayout()
 	}
 
 	// Input attachments
-	if (renderPassIndex)
+	if (e->rw->inputAttachments[renderPassIndex][subpassIndex].size())
 	{
 		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
 		inputAttachmentLayoutBinding.binding = bindNumber++;
 		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		inputAttachmentLayoutBinding.descriptorCount = e->rw->inputAttsPerRP[renderPassIndex].size();
+		inputAttachmentLayoutBinding.descriptorCount = e->rw->inputAttachments[renderPassIndex][subpassIndex].size();
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -311,13 +313,15 @@ void ModelData::createGraphicsPipeline()
 		*/
 	}
 
+	std::vector<VkPipelineColorBlendAttachmentState> setColorBlendAttachments(e->rw->colorAttachmentCounts[renderPassIndex][subpassIndex], colorBlendAttachment);
+
 	//	- Global color blending settings. Set blend constants that you can use as blend factors in the aforementioned calculations.
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;					// VK_FALSE: Blending method of mixing values.  VK_TRUE: Blending method of bitwise values combination (this disables the previous structure, like blendEnable = VK_FALSE).
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;				// Optional
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.attachmentCount = e->rw->colorAttachmentCounts[renderPassIndex][subpassIndex];
+	colorBlending.pAttachments = setColorBlendAttachments.data();
 	colorBlending.blendConstants[0] = 0.0f;						// Optional
 	colorBlending.blendConstants[1] = 0.0f;						// Optional
 	colorBlending.blendConstants[2] = 0.0f;						// Optional
@@ -392,7 +396,7 @@ void ModelData::createDescriptorPool()
 		poolSizes.push_back(pool);
 	}
 
-	if (renderPassIndex)
+	if (e->rw->inputAttachments[renderPassIndex][subpassIndex].size())
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());
@@ -462,12 +466,12 @@ void ModelData::createDescriptorSets()
 		}
 
 		// Input attachments
-		std::vector<VkDescriptorImageInfo> inputAttachInfo(e->rw->inputAttsPerRP[renderPassIndex].size());
+		std::vector<VkDescriptorImageInfo> inputAttachInfo(e->rw->inputAttachments[renderPassIndex][subpassIndex].size());
 		for (unsigned i = 0; i < inputAttachInfo.size(); i++)
 		{
 			inputAttachInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			inputAttachInfo[i].imageView = e->rw->inputAttsPerRP[renderPassIndex][i]->view;
-			inputAttachInfo[i].sampler = e->rw->inputAttsPerRP[renderPassIndex][i]->sampler;
+			inputAttachInfo[i].imageView = e->rw->inputAttachments[renderPassIndex][subpassIndex][i]->view;
+			inputAttachInfo[i].sampler = e->rw->inputAttachments[renderPassIndex][subpassIndex][i]->sampler;
 		}
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
@@ -522,7 +526,7 @@ void ModelData::createDescriptorSets()
 			descriptorWrites.push_back(descriptor);
 		}
 		
-		if (renderPassIndex)
+		if (e->rw->inputAttachments[renderPassIndex][subpassIndex].size())
 		{
 			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptor.dstSet = descriptorSets[i];

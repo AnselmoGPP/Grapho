@@ -795,7 +795,7 @@ void s_Distributor::update(float timeStep)
 {
     // Entities with the component
     std::vector<uint32_t> entities = em->getEntitySet(CT::distributor);
-    if (!entities.size()) return;
+    if (entities.empty()) return;
 
     // Singleton components
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);

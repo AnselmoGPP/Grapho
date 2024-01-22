@@ -10,6 +10,26 @@
 #include "environment.hpp"
 
 
+// Debugging macros ----------
+
+//#define DEBUG_ENV_INFO			// Basic info
+//#define DEBUG_ENV_CORE			// Standards: NDEBUG, _DEBUG
+
+//#define DEBUG_RENDERER
+//#define DEBUG_COMMANDBUFFERS
+//#define DEBUG_RENDERLOOP
+//#define DEBUG_WORKER
+
+//#define DEBUG_MODELS
+#define LINE_WIDTH 1.0f
+
+//#define DEBUG_RESOURCES
+
+//#define DEBUG_ECS
+
+
+// Functions ----------
+
 //extern std::vector< std::function<glm::mat4(float)> > room_MM;	// Store callbacks of type 'glm::mat4 callb(float a)'. Requires <functional> library
 
 /// Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture. Used as friend in ModelData, Texture and UBO.
