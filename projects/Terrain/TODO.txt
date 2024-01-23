@@ -12,6 +12,8 @@ TODO:
 	Distributor: Make it fill even between vertices
 		Far trees doesn't fit all near trees (in position and size)
 
+	- Store VkRenderPassBeginInfo in RenderWorkflow / Add framebuffer and maybe swapchain
+	- RenderingWorkflow x RenderPipeline
 	- Put debugging macros in commons.hpp
 	-> Make billboard trees for far distances > Delete GrassSystem
 	- Second thread: Create & delete objects in the same order they have been asked

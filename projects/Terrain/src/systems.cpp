@@ -691,7 +691,8 @@ void s_Model::update(float timeStep)
     float aspectRatio = c_eng->getAspectRatio();
     glm::vec2 clipPlanes{ c_cam->nearViewPlane, c_cam->farViewPlane };
     glm::vec2 screenSize{ c_eng->getWidth(), c_eng->getHeight() };
-
+    glm::vec4 camPos_numLights(c_cam->camPos, c_lights->lights.numLights);
+    
     glm::mat4 MM;
 
     for (uint32_t eId : entities)
@@ -703,6 +704,25 @@ void s_Model::update(float timeStep)
         {
         case UboType::noData:
             break;
+        case UboType::lightPass:
+        {
+            for (i = 0; i < ((c_Model_normal*)c_model)->model->activeInstances; i++)
+            {
+                dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
+                memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
+                dest += c_lights->lights.posDirBytes;   // c_lights->lights.numLights * sizeof(LightPosDir);
+            }
+            
+            dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
+            memcpy(dest, &camPos_numLights, size.vec4);
+            dest += size.vec4;
+            memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+            dest += c_lights->lights.propsBytes;  // c_lights->lights.numLights * sizeof(LightProps);
+            //std::cout << c_lights->lights.posDirBytes << ", " << c_lights->lights.numLights * sizeof(LightPosDir);
+            //std::cout << ", " << c_lights->lights.propsBytes << ", " << c_lights->lights.numLights * sizeof(LightProps) << std::endl;
+            //std::cout << c_lights->lights.props->type << std::endl;
+            break;
+        }
         case UboType::mvp:      // MVP
             {
                 c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);

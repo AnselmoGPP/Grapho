@@ -155,6 +155,7 @@ VulkanEnvironment::VulkanEnvironment(IOmanager& io)
 	rw->createRenderPass();
 	rw->createImageResources();
 	rw->createFramebuffers();
+	rw->createRenderPassInfo();
 }
 
 VulkanEnvironment::~VulkanEnvironment() 
@@ -1174,6 +1175,7 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 	rw->createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
 	rw->createImageResources();
 	rw->createFramebuffers();				// Framebuffers directly depend on the swap chain images.
+	rw->createRenderPassInfo();
 }
 
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
@@ -1860,24 +1862,8 @@ void RW_DS::createRenderPass()
 	#endif
 
 	/*
-		Process for MultiSampling + PostProcessing:
-
-		Render pass 1:
-			Subpass A attachments:
-				shader -> colorResolveAttachment: Final color (many samplers)
-				shader -> depthAttachment[n]: Depth (many samplers)
-				X - msaaColorAttachment[n]: Color attachment for multisampling (not used: only 1 sample)
-		Render pass 2:
-			Subpass B attachments:
-				shader -> colorResolveAttachment: Final color (many samples)
-					colorResolveAttachment: Final color from RP 1 (input attachments)
-					depthAttachment: Depth from RP 1 (input attachments)
-				msaa -> colorAttachmentPP: Final color (swapChainImageView)
-	*/
-
-	/*
-		Input attachments passed to RP1 (for writing): position, albedo, normal, specRoug
-		Input attachments passed to RP2 (for reading): position, albedo, normal, specRoug
+		RP1's color attachments (writing): position, albedo, normal, specRoug
+		RP2's input attachments (reading): position, albedo, normal, specRoug
 	*/
 
 	// Attachments -------------------------
@@ -1913,7 +1899,7 @@ void RW_DS::createRenderPass()
 	VkAttachmentReference finalColorAttRef_2{};
 	
 	// Input attachment (position) to RP1::SP1
-	positionAtt_1.format = e.swapChain.imageFormat;
+	positionAtt_1.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	positionAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;							// Single color buffer attachment, or many (multisampling).
 	positionAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
 	positionAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
@@ -1928,7 +1914,7 @@ void RW_DS::createRenderPass()
 	// Input attachment (albedo) to RP1::SP1
 	albedoAtt_1.format = e.swapChain.imageFormat;
 	albedoAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
-	albedoAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	albedoAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	albedoAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	albedoAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	albedoAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1939,7 +1925,7 @@ void RW_DS::createRenderPass()
 	albedoAttRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	// Input attachment (normal) to RP1::SP1
-	normalAtt_1.format = e.swapChain.imageFormat;
+	normalAtt_1.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	normalAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
 	normalAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	normalAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -2124,30 +2110,81 @@ void RW_DS::createImageResources()
 	samplerInfo.maxLod = 0.f;
 	samplerInfo.mipLodBias = 0.0f;
 
-	// position, albedo, normal, specRoug -------------------------------------
+	// Position -------------------------------------
 
-	std::vector<Image*> images = { &position, &albedo, &normal, &specRoug };
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		position.image,
+		position.memory);
 
-	for (unsigned i = 0; i < images.size(); i++)
-	{
-		e.createImage(
-			e.swapChain.extent.width,
-			e.swapChain.extent.height,
-			1,
-			VK_SAMPLE_COUNT_1_BIT,
-			e.swapChain.imageFormat,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			images[i]->image,
-			images[i]->memory);
+	position.view = e.createImageView(position.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
-		images[i]->view = e.createImageView(images[i]->image, e.swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &position.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
 
-		// Create sampler
-		if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &images[i]->sampler) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create resolve color sampler!");
-	}
+	// Albedo -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		e.swapChain.imageFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		albedo.image,
+		albedo.memory);
+
+	albedo.view = e.createImageView(albedo.image, e.swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &albedo.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// Normal -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		normal.image,
+		normal.memory);
+
+	normal.view = e.createImageView(normal.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &normal.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// specRoug -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		e.swapChain.imageFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		specRoug.image,
+		specRoug.memory);
+
+	specRoug.view = e.createImageView(specRoug.image, e.swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &specRoug.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
 
 	// Depth -------------------------------------
 
@@ -2167,7 +2204,6 @@ void RW_DS::createImageResources()
 	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
 	e.transitionImageLayout(depth.image, e.c.deviceData.depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
 
-	// Create sampler
 	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create depth sampler!");
 }
@@ -2212,6 +2248,45 @@ void RW_DS::createFramebuffers()
 
 		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &e.framebuffers[i][1]) != VK_SUCCESS)
 			throw std::runtime_error("Failed to create framebuffer 2!");
+	}
+}
+
+void RW_DS::createRenderPassInfo()
+{
+	// clearValues -------------------------
+
+	clearValues.resize(2);							// One per render pass
+
+	clearValues[0].resize(5);						// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
+	clearValues[0][0].color = backgroundColor;		// Color buffer (position). Background color (alpha = 1 means 100% opacity)
+	clearValues[0][1].color = backgroundColor;		// Color buffer (albedo)
+	clearValues[0][2].color = backgroundColor;		// Color buffer (normal)
+	clearValues[0][3].color = backgroundColor;		// Color buffer (specularity & roughness)
+	clearValues[0][4].depthStencil = {1.0f, 0};		// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+	
+	clearValues[1].resize(5);
+	clearValues[1][0].color = backgroundColor;		// Input attachment (position)
+	clearValues[1][1].color = backgroundColor;		// Input attachment (albedo)
+	clearValues[1][2].color = backgroundColor;		// Input attachment (normal)
+	clearValues[1][3].color = backgroundColor;		// Input attachment (specularity & roughness)
+	clearValues[1][4].color = backgroundColor;		// Final color buffer
+
+	// renderPassInfo -------------------------
+
+	renderPassInfo.resize(e.swapChain.images.size());	// One per swap chain image	
+	for (unsigned i = 0; i < renderPassInfo.size(); i++)
+	{
+		renderPassInfo[i].resize(2);					// One per render pass
+		for (unsigned j = 0; j < renderPassInfo[i].size(); j++)
+		{
+			renderPassInfo[i][j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo[i][j].renderPass = e.renderPass[j];
+			renderPassInfo[i][j].framebuffer = e.framebuffers[i][j];
+			renderPassInfo[i][j].renderArea.offset = { 0, 0 };
+			renderPassInfo[i][j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+			renderPassInfo[i][j].clearValueCount = static_cast<uint32_t>(clearValues[j].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+			renderPassInfo[i][j].pClearValues = clearValues[j].data();								// ... used as load operation for the color attachment and depth buffer.
+		}
 	}
 }
 

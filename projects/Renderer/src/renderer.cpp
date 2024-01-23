@@ -277,20 +277,7 @@ void Renderer::createCommandBuffers()
 			std::cout << "   Render pass 1" << std::endl;
 		#endif
 
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = e.renderPass[0];
-		renderPassInfo.framebuffer = e.framebuffers[i][0];
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = e.swapChain.extent;						// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-		std::array<VkClearValue, 3> clearValues{};									// The order of clearValues should be identical to the order of your attachments.
-		clearValues[0].color = backgroundColor;										// Resolve color buffer. Background color (alpha = 1 means 100% opacity)
-		clearValues[1].depthStencil = { 1.0f, 0 };									// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
-		clearValues[2].color = backgroundColor;										// MSAA color buffer.
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-		renderPassInfo.pClearValues = clearValues.data();							// ... used as load operation for the color attachment and depth buffer.
-		
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+		vkCmdBeginRenderPass(commandBuffers[i], &e.rw->renderPassInfo[i][0], VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 		
 		VkDeviceSize offsets[] = { 0 };
 		
@@ -337,15 +324,7 @@ void Renderer::createCommandBuffers()
 			std::cout << "   Render pass 2" << std::endl;
 		#endif
 
-		renderPassInfo.renderPass = e.renderPass[1];
-		renderPassInfo.framebuffer = e.framebuffers[i][1];
-		clearValues[0].color = backgroundColor;
-		clearValues[1].depthStencil = { 1.0f, 0 };
-		clearValues[2].color = backgroundColor;
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
+		vkCmdBeginRenderPass(commandBuffers[i], &e.rw->renderPassInfo[i][1], VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start subpass
 		
 		for (modelIter it = models[1].begin(); it != models[1].end(); it++)	// for each MODEL (post processing)
@@ -557,7 +536,7 @@ void Renderer::recreateSwapChain()
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
+	
 	// Get window size
 	int width = 0, height = 0;
 	//io.getFramebufferSize(&width, &height);
@@ -664,7 +643,7 @@ void Renderer::cleanup()
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: models (" << models[0].size() << ", " << models[1].size() << "), modelsToLoad (" << modelsToLoad.size() << "), modelsToDelete (" << modelsToDelete.size() << "), Textures (" << textures.size() << "), Shaders(" << shaders.size() << ')' << std::endl;
 	e.cleanup();
-
+	
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << " (2/2)" << std::endl;
 	#endif
@@ -673,7 +652,7 @@ void Renderer::cleanup()
 modelIter Renderer::newModel(ModelDataInfo& modelInfo)
 {
 	#ifdef DEBUG_RENDERER
-		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelName << std::endl;
+		std::cout << typeid(*this).name() << "::" << __func__ << ": " << modelInfo.name << std::endl;
 	#endif
 
 	const std::lock_guard<std::mutex> lock(worker.mutLoad);

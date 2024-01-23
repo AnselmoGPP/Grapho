@@ -170,33 +170,39 @@ void setData_grassRock()
 	
 	// Get material colors depending upon distance mixing resolution.
 	vec3 alb[5];
-	alb[0] = mix(albedo[0][1], albedo[0][0], ratioMix);
-	alb[1] = mix(albedo[1][1], albedo[1][0], ratioMix);
-	alb[2] = mix(albedo[2][1], albedo[2][0], ratioMix);
-	alb[3] = mix(albedo[3][1], albedo[3][0], ratioMix);
-	alb[4] = mix(albedo[4][1], albedo[4][0], ratioMix);
-
 	vec3 nor[5];
-	nor[0] = mix(normal[0][1], normal[0][0], ratioMix);
-	nor[1] = mix(normal[1][1], normal[1][0], ratioMix);
-	nor[2] = mix(normal[2][1], normal[2][0], ratioMix);
-	nor[3] = mix(normal[3][1], normal[3][0], ratioMix);
-	nor[4] = mix(normal[4][1], normal[4][0], ratioMix);
-
 	vec3 spe[5];
-	spe[0] = mix(specul[0][1], specul[0][0], ratioMix);
-	spe[1] = mix(specul[1][1], specul[1][0], ratioMix);
-	spe[2] = mix(specul[2][1], specul[2][0], ratioMix);
-	spe[3] = mix(specul[3][1], specul[3][0], ratioMix);
-	spe[4] = mix(specul[4][1], specul[4][0], ratioMix);
-
 	float rou[5];
-	rou[0] = mix(rough[0][1], rough[0][0], ratioMix);
-	rou[1] = mix(rough[1][1], rough[1][0], ratioMix);
-	rou[2] = mix(rough[2][1], rough[2][0], ratioMix);
-	rou[3] = mix(rough[3][1], rough[3][0], ratioMix);
-	rou[4] = mix(rough[4][1], rough[4][0], ratioMix);
-
+	
+	{
+		alb[0] = mix(albedo[0][1], albedo[0][0], ratioMix);
+		alb[1] = mix(albedo[1][1], albedo[1][0], ratioMix);
+		alb[2] = mix(albedo[2][1], albedo[2][0], ratioMix);
+		alb[3] = mix(albedo[3][1], albedo[3][0], ratioMix);
+		alb[4] = mix(albedo[4][1], albedo[4][0], ratioMix);
+	
+		
+		nor[0] = mix(normal[0][1], normal[0][0], ratioMix);
+		nor[1] = mix(normal[1][1], normal[1][0], ratioMix);
+		nor[2] = mix(normal[2][1], normal[2][0], ratioMix);
+		nor[3] = mix(normal[3][1], normal[3][0], ratioMix);
+		nor[4] = mix(normal[4][1], normal[4][0], ratioMix);
+	
+		
+		spe[0] = mix(specul[0][1], specul[0][0], ratioMix);
+		spe[1] = mix(specul[1][1], specul[1][0], ratioMix);
+		spe[2] = mix(specul[2][1], specul[2][0], ratioMix);
+		spe[3] = mix(specul[3][1], specul[3][0], ratioMix);
+		spe[4] = mix(specul[4][1], specul[4][0], ratioMix);
+	
+		
+		rou[0] = mix(rough[0][1], rough[0][0], ratioMix);
+		rou[1] = mix(rough[1][1], rough[1][0], ratioMix);
+		rou[2] = mix(rough[2][1], rough[2][0], ratioMix);
+		rou[3] = mix(rough[3][1], rough[3][0], ratioMix);
+		rou[4] = mix(rough[4][1], rough[4][0], ratioMix);
+	}
+	
 	// Grass:
 	if(inDist < DIST_2)		// Close grass use different normals (snow normals Vs grass normals)
 	{	
@@ -287,10 +293,11 @@ void setData_grassRock()
 	spe[0] = mix(spe[0], spe[2], ratioSnow);
 	rou[0] = mix(rou[0], rou[2], ratioSnow);
 	
-	
+	// Set g-buffer
 	gPos = vec4(inPos, 1.0);
 	gAlbedo.xyz = alb[0];
-	gNormal.xyz = normalize(nor[0]);
+	//gNormal.xyz = normalize(nor[0]);
+	gNormal.xyz = normalize(inNormal);
 	gSpecRoug = vec4(spe[0], rou[0]);
 }
 

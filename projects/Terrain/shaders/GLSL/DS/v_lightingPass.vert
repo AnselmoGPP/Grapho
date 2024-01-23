@@ -2,14 +2,17 @@
 #extension GL_ARB_separate_shader_objects : enable
 #pragma shader_stage(vertex)
 
+#include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
+
 layout(set = 0, binding = 0) uniform ubobject {
-	vec4 variable;
+	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
 layout (location = 0) in vec3 inPos;				// NDC position. Since it's in NDCs, no MVP transformation is required-
 layout (location = 1) in vec2 inUVs;
 
 layout(location = 0) out vec2 outUVs;				// UVs
+layout(location = 1) flat out LightPD outLight[NUMLIGHTS];
 
 void main()
 {

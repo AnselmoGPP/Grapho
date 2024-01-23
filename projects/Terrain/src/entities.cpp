@@ -8,18 +8,18 @@
 EntityFactory::EntityFactory(Renderer& renderer) 
 	: MainEntityFactory(), renderer(renderer) { };
 
-std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights)
 {
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
-	getScreenQuad(v_quad, i_quad, 1.f, 0.5);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
+	getScreenQuad(v_quad, i_quad, 1.f, 0);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
 	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
 	std::vector<TextureLoader> textureSet{ textures };
 
 	ModelDataInfo modelInfo;
-	modelInfo.name = "noPP";
+	modelInfo.name = "lightingPass";
 	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -29,14 +29,16 @@ std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, 
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
 	modelInfo.UBOsize_vs = 1;
-	modelInfo.UBOsize_fs = 0;
+	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir) + c_lights->lights.numLights * sizeof(LightProps);		// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 1;
-
+	modelInfo.subpassIndex = 0;
+	modelInfo.maxDescriptorsCount_vs = 5000;
+	
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> {
-		new c_Model_normal(model, UboType::noData)
+		new c_Model_normal(model, UboType::lightPass)
 	};
 }
 

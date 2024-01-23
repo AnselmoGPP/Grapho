@@ -79,7 +79,7 @@ struct SwapChain
 	std::vector<VkImage>						images;			//!< List. Opaque handle to an image object.
 	std::vector<VkImageView>					views;			//!< List. Opaque handle to an image view object. It allows to use VkImage in the render pipeline. It's a view into an image; it describes how to access the image and which part of the image to access.
 
-	VkFormat									imageFormat;
+	VkFormat									imageFormat;	//!< VK_FORMAT_B8G8R8A8_SRGB
 	VkExtent2D									extent;
 };
 
@@ -189,10 +189,13 @@ class RenderingWorkflow
 {
 protected:
 	VulkanEnvironment& e;
+	std::vector< std::vector<VkClearValue>> clearValues;			//!< One per render pass per attachment
+	const VkClearColorValue backgroundColor = { 0.20, 0.59, 1.00, 1.00 };
 
 	virtual void createRenderPass() = 0;		/// A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
 	virtual void createImageResources() = 0;
 	virtual void createFramebuffers() = 0;		/// Define the swap chain framebuffers and their attachments (color/swapChain image, depth image, MSAA image)
+	virtual void createRenderPassInfo() = 0;	//!< Create the VkRenderPassBeginInfo objects used at vkCmdBeginRenderPass() for creating the command buffer.
 	virtual void destroyAttachments() = 0;
 
 public:
@@ -203,6 +206,7 @@ public:
 	const std::vector<uint32_t> subpassCount;
 	std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
 	std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
+	std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
 
 	friend VulkanEnvironment;
 };
@@ -214,6 +218,7 @@ protected:
 	void createRenderPass() override;
 	void createImageResources() override;
 	void createFramebuffers() override;
+	void createRenderPassInfo() override { };
 	void destroyAttachments() override;
 
 public:
@@ -231,6 +236,7 @@ protected:
 	void createRenderPass() override;
 	void createImageResources() override;
 	void createFramebuffers() override;
+	void createRenderPassInfo() override { };
 	void destroyAttachments() override;
 
 public:
@@ -248,6 +254,7 @@ protected:
 	void createRenderPass() override;
 	void createImageResources() override;
 	void createFramebuffers() override;
+	void createRenderPassInfo() override;
 	void destroyAttachments() override;
 
 public:

@@ -15,7 +15,7 @@ class EntityFactory : public MainEntityFactory
 public:
 	EntityFactory(Renderer& renderer);
 
-	std::vector<Component*> createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
+	std::vector<Component*> createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights);
 
 	std::vector<Component*> createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader);
