@@ -19,4 +19,10 @@ void main()
 	//gl_Position.x = gl_Position.x * ubo.aspRatio.x;
 	gl_Position = vec4(inPos, 1.0f);
     outUVs = inUVs;
+	
+	for(int i = 0; i < NUMLIGHTS; i++) 
+	{
+		outLight[i].position.xyz  = ubo.light[i].position.xyz;							// for point & spot light
+		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);				// for directional & spot light
+	}
 }

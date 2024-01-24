@@ -194,7 +194,7 @@ c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count)
 	//lights.turnOff(0);
 
 	// Sun (day & night):
-	if (i < count) lights.setDirectional(i++,  glm::vec3(-1,0,0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	if (i < count) lights.setDirectional(i++,  glm::vec3(-1, 0, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
 	if (i < count) lights.setDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
 
 	// Flashlight:

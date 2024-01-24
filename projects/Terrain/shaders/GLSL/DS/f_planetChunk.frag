@@ -133,11 +133,11 @@ void setData_grassRock()
         specul[3][i] = triplanarNoColor(texSampler[12], tf[i]).rgb;
         specul[4][i] = triplanarNoColor(texSampler[27], tf[i]).rgb;
 		
-		rough [0][i] = triplanarNoColor(texSampler[3],  tf[i]).r * 255;
-        rough [1][i] = triplanarNoColor(texSampler[8],  tf[i]).r * 255;
-        rough [2][i] = triplanarNoColor(texSampler[18], tf[i]).r * 255;
-        rough [3][i] = triplanarNoColor(texSampler[13], tf[i]).r * 255;
-        rough [4][i] = triplanarNoColor(texSampler[28], tf[i]).r * 255;
+		rough [0][i] = triplanarNoColor(texSampler[3],  tf[i]).r;
+        rough [1][i] = triplanarNoColor(texSampler[8],  tf[i]).r;
+        rough [2][i] = triplanarNoColor(texSampler[18], tf[i]).r;
+        rough [3][i] = triplanarNoColor(texSampler[13], tf[i]).r;
+        rough [4][i] = triplanarNoColor(texSampler[28], tf[i]).r;
 		
 		if(ratioMix == 1.f) {
 			albedo[0][1] = albedo[0][0]; 
@@ -211,7 +211,7 @@ void setData_grassRock()
 		alb[0] = mix(triplanarTexture(texSampler[0], tf[0]).rgb * dryColor, albedo[0][0], closeRatio);
 		nor[0] = mix(triplanarNormal (texSampler[1], tf[0]),                normal[0][0], closeRatio);
 		spe[0] = mix(triplanarNoColor(texSampler[2], tf[0]).rgb,            specul[0][0], closeRatio);
-		rou[0] = mix(triplanarNoColor(texSampler[3], tf[0]).r * 255,        rough [0][0], closeRatio);
+		rou[0] = mix(triplanarNoColor(texSampler[3], tf[0]).r,              rough [0][0], closeRatio);
 	}
 
 	// Grass + Rock:
@@ -296,8 +296,8 @@ void setData_grassRock()
 	// Set g-buffer
 	gPos = vec4(inPos, 1.0);
 	gAlbedo.xyz = alb[0];
-	//gNormal.xyz = normalize(nor[0]);
-	gNormal.xyz = normalize(inNormal);
+	gNormal.xyz = normalize(nor[0]);
+	//gNormal.xyz = normalize(inNormal);
 	gSpecRoug = vec4(spe[0], rou[0]);
 }
 

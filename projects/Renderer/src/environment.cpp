@@ -1927,7 +1927,7 @@ void RW_DS::createRenderPass()
 	// Input attachment (normal) to RP1::SP1
 	normalAtt_1.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	normalAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
-	normalAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	normalAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	normalAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	normalAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	normalAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1940,7 +1940,7 @@ void RW_DS::createRenderPass()
 	// Input attachment (specularity & roughness) to RP1::SP1
 	specRougAtt_1.format = e.swapChain.imageFormat;
 	specRougAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
-	specRougAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	specRougAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	specRougAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	specRougAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	specRougAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -2255,21 +2255,24 @@ void RW_DS::createRenderPassInfo()
 {
 	// clearValues -------------------------
 
-	clearValues.resize(2);							// One per render pass
+	VkClearColorValue background = { 0.20, 0.59, 1.00, 1.00 };
+	VkClearColorValue zeros = { 0.0, 0.0, 0.0, 0.0 };
 
-	clearValues[0].resize(5);						// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
-	clearValues[0][0].color = backgroundColor;		// Color buffer (position). Background color (alpha = 1 means 100% opacity)
-	clearValues[0][1].color = backgroundColor;		// Color buffer (albedo)
-	clearValues[0][2].color = backgroundColor;		// Color buffer (normal)
-	clearValues[0][3].color = backgroundColor;		// Color buffer (specularity & roughness)
-	clearValues[0][4].depthStencil = {1.0f, 0};		// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+	clearValues.resize(2);						// One per render pass
+
+	clearValues[0].resize(5);					// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
+	clearValues[0][0].color = zeros;			// Color buffer (position). Background color (alpha = 1 means 100% opacity)
+	clearValues[0][1].color = background;		// Color buffer (albedo)
+	clearValues[0][2].color = zeros;			// Color buffer (normal)
+	clearValues[0][3].color = zeros;			// Color buffer (specularity & roughness)
+	clearValues[0][4].depthStencil = {1.0f, 0};	// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
 	
 	clearValues[1].resize(5);
-	clearValues[1][0].color = backgroundColor;		// Input attachment (position)
-	clearValues[1][1].color = backgroundColor;		// Input attachment (albedo)
-	clearValues[1][2].color = backgroundColor;		// Input attachment (normal)
-	clearValues[1][3].color = backgroundColor;		// Input attachment (specularity & roughness)
-	clearValues[1][4].color = backgroundColor;		// Final color buffer
+	clearValues[1][0].color = zeros;			// Input attachment (position)
+	clearValues[1][1].color = background;		// Input attachment (albedo)
+	clearValues[1][2].color = zeros;			// Input attachment (normal)
+	clearValues[1][3].color = zeros;			// Input attachment (specularity & roughness)
+	clearValues[1][4].color = background;		// Final color buffer
 
 	// renderPassInfo -------------------------
 

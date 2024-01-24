@@ -28,8 +28,8 @@ std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, 
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
-	modelInfo.UBOsize_vs = 1;
-	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir) + c_lights->lights.numLights * sizeof(LightProps);		// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
+	modelInfo.UBOsize_vs = c_lights->lights.numLights * sizeof(LightPosDir);
+	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.numLights * sizeof(LightProps);		// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 1;
 	modelInfo.subpassIndex = 0;

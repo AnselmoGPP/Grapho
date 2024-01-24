@@ -451,8 +451,8 @@ vec3 directionalLightColor(int i, vec3 albedo, vec3 normal, vec3 specularity, fl
 	if(dot(light[i].direction, normal) > 0) return ambient;			// If light comes from below the tangent plane
 	
 	// ----- Diffuse lighting -----
-	float diff   = max(dot(normal, -light[i].direction), 0.f);
-	vec3 diffuse = light[i].diffuse * albedo * diff;		
+	float diff    = max(dot(normal, -light[i].direction), 0.f);
+	vec3 diffuse = light[i].diffuse * albedo * diff;
 	
 	// ----- Specular lighting -----
 	float spec		= pow(max(dot(normal, pre.halfwayDir[i]), 0.0), roughness * 4);

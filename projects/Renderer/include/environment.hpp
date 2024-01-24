@@ -129,7 +129,7 @@ public:
 
 	const bool add_MSAA = false;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS   = false;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
-	const unsigned numRenderPasses = 2;	//!< Number of render passes
+	const unsigned numRenderPasses = 2;		//!< Number of render passes
 
 	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	debugMessenger;		//!< Opaque handle to a debug messenger object (the debug callback is part of it).
@@ -190,7 +190,7 @@ class RenderingWorkflow
 protected:
 	VulkanEnvironment& e;
 	std::vector< std::vector<VkClearValue>> clearValues;			//!< One per render pass per attachment
-	const VkClearColorValue backgroundColor = { 0.20, 0.59, 1.00, 1.00 };
+	//const VkClearColorValue backgroundColor = { 0.20, 0.59, 1.00, 1.00 };
 
 	virtual void createRenderPass() = 0;		/// A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
 	virtual void createImageResources() = 0;
