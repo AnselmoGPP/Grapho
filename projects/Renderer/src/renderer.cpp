@@ -277,7 +277,7 @@ void Renderer::createCommandBuffers()
 			std::cout << "   Render pass 1" << std::endl;
 		#endif
 
-		vkCmdBeginRenderPass(commandBuffers[i], &e.rw->renderPassInfo[i][0], VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+		vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPassInfo[i][0], VK_SUBPASS_CONTENTS_INLINE);		// VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 		
 		VkDeviceSize offsets[] = { 0 };
 		
@@ -324,7 +324,7 @@ void Renderer::createCommandBuffers()
 			std::cout << "   Render pass 2" << std::endl;
 		#endif
 
-		vkCmdBeginRenderPass(commandBuffers[i], &e.rw->renderPassInfo[i][1], VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
+		vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPassInfo[i][1], VK_SUBPASS_CONTENTS_INLINE);	// Start render pass
 		//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start subpass
 		
 		for (modelIter it = models[1].begin(); it != models[1].end(); it++)	// for each MODEL (post processing)
@@ -559,7 +559,7 @@ void Renderer::recreateSwapChain()
 	//    - Each model
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-	for (uint32_t i = 0; i < e.c.numRenderPasses; i++)
+	for (uint32_t i = 0; i < e.rp->renderPassCount; i++)
 		for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 			it->recreate_Pipeline_Descriptors();
 
@@ -584,7 +584,7 @@ void Renderer::cleanupSwapChain()
 	{
 		const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-		for (uint32_t i = 0; i < e.c.numRenderPasses; i++)
+		for (uint32_t i = 0; i < e.rp->renderPassCount; i++)
 			for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 				it->cleanup_Pipeline_Descriptors();
 	}
@@ -681,7 +681,7 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 
 			// Look in Renderer::models
-			for(unsigned rpi = 0; rpi < e.rw->renderPassCount; rpi ++)
+			for(unsigned rpi = 0; rpi < e.rp->renderPassCount; rpi ++)
 				for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)
 					if (it == model)
 					{
@@ -783,7 +783,7 @@ void Renderer::updateStates(uint32_t currentImage)
 	
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-	for (i = 0; i < e.c.numRenderPasses; i++)
+	for (i = 0; i < e.rp->renderPassCount; i++)
 		for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 		{
 			if (it->vsUBO.totalBytes)

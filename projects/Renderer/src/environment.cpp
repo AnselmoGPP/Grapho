@@ -143,7 +143,7 @@ VulkanEnvironment::VulkanEnvironment(IOmanager& io)
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	
-	rw = std::make_shared<RW_DS>(*this);
+	rp = std::make_shared<RW_DS>(*this);
 	//if (c.msaaSamples > 1) rw = std::make_shared<RW_MSAA_PP>(*this);
 	//else rw = std::make_shared<RW_PP>(*this);
 
@@ -152,10 +152,10 @@ VulkanEnvironment::VulkanEnvironment(IOmanager& io)
 
 	createCommandPool();
 	
-	rw->createRenderPass();
-	rw->createImageResources();
-	rw->createFramebuffers();
-	rw->createRenderPassInfo();
+	rp->createRenderPass();
+	rp->createImageResources();
+	rp->createFramebuffers();
+	rp->createRenderPassInfo();
 }
 
 VulkanEnvironment::~VulkanEnvironment() 
@@ -1172,16 +1172,16 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 	createSwapChain();					// Recreate the swap chain.
 	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
 	
-	rw->createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
-	rw->createImageResources();
-	rw->createFramebuffers();				// Framebuffers directly depend on the swap chain images.
-	rw->createRenderPassInfo();
+	rp->createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
+	rp->createImageResources();
+	rp->createFramebuffers();				// Framebuffers directly depend on the swap chain images.
+	rp->createRenderPassInfo();
 }
 
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
 	// Destroy attachments (images)
-	rw->destroyAttachments();
+	rp->destroyAttachments();
 
 	// Framebuffers
 	for (auto framebuffer : framebuffers)
@@ -1218,7 +1218,7 @@ void VulkanEnvironment::cleanup()
 	c.destroy();
 }
 
-RW_MSAA_PP::RW_MSAA_PP(VulkanEnvironment& e) : RenderingWorkflow(e, 2, {1, 1})
+RW_MSAA_PP::RW_MSAA_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
 	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 1 };	// 4 color attachments in RP1::SP1
@@ -1552,7 +1552,7 @@ void RW_MSAA_PP::destroyAttachments()
 	color_2.destroy(&e);
 }
 
-RW_PP::RW_PP(VulkanEnvironment& e) : RenderingWorkflow(e, 2, {1, 1})
+RW_PP::RW_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
 	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 1 };	// 4 color attachments in RP1::SP1
@@ -1842,7 +1842,7 @@ void RW_PP::destroyAttachments()
 	color_2.destroy(&e);
 }
 
-RW_DS::RW_DS(VulkanEnvironment& e) : RenderingWorkflow(e, 2, {1, 1})
+RW_DS::RW_DS(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
 	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 4 };	// 4 color attachments in RP1::SP1

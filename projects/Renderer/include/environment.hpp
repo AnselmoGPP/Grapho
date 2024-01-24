@@ -129,7 +129,6 @@ public:
 
 	const bool add_MSAA = false;			//!< Shader MSAA (MultiSample AntiAliasing). 
 	const bool add_SS   = false;			//!< Sample shading. This can solve some problems from shader MSAA (example: only smoothens out edges of geometry but not the interior filling) (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#primsrast-sampleshading).
-	const unsigned numRenderPasses = 2;		//!< Number of render passes
 
 	VkInstance					instance;			//!< Opaque handle to an instance object. There is no global state in Vulkan and all per-application state is stored here.
 	VkDebugUtilsMessengerEXT	debugMessenger;		//!< Opaque handle to a debug messenger object (the debug callback is part of it).
@@ -185,7 +184,7 @@ private:
 	- Subpasses : A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example : a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance.
 	- Attachment references : Every subpass references one or more of the attachments that we've described.
 */
-class RenderingWorkflow
+class RenderPipeline
 {
 protected:
 	VulkanEnvironment& e;
@@ -199,7 +198,7 @@ protected:
 	virtual void destroyAttachments() = 0;
 
 public:
-	RenderingWorkflow(VulkanEnvironment& e, uint32_t renderPassCount, std::initializer_list<uint32_t> subpassCount) 
+	RenderPipeline(VulkanEnvironment& e, uint32_t renderPassCount, std::initializer_list<uint32_t> subpassCount)
 		: e(e), renderPassCount(renderPassCount), subpassCount(subpassCount) { }
 
 	const uint32_t renderPassCount;
@@ -212,7 +211,7 @@ public:
 };
 
 /// Rendering workflow containing MSAA and Post-processing.
-class RW_MSAA_PP : public RenderingWorkflow
+class RW_MSAA_PP : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -230,7 +229,7 @@ public:
 };
 
 /// Rendering workflow containing Post-processing (no MSAA).
-class RW_PP : public RenderingWorkflow
+class RW_PP : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -248,7 +247,7 @@ public:
 };
 
 /// Rendering workflow containing Deferred rendering/shading
-class RW_DS : public RenderingWorkflow
+class RW_DS : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -293,7 +292,7 @@ public:
 	// Main member variables:
 	VkCommandPool commandPool;				//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
-	std::shared_ptr<RenderingWorkflow> rw;
+	std::shared_ptr<RenderPipeline> rp;		//!< Render pipeline
 	VkRenderPass renderPass[2];				//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
 	SwapChain swapChain;					// Final color. Swapchain elements.
 
