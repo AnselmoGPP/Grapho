@@ -180,27 +180,13 @@ public:
 	
 	void renderLoop();	//!< Create command buffer and start render loop.
 
-	/**
-		@brief Insert a partially initialized model object in modelsToLoad list.The loadModels_Thread() thread will fully initialize it as soon as possible.
-
-		@param numberOfRenderings Number of times this model can be rendered in the same model. Recommendation: set this to the maximum number of rendering that will be.
-		@param primitiveTopology Primitive topology that the vertex data represents
-		@param vsUboType Structure for the vertex shader UBO
-		@param fsUboType Structure for the fragment shader UBO
-		@param modelPath Path to the model (OBJ file)
-		@param textures Set of textures
-		@param VSpath Path to the vertex shader
-		@param FSpath Path to the fragment shader
-		@param vertexType
-		@param transparency
-	*/
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.
 	modelIter newModel(ModelDataInfo& modelInfo);
 
 	/// Move model from list models (or modelsToLoad) to list modelsToDelete. If the model is being fully constructed (by the worker), it waits until it finishes. Note: When the app closes, it destroys Renderer. Thus, don't use this method at app-closing (like in an object destructor): if Renderer is destroyed first, the app may crash.
 	void deleteModel(modelIter model);
 
-	void setRenders(modelIter model, size_t numberOfRenders);
+	void setInstances(modelIter model, size_t numberOfRenders);
 
 	/// Make a model the last to be drawn within its own layer. Useful for transparent objects.
 	void toLastDraw(modelIter model);

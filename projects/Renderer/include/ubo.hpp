@@ -147,10 +147,10 @@ private:
 	VulkanEnvironment* e;
 
 public:
-	UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t UBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: maxUBOcount (max. number of UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
+	UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t activeUBOs, size_t UBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: maxUBOcount (max. number of UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
 	~UBO() = default;
 
-	const size_t				maxUBOcount;			//!< Number of UBOs
+	const size_t				maxNumDescriptors;		//!< Max. possible number of descriptors. This has to be fixed because it's fixed in the shader.
 	VkDeviceSize				range;					//!< Size (bytes) of each aligned UBO (example: 4) (at least, minUBOffsetAlignment)
 	size_t						totalBytes;				//!< Size (bytes) of the set of UBOs (example: 12)
 
@@ -161,6 +161,9 @@ public:
 	uint8_t* getUBOptr(size_t UBOindex);
 	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
 	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
+
+	bool setNumActiveDescriptors(size_t count);			//!< Set the value of activeUBOs. Returns false if > maxUBOcount;
+	size_t numActiveDescriptors;							//!< Number of descriptors used (must be <= maxDescriptors). 
 };
 
 /// Model-View-Projection matrix as a UBO (Uniform buffer object) (https://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/)

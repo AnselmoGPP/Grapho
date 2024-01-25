@@ -29,8 +29,8 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	vertexType(modelInfo.vertexType),
 	hasTransparencies(modelInfo.transparency),
 	cullMode(modelInfo.cullMode),
-	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.UBOsize_vs, e->c.deviceData.minUniformBufferOffsetAlignment),
-	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.deviceData.minUniformBufferOffsetAlignment),
+	vsUBO(e, modelInfo.maxDescriptorsCount_vs, modelInfo.activeInstances, modelInfo.UBOsize_vs, e->c.deviceData.minUniformBufferOffsetAlignment),
+	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.deviceData.minUniformBufferOffsetAlignment),
 	renderPassIndex(modelInfo.renderPassIndex),
 	subpassIndex(modelInfo.subpassIndex),
 	activeInstances(modelInfo.activeInstances),
@@ -103,7 +103,7 @@ void ModelData::createDescriptorSetLayout()
 		VkDescriptorSetLayoutBinding vsUboLayoutBinding{};
 		vsUboLayoutBinding.binding = bindNumber++;
 		vsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;			// VK_DESCRIPTOR_TYPE_ ... UNIFORM_BUFFER, UNIFORM_BUFFER_DYNAMIC
-		vsUboLayoutBinding.descriptorCount = vsUBO.maxUBOcount;							// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each bone in a skeleton for skeletal animation).
+		vsUboLayoutBinding.descriptorCount = vsUBO.maxNumDescriptors;					// In case you want to specify an array of UBOs <<< (example: for specifying a transformation for each bone in a skeleton for skeletal animation).
 		vsUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;						// Tell in which shader stages the descriptor will be referenced. This field can be a combination of VkShaderStageFlagBits values or the value VK_SHADER_STAGE_ALL_GRAPHICS.
 		vsUboLayoutBinding.pImmutableSamplers = nullptr;								// [Optional] Only relevant for image sampling related descriptors.
 
@@ -116,7 +116,7 @@ void ModelData::createDescriptorSetLayout()
 		VkDescriptorSetLayoutBinding fsUboLayoutBinding{};
 		fsUboLayoutBinding.binding = bindNumber++;
 		fsUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		fsUboLayoutBinding.descriptorCount = 1;
+		fsUboLayoutBinding.descriptorCount = fsUBO.maxNumDescriptors;
 		fsUboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		fsUboLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -438,22 +438,27 @@ void ModelData::createDescriptorSets()
 	// Populate each descriptor set.
 	for (size_t i = 0; i < e->swapChain.images.size(); i++)
 	{
+		VkDescriptorBufferInfo descriptorInfo;				// Info about one descriptor
+
 		// UBO vertex shader
-		std::vector< VkDescriptorBufferInfo> bufferInfo_vs;
-		VkDescriptorBufferInfo descriptorInfo;		// Info about one descriptors
-		for (unsigned j = 0; j < vsUBO.maxUBOcount; j++)
+		std::vector< VkDescriptorBufferInfo> bufferInfo_vs;	// Info about each descriptor
+		for (unsigned j = 0; j < vsUBO.maxNumDescriptors; j++)
 		{
 			if (vsUBO.range) descriptorInfo.buffer = vsUBO.uniformBuffers[i];
+			descriptorInfo.range  = vsUBO.range;
 			descriptorInfo.offset = j * vsUBO.range;
-			descriptorInfo.range = vsUBO.range;
 			bufferInfo_vs.push_back(descriptorInfo);
 		}
 
 		// UBO fragment shader
-		VkDescriptorBufferInfo bufferInfo_fs{};
-		if(fsUBO.range) bufferInfo_fs.buffer = fsUBO.uniformBuffers[i];
-		bufferInfo_fs.offset = 0;
-		bufferInfo_fs.range = fsUBO.range;
+		std::vector< VkDescriptorBufferInfo> bufferInfo_fs;
+		for (unsigned j = 0; j < fsUBO.maxNumDescriptors; j++)
+		{
+			if (fsUBO.range) descriptorInfo.buffer = fsUBO.uniformBuffers[i];
+			descriptorInfo.range  = fsUBO.range;
+			descriptorInfo.offset = j * fsUBO.range;
+			bufferInfo_fs.push_back(descriptorInfo);
+		}
 
 		// Textures
 		std::vector<VkDescriptorImageInfo> imageInfo(textures.size());
@@ -483,7 +488,7 @@ void ModelData::createDescriptorSets()
 			descriptor.dstBinding = binding++;
 			descriptor.dstArrayElement = 0;
 			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptor.descriptorCount = vsUBO.maxUBOcount;
+			descriptor.descriptorCount = vsUBO.maxNumDescriptors;
 			descriptor.pBufferInfo = bufferInfo_vs.data();
 			descriptor.pImageInfo = nullptr;
 			descriptor.pTexelBufferView = nullptr;
@@ -499,8 +504,8 @@ void ModelData::createDescriptorSets()
 			descriptor.dstBinding = binding++;
 			descriptor.dstArrayElement = 0;
 			descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptor.descriptorCount = 1;
-			descriptor.pBufferInfo = &bufferInfo_fs;
+			descriptor.descriptorCount = fsUBO.maxNumDescriptors;
+			descriptor.pBufferInfo = bufferInfo_fs.data();
 			descriptor.pImageInfo = nullptr;
 			descriptor.pTexelBufferView = nullptr;
 			descriptor.pNext = nullptr;
@@ -614,14 +619,13 @@ void ModelData::setActiveInstancesCount(size_t activeInstancesCount)
 		std::cout << typeid(*this).name() << "::" << __func__ << " (" << name << ')' << std::endl;
 	#endif
 	
-	this->activeInstances = activeInstancesCount;
+	if (vsUBO.setNumActiveDescriptors(activeInstancesCount) == false)
+		std::cout << "The number of rendered instances (" << name << ") cannot be higher than " << vsUBO.maxNumDescriptors << std::endl;
 
-	if (activeInstancesCount > vsUBO.maxUBOcount)
+	this->activeInstances = vsUBO.numActiveDescriptors;
+	return;
+
 	{
-		std::cout << "The number of rendered instances (" << name << ") cannot be higher than " << vsUBO.maxUBOcount << std::endl;
-		this->activeInstances = vsUBO.maxUBOcount;
-		return;
-
 		//vsUBO.resizeUBO(activeInstancesCount);
 
 		//if (fullyConstructed)

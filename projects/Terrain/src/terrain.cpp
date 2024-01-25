@@ -83,7 +83,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
 
     ModelDataInfo modelInfo;
     modelInfo.name = chunkName.c_str();
-     modelInfo.activeInstances = 1;
+    modelInfo.activeInstances = 1;
     modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     modelInfo.vertexType = vt_333;
     modelInfo.verticesLoader = vertexData;
@@ -99,7 +99,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     model = renderer.newModel(modelInfo);
 
     uint8_t* dest;
-    for (size_t i = 0; i < model->activeInstances; i++)
+    for (size_t i = 0; i < model->vsUBO.numActiveDescriptors; i++)
     {
         dest = model->vsUBO.getUBOptr(i);
         memcpy(dest, &getModelMatrix(), size.mat4);
@@ -135,7 +135,7 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
     uint8_t* dest;
 
-    for (size_t i = 0; i < model->activeInstances; i++)
+    for (size_t i = 0; i < model->vsUBO.numActiveDescriptors; i++)
     {
         dest = model->vsUBO.getUBOptr(i);
 
@@ -159,9 +159,12 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         //dest += lights.posDirBytes;
     }
 
-    dest = model->fsUBO.getUBOptr(0);
-    memcpy(dest, lights.props, lights.propsBytes);
-    //dest += lights.propsBytes;
+    for (size_t i = 0; i < model->fsUBO.numActiveDescriptors; i++)
+    {
+        dest = model->fsUBO.getUBOptr(i);
+        memcpy(dest, lights.props, lights.propsBytes);
+        //dest += lights.propsBytes;
+    }
 }
 
 void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)
@@ -770,7 +773,7 @@ void DynamicGrid::createTree(QuadNode<Chunk*>* node, size_t depth)
         if (chunk->modelOrdered == false) {
             chunk->computeTerrain(false);
             chunk->render(shaders, textures, &indices, numLights, transparency);
-            renderer->setRenders(chunk->model, 0);
+            renderer->setInstances(chunk->model, 0);
         }
 
         visibleLeafChunks[nonActiveTree].push_back(node->getElement());
@@ -852,7 +855,7 @@ void DynamicGrid::updateChunksSideDepths(QuadNode<Chunk*>* node)
 void DynamicGrid::changeRenders(unsigned treeIndex, bool renderMode)
 {
     for (Chunk*& chunk : visibleLeafChunks[treeIndex])
-        renderer->setRenders(chunk->model, renderMode);
+        renderer->setInstances(chunk->model, renderMode);
 }
 
 void DynamicGrid::resetVisibility(QuadNode<Chunk*>* node)
@@ -1486,7 +1489,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         this->camPos = camPos;
         this->fov = fov;
         getGrassItems(planet);
-        renderer.setRenders(grassModel, pos.size());
+        renderer.setInstances(grassModel, pos.size());
     }
 
     // Update UBOs

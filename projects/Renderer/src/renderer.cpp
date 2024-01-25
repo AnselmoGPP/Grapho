@@ -298,7 +298,7 @@ void Renderer::createCommandBuffers()
 					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 				if (it->vsUBO.range || it->fsUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
-					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);// it->vsUBO.offsets.data());
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 				//else
 				//	vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 
@@ -800,7 +800,7 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 	std::cout << "Model to delete not found" << std::endl;
 }
 
-void Renderer::setRenders(modelIter model, size_t numberOfRenders)
+void Renderer::setInstances(modelIter model, size_t numberOfRenders)
 {
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;

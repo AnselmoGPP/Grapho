@@ -10,15 +10,29 @@ Sizes size;
 // (Set of) Uniform Buffer Objects -----------------------------------------------------------------
 
 /// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, offsets).
-UBO::UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t UBOsize, VkDeviceSize minUBOffsetAlignment)
+UBO::UBO(VulkanEnvironment* e, size_t maxNumDescriptors, size_t activeUBOs, size_t UBOsize, VkDeviceSize minUBOffsetAlignment)
 	: e(e), 
-	maxUBOcount(maxUBOcount), 
+	maxNumDescriptors(maxNumDescriptors),
 	range(UBOsize ? minUBOffsetAlignment * (1 + UBOsize / minUBOffsetAlignment) : 0),
-	totalBytes(range * maxUBOcount),
+	totalBytes(range * maxNumDescriptors),
 	ubo(totalBytes)
-{ }
+{ 
+	setNumActiveDescriptors(activeUBOs);
+}
 
 uint8_t* UBO::getUBOptr(size_t UBOindex) { return ubo.data() + UBOindex * range; }
+
+bool UBO::setNumActiveDescriptors(size_t count)
+{
+	if (count > maxNumDescriptors)
+	{
+		numActiveDescriptors = maxNumDescriptors;
+		return false;
+	}
+
+	numActiveDescriptors = count;
+	return true;
+}
 
 // (21)
 void UBO::createUniformBuffers()
@@ -32,7 +46,7 @@ void UBO::createUniformBuffers()
 		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 			createBuffer(
 				e,
-				maxUBOcount == 0 ? range : totalBytes,
+				maxNumDescriptors == 0 ? range : totalBytes,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				uniformBuffers[i],

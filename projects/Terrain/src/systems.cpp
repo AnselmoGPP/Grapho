@@ -706,30 +706,30 @@ void s_Model::update(float timeStep)
             break;
         case UboType::lightPass:
         {
-            for (i = 0; i < ((c_Model_normal*)c_model)->model->activeInstances; i++)
+            for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
             {
                 dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
                 memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
                 dest += c_lights->lights.posDirBytes;   // c_lights->lights.numLights * sizeof(LightPosDir);
             }
             
-            dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
-            memcpy(dest, &camPos_numLights, size.vec4);
-            dest += size.vec4;
-            memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
-            dest += c_lights->lights.propsBytes;  // c_lights->lights.numLights * sizeof(LightProps);
-            //std::cout << c_lights->lights.posDirBytes << ", " << c_lights->lights.numLights * sizeof(LightPosDir);
-            //std::cout << ", " << c_lights->lights.propsBytes << ", " << c_lights->lights.numLights * sizeof(LightProps) << std::endl;
-            //std::cout << c_lights->lights.props->type << std::endl;
+            for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
+            {
+                dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(i);
+                memcpy(dest, &camPos_numLights, size.vec4);
+                dest += size.vec4;
+                memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+                dest += c_lights->lights.propsBytes;  // c_lights->lights.numLights * sizeof(LightProps);
+            }
             break;
         }
         case UboType::mvp:      // MVP
             {
                 c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
-                if (c_mParams) c_eng->r.setRenders(((c_Model_normal*)c_model)->model, c_mParams->mp.size());
+                if (c_mParams) c_eng->r.setInstances(((c_Model_normal*)c_model)->model, c_mParams->mp.size());
                 else { std::cout << "c_mParams not found" << std::endl; break; }
 
-                for (i = 0; i < ((c_Model_normal*)c_model)->model->activeInstances; i++)
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
                     memcpy(dest, &getModelMatrix(c_mParams->mp[i].scale, c_mParams->mp[i].rotQuat, c_mParams->mp[i].pos), size.mat4);
@@ -743,10 +743,10 @@ void s_Model::update(float timeStep)
         case UboType::mvpncl:   // MVP, MN, camPos, lights
             {
                 c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
-                if (c_mParams) c_eng->r.setRenders(((c_Model_normal*)c_model)->model, c_mParams->mp.size());
+                if (c_mParams) c_eng->r.setInstances(((c_Model_normal*)c_model)->model, c_mParams->mp.size());
                 else { std::cout << "c_mParams not found" << std::endl; break; }
                 
-                for (i = 0; i < ((c_Model_normal*)c_model)->model->activeInstances; i++)
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
                     memcpy(dest, &getModelMatrix(c_mParams->mp[i].scale, c_mParams->mp[i].rotQuat, c_mParams->mp[i].pos), size.mat4);
@@ -763,8 +763,11 @@ void s_Model::update(float timeStep)
                     memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
                 }
 
-                dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(0);
-                memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+                for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
+                {
+                    dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(i);
+                    memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+                }
                 break;
             }
         case UboType::planet:
