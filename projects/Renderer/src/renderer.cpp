@@ -10,6 +10,7 @@
 #include <string>
 
 #include "renderer.hpp"
+#include "commons.hpp"
 
 
 // LoadingWorker ---------------------------------------------------------------------
@@ -242,6 +243,97 @@ void Renderer::createCommandBuffers()
 
 	// Commmand buffer allocation
 	commandBuffers.resize(e.swapChain.images.size());
+
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = e.commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;		// VK_COMMAND_BUFFER_LEVEL_ ... PRIMARY (can be submitted to a queue for execution, but cannot be called from other command buffers), SECONDARY (cannot be submitted directly, but can be called from primary command buffers - useful for reusing common operations from primary command buffers).
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();		// Number of buffers to allocate.
+
+	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+
+	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate command buffers!");
+
+	// Start command buffer recording (one per swapChainImage)
+	for (size_t i = 0; i < commandBuffers.size(); i++)		// for each SWAPCHAIN IMAGE
+	{
+		#ifdef DEBUG_COMMANDBUFFERS
+			std::cout << "Command buffer " << i << std::endl;
+		#endif
+
+		// Start command buffer recording
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0;			// [Optional] VK_COMMAND_BUFFER_USAGE_ ... ONE_TIME_SUBMIT_BIT (the command buffer will be rerecorded right after executing it once), RENDER_PASS_CONTINUE_BIT (secondary command buffer that will be entirely within a single render pass), SIMULTANEOUS_USE_BIT (the command buffer can be resubmitted while it is also already pending execution).
+		beginInfo.pInheritanceInfo = nullptr;		// [Optional] Only relevant for secondary command buffers. It specifies which state to inherit from the calling primary command buffers.
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)		// If a command buffer was already recorded once, this call resets it. It's not possible to append commands to a buffer at a later time.
+			throw std::runtime_error("Failed to begin recording command buffer!");
+
+		for (size_t j = 0; j < e.rp->renderPasses.size(); j++)		// for each RENDER PASS (color pass, post-processing...)
+		{
+			#ifdef DEBUG_COMMANDBUFFERS
+				std::cout << "   Render pass " << j << std::endl;
+			#endif
+			
+			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPassInfo[i][j], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+			//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);										// Start subpass
+
+			VkDeviceSize offsets[] = { 0 };
+			//clearDepthBuffer(commandBuffers[i]);		// Already done in createRenderPass() (loadOp). Previously used for implementing layers (Painter's algorithm).
+
+			for (modelIter it = models[j].begin(); it != models[j].end(); it++)		// for each MODEL
+			{
+				#ifdef DEBUG_COMMANDBUFFERS
+					std::cout << "         Model: " << it->name << std::endl;
+				#endif
+
+				if (!it->activeInstances) continue;
+
+				vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->graphicsPipeline);	// Second parameter: Specifies if the pipeline object is a graphics or compute pipeline.
+				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &it->vert.vertexBuffer, offsets);
+
+				if (it->vert.indexCount)	// has indices (it doesn't if data represents points)
+					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+				if (it->vsUBO.range || it->fsUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);// it->vsUBO.offsets.data());
+				//else
+				//	vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
+
+				if (it->vert.indexCount)		// has indices
+					vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), it->activeInstances, 0, 0, 0);
+				else
+					vkCmdDraw(commandBuffers[i], it->vert.vertexCount, it->activeInstances, 0, 0);
+
+				commandsCount++;
+			}
+
+			vkCmdEndRenderPass(commandBuffers[i]);
+		}
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to record command buffer!");
+	}
+
+	updateCommandBuffer = false;
+
+	#if defined(DEBUG_RENDERER) || defined(DEBUG_COMMANDBUFFERS)
+		std::cout << typeid(*this).name() << "::" << __func__ << " END" << std::endl;
+	#endif
+}
+
+void Renderer::createCommandBuffers_Original()
+{
+	#if defined(DEBUG_RENDERER) || defined(DEBUG_COMMANDBUFFERS)
+		std::cout << typeid(*this).name() << "::" << __func__ << " BEGIN" << std::endl;
+	#endif
+
+	commandsCount = 0;
+
+	// Commmand buffer allocation
+	commandBuffers.resize(e.swapChain.images.size());
 	
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -251,10 +343,8 @@ void Renderer::createCommandBuffers()
 
 	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
 	
-	//std::cout << "alloc 2.1." << std::endl;
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
-	//std::cout << "alloc 2.2." << std::endl;
 
 	// Start command buffer recording (one per swapChainImage) and a render pass
 	for (size_t i = 0; i < commandBuffers.size(); i++)
@@ -559,7 +649,7 @@ void Renderer::recreateSwapChain()
 	//    - Each model
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-	for (uint32_t i = 0; i < e.rp->renderPassCount; i++)
+	for (uint32_t i = 0; i < e.rp->renderPasses.size(); i++)
 		for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 			it->recreate_Pipeline_Descriptors();
 
@@ -584,7 +674,7 @@ void Renderer::cleanupSwapChain()
 	{
 		const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-		for (uint32_t i = 0; i < e.rp->renderPassCount; i++)
+		for (uint32_t i = 0; i < e.rp->renderPasses.size(); i++)
 			for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 				it->cleanup_Pipeline_Descriptors();
 	}
@@ -681,7 +771,7 @@ void Renderer::deleteModel(modelIter model)	// <<< splice an element only knowin
 			const std::lock_guard<std::mutex> lock_2(worker.mutDelete);
 
 			// Look in Renderer::models
-			for(unsigned rpi = 0; rpi < e.rp->renderPassCount; rpi ++)
+			for(unsigned rpi = 0; rpi < e.rp->renderPasses.size(); rpi++)
 				for (auto it = models[rpi].begin(); it != models[rpi].end(); it++)
 					if (it == model)
 					{
@@ -783,7 +873,7 @@ void Renderer::updateStates(uint32_t currentImage)
 	
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
 
-	for (i = 0; i < e.rp->renderPassCount; i++)
+	for (i = 0; i < e.rp->renderPasses.size(); i++)
 		for (modelIter it = models[i].begin(); it != models[i].end(); it++)
 		{
 			if (it->vsUBO.totalBytes)

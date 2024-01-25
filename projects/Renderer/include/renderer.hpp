@@ -10,7 +10,6 @@
 #include "models.hpp"
 #include "input.hpp"
 #include "timer.hpp"
-#include "commons.hpp"
 
 
 // Prototypes ----------
@@ -136,6 +135,7 @@ class Renderer
 		</ul>
 	*/
 	void createCommandBuffers();
+	void createCommandBuffers_Original();
 
 	/// Create semaphores and fences for synchronizing the events occuring in each frame (drawFrame()).
 	void createSyncObjects();

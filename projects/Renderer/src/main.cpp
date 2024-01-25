@@ -32,8 +32,6 @@
 #include "renderer.hpp"
 #include "toolkit.hpp"
 
-#include "commons.hpp"
-
 
 std::map<std::string, modelIter> assets;	// Model iterators
 std::map<std::string, texIter> textures;	// Texture iterators

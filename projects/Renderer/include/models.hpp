@@ -17,8 +17,8 @@
 #include "vertex.hpp"
 #include "ubo.hpp"
 #include "importer.hpp"
-#include "commons.hpp"
 
+#define LINE_WIDTH 1.0f
 
 class ModelData;
 typedef std::list<ModelData>::iterator modelIter;
@@ -135,7 +135,7 @@ public:
 	bool inModels;										//!< Flags if this model is going to be rendered (i.e., if it is in Renderer::models)
 	const std::string name;								//!< For debugging purposes.
 
-	/// Set number of active instances (>= vsDynUBO.dynBlocksCount).
+	/// Set number of active instances (<= vsUBO.maxUBOcount).
 	void setActiveInstancesCount(size_t activeInstancesCount);
 };
 

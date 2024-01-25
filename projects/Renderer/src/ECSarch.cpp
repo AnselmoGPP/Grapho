@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "ECSarch.hpp"
+#include "commons.hpp"
 
 
 Component::Component(CT type) : type(type) { }

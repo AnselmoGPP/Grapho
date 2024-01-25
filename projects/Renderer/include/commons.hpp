@@ -9,7 +9,6 @@
 
 #include "environment.hpp"
 
-
 // Debugging macros ----------
 
 //#define DEBUG_ENV_INFO			// Basic info
@@ -21,7 +20,6 @@
 //#define DEBUG_WORKER
 
 //#define DEBUG_MODELS
-#define LINE_WIDTH 1.0f
 
 //#define DEBUG_RESOURCES
 
@@ -32,14 +30,12 @@
 
 //extern std::vector< std::function<glm::mat4(float)> > room_MM;	// Store callbacks of type 'glm::mat4 callb(float a)'. Requires <functional> library
 
-/// Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture. Used as friend in ModelData, Texture and UBO.
-void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+/// Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
+void readFile(const char* filename, std::vector<char>& destination);
+void readFile(const char* filename, std::string& destination);
 
 /// Copy a C-style string in destination from source. Used in ModelData and Texture. Memory is allocated in "destination", remember to delete it when no needed anymore. 
 void copyCString(const char*& destination, const char* source);
 
-/// Read all of the bytes from the specified file and return them in a byte array managed by a std::vector.
-void readFile(const char* filename, std::vector<char>& destination);
-void readFile(const char* filename, std::string& destination);
 
 #endif

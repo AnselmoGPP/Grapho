@@ -19,8 +19,6 @@ const bool enableValidationLayers = true;
 const bool enableValidationLayers = false;
 #endif
 
-typedef std::vector<VkFramebuffer> framebufferSet;
-
 
 // Prototypes ----------
 
@@ -36,6 +34,10 @@ struct DeviceData;
 class RenderingWorkflow;
 class RW_MSAA_PP;
 class RW_PP;
+class RW_DS;
+
+/// Common function. Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture.
+void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 
 // Definitions ----------
@@ -199,13 +201,15 @@ protected:
 
 public:
 	RenderPipeline(VulkanEnvironment& e, uint32_t renderPassCount, std::initializer_list<uint32_t> subpassCount)
-		: e(e), renderPassCount(renderPassCount), subpassCount(subpassCount) { }
+		: e(e), subpassCount(subpassCount), renderPasses(renderPassCount) { }
 
-	const uint32_t renderPassCount;
+	std::vector<VkRenderPass> renderPasses;							//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	std::vector<std::vector<VkFramebuffer>> framebuffers;			//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
+
 	const std::vector<uint32_t> subpassCount;
 	std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
 	std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
-	std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
 
 	friend VulkanEnvironment;
 };
@@ -246,7 +250,7 @@ public:
 	Image color_2;							// For postprocessing multiple samples (if used)
 };
 
-/// Rendering workflow containing Deferred rendering/shading
+/// Rendering workflow containing Deferred shading/rendering
 class RW_DS : public RenderPipeline
 {
 protected:
@@ -262,7 +266,7 @@ public:
 	Image position;
 	Image albedo;
 	Image normal;
-	Image specRoug;		// Specularity & Roughness
+	Image specRoug;
 	Image depth;
 	//Image finalColor;	// swapchain.image[i]
 };
@@ -293,10 +297,7 @@ public:
 	VkCommandPool commandPool;				//!< Opaque handle to a command pool object. It manages the memory that is used to store the buffers, and command buffers are allocated from them. 
 
 	std::shared_ptr<RenderPipeline> rp;		//!< Render pipeline
-	VkRenderPass renderPass[2];				//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
 	SwapChain swapChain;					// Final color. Swapchain elements.
-
-	std::vector<std::array<VkFramebuffer, 2>> framebuffers;	//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 
 	std::mutex queueMutex;					//!< Controls that vkQueueSubmit is not used in two threads simultaneously (Environment -> endSingleTimeCommands(), and Renderer -> createCommandBuffers)
 	std::mutex mutCommandPool;				//!< Command pool cannot be used simultaneously in 2 different threads. Problem: It is used at command buffer creation (Renderer, 1st thread, at updateCB), and beginSingleTimeCommands and endSingleTimeCommands (Environment, 2nd thread, indirectly used in loadAndCreateTexture & fullConstruction), and indirectly sometimes (command buffer).
