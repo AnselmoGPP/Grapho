@@ -12,8 +12,7 @@ TODO:
 	Distributor: Make it fill even between vertices
 		Far trees doesn't fit all near trees (in position and size)
 
-	- Problem if we don't have any UBO?
-	- Disable layers system (command buffer)
+	- Problem if we don't have any UBO? / Set number of UBOs for FS
 	- Automate command buffer creation
 	- RenderingWorkflow x RenderPipeline
 	- Put debugging macros in commons.hpp

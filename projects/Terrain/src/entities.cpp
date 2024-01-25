@@ -20,7 +20,6 @@ std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, 
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "lightingPass";
-	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
@@ -54,7 +53,6 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "noPP";
-	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
@@ -92,7 +90,6 @@ std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, Sh
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "atmosphere";
-	modelInfo.layer = 2;				// For post-processing, we select an out-of-range layer so this model is not processed in the first pass (layers are only used in first pass).
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
@@ -126,7 +123,6 @@ std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, Shader
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "skyBox";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
@@ -158,7 +154,6 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "sun";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
@@ -194,7 +189,6 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "grid";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	modelInfo.vertexType = vt_33;
@@ -228,7 +222,6 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "axis";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	modelInfo.vertexType = vt_33;
@@ -290,7 +283,6 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "points";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 1;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	modelInfo.vertexType = vt_33;
@@ -386,7 +378,6 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "grass";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file
@@ -439,7 +430,6 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "plant";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file
@@ -494,7 +484,6 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "rock";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
@@ -553,7 +542,6 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "tree_trunk";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
@@ -583,7 +571,6 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 
 	modelInfo;
 	modelInfo.name = "tree_branches";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;				// <<< vt_332 is required when loading data from file
@@ -627,7 +614,6 @@ std::vector<Component*> EntityFactory::createTreeBillboard(ShaderLoader Vshader,
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "treeBB";
-	modelInfo.layer = 1;
 	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_332;			// <<< vt_332 is required when loading data from file

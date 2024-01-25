@@ -28,7 +28,6 @@ struct ModelDataInfo
 	ModelDataInfo();
 
 	const char* name;
-	size_t layer;
 	size_t activeInstances;						// <= maxDescriptorsCount_vs
 	VkPrimitiveTopology topology;
 	VertexType vertexType;

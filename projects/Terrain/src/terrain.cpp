@@ -83,8 +83,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
 
     ModelDataInfo modelInfo;
     modelInfo.name = chunkName.c_str();
-    modelInfo.layer = 1;
-    modelInfo.activeInstances = 1;
+     modelInfo.activeInstances = 1;
     modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     modelInfo.vertexType = vt_333;
     modelInfo.verticesLoader = vertexData;

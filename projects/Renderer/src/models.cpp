@@ -5,7 +5,6 @@
 
 ModelDataInfo::ModelDataInfo()
 	: name("noName"),
-	layer(1),
 	activeInstances(0),
 	topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
 	vertexType(vt_332),
@@ -34,7 +33,6 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	fsUBO(e, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs, e->c.deviceData.minUniformBufferOffsetAlignment),
 	renderPassIndex(modelInfo.renderPassIndex),
 	subpassIndex(modelInfo.subpassIndex),
-	layer(modelInfo.layer),
 	activeInstances(modelInfo.activeInstances),
 	fullyConstructed(false),
 	inModels(false)
