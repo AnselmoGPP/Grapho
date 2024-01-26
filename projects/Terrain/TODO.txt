@@ -5,6 +5,7 @@ TODO:
 	setNumActiveInstances() should resize the number of instances if it's bigger than the maximum size
 	Problem if we don't have any UBO?
 
+	DS: Transparent sea?!
 	DS: pass tangents/bitangents to G-buffer?
 	DS: Get rid of 
 		savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
@@ -12,7 +13,7 @@ TODO:
 
 	Distributor: Make it fill even between vertices
 		Far trees doesn't fit all near trees (in position and size)
-
+	
 	-> Make billboard trees for far distances > Delete GrassSystem
 	- Second thread: Create & delete objects in the same order they have been asked
 	- Debug threading conflict

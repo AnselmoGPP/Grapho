@@ -112,13 +112,50 @@ int main(int argc, char* argv[])
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 				new c_Engine(app),
 				new c_Input,
-				new c_Cam_Sphere,	// Sphere, Plane_free, Plane_polar_sphere
+				new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
 				new c_Lights(2) });
 
+			// Geometry pass (deferred rendering)
 			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
-			
+			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
+			//em.addEntity("grass", eFact.createGrass(
+			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+			//	{ texInfos["grass"] },
+			//	verticesLoaders["grass"],
+			//	(c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntity("plant", eFact.createPlant(
+			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+			//	{ texInfos["plant"] },
+			//	verticesLoaders["plant"],
+			//	(c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntity("stone", eFact.createRock(
+			//	shaderLoaders["v_stone"], shaderLoaders["f_stone"],
+			//	{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
+			//	verticesLoaders["stone"],
+			//	(c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
+			//	{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
+			//	{ texInfos["bark_a"] }, { texInfos["branch_a"] },
+			//	verticesLoaders["trunk"], verticesLoaders["branches"],
+			//	(c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntity("treeBB", eFact.createTreeBillboard(
+			//	shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"],
+			//	{ texInfos["treeBB_a"] },
+			//	verticesLoaders["treeBB"],
+			//	(c_Lights*)em.getSComponent(CT::lights)));
+
+			// Lighting pass (deferred rendering)
 			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders["v_lightingPass"], shaderLoaders["f_lightingPass"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+		
+			// Forward pass (forward rendering)
+			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
+			//em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
+			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
+			//em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], skyboxTexInfos));
+			//em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
+			//if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
+			//else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		}
 		// SYSTEMS:
 		{
@@ -208,8 +245,8 @@ void loadResourcesInfo()
 		//shaderLoaders.insert(std::pair("v_grass",     ShaderLoader(shadersDir + "v_grass.vert")));
 		//shaderLoaders.insert(std::pair("f_grass",     ShaderLoader(shadersDir + "f_grass.frag")));
 
-		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "v_seaPlanet.vert")));
-		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "f_seaPlanet.frag")));
+		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "DS/v_seaPlanet.vert")));
+		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "DS/f_seaPlanet.frag")));
 
 		shaderLoaders.insert(std::pair("v_plainChunk", ShaderLoader(shadersDir + "v_plainChunk.vert")));
 		shaderLoaders.insert(std::pair("f_plainChunk", ShaderLoader(shadersDir + "f_plainChunk.frag")));
