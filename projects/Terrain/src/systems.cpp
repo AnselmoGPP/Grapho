@@ -708,14 +708,14 @@ void s_Model::update(float timeStep)
         {
             for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
             {
-                dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
+                dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
                 memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
                 dest += c_lights->lights.posDirBytes;   // c_lights->lights.numLights * sizeof(LightPosDir);
             }
             
             for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
             {
-                dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(i);
+                dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
                 memcpy(dest, &camPos_numLights, size.vec4);
                 dest += size.vec4;
                 memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
@@ -731,7 +731,7 @@ void s_Model::update(float timeStep)
 
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
                 {
-                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
+                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
                     memcpy(dest, &getModelMatrix(c_mParams->mp[i].scale, c_mParams->mp[i].rotQuat, c_mParams->mp[i].pos), size.mat4);
                     dest += size.mat4;
                     memcpy(dest, &c_cam->view, sizeof(c_cam->view));
@@ -748,14 +748,14 @@ void s_Model::update(float timeStep)
                 
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
                 {
-                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
+                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
                     memcpy(dest, &getModelMatrix(c_mParams->mp[i].scale, c_mParams->mp[i].rotQuat, c_mParams->mp[i].pos), size.mat4);
                     dest += size.mat4;
                     memcpy(dest, &c_cam->view, sizeof(c_cam->view));
                     dest += size.mat4;
                     memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
                     dest += size.mat4;
-                    memcpy(dest, &getModelMatrixForNormals(*(glm::mat4*)((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i)), size.mat4);
+                    memcpy(dest, &getModelMatrixForNormals(*(glm::mat4*)((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i)), size.mat4);
                     dest += size.mat4;
                     cam_time = { c_cam->camPos, c_eng->time };
                     memcpy(dest, &cam_time, sizeof(cam_time));
@@ -765,7 +765,7 @@ void s_Model::update(float timeStep)
 
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
                 {
-                    dest = ((c_Model_normal*)c_model)->model->fsUBO.getUBOptr(i);
+                    dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
                     memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
                 }
                 break;
@@ -780,7 +780,7 @@ void s_Model::update(float timeStep)
             {
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->activeInstances; i++)
                 {
-                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getUBOptr(i);
+                    dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
                     memcpy(dest, &c_cam->fov, sizeof(c_cam->fov));
                     dest += size.vec4;
                     memcpy(dest, &aspectRatio, sizeof(aspectRatio));

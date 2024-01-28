@@ -10,17 +10,17 @@ Sizes size;
 // (Set of) Uniform Buffer Objects -----------------------------------------------------------------
 
 /// Constructor. Computes sizes (range, totalBytes) and allocates buffers (ubo, offsets).
-UBO::UBO(VulkanEnvironment* e, size_t maxNumDescriptors, size_t activeUBOs, size_t UBOsize, VkDeviceSize minUBOffsetAlignment)
-	: e(e), 
-	maxNumDescriptors(maxNumDescriptors),
-	range(UBOsize ? minUBOffsetAlignment * (1 + UBOsize / minUBOffsetAlignment) : 0),
-	totalBytes(range * maxNumDescriptors),
+UBO::UBO(VulkanEnvironment* e, UBOinfo uboInfo)
+	:e(e),
+	maxNumDescriptors(uboInfo.maxNumDescriptors),
+	descriptorSize(uboInfo.minDescriptorSize ? e->c.deviceData.minUniformBufferOffsetAlignment * (1 + uboInfo.minDescriptorSize / e->c.deviceData.minUniformBufferOffsetAlignment) : 0),
+	totalBytes(descriptorSize* maxNumDescriptors),
 	ubo(totalBytes)
-{ 
-	setNumActiveDescriptors(activeUBOs);
+{
+	setNumActiveDescriptors(uboInfo.numActiveDescriptors);
 }
 
-uint8_t* UBO::getUBOptr(size_t UBOindex) { return ubo.data() + UBOindex * range; }
+uint8_t* UBO::getDescriptorPtr(size_t descriptorIndex) { return ubo.data() + descriptorIndex * descriptorSize; }
 
 bool UBO::setNumActiveDescriptors(size_t count)
 {
@@ -35,32 +35,32 @@ bool UBO::setNumActiveDescriptors(size_t count)
 }
 
 // (21)
-void UBO::createUniformBuffers()
+void UBO::createUBObuffers()
 {
-	uniformBuffers.resize(e->swapChain.images.size());
-	uniformBuffersMemory.resize(e->swapChain.images.size());
+	uboBuffers.resize(e->swapChain.images.size());
+	uboMemories.resize(e->swapChain.images.size());
 	
 	//destroyUniformBuffers();		// Not required since Renderer calls this first
 
-	if (range)
+	if (descriptorSize)
 		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 			createBuffer(
 				e,
-				maxNumDescriptors == 0 ? range : totalBytes,
+				maxNumDescriptors == 0 ? descriptorSize : totalBytes,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				uniformBuffers[i],
-				uniformBuffersMemory[i]);
+				uboBuffers[i],
+				uboMemories[i]);
 }
 
-void UBO::destroyUniformBuffers()
+void UBO::destroyUBOs()
 {
-	if (range)
+	if (descriptorSize)
 	{
 		for (size_t i = 0; i < e->swapChain.images.size(); i++)
 		{
-			vkDestroyBuffer(e->c.device, uniformBuffers[i], nullptr);
-			vkFreeMemory(e->c.device, uniformBuffersMemory[i], nullptr);
+			vkDestroyBuffer(e->c.device, uboBuffers[i], nullptr);
+			vkFreeMemory(e->c.device, uboMemories[i], nullptr);
 			e->c.memAllocObjects--;
 		}
 	}

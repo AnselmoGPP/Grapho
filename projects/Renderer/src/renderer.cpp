@@ -297,7 +297,7 @@ void Renderer::createCommandBuffers()
 				if (it->vert.indexCount)	// has indices (it doesn't if data represents points)
 					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-				if (it->vsUBO.range || it->fsUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+				if (it->vsUBO.descriptorSize || it->fsUBO.descriptorSize)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
 				//else
 				//	vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
@@ -393,7 +393,7 @@ void Renderer::createCommandBuffers_Original()
 				if (it->vert.indexCount)	// has indices (it doesn't if data represents points)
 					vkCmdBindIndexBuffer(commandBuffers[i], it->vert.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-				if (it->vsUBO.range)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
+				if (it->vsUBO.descriptorSize)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);// it->vsUBO.offsets.data());
 				else
 					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
@@ -879,17 +879,17 @@ void Renderer::updateStates(uint32_t currentImage)
 			if (it->vsUBO.totalBytes)
 			{
 				void* data;
-				vkMapMemory(e.c.device, it->vsUBO.uniformBuffersMemory[currentImage], 0, it->vsUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+				vkMapMemory(e.c.device, it->vsUBO.uboMemories[currentImage], 0, it->vsUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
 				memcpy(data, it->vsUBO.ubo.data(), it->vsUBO.totalBytes);													// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-				vkUnmapMemory(e.c.device, it->vsUBO.uniformBuffersMemory[currentImage]);										// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+				vkUnmapMemory(e.c.device, it->vsUBO.uboMemories[currentImage]);										// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 			}
 
 			if (it->fsUBO.totalBytes)
 			{
 				void* data;
-				vkMapMemory(e.c.device, it->fsUBO.uniformBuffersMemory[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
+				vkMapMemory(e.c.device, it->fsUBO.uboMemories[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
 				memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
-				vkUnmapMemory(e.c.device, it->fsUBO.uniformBuffersMemory[currentImage]);
+				vkUnmapMemory(e.c.device, it->fsUBO.uboMemories[currentImage]);
 			}
 		}
 

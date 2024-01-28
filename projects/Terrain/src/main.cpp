@@ -35,6 +35,7 @@ EntityManager em;	// world
 std::map<std::string, ShaderLoader> shaderLoaders;
 std::map<std::string, VerticesLoader> verticesLoaders;
 std::map<std::string, TextureLoader> texInfos;
+std::map<std::string, UBO> globalUBOs;
 
 std::vector<TextureLoader> soilTexInfos;	// Package of textures
 std::vector<TextureLoader> seaTexInfos;		// Package of textures
@@ -117,7 +118,7 @@ int main(int argc, char* argv[])
 				new c_Lights(2) });
 
 			// Geometry pass (deferred rendering)
-			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
+			//em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
 			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
 			//em.addEntity("grass", eFact.createGrass(
 			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
@@ -226,6 +227,9 @@ void loadResourcesInfo()
 	const std::string texDir("../../../cg_resources/textures/");
 #endif
 #endif
+
+	// GLOBAL UBOS
+	//globalUBOs.insert(std::pair("globalVS", UBO(e, 1, 1, 2 * size.mat4, e->c.deviceData.minUniformBufferOffsetAlignment)));
 
 	// SHADERS
 	{

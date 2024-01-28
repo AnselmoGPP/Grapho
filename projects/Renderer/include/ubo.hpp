@@ -130,6 +130,17 @@ struct Material
 };
 
 
+struct UBOinfo
+{
+	UBOinfo(size_t maxNumDescriptors, size_t numActiveDescriptors, size_t minDescriptorSize)
+		: maxNumDescriptors(maxNumDescriptors), numActiveDescriptors(numActiveDescriptors), minDescriptorSize(minDescriptorSize) { }
+
+	size_t maxNumDescriptors;
+	size_t numActiveDescriptors;
+	size_t minDescriptorSize;
+};
+
+
 /**
 *	@struct UBO
 *	@brief Structure used for storing a set of UBOs in the same structure (many UBOs can be used for rendering the same model many times).
@@ -147,20 +158,20 @@ private:
 	VulkanEnvironment* e;
 
 public:
-	UBO(VulkanEnvironment* e, size_t maxUBOcount, size_t activeUBOs, size_t UBOsize, VkDeviceSize minUBOffsetAlignment);	//!< Constructor. Parameters: maxUBOcount (max. number of UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
+	UBO(VulkanEnvironment* e, UBOinfo uboInfo);			//!< Constructor. Parameters: maxUBOcount (max. number of UBOs), uboType (defines what a single UBO contains), minUBOffsetAlignment (alignment for each UBO required by the GPU).
 	~UBO() = default;
 
 	const size_t				maxNumDescriptors;		//!< Max. possible number of descriptors. This has to be fixed because it's fixed in the shader.
-	VkDeviceSize				range;					//!< Size (bytes) of each aligned UBO (example: 4) (at least, minUBOffsetAlignment)
+	VkDeviceSize				descriptorSize;			//!< Size (bytes) of each aligned descriptor (example: 4) (at least, minUBOffsetAlignment)
 	size_t						totalBytes;				//!< Size (bytes) of the set of UBOs (example: 12)
 
 	std::vector<uint8_t>		ubo;					//!< Stores the UBO that will be passed to vertex shader (MVP, M for normals, light...). Its attributes are aligned to 16-byte boundary.
-	std::vector<VkBuffer>		uniformBuffers;			//!< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
-	std::vector<VkDeviceMemory>	uniformBuffersMemory;	//!< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
+	std::vector<VkBuffer>		uboBuffers;				//!< Opaque handle to a buffer object (here, uniform buffer). One for each swap chain image.
+	std::vector<VkDeviceMemory>	uboMemories;			//!< Opaque handle to a device memory object (here, memory for the uniform buffer). One for each swap chain image.
 
-	uint8_t* getUBOptr(size_t UBOindex);
-	void createUniformBuffers();						//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
-	void destroyUniformBuffers();						//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
+	uint8_t* getDescriptorPtr(size_t descriptorIndex);
+	void createUBObuffers();							//!< Create uniform buffers (type of descriptors that can be bound) (VkBuffer & VkDeviceMemory), one for each swap chain image. At least one is created (if count == 0, a buffer of size "range" is created).
+	void destroyUBOs();									//!< Destroy the uniform buffers (VkBuffer) and their memories (VkDeviceMemory).
 
 	bool setNumActiveDescriptors(size_t count);			//!< Set the value of activeUBOs. Returns false if > maxUBOcount;
 	size_t numActiveDescriptors;							//!< Number of descriptors used (must be <= maxDescriptors). 

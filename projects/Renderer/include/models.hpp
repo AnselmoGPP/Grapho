@@ -44,6 +44,7 @@ struct ModelDataInfo
 	VkCullModeFlagBits cullMode;
 };
 
+
 /**
 	@class ModelData
 	@brief Stores the data directly related to a graphic object. 

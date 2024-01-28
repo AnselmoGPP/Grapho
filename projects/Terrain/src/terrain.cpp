@@ -101,7 +101,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     uint8_t* dest;
     for (size_t i = 0; i < model->vsUBO.numActiveDescriptors; i++)
     {
-        dest = model->vsUBO.getUBOptr(i);
+        dest = model->vsUBO.getDescriptorPtr(i);
         memcpy(dest, &getModelMatrix(), size.mat4);
         dest += size.mat4;
         //memcpy(dest, &view, mat4size);
@@ -137,7 +137,7 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
     for (size_t i = 0; i < model->vsUBO.numActiveDescriptors; i++)
     {
-        dest = model->vsUBO.getUBOptr(i);
+        dest = model->vsUBO.getDescriptorPtr(i);
 
         //memcpy(dest, &modelMatrix(), size.mat4);
         dest += size.mat4;
@@ -161,7 +161,7 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
     for (size_t i = 0; i < model->fsUBO.numActiveDescriptors; i++)
     {
-        dest = model->fsUBO.getUBOptr(i);
+        dest = model->fsUBO.getDescriptorPtr(i);
         memcpy(dest, lights.props, lights.propsBytes);
         //dest += lights.propsBytes;
     }
@@ -1502,7 +1502,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         model = getModelMatrix(sca[i], rot[i], pos[i]);
         modelNormals = getModelMatrixForNormals(model);
 
-        dest = grassModel->vsUBO.getUBOptr(i);
+        dest = grassModel->vsUBO.getDescriptorPtr(i);
 
         memcpy(dest, &model, size.mat4);
         dest += size.mat4;
@@ -1523,7 +1523,7 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         memcpy(dest, lights.posDir, lights.posDirBytes);
     }
 
-    dest = grassModel->fsUBO.getUBOptr(0);
+    dest = grassModel->fsUBO.getDescriptorPtr(0);
     memcpy(dest, lights.props, lights.propsBytes);
 }
 
