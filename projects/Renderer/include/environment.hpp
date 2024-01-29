@@ -207,7 +207,7 @@ public:
 	std::vector<std::vector<VkFramebuffer>> framebuffers;			//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 	std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
 
-	const std::vector<uint32_t> subpassCount;
+	const std::vector<uint32_t> subpassCount;						//!< Number of subpasses per render-pass
 	std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
 	std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
 

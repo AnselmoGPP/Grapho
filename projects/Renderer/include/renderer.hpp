@@ -32,7 +32,7 @@ enum primitiveTopology {
 /// Reponsible for the loading thread and its processes.
 class LoadingWorker
 {
-	std::list<ModelData>*	models;					//!< Array of 2 lists (rendering & post-processing)
+	std::vector<std::vector<std::list<ModelData>>>& models;
 	std::list<ModelData>&	modelsToLoad;
 	std::list<ModelData>&	modelsToDelete;
 	std::list<Texture>&		textures;
@@ -56,7 +56,7 @@ class LoadingWorker
 	void loadingThread();
 
 public:
-	LoadingWorker(int waitTime, std::list<ModelData>* models, std::list<ModelData>& modelsToLoad, std::list<ModelData>& modelsToDelete, std::list<Texture>& textures, std::list<Shader>& shaders, bool& updateCommandBuffer);
+	LoadingWorker(int waitTime, std::vector<std::vector<std::list<ModelData>>>& models, std::list<ModelData>& modelsToLoad, std::list<ModelData>& modelsToDelete, std::list<Texture>& textures, std::list<Shader>& shaders, bool& updateCommandBuffer);
 	~LoadingWorker();
 
 	std::mutex mutModels;		//!< for Renderer::models
@@ -87,7 +87,7 @@ class Renderer
 	IOmanager&					io;							//!< Input data
 	TimerSet					timer;						//!< Time control
 
-	std::list<ModelData>		models[2];					//!< Sets of fully initialized models (one set per render pass). [0] for main colors. [1] for post processing.
+	std::vector<std::vector<std::list<ModelData>>> models;	//!< Sets of fully initialized models (one set per renderpass per subpass).
 	std::list<ModelData>		modelsToLoad;				//!< Models waiting for being included in m (partially initialized).
 	std::list<ModelData>		modelsToDelete;				//!< Iterators to the loaded models that have to be deleted from Vulkan.
 
@@ -135,7 +135,6 @@ class Renderer
 		</ul>
 	*/
 	void createCommandBuffers();
-	void createCommandBuffers_Original();
 
 	/// Create semaphores and fences for synchronizing the events occuring in each frame (drawFrame()).
 	void createSyncObjects();

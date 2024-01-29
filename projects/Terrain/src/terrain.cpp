@@ -94,6 +94,7 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     modelInfo.UBOsize_fs = numLights * sizeof(LightProps);                                    // n * LightProps (6*vec4)
     modelInfo.transparency = transparency;
     modelInfo.renderPassIndex = 0;
+    modelInfo.subpassIndex = 0;
     modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     
     model = renderer.newModel(modelInfo);

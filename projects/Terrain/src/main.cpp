@@ -35,7 +35,7 @@ EntityManager em;	// world
 std::map<std::string, ShaderLoader> shaderLoaders;
 std::map<std::string, VerticesLoader> verticesLoaders;
 std::map<std::string, TextureLoader> texInfos;
-std::map<std::string, UBO> globalUBOs;
+std::map<std::string, UBOinfo> globalUBOs;
 
 std::vector<TextureLoader> soilTexInfos;	// Package of textures
 std::vector<TextureLoader> seaTexInfos;		// Package of textures
@@ -206,30 +206,30 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 void loadResourcesInfo()
 {
 	// FILES' PATHS
-#if STANDALONE_EXECUTABLE
-#if defined(__unix__)
-	const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
-	const std::string vertexDir("../../../../models/");
-	const std::string texDir("../../../../textures/");
-#elif _WIN64 || _WIN32
-	const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
-	const std::string vertexDir("../../../../models/");
-	const std::string texDir("../../../../textures/");
-#endif
-#else
-#if defined(__unix__)
-	const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
-	const std::string vertexDir("../../../models/");
-	const std::string texDir("../../../textures/");
-#elif _WIN64 || _WIN32
-	const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
-	const std::string vertexDir("../../../cg_resources/vertex/");
-	const std::string texDir("../../../cg_resources/textures/");
-#endif
-#endif
-
+	#if STANDALONE_EXECUTABLE
+		#if defined(__unix__)
+			const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+			const std::string vertexDir("../../../../models/");
+			const std::string texDir("../../../../textures/");
+		#elif _WIN64 || _WIN32
+			const std::string shadersDir("../../../../projects/Terrain/shaders/GLSL/");
+			const std::string vertexDir("../../../../models/");
+			const std::string texDir("../../../../textures/");
+		#endif
+	#else
+		#if defined(__unix__)
+			const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+			const std::string vertexDir("../../../models/");
+			const std::string texDir("../../../textures/");
+		#elif _WIN64 || _WIN32
+			const std::string shadersDir("../../../projects/Terrain/shaders/GLSL/");
+			const std::string vertexDir("../../../cg_resources/vertex/");
+			const std::string texDir("../../../cg_resources/textures/");
+		#endif
+	#endif
+	
 	// GLOBAL UBOS
-	//globalUBOs.insert(std::pair("globalVS", UBO(e, 1, 1, 2 * size.mat4, e->c.deviceData.minUniformBufferOffsetAlignment)));
+	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, 2 * size.mat4)));		// View & Proj. matrices
 
 	// SHADERS
 	{

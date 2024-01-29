@@ -5,6 +5,8 @@ TODO:
 	setNumActiveInstances() should resize the number of instances if it's bigger than the maximum size
 	Problem if we don't have any UBO?
 
+	Add subpass process to command buffer creation
+
 	DS: Transparent sea?!
 	DS: pass tangents/bitangents to G-buffer?
 	DS: Get rid of 
