@@ -59,7 +59,7 @@ TARGET_SOURCES(${PROJECT_NAME} PRIVATE
 
 TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC
 	include
-	C:/VulkanSDK/1.3.211.0/Include
+	C:/VulkanSDK/1.3.275.0/Include
 	../Renderer/include
 	../../extern/glfw/glfw-3.3.2/include
 	../../extern/glm/glm-0.9.9.5
@@ -82,14 +82,14 @@ if( UNIX )
 	TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
 		${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/libglfw3.a
 		${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/libglm_static.a
-		C:/VulkanSDK/1.3.211.0/Lib/shaderc_combined.lib
+		C:/VulkanSDK/1.3.275.0/Lib/shaderc_combined.lib
 		-lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi #-lglfw 
 	)
 elseif( WIN32 )
 	TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
 		#Vulkan::Vulkan
-		optimized	C:/VulkanSDK/1.3.211.0/Lib/vulkan-1.lib
-		optimized	C:/VulkanSDK/1.3.211.0/Lib/shaderc_combined.lib
+		optimized	C:/VulkanSDK/1.3.275.0/Lib/vulkan-1.lib
+		optimized	C:/VulkanSDK/1.3.275.0/Lib/shaderc_combined.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/projects/Renderer/Release/Vk_renderer.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glfw/glfw-3.3.2/src/Release/glfw3.lib
 		optimized	${PROJECT_SOURCE_DIR}/../../_BUILD/extern/glm/glm-0.9.9.5/glm/Release/glm_static.lib

@@ -46,6 +46,8 @@ vec3 naturalMap(float seaLevel, float maxHeight);
 
 // Definitions:
 
+const int iGrass = 0, iRock = 1, iPSnow = 2, iRSnow = 3, iSand = 4;		// indices
+
 void main()
 {
 	//savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
@@ -139,7 +141,7 @@ void setData_grassRock()
         rough [3][i] = triplanarNoColor(texSampler[13], tf[i]).r;
         rough [4][i] = triplanarNoColor(texSampler[28], tf[i]).r;
 		
-		if(ratioMix == 1.f) {
+		if(false || ratioMix == 1.f) {
 			albedo[0][1] = albedo[0][0]; 
 			albedo[1][1] = albedo[1][0]; 			
 			albedo[2][1] = albedo[2][0]; 			
@@ -283,7 +285,7 @@ void setData_grassRock()
 	// Snow:
 	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
 	float ratioSnow = getSnowRatio_Height(0.1, 90, 120);
-	alb[2] = mix(alb[2], alb[3], ratioRock);
+	alb[2] = mix(alb[2], alb[3], ratioRock);	// mix plain and rough snow
 	nor[2] = mix(nor[2], nor[3], ratioRock);
 	spe[2] = mix(spe[2], spe[3], ratioRock);
 	rou[2] = mix(rou[2], rou[3], ratioRock);
@@ -297,7 +299,6 @@ void setData_grassRock()
 	gPos = vec4(inPos, 1.0);
 	gAlbedo = vec4(alb[0], 1.0);
 	gNormal = vec4(normalize(nor[0]), 1.0);
-	//gNormal.xyz = normalize(inNormal);
 	gSpecRoug = vec4(spe[0], rou[0]);
 }
 

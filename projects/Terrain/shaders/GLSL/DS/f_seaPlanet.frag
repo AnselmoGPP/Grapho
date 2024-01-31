@@ -149,9 +149,9 @@ void setData_Sea()
 	//    - Far normals
 	normal = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
 	
-	gPos = vec4(inPos, 1.0);
-	gAlbedo = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
-	gNormal = vec4(normal, 1.0);
+	gPos      = vec4(inPos, 1.0);
+	gAlbedo   = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
+	gNormal   = vec4(normal, 1.0);
 	gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 	
 	//return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )

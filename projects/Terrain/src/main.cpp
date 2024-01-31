@@ -118,13 +118,13 @@ int main(int argc, char* argv[])
 				new c_Lights(2) });
 
 			// Geometry pass (deferred rendering)
-			//em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
+			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
 			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
-			//em.addEntity("grass", eFact.createGrass(
-			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-			//	{ texInfos["grass"] },
-			//	verticesLoaders["grass"],
-			//	(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("grass", eFact.createGrass(
+				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+				{ texInfos["grass"] },
+				verticesLoaders["grass"],
+				(c_Lights*)em.getSComponent(CT::lights)));
 			//em.addEntity("plant", eFact.createPlant(
 			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
 			//	{ texInfos["plant"] },
@@ -282,8 +282,8 @@ void loadResourcesInfo()
 		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_verticalNormals, sm_waving_weak})));
 		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
 
-		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_waving_strong})));
-		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_near})));
+		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "DS/v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_waving_strong})));
+		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "DS/f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_near, sm_dryColor})));
 
 		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{ })));
 		shaderLoaders.insert(std::pair("f_stone", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_specular, sm_roughness, sm_earlyDepthTest, sm_reduceNightLight})));

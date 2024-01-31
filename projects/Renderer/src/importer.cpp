@@ -526,6 +526,10 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//earlyDepthTest: ");
 			break;
 
+		case sm_dryColor:					// (FS) Apply dry color filter to albedo depending on fragment height
+			findStrAndErase(shader, "//dryColor: ");
+			break;
+
 		default:
 			break;
 		}

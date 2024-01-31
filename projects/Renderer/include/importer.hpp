@@ -201,7 +201,8 @@ enum shaderModifier {
 	sm_reduceNightLight,
 	sm_distDithering_near,
 	sm_distDithering_far,
-	sm_earlyDepthTest
+	sm_earlyDepthTest,
+	sm_dryColor
 };
 
 class SLModule		/// Shader Loader Module

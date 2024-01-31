@@ -5,13 +5,19 @@ TODO:
 	setNumActiveInstances() should resize the number of instances if it's bigger than the maximum size
 	Problem if we don't have any UBO?
 
-	Add subpass process to command buffer creation
+	renderPipeline destructor should have content
 
 	DS: Transparent sea?!
 	DS: pass tangents/bitangents to G-buffer?
 	DS: Get rid of 
 		savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
 		savePNT(inPos, normalize(inNormal), inTB3);
+
+	Remove view and proj matrices from update()
+	Use early depth test in basic shader whenever advisable
+	Adapt grass color to terrain height
+	Define ModelInfo of planet/sphere/chunk in entity.cpp
+	Geometry shader for grass (place points and get grass)
 
 	Distributor: Make it fill even between vertices
 		Far trees doesn't fit all near trees (in position and size)
