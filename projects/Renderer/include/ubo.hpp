@@ -74,6 +74,21 @@ struct LightProps
 	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
 };
 
+struct Light
+{
+	alignas(16) int type;				//!< 0: no light, 1: directional, 2: point, 3: spot
+
+	alignas(16) glm::vec3 position;
+	alignas(16) glm::vec3 direction;	//!< Direction FROM the light source
+
+	alignas(16) glm::vec3 ambient;
+	alignas(16) glm::vec3 diffuse;
+	alignas(16) glm::vec3 specular;
+
+	alignas(16) glm::vec3 degree;		//!< vec3( constant, linear, quadratic )
+	alignas(16) glm::vec2 cutOff;		//!< vec2( cutOff, outerCutOff )
+};
+
 /**
 	@struct LightSet
 	@brief Data structure for light. The LightPosDir is passed to vertex shader, and LightProps to fragment shader.
@@ -91,12 +106,13 @@ struct LightSet
 	LightSet(unsigned numLights);
 	~LightSet();
 	void turnOff(size_t index);
-	void setDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);
-	void setPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
-	void setSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
+	void addDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular);
+	void addPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic);
+	void addSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff);
 
-	LightPosDir* posDir;	// To vertex & fragment shader
+	LightPosDir* posDir;		// To vertex & fragment shader
 	LightProps* props;		// To fragment shader
+	Light* lights;
 
 	const int numLights;
 	const size_t posDirBytes;

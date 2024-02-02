@@ -40,13 +40,14 @@ void main()
 	outUVs = inUVs;
 	outCamPos = ubo[i].camPos_t.xyz;
 	
-	for(int i = 0; i < NUMLIGHTS; i++) 
+	for(int i = 0; i < NUMLIGHTS; i++)
 	{
 		outLight[i].position.xyz  = ubo[i].light[i].position.xyz;						// for point & spot light
 		outLight[i].direction.xyz = normalize(ubo[i].light[i].direction.xyz);			// for directional & spot light
 	}
 	
 	//backfaceNormals: if(dot(outNormal, normalize(ubo[i].camPos_t.xyz - outPos)) < 0) outNormal *= -1;
+	//sunfaceNormals: if(dot(outNormal, ubo[0].light[0].direction.xyz) > 0) outNormal *= -1;
 	
 	//normal: outTB = getTB(inNormal, inTan);
 }

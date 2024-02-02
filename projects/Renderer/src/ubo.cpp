@@ -75,6 +75,10 @@ Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)
 LightSet::LightSet(unsigned numLights)
 	: numLights(numLights), posDirBytes(numLights * sizeof(LightPosDir)), propsBytes(numLights * sizeof(LightProps))
 {
+
+
+	// ----------
+
 	this->posDir = new LightPosDir[numLights];
 	this->props = new LightProps[numLights];
 
@@ -86,13 +90,17 @@ LightSet::LightSet(unsigned numLights)
 
 LightSet::~LightSet()
 {
+	delete[] lights;
+
+	// ----------
+
 	delete[] posDir;
 	delete[] props;
 }
 
 void LightSet::turnOff(size_t index) { props[index].type = 0; }
 
-void LightSet::setDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
+void LightSet::addDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
 {
 	props[index].type = 1;
 	posDir[index].direction = direction;
@@ -102,7 +110,7 @@ void LightSet::setDirectional(size_t index, glm::vec3 direction, glm::vec3 ambie
 	props[index].specular = specular;
 }
 
-void LightSet::setPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic)
+void LightSet::addPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic)
 {
 	posDir[index].position = position;
 
@@ -117,7 +125,7 @@ void LightSet::setPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm
 	props[index].degree.z = quadratic;
 }
 
-void LightSet::setSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff)
+void LightSet::addSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff)
 {
 	posDir[index].position = position;
 	posDir[index].direction = direction;

@@ -20,7 +20,7 @@ layout(location = 3) flat in vec3 inCamPos;
 //normal: layout(location = 4) in TB inTB;
 layout(location = 4) flat in LightPD inLight[NUMLIGHTS];			// light positions & directions
 
-//layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
+//layout(location = 0) out vec4 outColor;							// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 layout (location = 0) out vec4 gPos;
 layout (location = 1) out vec4 gAlbedo;
 layout (location = 2) out vec4 gNormal;
@@ -36,10 +36,10 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
-	//discardAlpha: if(albedo.a < 0.6) { discard; return; }														// Discard non-visible fragments
+	//discardAlpha: if(albedo.a < 0.5) { discard; return; }														// Discard non-visible fragments
 	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), near, far)) { discard; return; }		// Apply dithering to distant fragments
 	//dryColor: albedo = vec4(albedo.xyz * getDryColor(vec3(0.9, 0.6, 0), 2000 + 15, 2000 + 70), albedo.w);		// Apply dry color to upper fragments
-	vec3 normal = normalize(inNormal);	
+	vec3 normal = normalize(inNormal);
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	
 	

@@ -118,33 +118,33 @@ int main(int argc, char* argv[])
 				new c_Lights(2) });
 
 			// Geometry pass (deferred rendering)
-			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk2"], shaderLoaders["f_planetChunk2"], soilTexInfos));
+			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
 			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
 			em.addEntity("grass", eFact.createGrass(
 				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
 				{ texInfos["grass"] },
 				verticesLoaders["grass"],
 				(c_Lights*)em.getSComponent(CT::lights)));
-			//em.addEntity("plant", eFact.createPlant(
-			//	shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-			//	{ texInfos["plant"] },
-			//	verticesLoaders["plant"],
-			//	(c_Lights*)em.getSComponent(CT::lights)));
-			//em.addEntity("stone", eFact.createRock(
-			//	shaderLoaders["v_stone"], shaderLoaders["f_stone"],
-			//	{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
-			//	verticesLoaders["stone"],
-			//	(c_Lights*)em.getSComponent(CT::lights)));
-			//em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
-			//	{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
-			//	{ texInfos["bark_a"] }, { texInfos["branch_a"] },
-			//	verticesLoaders["trunk"], verticesLoaders["branches"],
-			//	(c_Lights*)em.getSComponent(CT::lights)));
-			//em.addEntity("treeBB", eFact.createTreeBillboard(
-			//	shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"],
-			//	{ texInfos["treeBB_a"] },
-			//	verticesLoaders["treeBB"],
-			//	(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("plant", eFact.createPlant(
+				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
+				{ texInfos["plant"] },
+				verticesLoaders["plant"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("stone", eFact.createRock(
+				shaderLoaders["v_stone"], shaderLoaders["f_stone"],
+				{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
+				verticesLoaders["stone"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
+				{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
+				{ texInfos["bark_a"] }, { texInfos["branch_a"] },
+				verticesLoaders["trunk"], verticesLoaders["branches"],
+				(c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("treeBB", eFact.createTreeBillboard(
+				shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"],
+				{ texInfos["treeBB_a"] },
+				verticesLoaders["treeBB"],
+				(c_Lights*)em.getSComponent(CT::lights)));
 
 			// Lighting pass (deferred rendering)
 			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders["v_lightingPass"], shaderLoaders["f_lightingPass"], { }, (c_Lights*)em.getSComponent(CT::lights)));
@@ -233,66 +233,50 @@ void loadResourcesInfo()
 
 	// SHADERS
 	{
-		//shaderLoaders["v_points"] = ShaderLoader(shadersDir + "v_points.vert");
-		shaderLoaders.insert(std::pair("v_points", ShaderLoader(shadersDir + "v_points.vert")));
-		shaderLoaders.insert(std::pair("f_points", ShaderLoader(shadersDir + "f_points.frag")));
+		//shaderLoaders.insert(std::pair("v_points", ShaderLoader(shadersDir + "v_points.vert")));
+		//shaderLoaders.insert(std::pair("f_points", ShaderLoader(shadersDir + "f_points.frag")));
+		//
+		//shaderLoaders.insert(std::pair("v_lines", ShaderLoader(shadersDir + "v_lines.vert")));
+		//shaderLoaders.insert(std::pair("f_lines", ShaderLoader(shadersDir + "f_lines.frag")));
+		//
+		//shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "v_skybox.vert")));
+		//shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "f_skybox.frag")));
+		
+		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_v.vert")));
+		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_f.frag")));
+		
+		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "planetChunk_v.vert")));
+		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "planetChunk_f.frag")));
+		
+		//shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "v_sun.vert")));
+		//shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "f_sun.frag")));
+		//
+		//shaderLoaders.insert(std::pair("v_hud", ShaderLoader(shadersDir + "v_hud.vert")));
+		//shaderLoaders.insert(std::pair("f_hud", ShaderLoader(shadersDir + "f_hud.frag")));
+		//
+		//shaderLoaders.insert(std::pair("v_atmosphere", ShaderLoader(shadersDir + "v_atmosphere.vert")));
+		//shaderLoaders.insert(std::pair("f_atmosphere", ShaderLoader(shadersDir + "f_atmosphere.frag")));
 
-		shaderLoaders.insert(std::pair("v_lines", ShaderLoader(shadersDir + "v_lines.vert")));
-		shaderLoaders.insert(std::pair("f_lines", ShaderLoader(shadersDir + "f_lines.frag")));
-
-		shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "v_skybox.vert")));
-		shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "f_skybox.frag")));
-
-		shaderLoaders.insert(std::pair("v_basicModel", ShaderLoader(shadersDir + "v_basicModel.vert")));
-		shaderLoaders.insert(std::pair("f_basicModel", ShaderLoader(shadersDir + "f_basicModel.frag")));
-
-		//shaderLoaders.insert(std::pair("v_grass",     ShaderLoader(shadersDir + "v_grass.vert")));
-		//shaderLoaders.insert(std::pair("f_grass",     ShaderLoader(shadersDir + "f_grass.frag")));
-
-		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "DS/v_seaPlanet.vert")));
-		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "DS/f_seaPlanet.frag")));
-
-		shaderLoaders.insert(std::pair("v_plainChunk", ShaderLoader(shadersDir + "v_plainChunk.vert")));
-		shaderLoaders.insert(std::pair("f_plainChunk", ShaderLoader(shadersDir + "f_plainChunk.frag")));
-
-		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "v_planetChunk.vert")));
-		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "f_planetChunk.frag")));
-
-		shaderLoaders.insert(std::pair("v_planetChunk2", ShaderLoader(shadersDir + "DS/v_planetChunk.vert")));
-		shaderLoaders.insert(std::pair("f_planetChunk2", ShaderLoader(shadersDir + "DS/f_planetChunk.frag")));
-
-		shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "v_sun.vert")));
-		shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "f_sun.frag")));
-
-		shaderLoaders.insert(std::pair("v_hud", ShaderLoader(shadersDir + "v_hud.vert")));
-		shaderLoaders.insert(std::pair("f_hud", ShaderLoader(shadersDir + "f_hud.frag")));
-
-		shaderLoaders.insert(std::pair("v_atmosphere", ShaderLoader(shadersDir + "v_atmosphere.vert")));
-		shaderLoaders.insert(std::pair("f_atmosphere", ShaderLoader(shadersDir + "f_atmosphere.frag")));
-
-		shaderLoaders.insert(std::pair("v_subject", ShaderLoader(shadersDir + "v_subject.vert")));
-		shaderLoaders.insert(std::pair("f_subject", ShaderLoader(shadersDir + "f_subject.frag")));
-
-		shaderLoaders.insert(std::pair("v_treeBB", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_waving_weak})));
-		shaderLoaders.insert(std::pair("f_treeBB", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_far})));
-
-		shaderLoaders.insert(std::pair("v_trunk", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_verticalNormals})));
-		shaderLoaders.insert(std::pair("f_trunk", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_earlyDepthTest, sm_reduceNightLight})));
-
-		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{sm_displace, sm_verticalNormals, sm_waving_weak})));
-		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
-
-		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "DS/v_basic.vert", std::vector<shaderModifier>{/*sm_backfaceNormals*/sm_verticalNormals, sm_waving_strong})));
-		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "DS/f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_near, sm_dryColor})));
-
-		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "v_basic.vert", std::vector<shaderModifier>{ })));
-		shaderLoaders.insert(std::pair("f_stone", ShaderLoader(shadersDir + "f_basic.frag", std::vector<shaderModifier>{sm_albedo, sm_specular, sm_roughness, sm_earlyDepthTest, sm_reduceNightLight})));
-
-		shaderLoaders.insert(std::pair("v_noPP", ShaderLoader(shadersDir + "v_noPP.vert")));
-		shaderLoaders.insert(std::pair("f_noPP", ShaderLoader(shadersDir + "f_noPP.frag")));
-
-		shaderLoaders.insert(std::pair("v_lightingPass", ShaderLoader(shadersDir + "DS/v_lightingPass.vert")));
-		shaderLoaders.insert(std::pair("f_lightingPass", ShaderLoader(shadersDir + "DS/f_lightingPass.frag")));
+		shaderLoaders.insert(std::pair("v_treeBB", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{sm_verticalNormals, sm_waving_weak})));
+		shaderLoaders.insert(std::pair("f_treeBB", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_far})));
+		
+		shaderLoaders.insert(std::pair("v_trunk", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{sm_displace})));
+		shaderLoaders.insert(std::pair("f_trunk", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_earlyDepthTest, sm_reduceNightLight})));
+		
+		shaderLoaders.insert(std::pair("v_branch", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{sm_displace, sm_verticalNormals, sm_waving_weak})));
+		shaderLoaders.insert(std::pair("f_branch", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight})));
+		
+		shaderLoaders.insert(std::pair("v_grass", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{sm_verticalNormals, sm_waving_strong})));
+		shaderLoaders.insert(std::pair("f_grass", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_near, sm_dryColor})));
+		
+		shaderLoaders.insert(std::pair("v_stone", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{ })));
+		shaderLoaders.insert(std::pair("f_stone", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_specular, sm_roughness, sm_earlyDepthTest, sm_reduceNightLight})));
+		
+		//shaderLoaders.insert(std::pair("v_noPP", ShaderLoader(shadersDir + "v_noPP.vert")));
+		//shaderLoaders.insert(std::pair("f_noPP", ShaderLoader(shadersDir + "f_noPP.frag")));
+		
+		shaderLoaders.insert(std::pair("v_lightingPass", ShaderLoader(shadersDir + "lightingPass_v.vert")));
+		shaderLoaders.insert(std::pair("f_lightingPass", ShaderLoader(shadersDir + "lightingPass_f.frag")));
 	}
 
 	// VERTICES

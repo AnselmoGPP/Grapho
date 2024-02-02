@@ -194,14 +194,14 @@ c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count)
 	//lights.turnOff(0);
 
 	// Sun (day & night):
-	if (i < count) lights.setDirectional(i++,  glm::vec3(-1, 0, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	if (i < count) lights.setDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
+	if (i < count) lights.addDirectional(i++,  glm::vec3(-1, 0, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	if (i < count) lights.addDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
 
 	// Flashlight:
-	if (i < count) lights.setSpot(i++, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
+	if (i < count) lights.addSpot(i++, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
 
-	//lights.setPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
-	//lights.setSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
+	//lights.addPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
+	//lights.addSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
 }
 
 void c_Lights::printInfo() const

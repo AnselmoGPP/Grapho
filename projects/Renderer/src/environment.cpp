@@ -239,10 +239,8 @@ void VulkanCore::createInstance()
 		throw std::runtime_error("Extensions requested, but not available!");
 
 	// Create the instance
-	std::cout << "vkCreateInstance() 1/2" << std::endl;
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create instance!");
-	std::cout << "vkCreateInstance() 2/2" << std::endl;
 }
 
 bool VulkanCore::checkValidationLayerSupport(const std::vector<const char*>& requiredLayers)

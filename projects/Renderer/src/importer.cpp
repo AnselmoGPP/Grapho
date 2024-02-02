@@ -487,18 +487,22 @@ void SLModule::applyModifications(std::string& shader)
 			findStrAndErase(shader, "//backfaceNormals: ");
 			break;
 
+		case sm_sunfaceNormals:				// (VS) Recalculate normal based on light facing
+			findStrAndErase(shader, "//sunfaceNormals: ");
+			break;
+
 		case sm_verticalNormals:			// (VS) Make all normals (before MVP transformation) vertical (vec3(0,0,1))
 			findStrAndErase(shader, "outNormal = mat3(ubo.normalMatrix) * inNormal;");
 			findStrAndErase(shader, "//verticalNormals: ");
 			break;
 
-		case sm_waving_weak:					// (VS) Make mesh wave (wind)
+		case sm_waving_weak:				// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
 			findStrAndReplace(shader, "<speed>", "2");
 			findStrAndReplace(shader, "<amplitude>", "0.01");
 			break;
 
-		case sm_waving_strong:					// (VS) Make mesh wave (wind)
+		case sm_waving_strong:				// (VS) Make mesh wave (wind)
 			findStrAndErase(shader, "//waving: ");
 			findStrAndReplace(shader, "<speed>", "3");
 			findStrAndReplace(shader, "<amplitude>", "0.02");

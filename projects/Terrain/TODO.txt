@@ -1,6 +1,12 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
+	Vertex shader: ubo[i].light[i].position.xyz is correct? (all indices are i)
+	UBOs
+	unify light class
+	Shader maker
+
+	reduceNightLight doesn't work due to lighting done in lighting pass
 	setNumActiveInstances() should increase the number of both vsUBO and fsUBO (but there also should be an existing general UBO)
 	setNumActiveInstances() should resize the number of instances if it's bigger than the maximum size
 	Problem if we don't have any UBO?
