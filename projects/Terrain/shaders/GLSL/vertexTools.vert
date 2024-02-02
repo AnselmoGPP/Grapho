@@ -45,13 +45,6 @@
 
 // Data structures ------------------------------------
 
-// Generated in VS and passed to FS
-struct LightPD
-{
-    vec4 position;		// vec3
-    vec4 direction;		// vec3
-};
-
 // Tangent (T) and Bitangent (B)
 struct TB
 {

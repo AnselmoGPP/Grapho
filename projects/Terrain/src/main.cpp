@@ -64,51 +64,7 @@ int main(int argc, char* argv[])
 		
 		// ENTITIES + COMPONENTS:
 		bool deferredShading = true;
-		if(!deferredShading)
-		{
-			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
-				new c_Engine(app),
-					new c_Input,
-					new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
-					new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
-					new c_Lights(2) });
 
-			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
-			em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
-			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
-			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
-			//em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
-			em.addEntity("grass", eFact.createGrass(
-				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-				{ texInfos["grass"] },
-				verticesLoaders["grass"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("plant", eFact.createPlant(
-				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-				{ texInfos["plant"] },
-				verticesLoaders["plant"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("stone", eFact.createRock(
-				shaderLoaders["v_stone"], shaderLoaders["f_stone"],
-				{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
-				verticesLoaders["stone"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
-				{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
-				{ texInfos["bark_a"] }, { texInfos["branch_a"] },
-				verticesLoaders["trunk"], verticesLoaders["branches"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("treeBB", eFact.createTreeBillboard(
-				shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"],
-				{ texInfos["treeBB_a"] },
-				verticesLoaders["treeBB"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], skyboxTexInfos));
-			em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
-			if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
-			else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
-		}
-		else
 		{
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 				new c_Engine(app),
@@ -229,7 +185,8 @@ void loadResourcesInfo()
 	#endif
 	
 	// GLOBAL UBOS
-	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, 2 * size.mat4)));		// View & Proj. matrices
+	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4)));		// View, Proj, camPos_Time
+	//globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, XXX + size.vec4)));						// Lights, camPos
 
 	// SHADERS
 	{

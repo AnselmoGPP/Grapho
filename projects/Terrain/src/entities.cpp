@@ -27,8 +27,8 @@ std::vector<Component*> EntityFactory::createLightingPass(ShaderLoader Vshader, 
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
-	modelInfo.UBOsize_vs = c_lights->lights.numLights * sizeof(LightPosDir);
-	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.numLights * sizeof(LightProps);		// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
+	modelInfo.UBOsize_vs = 1;
+	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.bytesSize;			// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 1;
 	modelInfo.subpassIndex = 0;
@@ -385,8 +385,8 @@ std::vector<Component*> EntityFactory::createGrass(ShaderLoader Vshader, ShaderL
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 5000;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;									// n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;
@@ -437,8 +437,8 @@ std::vector<Component*> EntityFactory::createPlant(ShaderLoader Vshader, ShaderL
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 500;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;
@@ -491,8 +491,8 @@ std::vector<Component*> EntityFactory::createRock(ShaderLoader Vshader, ShaderLo
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 500;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -549,8 +549,8 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 500;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;									// n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -578,8 +578,8 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::initializer_
 	modelInfo.shadersInfo = &shaders2;
 	modelInfo.texturesInfo = &textureSet2;
 	modelInfo.maxDescriptorsCount_vs = 500;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);									// n * LightProps (6*vec4)
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;									// n * LightProps (6*vec4)
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -621,8 +621,8 @@ std::vector<Component*> EntityFactory::createTreeBillboard(ShaderLoader Vshader,
 	modelInfo.shadersInfo = &shaders;
 	modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 500;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4 + c_lights->lights.numLights * sizeof(LightPosDir);	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.numLights * sizeof(LightProps);
+	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;

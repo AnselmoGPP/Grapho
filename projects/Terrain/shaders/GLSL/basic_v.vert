@@ -10,7 +10,6 @@ layout(set = 0, binding = 0) uniform ubobject {
     mat4 proj;
     mat4 normalMatrix;			// mat3
 	vec4 camPos_t;				// camPos (vec3) + time (float)
-	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo[1];						// [i]: array of descriptors
 
 layout(location = 0) in vec3 inPos;
@@ -23,7 +22,6 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUVs;
 layout(location = 3) flat out vec3 outCamPos;
 //normal: layout(location = 4) out TB outTB;				// Tangents & Bitangents
-layout(location = 4) flat out LightPD outLight[NUMLIGHTS];	// light positions & directions
 
 int i = gl_InstanceIndex;
 
@@ -39,13 +37,7 @@ void main()
 	//verticalNormals: outNormal = mat3(ubo[i].normalMatrix) * vec3(0,0,1);
 	outUVs = inUVs;
 	outCamPos = ubo[i].camPos_t.xyz;
-	
-	for(int i = 0; i < NUMLIGHTS; i++)
-	{
-		outLight[i].position.xyz  = ubo[i].light[i].position.xyz;						// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo[i].light[i].direction.xyz);			// for directional & spot light
-	}
-	
+		
 	//backfaceNormals: if(dot(outNormal, normalize(ubo[i].camPos_t.xyz - outPos)) < 0) outNormal *= -1;
 	//sunfaceNormals: if(dot(outNormal, ubo[0].light[0].direction.xyz) > 0) outNormal *= -1;
 	

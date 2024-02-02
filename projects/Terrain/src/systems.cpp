@@ -568,16 +568,16 @@ void s_Lights::update(float timeStep)
     unsigned count = c_lights->lights.numLights;
     unsigned i = 0;
     
-    if (i < count && c_sky) c_lights->lights.posDir[i].direction = -c_sky->sunDir;    // Dir. from sun
+    if (i < count && c_sky) c_lights->lights.set[i].direction = -c_sky->sunDir;         // Dir. from sun
     i++;
 
-    if (i < count && c_sky) c_lights->lights.posDir[i].direction =  c_sky->sunDir;    // Dir. to sun
+    if (i < count && c_sky) c_lights->lights.set[i].direction =  c_sky->sunDir;  // Dir. to sun
     i++;
 
     if (i < count && c_cam)
     {
-        c_lights->lights.posDir[i].position = c_cam->camPos;                          // Flashlight from cam
-        c_lights->lights.posDir[i].direction = c_cam->front;
+        c_lights->lights.set[i].position = c_cam->camPos;                        // Flashlight from cam
+        c_lights->lights.set[i].direction = c_cam->front;
     }
 }
 
@@ -709,8 +709,6 @@ void s_Model::update(float timeStep)
             for (i = 0; i < ((c_Model_normal*)c_model)->model->vsUBO.numActiveDescriptors; i++)
             {
                 dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
-                memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
-                dest += c_lights->lights.posDirBytes;   // c_lights->lights.numLights * sizeof(LightPosDir);
             }
             
             for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
@@ -718,8 +716,7 @@ void s_Model::update(float timeStep)
                 dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
                 memcpy(dest, &camPos_numLights, size.vec4);
                 dest += size.vec4;
-                memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
-                dest += c_lights->lights.propsBytes;  // c_lights->lights.numLights * sizeof(LightProps);
+                memcpy(dest, c_lights->lights.set, c_lights->lights.bytesSize);
             }
             break;
         }
@@ -760,13 +757,12 @@ void s_Model::update(float timeStep)
                     cam_time = { c_cam->camPos, c_eng->time };
                     memcpy(dest, &cam_time, sizeof(cam_time));
                     dest += size.vec4;
-                    memcpy(dest, c_lights->lights.posDir, c_lights->lights.posDirBytes);
                 }
 
                 for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
                 {
                     dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
-                    memcpy(dest, c_lights->lights.props, c_lights->lights.propsBytes);
+                    memcpy(dest, c_lights->lights.set, c_lights->lights.bytesSize);
                 }
                 break;
             }
@@ -793,7 +789,7 @@ void s_Model::update(float timeStep)
                     dest += size.vec4;
                     memcpy(dest, &c_cam->right, sizeof(c_cam->right));
                     dest += size.vec4;
-                    memcpy(dest, &c_lights->lights.posDir[0].direction, sizeof(glm::vec3)); // sun direction
+                    memcpy(dest, &c_lights->lights.set[0].direction, sizeof(glm::vec3)); // sun direction
                     dest += size.vec4;
                     memcpy(dest, &clipPlanes, sizeof(clipPlanes));
                     dest += size.vec4;

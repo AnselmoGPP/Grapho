@@ -12,7 +12,6 @@ layout(set = 0, binding = 0) uniform ubobject {
 	vec4 camPos;				// vec3
     vec4 time;					// float
 	vec4 sideDepthsDiff;
-	LightPD light[NUMLIGHTS];	// n * (2 * vec4)
 } ubo;
 
 layout(location = 0) in vec3    inPos;					// Each location has 16 bytes
@@ -27,7 +26,6 @@ layout(location = 4)  		out float	outDist;		// Distace vertex-camera
 layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
 layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
 layout(location = 7)  		out TB3		outTB3;			// Tangents & Bitangents
-layout(location = 13) flat	out LightPD outLight[NUMLIGHTS];
 
 void main()
 {
@@ -42,13 +40,7 @@ void main()
 	outGroundHeight = sqrt(inPos.x * inPos.x + inPos.y * inPos.y + inPos.z * inPos.z);
 	outSlope        = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
 	outCamPos       = ubo.camPos.xyz;
-	
-	for(int i = 0; i < NUMLIGHTS; i++) 
-	{
-		outLight[i].position.xyz  = ubo.light[i].position.xyz;							// for point & spot light
-		outLight[i].direction.xyz = normalize(ubo.light[i].direction.xyz);				// for directional & spot light
-	}
-	
+		
 	outTB3 = getTB3(inNormal);
 }
 

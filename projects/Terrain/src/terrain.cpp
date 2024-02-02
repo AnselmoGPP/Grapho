@@ -90,8 +90,8 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     modelInfo.shadersInfo = &shaders;
     modelInfo.texturesInfo = &textures;
     modelInfo.maxDescriptorsCount_vs = 1;
-    modelInfo.UBOsize_vs = 4 * size.mat4 + 3 * size.vec4 + numLights * sizeof(LightPosDir);   // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), n * LightPosDir (2*vec4), sideDepth (vec3)
-    modelInfo.UBOsize_fs = numLights * sizeof(LightProps);                                    // n * LightProps (6*vec4)
+    modelInfo.UBOsize_vs = 4 * size.mat4 + 3 * size.vec4;     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), sideDepth (vec3)
+    modelInfo.UBOsize_fs = numLights * sizeof(Light);         // n * LightProps (6*vec4)
     modelInfo.transparency = transparency;
     modelInfo.renderPassIndex = 0;
     modelInfo.subpassIndex = 0;
@@ -155,15 +155,12 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
         memcpy(dest, &camHeight, sizeof(float));
         dest += 3 * sizeof(float);
         memcpy(dest, &sideDepths, size.vec4);
-        dest += size.vec4;
-        memcpy(dest, lights.posDir, lights.posDirBytes);
-        //dest += lights.posDirBytes;
     }
 
     for (size_t i = 0; i < model->fsUBO.numActiveDescriptors; i++)
     {
         dest = model->fsUBO.getDescriptorPtr(i);
-        memcpy(dest, lights.props, lights.propsBytes);
+        memcpy(dest, lights.set, lights.bytesSize);
         //dest += lights.propsBytes;
     }
 }
@@ -1520,12 +1517,10 @@ void GrassSystem_planet::updateState(const glm::vec3& camPos, const glm::mat4& v
         memcpy(dest, &pos[i], size.vec3);
         dest += size.vec3;
         memcpy(dest, &slp[i], sizeof(float));
-        dest += sizeof(float);
-        memcpy(dest, lights.posDir, lights.posDirBytes);
     }
 
     dest = grassModel->fsUBO.getDescriptorPtr(0);
-    memcpy(dest, lights.props, lights.propsBytes);
+    memcpy(dest, lights.set, lights.bytesSize);
 }
 
 GrassSystem_planet::GrassSystem_planet(Renderer& renderer, float maxDist, unsigned minDepth)

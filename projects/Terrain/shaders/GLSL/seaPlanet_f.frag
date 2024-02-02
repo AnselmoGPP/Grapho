@@ -21,7 +21,7 @@ layout(early_fragment_tests) in;
 
 layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-	LightProps light[NUMLIGHTS];
+	Light light[NUMLIGHTS];
 } ubo;
 
 layout(set = 0, binding  = 2) uniform sampler2D texSampler[10];		// sampler1D, sampler2D, sampler3D
@@ -33,7 +33,6 @@ layout(location = 3)  		in float	inDist;
 layout(location = 4)		in float	inGroundHeight;
 layout(location = 5)  flat  in float    inTime;
 layout(location = 6)  		in TB3	 	inTB3;
-layout(location = 12) flat	in LightPD	inLight[NUMLIGHTS];
 
 //layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 layout (location = 0) out vec4 gPos;
@@ -51,8 +50,8 @@ float getTransparency(float minAlpha, float maxDist);
 
 void main()
 {	
-	savePrecalcLightValues(inPos, inCamPos, ubo.light, inLight);
-	savePNT(inPos, inNormal, inTB3);
+	savePrecalcLightValues(inPos, inCamPos, ubo.light);
+	savePNT(inPos, normalize(inNormal), inTB3);
 	
 	//gPos = vec4(inPos, 1.0);
 	//gAlbedo = vec4(1, 0, 0, 1);

@@ -187,18 +187,18 @@ void c_Move::printInfo() const
 	std::cout << "----------" << std::endl;
 }
 
-c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count) 
+c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count, count) 
 { 
 	unsigned i = 0;
 
 	//lights.turnOff(0);
 
 	// Sun (day & night):
-	if (i < count) lights.addDirectional(i++,  glm::vec3(-1, 0, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
-	if (i < count) lights.addDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
+	lights.addDirectional(i++,  glm::vec3(-1, 0, 0), glm::vec3(0.03, 0.03, 0.03), glm::vec3(1, 1, 1), glm::vec3(1, 1, 1));
+	lights.addDirectional(i++, -glm::vec3(-1, 0, 0), glm::vec3(0.00, 0.00, 0.00), glm::vec3(0.01, 0.01, 0.01), glm::vec3(0.007, 0.007, 0.007));
 
 	// Flashlight:
-	if (i < count) lights.addSpot(i++, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
+	lights.addSpot(i++, glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(2, 2, 2), glm::vec3(2, 2, 2), 1, 0.09, 0.032, 0.9, 0.8);
 
 	//lights.addPoint(1, glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(40, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1);
 	//lights.addSpot(1, glm::vec3(0,0,0), glm::vec3(0, 0,-1), glm::vec3(0, 0, 0), glm::vec3(0, 40, 40), glm::vec3(40, 40, 40), 1, 1, 1, 0.9, 0.8);
@@ -206,17 +206,7 @@ c_Lights::c_Lights(unsigned count) : Component(CT::lights), lights(count)
 
 void c_Lights::printInfo() const
 {
-	for (unsigned i = 0; i < lights.numLights; i++)
-	{
-		std::cout << "Light " << i << ':' << std::endl;
-		std::cout << "   Pos: "; printVec(lights.posDir->position);
-		std::cout << "   Dir: "; printVec(lights.posDir->direction);
-		std::cout << "   Type: " << lights.props->type << std::endl;
-		std::cout << "   Ambient: "; printVec(lights.props->ambient);
-		std::cout << "   Diffuse: "; printVec(lights.props->diffuse);
-		std::cout << "   Specular: "; printVec(lights.props->specular);
-		std::cout << "   Degree: "; printVec(lights.props->degree);
-		std::cout << "   CutOff: "; printVec(lights.props->cutOff);	}
+	lights.printLights();
 }
 
 c_Sky::c_Sky(float skySpeed, float skyAngle, float sunSpeed, float sunAngle, float sunDist)

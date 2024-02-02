@@ -72,76 +72,86 @@ Material::Material(glm::vec3& diffuse, glm::vec3& specular, float shininess)
 
 // LightSet -------------------------------------------------------------
 
-LightSet::LightSet(unsigned numLights)
-	: numLights(numLights), posDirBytes(numLights * sizeof(LightPosDir)), propsBytes(numLights * sizeof(LightProps))
+LightSet::LightSet(size_t numLights, size_t numActiveLights)
+	: bytesSize(numLights * sizeof(Light)), 
+	numLights(numLights), 
+	numActiveLights(numActiveLights > numLights ? numLights : numActiveLights)
 {
-
-
-	// ----------
-
-	this->posDir = new LightPosDir[numLights];
-	this->props = new LightProps[numLights];
+	set = new Light[numLights];
 
 	for (size_t i = 0; i < numLights; i++)
-		props[i].type = 0;
-
-	//if (numLights < 0) numLights = 0;
+		set[i].type = 0;
 }
 
-LightSet::~LightSet()
+LightSet::~LightSet() { delete[] set; }
+
+void LightSet::turnOff(size_t index)
 {
-	delete[] lights;
+	if (index > numLights) return;
 
-	// ----------
-
-	delete[] posDir;
-	delete[] props;
+	set[index].type = 0;
 }
-
-void LightSet::turnOff(size_t index) { props[index].type = 0; }
 
 void LightSet::addDirectional(size_t index, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
 {
-	props[index].type = 1;
-	posDir[index].direction = direction;
+	if (index > numLights) return;
 
-	props[index].ambient = ambient;
-	props[index].diffuse = diffuse;
-	props[index].specular = specular;
+	set[index].type      = 1;
+	set[index].direction = direction;
+
+	set[index].ambient   = ambient;
+	set[index].diffuse   = diffuse;
+	set[index].specular  = specular;
 }
 
 void LightSet::addPoint(size_t index, glm::vec3 position, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic)
 {
-	posDir[index].position = position;
+	if (index > numLights) return;
 
-	props[index].type = 2;
+	set[index].type      = 2;
+	set[index].position  = position;
 
-	props[index].ambient = ambient;
-	props[index].diffuse = diffuse;
-	props[index].specular = specular;
+	set[index].ambient   = ambient;
+	set[index].diffuse   = diffuse;
+	set[index].specular  = specular;
 
-	props[index].degree.x = constant;
-	props[index].degree.y = linear;
-	props[index].degree.z = quadratic;
+	set[index].degree.x  = constant;
+	set[index].degree.y  = linear;
+	set[index].degree.z  = quadratic;
 }
 
 void LightSet::addSpot(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, float constant, float linear, float quadratic, float cutOff, float outerCutOff)
 {
-	posDir[index].position = position;
-	posDir[index].direction = direction;
+	if (index > numLights) return;
 
-	props[index].type = 3;
+	set[index].type      = 3;
+	set[index].position  = position;
+	set[index].direction = direction;
 
-	props[index].ambient = ambient;
-	props[index].diffuse = diffuse;
-	props[index].specular = specular;
+	set[index].ambient   = ambient;
+	set[index].diffuse   = diffuse;
+	set[index].specular  = specular;
 
-	props[index].degree.x = constant;
-	props[index].degree.y = linear;
-	props[index].degree.z = quadratic;
+	set[index].degree.x  = constant;
+	set[index].degree.y  = linear;
+	set[index].degree.z  = quadratic;
 
-	props[index].cutOff.x = cutOff;
-	props[index].cutOff.y = outerCutOff;
+	set[index].cutOff.x  = cutOff;
+	set[index].cutOff.y  = outerCutOff;
 }
 
-
+void LightSet::printLights() const
+{
+	for (unsigned i = 0; i < numLights; i++)
+		std::cout
+			<< "Light " << i << ':' << '\n'
+			<< "   Type: " << set[i].type << '\n'
+			<< "   Pos: " << set[i].position.x << ", " << set[i].position.y << ", " << set[i].position.z << '\n'
+			<< "   Dir: " << set[i].direction.x << ", " << set[i].direction.y << ", " << set[i].direction.z << '\n'
+			<< "   Ambient: " << set[i].ambient.x << ", " << set[i].ambient.y << ", " << set[i].ambient.z << '\n'
+			<< "   Diffuse: " << set[i].diffuse.x << ", " << set[i].diffuse.y << ", " << set[i].diffuse.z << '\n'
+			<< "   Specular: " << set[i].specular.x << ", " << set[i].specular.y << ", " << set[i].specular.z << '\n'
+			<< "   Degree: " << set[i].degree.x << ", " << set[i].degree.y << ", " << set[i].degree.z << '\n'
+			<< "   CutOff: " << set[i].cutOff.x << ", " << set[i].cutOff.y << ", " << '\n'
+			<< std::endl;
+}

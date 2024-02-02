@@ -9,8 +9,6 @@
 	Data structures:
 		vec3 fragPos
 		vec3 normal
-		LightPD
-		LightProps
 		Light
 		PreCalcValues
 		TB3
@@ -79,27 +77,6 @@
 vec3 fragPos;
 vec3 normal;
 
-// Generated in VS and passed to FS
-struct LightPD
-{
-    vec4 position;		// vec3
-    vec4 direction;		// vec3
-};
-
-// Generated in FS
-struct LightProps
-{
-    int type;			// int   0: no light   1: directional   2: point   3: spot
-
-    vec4 ambient;		// vec3
-    vec4 diffuse;		// vec3
-    vec4 specular;		// vec3
-
-    vec4 degree;		// vec3	(constant, linear, quadratic) (for attenuation)
-    vec4 cutOff;		// vec2 (cuttOff, outerCutOff)
-};
-
-// Mix of LightPD and LightProps
 struct Light
 {
 	int type;			// int   0: no light   1: directional   2: point   3: spot
@@ -382,7 +359,7 @@ void savePNT(vec3 pos, vec3 norm, TB3 tb_3)
 }
 
 // (UNOPTIMIZED) Precalculate (to avoid repeating calculations) and save (for making them global for this library) variables required for calculating light.
-void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLIGHTS], LightPD inLight[NUMLIGHTS])
+void savePrecalcLightValues(vec3 fragPos, vec3 camPos, Light inLight[NUMLIGHTS])
 {
 	vec3 viewDir = normalize(camPos - fragPos);	// Camera view direction
 	float distFragLight;						// Distance fragment-lightSource
@@ -391,17 +368,17 @@ void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLI
 	
 	for(int i = 0; i < NUMLIGHTS; i++)
 	{
-		light[i].type      = uboLight[i].type;
+		light[i].type      = inLight[i].type;
 
 		light[i].position  = inLight[i].position.xyz;
 		light[i].direction = inLight[i].direction.xyz;
 	
-		light[i].ambient   = uboLight[i].ambient.xyz;
-		light[i].diffuse   = uboLight[i].diffuse.xyz;
-		light[i].specular  = uboLight[i].specular.xyz;
+		light[i].ambient   = inLight[i].ambient.xyz;
+		light[i].diffuse   = inLight[i].diffuse.xyz;
+		light[i].specular  = inLight[i].specular.xyz;
 	
-		light[i].degree    = uboLight[i].degree.xyz;
-		light[i].cutOff    = uboLight[i].cutOff.xy;
+		light[i].degree    = inLight[i].degree.xyz;
+		light[i].cutOff    = inLight[i].cutOff.xy;
 		
 		switch(light[i].type)
 		{
@@ -428,7 +405,6 @@ void savePrecalcLightValues(vec3 fragPos, vec3 camPos, LightProps uboLight[NUMLI
 		}
 	}
 }
-
 
 // (For planets) Reduce sunlight intensity (diffuse & specular) if sunlight source is below the object.
 void modifySavedSunLight(vec3 fragPos)
