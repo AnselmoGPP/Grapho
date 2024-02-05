@@ -6,6 +6,7 @@
 
 #include "terrain.hpp"
 #include "ubo.hpp"
+#include "common.hpp"
 
 
 // Chunk ----------------------------------------------------------------------

@@ -96,7 +96,7 @@ class Renderer
 
 	LoadingWorker				worker;
 
-	const size_t				numLayers;					//!< Number of layers (Painter's algorithm)
+	//const size_t				numLayers;					//!< Number of layers (Painter's algorithm)
 	std::vector<modelIter>		lastModelsToDraw;			//!< Models that must be moved to the last position in "models" in order to make them be drawn the last.
 
 	// Member variables:
@@ -110,6 +110,7 @@ class Renderer
 
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
 	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.
+	size_t						frameCount;					//!< Number of frames rendered
 
 	// Main methods:
 
@@ -174,9 +175,11 @@ class Renderer
 public:
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, size_t layers);
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, std::map<std::string, UBOinfo>* globalUBOs);
 	~Renderer();
 	
+	std::map<std::string, UBO> globalUBOs;
+
 	void renderLoop();	//!< Create command buffer and start render loop.
 
 	/// Create (partially) a new model in the list modelsToLoad. Used for rendering a model.

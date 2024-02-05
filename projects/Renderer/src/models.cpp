@@ -12,9 +12,11 @@ ModelDataInfo::ModelDataInfo()
 	shadersInfo(nullptr),
 	texturesInfo(nullptr),
 	maxDescriptorsCount_vs(1),
-	maxDescriptorsCount_fs(1), 
+	maxDescriptorsCount_fs(1),
 	UBOsize_vs(8),
 	UBOsize_fs(8),
+	globalUBO_vs(nullptr),
+	globalUBO_fs(nullptr),
 	transparency(false),
 	renderPassIndex(0),
 	subpassIndex(0),
@@ -29,6 +31,8 @@ ModelData::ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo)
 	vertexType(modelInfo.vertexType),
 	hasTransparencies(modelInfo.transparency),
 	cullMode(modelInfo.cullMode),
+	globalUBO_vs(modelInfo.globalUBO_vs),
+	globalUBO_fs(modelInfo.globalUBO_fs),
 	vsUBO(e, UBOinfo(modelInfo.maxDescriptorsCount_vs, modelInfo.activeInstances, modelInfo.UBOsize_vs)),
 	fsUBO(e, UBOinfo(modelInfo.maxDescriptorsCount_fs, modelInfo.maxDescriptorsCount_fs, modelInfo.UBOsize_fs)),
 	renderPassIndex(modelInfo.renderPassIndex),
@@ -557,7 +561,7 @@ void ModelData::recreate_Pipeline_Descriptors()
 
 	createGraphicsPipeline();			// Recreate graphics pipeline because viewport and scissor rectangle size is specified during graphics pipeline creation (this can be avoided by using dynamic state for the viewport and scissor rectangles).
 
-	vsUBO.createUBObuffers();	// Uniform buffers depend on the number of swap chain images.
+	vsUBO.createUBObuffers();			// Uniform buffers depend on the number of swap chain images.
 	fsUBO.createUBObuffers();
 	createDescriptorPool();				// Descriptor pool depends on the swap chain images.
 	createDescriptorSets();				// Descriptor sets

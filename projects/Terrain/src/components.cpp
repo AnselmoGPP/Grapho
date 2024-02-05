@@ -1,4 +1,5 @@
 #include "components.hpp"
+#include "terrain.hpp"
 
 c_Engine::c_Engine(Renderer& renderer)
 	: Component(CT::engine), r(renderer), io(r.getIOManager()), time(0), frameCount(0)

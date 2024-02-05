@@ -14,7 +14,6 @@
 #include "toolkit.hpp"
 
 #include "noise.hpp"
-#include "common.hpp"
 
 /*
 	QuadNode

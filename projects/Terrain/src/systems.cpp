@@ -2,6 +2,7 @@
 #include "toolkit.hpp"
 
 #include "systems.hpp"
+#include "common.hpp"
 
 
 void s_Engine::update(float timeStep)
@@ -15,6 +16,33 @@ void s_Engine::update(float timeStep)
 
     c_eng->time += timeStep;
     c_eng->frameCount++;
+
+    // Fill globalUBOs
+    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);    
+    c_Lights* c_lights = (c_Lights*)em->getSComponent(CT::lights);
+    if (!c_cam || !c_lights) { std::cout << "Singleton component not found" << std::endl; return; }
+
+    uint8_t* dest;
+    glm::vec4 camPos_time;
+
+    for (int i = 0; i < c_eng->r.globalUBOs["globalVS"].numActiveDescriptors; i++)		// View, Proj, camPos_Time
+    {
+        dest = c_eng->r.globalUBOs["globalVS"].getDescriptorPtr(0);
+        memcpy(dest, &c_cam->view, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &c_cam->proj, size.mat4);
+        dest += size.mat4;
+        camPos_time = glm::vec4(c_cam->camPos, c_eng->time);
+        memcpy(dest, &camPos_time, size.vec4);
+    }
+
+    for (int i = 0; i < c_eng->r.globalUBOs["globalFS"].numActiveDescriptors; i++)	    // camPos, Lights
+    {
+        dest = c_eng->r.globalUBOs["globalFS"].getDescriptorPtr(0);
+        memcpy(dest, &c_cam->camPos, size.vec3);
+        dest += size.vec4;
+        memcpy(dest, &c_lights->lights, c_lights->lights.bytesSize);
+    }
 }
 
 void s_Input::update(float timeStep)

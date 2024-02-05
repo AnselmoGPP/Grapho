@@ -15,7 +15,7 @@ class EntityFactory : public MainEntityFactory
 public:
 	EntityFactory(Renderer& renderer);
 
-	std::vector<Component*> createLightingPass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, const c_Lights* c_lights);
+	std::vector<Component*> createLightingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights);
 
 	std::vector<Component*> createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader);
@@ -25,13 +25,13 @@ public:
 	std::vector<Component*> createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
-	std::vector<Component*> createSphere(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
-	std::vector<Component*> createPlanet(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
-	std::vector<Component*> createPlant(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createGrass(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createRock(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createTreeBillboard(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures, VerticesLoader& vertexData, const c_Lights* c_lights);
-	std::vector<std::vector<Component*>> createTree(std::initializer_list<ShaderLoader> trunkShaders, std::initializer_list<ShaderLoader> branchShaders, std::initializer_list<TextureLoader> tex_trunk, std::initializer_list<TextureLoader> tex_branch, VerticesLoader& vertexData_trunk, VerticesLoader& vertexData_branches, const c_Lights* c_lights);
+	std::vector<Component*> createSphere(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos);
+	std::vector<Component*> createPlanet(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos);
+	std::vector<Component*> createPlant(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createGrass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createRock(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createTreeBillboard(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<std::vector<Component*>> createTree(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
 };
 
 bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);

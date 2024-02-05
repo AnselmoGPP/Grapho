@@ -14,11 +14,7 @@
 #include "ECSarch.hpp"
 
 #include "noise.hpp"
-#include "common.hpp"
 #include "components.hpp"
-
-
-//#define DEBUG_SYSTEM
 
 
 // Prototypes --------------------------------------

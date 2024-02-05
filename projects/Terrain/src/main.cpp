@@ -9,17 +9,16 @@
 #include "ECSarch.hpp"
 
 #include "terrain.hpp"
-#include "common.hpp"
 #include "entities.hpp"
 #include "components.hpp"
 #include "systems.hpp"
+#include "common.hpp"
 
 // MVS executable's path        == Grapho\_BUILD\projects\Terrain (Terrain.sln)
 // Standalone executable's path == Grapho\_BUILD\projects\Terrain\Release (Terrain.exe)
 #define STANDALONE_EXECUTABLE false
 
-//#define DEBUG_MAIN 
-
+#define NUM_LIGHTS 2
 // Prototypes
 void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
 void loadResourcesInfo();
@@ -32,8 +31,9 @@ void loadResourcesInfo();
 //std::map<std::string, modelIter> assets;	// Model iterators
 
 EntityManager em;	// world
-std::map<std::string, ShaderLoader> shaderLoaders;
+
 std::map<std::string, VerticesLoader> verticesLoaders;
+std::map<std::string, ShaderLoader> shaderLoaders;
 std::map<std::string, TextureLoader> texInfos;
 std::map<std::string, UBOinfo> globalUBOs;
 
@@ -55,55 +55,32 @@ int main(int argc, char* argv[])
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
 	{
 		IOmanager io(1920/2, 1080/2);
+		loadResourcesInfo();						// Load shaders, textures, UBOs, meshes from files
 		
-		Renderer app(update, io, 2);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+		Renderer app(update, io, &globalUBOs);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
 		EntityFactory eFact(app);
-		bool withPP = true;					// Add Post-Processing effects (atmosphere...) or not
-
-		loadResourcesInfo();				// Load shaders & textures
 		
 		// ENTITIES + COMPONENTS:
-		bool deferredShading = true;
-
 		{
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
 				new c_Engine(app),
 				new c_Input,
 				new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
-				new c_Lights(2) });
+				new c_Lights(NUM_LIGHTS) });
 
 			// Geometry pass (deferred rendering)
-			em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
-			em.addEntity("sea", eFact.createSphere(shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"], seaTexInfos));
-			em.addEntity("grass", eFact.createGrass(
-				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-				{ texInfos["grass"] },
-				verticesLoaders["grass"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("plant", eFact.createPlant(
-				shaderLoaders["v_grass"], shaderLoaders["f_grass"],
-				{ texInfos["plant"] },
-				verticesLoaders["plant"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("stone", eFact.createRock(
-				shaderLoaders["v_stone"], shaderLoaders["f_stone"],
-				{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] },
-				verticesLoaders["stone"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(
-				{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] }, { shaderLoaders["v_branch"], shaderLoaders["f_branch"] },
-				{ texInfos["bark_a"] }, { texInfos["branch_a"] },
-				verticesLoaders["trunk"], verticesLoaders["branches"],
-				(c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("treeBB", eFact.createTreeBillboard(
-				shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"],
-				{ texInfos["treeBB_a"] },
-				verticesLoaders["treeBB"],
-				(c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
+			em.addEntity("planet", eFact.createPlanet(shaderLoaders, texInfos));
+			em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
+			em.addEntity("grass", eFact.createGrass(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("plant", eFact.createPlant(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("stone", eFact.createRock(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("treeBB", eFact.createTreeBillboard(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
 
 			// Lighting pass (deferred rendering)
-			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders["v_lightingPass"], shaderLoaders["f_lightingPass"], { }, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
 		
 			// Forward pass (forward rendering)
 			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
@@ -185,8 +162,8 @@ void loadResourcesInfo()
 	#endif
 	
 	// GLOBAL UBOS
-	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4)));		// View, Proj, camPos_Time
-	//globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, XXX + size.vec4)));						// Lights, camPos
+	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4)));			// View, Proj, camPos_Time
+	globalUBOs.insert(std::pair("globalFS", UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light))));	// camPos, Lights
 
 	// SHADERS
 	{

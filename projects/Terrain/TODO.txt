@@ -1,9 +1,8 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
-	Soften ambient light
-	Vertex shader: ubo[i].light[i].position.xyz is correct? (all indices are i)
 	UBOs
+	Soften ambient light
 	Shader maker
 
 	reduceNightLight doesn't work due to lighting done in lighting pass

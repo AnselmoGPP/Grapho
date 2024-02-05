@@ -5,6 +5,7 @@
 #include <random>
 
 #include "noise.hpp"
+#include "common.hpp"
 
 
 void Noiser::noiseTester(Noiser* noiser, size_t size) const

@@ -208,15 +208,15 @@ void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
 
 // Renderer ---------------------------------------------------------------------
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, size_t layers)
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, std::map<std::string, UBOinfo>* globalUBOs)
 	:
 	e(io),
 	io(io),
-	numLayers(layers), 
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
 	commandsCount(0),
+	frameCount(0),
 	worker(500, models, modelsToLoad, modelsToDelete, textures, shaders, updateCommandBuffer)
 { 
 	#ifdef DEBUG_RENDERER
@@ -225,9 +225,17 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 		std::cout << "   Hardware concurrency: " << (unsigned int)std::thread::hardware_concurrency << std::endl;
 	#endif
 
+	// Prepare "models" list
 	models.resize(e.rp->renderPasses.size());
 	for (size_t rp = 0; rp < models.size(); rp++)
 		models[rp].resize(e.rp->subpassCount[rp]);
+
+	// Fill "globalUBOs" list
+	for (auto it = globalUBOs->begin(); it != globalUBOs->end(); it++)
+	{
+		this->globalUBOs.emplace(std::pair(it->first, UBO(&e, it->second)));
+		this->globalUBOs[it->first].createUBObuffers();
+	}
 }
 
 Renderer::~Renderer() 
@@ -494,6 +502,7 @@ void Renderer::drawFrame()
 	{
 		const std::lock_guard<std::mutex> lock(e.queueMutex);
 		result = vkQueuePresentKHR(e.c.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
+		frameCount++;
 	}
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || io.framebufferResized) 
@@ -620,6 +629,10 @@ void Renderer::cleanup()
 	modelsToDelete.clear();
 	textures.clear();
 	shaders.clear();
+
+	for (auto it = globalUBOs.begin(); it != globalUBOs.end(); it++)
+		globalUBOs[it->first].destroyUBOs();
+	globalUBOs.clear();
 	
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: models (" << models[0].size() << ", " << models[1].size() << "), modelsToLoad (" << modelsToLoad.size() << "), modelsToDelete (" << modelsToDelete.size() << "), Textures (" << textures.size() << "), Shaders(" << shaders.size() << ')' << std::endl;
@@ -822,6 +835,8 @@ void Renderer::toLastDraw(modelIter model)
 TimerSet& Renderer::getTimer() { return timer; }
 
 size_t Renderer::getRendersCount(modelIter model) { return model->activeInstances; }
+
+size_t Renderer::getFrameCount() { return frameCount; }
 
 size_t Renderer::getModelsCount() { return models[0].size() + models[1].size(); }
 

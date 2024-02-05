@@ -38,6 +38,8 @@ struct ModelDataInfo
 	size_t maxDescriptorsCount_fs;
 	size_t UBOsize_vs;
 	size_t UBOsize_fs;
+	UBO* globalUBO_vs;
+	UBO* globalUBO_fs;
 	bool transparency;
 	uint32_t renderPassIndex;
 	uint32_t subpassIndex;
@@ -59,6 +61,8 @@ class ModelData
 	std::vector<shaderIter> shaders;		//!< Vertex shader (0), Fragment shader (1)
 	bool hasTransparencies;					//!< Flags if textures contain transparencies (alpha channel)
 	VkCullModeFlagBits cullMode;			//!< VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_NONE, ...
+	UBO* globalUBO_vs;
+	UBO* globalUBO_fs;
 
 	// Main methods:
 
@@ -100,7 +104,6 @@ class ModelData
 public:
 	/// Construct an object for rendering
 	ModelData(VulkanEnvironment& environment, ModelDataInfo& modelInfo);
-
 	virtual ~ModelData();
 
 	/// Creates graphic pipeline and descriptor sets, and loads data for creating buffers (vertex, indices, textures). Useful in a second thread

@@ -20,6 +20,10 @@ UBO::UBO(VulkanEnvironment* e, UBOinfo uboInfo)
 	setNumActiveDescriptors(uboInfo.numActiveDescriptors);
 }
 
+UBO::UBO() 
+	: maxNumDescriptors(0), numActiveDescriptors(0), descriptorSize(0), totalBytes(0), ubo(0), uboBuffers(0), uboMemories(0) 
+{ };
+
 uint8_t* UBO::getDescriptorPtr(size_t descriptorIndex) { return ubo.data() + descriptorIndex * descriptorSize; }
 
 bool UBO::setNumActiveDescriptors(size_t count)
