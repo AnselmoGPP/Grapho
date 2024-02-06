@@ -91,8 +91,11 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     modelInfo.shadersInfo = &shaders;
     modelInfo.texturesInfo = &textures;
     modelInfo.maxDescriptorsCount_vs = 1;
-    modelInfo.UBOsize_vs = 4 * size.mat4 + 3 * size.vec4;     // MM (mat4), VM (mat4), PM (mat4), MMN (mat3), camPos (vec3), time (float), sideDepth (vec3)
-    modelInfo.UBOsize_fs = numLights * sizeof(Light);         // n * LightProps (6*vec4)
+    modelInfo.maxDescriptorsCount_fs;
+    modelInfo.UBOsize_vs = 2 * size.mat4 + size.vec4;     // Model matrix (mat4), Normal matrix (mat3), sideDepth (vec3)
+    modelInfo.UBOsize_fs;
+    modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+    modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
     modelInfo.transparency = transparency;
     modelInfo.renderPassIndex = 0;
     modelInfo.subpassIndex = 0;
@@ -106,20 +109,10 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
         dest = model->vsUBO.getDescriptorPtr(i);
         memcpy(dest, &getModelMatrix(), size.mat4);
         dest += size.mat4;
-        //memcpy(dest, &view, mat4size);
-        dest += size.mat4;
-        //memcpy(dest, &proj, mat4size);
-        dest += size.mat4;
         memcpy(dest, &getModelMatrixForNormals(getModelMatrix()), size.mat4);
         dest += size.mat4;
-        //memcpy(dest, &camPos, vec3size);
-        //dest += vec4size;
-        //memcpy(dest, &time, sizeof(float));
-        //dest += vec4size;
         //memcpy(dest, &sideDepths, vec4size);
         //dest += vec4size;
-        //memcpy(dest, lights.posDir, lights.posDirBytes);
-        //dest += lights.posDirBytes;
     }
 
     //dest = model->fsUBO.getUBOptr(0);
@@ -127,8 +120,6 @@ void Chunk::render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader
     //dest += lights.propsBytes;
 
     modelOrdered = true;
-
-    
 }
 
 void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter)
@@ -143,27 +134,17 @@ void Chunk::updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::
 
         //memcpy(dest, &modelMatrix(), size.mat4);
         dest += size.mat4;
-        memcpy(dest, &view, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &proj, size.mat4);
-        dest += size.mat4;
         //memcpy(dest, &modelMatrixForNormals(modelMatrix()), size.mat4);
         dest += size.mat4;
-        memcpy(dest, &camPos, size.vec3);
-        dest += size.vec4;
-        memcpy(dest, &time, sizeof(float));
-        dest += sizeof(float);
-        memcpy(dest, &camHeight, sizeof(float));
-        dest += 3 * sizeof(float);
         memcpy(dest, &sideDepths, size.vec4);
     }
 
-    for (size_t i = 0; i < model->fsUBO.numActiveDescriptors; i++)
-    {
-        dest = model->fsUBO.getDescriptorPtr(i);
-        memcpy(dest, lights.set, lights.bytesSize);
-        //dest += lights.propsBytes;
-    }
+    //for (size_t i = 0; i < model->fsUBO.numActiveDescriptors; i++)
+    //{
+    //    dest = model->fsUBO.getDescriptorPtr(i);
+    //    memcpy(dest, lights.set, lights.bytesSize);
+    //    //dest += lights.propsBytes;
+    //}
 }
 
 void Chunk::computeIndices(std::vector<uint16_t>& indices, unsigned numHorVertex, unsigned numVertVertex)

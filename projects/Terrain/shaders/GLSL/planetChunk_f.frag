@@ -11,12 +11,17 @@
 
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
+layout(set = 0, binding = 2) uniform globalUbo {
+    vec4 camPos;
+    Light light[NUMLIGHTS];
+} gUbo;
+
+layout(set = 0, binding = 3) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-	Light light[NUMLIGHTS];
+	vec4 test;
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[34];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 4) uniform sampler2D texSampler[34];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0)  		in vec3 	inPos;
 layout(location = 1)  flat	in vec3 	inCamPos;

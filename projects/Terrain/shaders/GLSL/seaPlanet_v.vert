@@ -18,13 +18,15 @@ float A        [WAVES] = { 0.1,  0.1,  0.1, 0.1,  0.1, 0.1 };	// Amplitude
 float steepness[WAVES] = { 0.1,  0.1,  0.2, 0.2,  0.3, 0.3 };	// [0,1]
 float Q(int i) { return steepness[i] * 1 / (w[i] * A[i]); }		// Steepness [0, 1/(w·A)] (bigger values produce loops)
 
-layout(set = 0, binding = 0) uniform ubobject {
-    mat4 model;
+layout(set = 0, binding = 0) uniform globalUbo {
     mat4 view;
     mat4 proj;
+    vec4 camPos_t;
+} gUbo;
+
+layout(set = 0, binding = 1) uniform ubobject {
+    mat4 model;					// mat4
     mat4 normalMatrix;			// mat3
-	vec4 camPos;				// vec3
-	vec4 time;					// float
 	vec4 sideDepthsDiff;
 } ubo;
 
@@ -58,24 +60,24 @@ void main()
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;
-	outDist         = getDist(pos, ubo.camPos.xyz);		// Dist. to wavy geoid
+	outDist         = getDist(pos, gUbo.camPos_t.xyz);		// Dist. to wavy geoid
 	outGroundHeight = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
-	outCamPos       = ubo.camPos.xyz;
-	outTime         = ubo.time[0];
-	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(pos, 1);
+	outCamPos       = gUbo.camPos_t.xyz;
+	outTime         = gUbo.camPos_t.w;
+	gl_Position		= gUbo.proj * gUbo.view * ubo.model * vec4(pos, 1);
 	
 	outTB3 = getTB3(normal);
 }
 
 void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude)
 {
-	float ratio = minAmplitude + 1.f - getRatio(ubo.time[1], RADIUS - maxDepth, RADIUS - minDepth);
+	float ratio = minAmplitude + 1.f - getRatio(gUbo.camPos_t.w, RADIUS - maxDepth, RADIUS - minDepth);
 	for(int i = 0; i < WAVES; i++) A[i] *= ratio;
 }
 
 vec3 getSeaOptimized(inout vec3 normal, float min, float max)
 {
-	float surfDist = getDist(inPos, ubo.camPos.xyz);					// Dist. to the sphere, not the wavy geoid.
+	float surfDist = getDist(inPos, gUbo.camPos_t.xyz);					// Dist. to the sphere, not the wavy geoid.
 	vec3 pos_1      = fixedPos(inPos, inGapFix, ubo.sideDepthsDiff);
 	vec3 norm_1     = normal;
 	
@@ -141,8 +143,8 @@ vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal)
 		arcDist = getAngle(-dir[i], up) * RADIUS;
 		rotAxis = cross(dir[i], up);
 		
-		horDisp = cos(w[i] * arcDist + speed[i] * ubo.time.x);
-		verDisp = sin(w[i] * arcDist + speed[i] * ubo.time.x);
+		horDisp = cos(w[i] * arcDist + speed[i] * gUbo.camPos_t.w);
+		verDisp = sin(w[i] * arcDist + speed[i] * gUbo.camPos_t.w);
 		
 		// Vertex
 		rotAng  = (Q(i) * A[i]) * horDisp / RADIUS;		

@@ -19,12 +19,17 @@
 
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
+layout(set = 0, binding = 2) uniform globalUbo {
+    vec4 camPos;
+    Light light[NUMLIGHTS];
+} gUbo;
+
+layout(set = 0, binding = 3) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-	Light light[NUMLIGHTS];
+	vec4 test;
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[10];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 4) uniform sampler2D texSampler[10];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0)  		in vec3 	inPos;
 layout(location = 1)  flat	in vec3 	inCamPos;
@@ -50,7 +55,7 @@ float getTransparency(float minAlpha, float maxDist);
 
 void main()
 {	
-	savePrecalcLightValues(inPos, inCamPos, ubo.light);
+	savePrecalcLightValues(inPos, gUbo.camPos.xyz, gUbo.light);
 	savePNT(inPos, normalize(inNormal), inTB3);
 	
 	//gPos = vec4(inPos, 1.0);
@@ -118,7 +123,7 @@ void setData_Sea()
 		normal = triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, inTime);
 		
 		gPos = vec4(inPos, 1.0);
-		gAlbedo = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0 );
+		gAlbedo = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(gUbo.camPos.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0 );
 		gNormal = vec4(normal, 1.0);
 		gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 		return;
@@ -136,7 +141,7 @@ void setData_Sea()
 		normal       = mix(normal, normal2, ratio);
 		
 		gPos = vec4(inPos, 1.0);
-		gAlbedo = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
+		gAlbedo = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(gUbo.camPos.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
 		gNormal = vec4(normal, 1.0);
 		gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 		return;
@@ -149,7 +154,7 @@ void setData_Sea()
 	normal = triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, inTime);
 	
 	gPos      = vec4(inPos, 1.0);
-	gAlbedo   = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
+	gAlbedo   = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(gUbo.camPos.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
 	gNormal   = vec4(normal, 1.0);
 	gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 	

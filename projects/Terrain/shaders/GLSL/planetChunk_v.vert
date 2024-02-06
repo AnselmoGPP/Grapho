@@ -4,14 +4,16 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
-layout(set = 0, binding = 0) uniform ubobject {
-    mat4 model;
+layout(set = 0, binding = 0) uniform globalUbo {
     mat4 view;
     mat4 proj;
+    vec4 camPos_t;
+} gUbo;
+
+layout(set = 0, binding = 1) uniform ubobject {
+    mat4 model;					// mat4
     mat4 normalMatrix;			// mat3
-	vec4 camPos;				// vec3
-    vec4 time;					// float
-	vec4 sideDepthsDiff;
+	vec4 sideDepthsDiff;		// vec3
 } ubo;
 
 layout(location = 0) in vec3    inPos;					// Each location has 16 bytes
@@ -29,17 +31,17 @@ layout(location = 7)  		out TB3		outTB3;			// Tangents & Bitangents
 
 void main()
 {
-	gl_Position		= ubo.proj * ubo.view * ubo.model * vec4(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), 1.0);
+	gl_Position		= gUbo.proj * gUbo.view * ubo.model * vec4(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), 1.0);
 				    
 	outPos          = inPos;
 	if(inGapFix[0] > 0.1) outNormal *= -1; else			// show chunk limits
 	outNormal       = mat3(ubo.normalMatrix) * inNormal;
-	vec3 diff       = inPos - ubo.camPos.xyz;
+	vec3 diff       = inPos - gUbo.camPos_t.xyz;
 	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-	outCamSqrHeight = ubo.camPos.x * ubo.camPos.x + ubo.camPos.y * ubo.camPos.y + ubo.camPos.z * ubo.camPos.z;	// Assuming vec3(0,0,0) == planetCenter
+	outCamSqrHeight = gUbo.camPos_t.x * gUbo.camPos_t.x + gUbo.camPos_t.y * gUbo.camPos_t.y + gUbo.camPos_t.z * gUbo.camPos_t.z;	// Assuming vec3(0,0,0) == planetCenter
 	outGroundHeight = sqrt(inPos.x * inPos.x + inPos.y * inPos.y + inPos.z * inPos.z);
 	outSlope        = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
-	outCamPos       = ubo.camPos.xyz;
+	outCamPos       = gUbo.camPos_t.xyz;
 		
 	outTB3 = getTB3(inNormal);
 }
