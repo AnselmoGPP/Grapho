@@ -4,12 +4,15 @@
 
 #include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
-layout(set = 0, binding = 0) uniform ubobject {
-    mat4 model;
+layout(set = 0, binding = 0) uniform globalUbo {
     mat4 view;
     mat4 proj;
+    vec4 camPos_t;
+} gUbo;
+
+layout(set = 0, binding = 1) uniform ubObj {
+    mat4 model;					// mat4
     mat4 normalMatrix;			// mat3
-	vec4 camPos_t;				// camPos (vec3) + time (float)
 } ubo[1];						// [i]: array of descriptors
 
 layout(location = 0) in vec3 inPos;
@@ -20,8 +23,7 @@ layout(location = 2) in vec2 inUVs;
 layout(location = 0) out vec3 outPos;						// world space vertex position
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUVs;
-layout(location = 3) flat out vec3 outCamPos;
-//normal: layout(location = 4) out TB outTB;				// Tangents & Bitangents
+//normal: layout(location = 3) out TB outTB;				// Tangents & Bitangents
 
 int i = gl_InstanceIndex;
 
@@ -29,16 +31,15 @@ void main()
 {
 	vec3 pos = inPos;
 	//displace: pos.x += 0.2;
-	//waving: pos += vec3(1,0,0) * sin(<speed> * (ubo[i].camPos_t.w + ubo[i].model[0][0])) * (<amplitude> * inPos.z);	// move axis (0,0,1)
+	//waving: pos += vec3(1,0,0) * sin(<speed> * (gUbo.camPos_t.w + ubo[i].model[0][0])) * (<amplitude> * inPos.z);	// move axis (0,0,1)
 	
-	gl_Position = ubo[i].proj * ubo[i].view * ubo[i].model * vec4(pos, 1.0);
+	gl_Position = gUbo.proj * gUbo.view * ubo[i].model * vec4(pos, 1.0);
 	outPos = (ubo[i].model * vec4(pos, 1.0)).xyz;
 	outNormal = mat3(ubo[i].normalMatrix) * inNormal;
 	//verticalNormals: outNormal = mat3(ubo[i].normalMatrix) * vec3(0,0,1);
 	outUVs = inUVs;
-	outCamPos = ubo[i].camPos_t.xyz;
 		
-	//backfaceNormals: if(dot(outNormal, normalize(ubo[i].camPos_t.xyz - outPos)) < 0) outNormal *= -1;
+	//backfaceNormals: if(dot(outNormal, normalize(gUbo.camPos_t.xyz - outPos)) < 0) outNormal *= -1;
 	//sunfaceNormals: if(dot(outNormal, ubo[0].light[0].direction.xyz) > 0) outNormal *= -1;
 	
 	//normal: outTB = getTB(inNormal, inTan);

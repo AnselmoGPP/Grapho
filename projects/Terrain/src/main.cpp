@@ -32,10 +32,10 @@ void loadResourcesInfo();
 
 EntityManager em;	// world
 
-std::map<std::string, VerticesLoader> verticesLoaders;
 std::map<std::string, ShaderLoader> shaderLoaders;
 std::map<std::string, TextureLoader> texInfos;
-std::map<std::string, UBOinfo> globalUBOs;
+UBOinfo globalUBOs[2];
+std::map<std::string, VerticesLoader> verticesLoaders;
 
 std::vector<TextureLoader> soilTexInfos;	// Package of textures
 std::vector<TextureLoader> seaTexInfos;		// Package of textures
@@ -57,20 +57,19 @@ int main(int argc, char* argv[])
 		IOmanager io(1920/2, 1080/2);
 		loadResourcesInfo();						// Load shaders, textures, UBOs, meshes from files
 		
-		Renderer app(update, io, &globalUBOs);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
-		EntityFactory eFact(app);
+		Renderer r(update, io, globalUBOs[0], globalUBOs[1]);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+		EntityFactory eFact(r);
 		
 		// ENTITIES + COMPONENTS:
 		{
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
-				new c_Engine(app),
+				new c_Engine(r),
 				new c_Input,
 				new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
 				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
 				new c_Lights(NUM_LIGHTS) });
 
 			// Geometry pass (deferred rendering)
-			//em.addEntity("planet", eFact.createPlanet(shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"], soilTexInfos));
 			em.addEntity("planet", eFact.createPlanet(shaderLoaders, texInfos));
 			em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
 			em.addEntity("grass", eFact.createGrass(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
@@ -108,7 +107,7 @@ int main(int argc, char* argv[])
 			std::cout << "--------------------" << std::endl;
 		#endif
 		
-		app.renderLoop();		// Start rendering
+		r.renderLoop();		// Start rendering
 
 		if (0) throw "Test exception";
 	}
@@ -162,8 +161,8 @@ void loadResourcesInfo()
 	#endif
 	
 	// GLOBAL UBOS
-	globalUBOs.insert(std::pair("globalVS", UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4)));			// View, Proj, camPos_Time
-	globalUBOs.insert(std::pair("globalFS", UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light))));	// camPos, Lights
+	globalUBOs[0] = UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4);			// View, Proj, camPos_Time
+	globalUBOs[1] = UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light));		// camPos, Lights
 
 	// SHADERS
 	{

@@ -6,18 +6,22 @@
 
 //earlyDepthTest: layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 1) uniform ubobject		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
+layout(set = 0, binding = 2) uniform globalUbo {
+    vec4 camPos;
+    Light light[NUMLIGHTS];
+} gUbo;
+
+layout(set = 0, binding = 3) uniform ubObj		// https://www.reddit.com/r/vulkan/comments/7te7ac/question_uniforms_in_glsl_under_vulkan_semantics/
 {
-	Light light[NUMLIGHTS];
+	vec4 test;
 } ubo;
 
-layout(set = 0, binding  = 2) uniform sampler2D texSampler[1];		// sampler1D, sampler2D, sampler3D
+layout(set = 0, binding  = 4) uniform sampler2D texSampler[1];		// sampler1D, sampler2D, sampler3D
 
 layout(location = 0) in vec3 inPos;									// world space vertex position
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUVs;
-layout(location = 3) flat in vec3 inCamPos;
-//normal: layout(location = 4) in TB inTB;
+//normal: layout(location = 3) in TB inTB;
 
 //layout(location = 0) out vec4 outColor;							// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 layout (location = 0) out vec4 gPos;
@@ -36,13 +40,13 @@ void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
 	//discardAlpha: if(albedo.a < 0.5) { discard; return; }														// Discard non-visible fragments
-	//distDithering: if(applyOrderedDithering(getDist(inCamPos, inPos), near, far)) { discard; return; }		// Apply dithering to distant fragments
+	//distDithering: if(applyOrderedDithering(getDist(gUbo.camPos.xyz, inPos), near, far)) { discard; return; }		// Apply dithering to distant fragments
 	//dryColor: albedo = vec4(albedo.xyz * getDryColor(vec3(0.9, 0.6, 0), 2000 + 15, 2000 + 70), albedo.w);		// Apply dry color to upper fragments
 	vec3 normal = normalize(inNormal);
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	
 	
-	savePrecalcLightValues(inPos, inCamPos, ubo.light);
+	savePrecalcLightValues(inPos, gUbo.camPos.xyz, gUbo.light);
 	//reduceNightLight: modifySavedSunLight(inPos);
 	
 	gPos      = vec4(inPos, 1.0);

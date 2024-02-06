@@ -42,7 +42,7 @@ struct c_ModelMatrix;
 // enumerations --------------------------------------
 
 enum MoveType { followCam, followCamXY, skyOrbit, sunOrbit };
-enum class UboType { noData, mvp, planet, atmosphere, mvpncl, lightPass };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
+enum class UboType { noData, mvp, planet, atmosphere, mm_nm, lightPass };		//!< Tells the system how to update uniforms and what type of c_Model's child was created.
 
 
 // Singletons --------------------------------------

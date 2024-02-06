@@ -439,8 +439,11 @@ std::vector<Component*> EntityFactory::createGrass(std::map<std::string, ShaderL
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 5000;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;	// n * LightProps (6*vec4)
+	modelInfo.maxDescriptorsCount_fs;
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;
@@ -448,7 +451,7 @@ std::vector<Component*> EntityFactory::createGrass(std::map<std::string, ShaderL
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
-		new c_Model_normal(model, UboType::mvpncl),
+		new c_Model_normal(model, UboType::mm_nm),
 		new c_ModelParams(),
 		new c_Distributor(6, 6, zAxisRandom, 2, true, 0, grass_callback, noiseSet)
 	};
@@ -491,8 +494,11 @@ std::vector<Component*> EntityFactory::createPlant(std::map<std::string, ShaderL
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;
@@ -500,7 +506,7 @@ std::vector<Component*> EntityFactory::createPlant(std::map<std::string, ShaderL
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
-		new c_Model_normal(model, UboType::mvpncl),
+		new c_Model_normal(model, UboType::mm_nm),
 		new c_ModelParams(),
 		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, plant_callback, noiseSet)
 	};
@@ -545,8 +551,11 @@ std::vector<Component*> EntityFactory::createRock(std::map<std::string, ShaderLo
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -554,7 +563,7 @@ std::vector<Component*> EntityFactory::createRock(std::map<std::string, ShaderLo
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
-		new c_Model_normal(model, UboType::mvpncl),
+		new c_Model_normal(model, UboType::mm_nm),
 			new c_ModelParams(),
 			new c_Distributor(6, 6, allAxesRandom, 5, false, 0, stone_callback, noiseSet)
 	};
@@ -603,8 +612,11 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;									// n * LightProps (6*vec4)
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -612,7 +624,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	modelIter model = renderer.newModel(modelInfo);
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model, UboType::mvpncl),
+		new c_Model_normal(model, UboType::mm_nm),
 		new c_ModelParams(),
 		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, tree_callback, noiseSet)
 	});
@@ -632,8 +644,11 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	modelInfo.shadersInfo = &usedShaders2;
 	modelInfo.texturesInfo = &usedTextureSet2;
 	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;									// n * LightProps (6*vec4)
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -641,7 +656,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	modelIter model2 = renderer.newModel(modelInfo);
 
 	entities.push_back(std::vector<Component*>{ 
-		new c_Model_normal(model2, UboType::mvpncl),
+		new c_Model_normal(model2, UboType::mm_nm),
 		new c_ModelParams(),
 		new c_Distributor(6, 6, zAxisRandom, 2, false, 0, tree_callback, noiseSet)
 	});
@@ -675,8 +690,11 @@ std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string,
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
+	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
-	modelInfo.UBOsize_fs = c_lights->lights.bytesSize;
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_NONE;
@@ -684,7 +702,7 @@ std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string,
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*>{
-		new c_Model_normal(model, UboType::mvpncl),
+		new c_Model_normal(model, UboType::mm_nm),
 			new c_ModelParams(),
 			new c_Distributor(5, 4, zAxisRandom, 2, false, 1, tree_callback, noiseSet)
 	};

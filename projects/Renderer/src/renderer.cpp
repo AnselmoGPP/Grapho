@@ -208,7 +208,7 @@ void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
 
 // Renderer ---------------------------------------------------------------------
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, std::map<std::string, UBOinfo>* globalUBOs)
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, UBOinfo globalUBO_vs, UBOinfo globalUBO_fs)
 	:
 	e(io),
 	io(io),
@@ -217,6 +217,8 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	currentFrame(0), 
 	commandsCount(0),
 	frameCount(0),
+	globalUBO_vs(&e, globalUBO_vs),
+	globalUBO_fs(&e, globalUBO_fs),
 	worker(500, models, modelsToLoad, modelsToDelete, textures, shaders, updateCommandBuffer)
 { 
 	#ifdef DEBUG_RENDERER
@@ -230,12 +232,9 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 pr
 	for (size_t rp = 0; rp < models.size(); rp++)
 		models[rp].resize(e.rp->subpassCount[rp]);
 
-	// Fill "globalUBOs" list
-	for (auto it = globalUBOs->begin(); it != globalUBOs->end(); it++)
-	{
-		this->globalUBOs.emplace(std::pair(it->first, UBO(&e, it->second)));
-		this->globalUBOs[it->first].createUBObuffers();
-	}
+	// Create UBOs
+	if (this->globalUBO_vs.totalBytes) this->globalUBO_vs.createUBObuffers();
+	if (this->globalUBO_fs.totalBytes) this->globalUBO_fs.createUBObuffers();
 }
 
 Renderer::~Renderer() 
@@ -630,9 +629,8 @@ void Renderer::cleanup()
 	textures.clear();
 	shaders.clear();
 
-	for (auto it = globalUBOs.begin(); it != globalUBOs.end(); it++)
-		globalUBOs[it->first].destroyUBOs();
-	globalUBOs.clear();
+	if(globalUBO_vs.totalBytes)  globalUBO_vs.destroyUBOs();
+	if (globalUBO_fs.totalBytes) globalUBO_fs.destroyUBOs();
 	
 	// Cleanup environment
 	std::cout << "   >>> Buffers size: models (" << models[0].size() << ", " << models[1].size() << "), modelsToLoad (" << modelsToLoad.size() << "), modelsToDelete (" << modelsToDelete.size() << "), Textures (" << textures.size() << "), Shaders(" << shaders.size() << ')' << std::endl;
@@ -785,23 +783,41 @@ void Renderer::updateStates(uint32_t currentImage)
 	
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
 
+	void* data;
+
+	if (globalUBO_vs.totalBytes)
+	{
+		vkMapMemory(e.c.device, globalUBO_vs.uboMemories[currentImage], 0, globalUBO_vs.totalBytes, 0, &data);
+		memcpy(data, globalUBO_vs.ubo.data(), globalUBO_vs.totalBytes);
+		vkUnmapMemory(e.c.device, globalUBO_vs.uboMemories[currentImage]);
+	}
+
+	if (globalUBO_fs.totalBytes)
+	{
+		vkMapMemory(e.c.device, globalUBO_fs.uboMemories[currentImage], 0, globalUBO_fs.totalBytes, 0, &data);
+		memcpy(data, globalUBO_fs.ubo.data(), globalUBO_fs.totalBytes);
+		vkUnmapMemory(e.c.device, globalUBO_fs.uboMemories[currentImage]);
+	}
+
+	size_t activeBytes;
+
 	for (rp = 0; rp < models.size(); rp++)
 		for (sp = 0; sp < models[rp].size(); sp++)
 			for (modelIter it = models[rp][sp].begin(); it != models[rp][sp].end(); it++)
 			{
-				if (it->vsUBO.totalBytes)
+				activeBytes = it->vsUBO.numActiveDescriptors * it->vsUBO.descriptorSize;
+				if (activeBytes)
 				{
-					void* data;
-					vkMapMemory(e.c.device, it->vsUBO.uboMemories[currentImage], 0, it->vsUBO.totalBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
-					memcpy(data, it->vsUBO.ubo.data(), it->vsUBO.totalBytes);											// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
-					vkUnmapMemory(e.c.device, it->vsUBO.uboMemories[currentImage]);										// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
+					vkMapMemory(e.c.device, it->vsUBO.uboMemories[currentImage], 0, activeBytes, 0, &data);	// Get a pointer to some Vulkan/GPU memory of size X. vkMapMemory retrieves a host virtual address pointer (data) to a region of a mappable memory object (uniformBuffersMemory[]). We have to provide the logical device that owns the memory (e.device).
+					memcpy(data, it->vsUBO.ubo.data(), activeBytes);										// Copy some data in that memory. Copies a number of bytes (sizeof(ubo)) from a source (ubo) to a destination (data).
+					vkUnmapMemory(e.c.device, it->vsUBO.uboMemories[currentImage]);							// "Get rid" of the pointer. Unmap a previously mapped memory object (uniformBuffersMemory[]).
 				}
 
-				if (it->fsUBO.totalBytes)
+				activeBytes = it->fsUBO.numActiveDescriptors * it->fsUBO.descriptorSize;
+				if (activeBytes)
 				{
-					void* data;
-					vkMapMemory(e.c.device, it->fsUBO.uboMemories[currentImage], 0, it->fsUBO.totalBytes, 0, &data);
-					memcpy(data, it->fsUBO.ubo.data(), it->fsUBO.totalBytes);
+					vkMapMemory(e.c.device, it->fsUBO.uboMemories[currentImage], 0, activeBytes, 0, &data);
+					memcpy(data, it->fsUBO.ubo.data(), activeBytes);
 					vkUnmapMemory(e.c.device, it->fsUBO.uboMemories[currentImage]);
 				}
 			}

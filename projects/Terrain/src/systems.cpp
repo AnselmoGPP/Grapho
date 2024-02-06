@@ -16,33 +16,6 @@ void s_Engine::update(float timeStep)
 
     c_eng->time += timeStep;
     c_eng->frameCount++;
-
-    // Fill globalUBOs
-    c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);    
-    c_Lights* c_lights = (c_Lights*)em->getSComponent(CT::lights);
-    if (!c_cam || !c_lights) { std::cout << "Singleton component not found" << std::endl; return; }
-
-    uint8_t* dest;
-    glm::vec4 camPos_time;
-
-    for (int i = 0; i < c_eng->r.globalUBOs["globalVS"].numActiveDescriptors; i++)		// View, Proj, camPos_Time
-    {
-        dest = c_eng->r.globalUBOs["globalVS"].getDescriptorPtr(0);
-        memcpy(dest, &c_cam->view, size.mat4);
-        dest += size.mat4;
-        memcpy(dest, &c_cam->proj, size.mat4);
-        dest += size.mat4;
-        camPos_time = glm::vec4(c_cam->camPos, c_eng->time);
-        memcpy(dest, &camPos_time, size.vec4);
-    }
-
-    for (int i = 0; i < c_eng->r.globalUBOs["globalFS"].numActiveDescriptors; i++)	    // camPos, Lights
-    {
-        dest = c_eng->r.globalUBOs["globalFS"].getDescriptorPtr(0);
-        memcpy(dest, &c_cam->camPos, size.vec3);
-        dest += size.vec4;
-        memcpy(dest, &c_lights->lights, c_lights->lights.bytesSize);
-    }
 }
 
 void s_Input::update(float timeStep)
@@ -699,21 +672,43 @@ void s_Model::update(float timeStep)
         std::cout << typeid(this).name() << "::" << __func__ << std::endl;
     #endif
 
-    // Entities with the component
-    std::vector<uint32_t> entities = em->getEntitySet(CT::model);
-
     // Singleton components
     const c_Engine* c_eng = (c_Engine*)em->getSComponent(CT::engine);
     const c_Camera* c_cam = (c_Camera*)em->getSComponent(CT::camera);
     const c_Lights* c_lights = (c_Lights*)em->getSComponent(CT::lights);
     if (!c_eng || !c_cam || !c_lights) { std::cout << "Single component not found (s_Model)" << std::endl; return; }
 
+    // Fill globalUBOs
+    uint8_t* dest;
+    glm::vec4 camPos_time;
+
+    for (int i = 0; i < c_eng->r.globalUBO_vs.numActiveDescriptors; i++)		// View, Proj, camPos_Time
+    {
+        dest = c_eng->r.globalUBO_vs.getDescriptorPtr(0);
+        memcpy(dest, &c_cam->view, size.mat4);
+        dest += size.mat4;
+        memcpy(dest, &c_cam->proj, size.mat4);
+        dest += size.mat4;
+        camPos_time = glm::vec4(c_cam->camPos, c_eng->time);
+        memcpy(dest, &camPos_time, size.vec4);
+    }
+
+    for (int i = 0; i < c_eng->r.globalUBO_fs.numActiveDescriptors; i++)	    // camPos, Lights
+    {
+        dest = c_eng->r.globalUBO_fs.getDescriptorPtr(0);
+        memcpy(dest, &c_cam->camPos, size.vec3);
+        dest += size.vec4;
+        memcpy(dest, &c_lights->lights, c_lights->lights.bytesSize);
+    }
+
+    // Entities with the component
+    std::vector<uint32_t> entities = em->getEntitySet(CT::model);
+
     // Traverse the entities
     c_Model* c_model;
     const c_ModelParams* c_mParams;
 
     glm::vec4 cam_time;
-    uint8_t* dest;
     int i;
 
     float aspectRatio = c_eng->getAspectRatio();
@@ -765,7 +760,7 @@ void s_Model::update(float timeStep)
                 }
                 break;
             }
-        case UboType::mvpncl:   // MVP, MN, camPos, lights
+        case UboType::mm_nm:   // Model matrix, Normal matrix
             {
                 c_mParams = (c_ModelParams*)em->getComponent(CT::modelParams, eId);
                 if (c_mParams) c_eng->r.setInstances(((c_Model_normal*)c_model)->model, c_mParams->mp.size());
@@ -776,22 +771,14 @@ void s_Model::update(float timeStep)
                     dest = ((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i);
                     memcpy(dest, &getModelMatrix(c_mParams->mp[i].scale, c_mParams->mp[i].rotQuat, c_mParams->mp[i].pos), size.mat4);
                     dest += size.mat4;
-                    memcpy(dest, &c_cam->view, sizeof(c_cam->view));
-                    dest += size.mat4;
-                    memcpy(dest, &c_cam->proj, sizeof(c_cam->proj));
-                    dest += size.mat4;
                     memcpy(dest, &getModelMatrixForNormals(*(glm::mat4*)((c_Model_normal*)c_model)->model->vsUBO.getDescriptorPtr(i)), size.mat4);
-                    dest += size.mat4;
-                    cam_time = { c_cam->camPos, c_eng->time };
-                    memcpy(dest, &cam_time, sizeof(cam_time));
-                    dest += size.vec4;
                 }
 
-                for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
-                {
-                    dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
-                    memcpy(dest, c_lights->lights.set, c_lights->lights.bytesSize);
-                }
+                //for (i = 0; i < ((c_Model_normal*)c_model)->model->fsUBO.numActiveDescriptors; i++)
+                //{
+                //    dest = ((c_Model_normal*)c_model)->model->fsUBO.getDescriptorPtr(i);
+                //    memcpy(dest, c_lights->lights.set, c_lights->lights.bytesSize);
+                //}
                 break;
             }
         case UboType::planet:

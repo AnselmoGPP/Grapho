@@ -132,6 +132,8 @@ struct UBOinfo
 {
 	UBOinfo(size_t maxNumDescriptors, size_t numActiveDescriptors, size_t minDescriptorSize)
 		: maxNumDescriptors(maxNumDescriptors), numActiveDescriptors(numActiveDescriptors), minDescriptorSize(minDescriptorSize) { }
+	UBOinfo() 
+		: maxNumDescriptors(0), numActiveDescriptors(0), minDescriptorSize(0) { }
 
 	size_t maxNumDescriptors;
 	size_t numActiveDescriptors;

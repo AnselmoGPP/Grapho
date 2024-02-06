@@ -175,10 +175,10 @@ class Renderer
 public:
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, std::map<std::string, UBOinfo>* globalUBOs);
+	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, UBOinfo globalUBO_vs = UBOinfo(), UBOinfo globalUBO_fs = UBOinfo());
 	~Renderer();
 	
-	std::map<std::string, UBO> globalUBOs;
+	UBO globalUBO_vs, globalUBO_fs;
 
 	void renderLoop();	//!< Create command buffer and start render loop.
 
