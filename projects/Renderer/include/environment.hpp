@@ -32,9 +32,10 @@ struct SwapChain;
 struct DeviceData;
 
 class RenderingWorkflow;
-class RW_MSAA_PP;
-class RW_PP;
-class RW_DS;
+class RP_MSAA_PP;
+class RP_PP;
+class RP_DS;
+class RP_DS_PP;
 
 /// Common function. Creates a Vulkan buffer (VkBuffer and VkDeviceMemory).Used as friend in modelData, UBO and Texture.
 void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -185,6 +186,8 @@ private:
 	Tells Vulkan the framebuffer attachments that will be used while rendering (color, depth, multisampled images). A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
 	- Subpasses : A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example : a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance.
 	- Attachment references : Every subpass references one or more of the attachments that we've described.
+		- Input attachments: Input images.
+		- Color attachments: Output images.
 */
 class RenderPipeline
 {
@@ -214,8 +217,8 @@ public:
 	friend VulkanEnvironment;
 };
 
-/// Rendering workflow containing MSAA and Post-processing.
-class RW_MSAA_PP : public RenderPipeline
+/// Render pipeline containing MSAA and Post-processing.
+class RP_MSAA_PP : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -225,15 +228,15 @@ protected:
 	void destroyAttachments() override;
 
 public:
-	RW_MSAA_PP(VulkanEnvironment& e);
+	RP_MSAA_PP(VulkanEnvironment& e);
 
 	Image color_1;							// Basic color (one or more samples)
 	Image depth;							// Depth buffer (one or more samples)
 	Image color_2;							// For postprocessing multiple samples (if used)
 };
 
-/// Rendering workflow containing Post-processing (no MSAA).
-class RW_PP : public RenderPipeline
+/// Render pipeline containing Post-processing (no MSAA).
+class RP_PP : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -243,15 +246,15 @@ protected:
 	void destroyAttachments() override;
 
 public:
-	RW_PP(VulkanEnvironment& e);
+	RP_PP(VulkanEnvironment& e);
 
 	Image color_1;							// Basic color (one or more samples)
 	Image depth;							// Depth buffer (one or more samples)
 	Image color_2;							// For postprocessing multiple samples (if used)
 };
 
-/// Rendering workflow containing Deferred shading/rendering
-class RW_DS : public RenderPipeline
+/// Render pipeline containing Deferred shading (lighting pass + geometry pass)
+class RP_DS : public RenderPipeline
 {
 protected:
 	void createRenderPass() override;
@@ -261,7 +264,7 @@ protected:
 	void destroyAttachments() override;
 
 public:
-	RW_DS(VulkanEnvironment& e);
+	RP_DS(VulkanEnvironment& e);
 
 	Image position;
 	Image albedo;
@@ -271,6 +274,27 @@ public:
 	//Image finalColor;	// swapchain.image[i]
 };
 
+/// Render pipeline containing Deferred shading (lighting pass + geometry pass) + forward shading + post-processing
+class RP_DS_PP : public RenderPipeline
+{
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void createFramebuffers() override;
+	void createRenderPassInfo() override;
+	void destroyAttachments() override;
+
+public:
+	RP_DS_PP(VulkanEnvironment& e);
+
+	Image position;
+	Image albedo;
+	Image normal;
+	Image specRoug;
+	Image depth;
+	Image color;
+	//Image finalColor;	// swapchain.image[i]
+};
 
 class VulkanEnvironment
 {

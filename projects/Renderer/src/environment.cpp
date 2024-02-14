@@ -146,7 +146,7 @@ VulkanEnvironment::VulkanEnvironment(IOmanager& io)
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	
-	rp = std::make_shared<RW_DS>(*this);
+	rp = std::make_shared<RP_DS>(*this);
 	//if (c.msaaSamples > 1) rw = std::make_shared<RW_MSAA_PP>(*this);
 	//else rw = std::make_shared<RW_PP>(*this);
 
@@ -1252,20 +1252,20 @@ void createBuffer(VulkanEnvironment* e, VkDeviceSize size, VkBufferUsageFlags us
 	vkBindBufferMemory(e->c.device, buffer, bufferMemory, 0);	// Associate this memory with the buffer. If the offset (4th parameter) is non-zero, it's required to be divisible by memRequirements.alignment.
 }
 
-RW_MSAA_PP::RW_MSAA_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
+RP_MSAA_PP::RP_MSAA_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
-	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
+	colorAttachmentCounts.resize(renderPasses.size());		// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 1 };	// 4 color attachments in RP1::SP1
 	colorAttachmentCounts[1] = std::vector<unsigned>{ 1 };	// 1 color attachments in RP2::SP1
 
-	inputAttachments.resize(2);
+	inputAttachments.resize(renderPasses.size());
 	inputAttachments[0].resize(1);
 	inputAttachments[0][0] = std::vector<Image*>();
 	inputAttachments[1].resize(1);
 	inputAttachments[1][0] = std::vector<Image*>{ &color_1, &depth };
 }
 
-void RW_MSAA_PP::createRenderPass()
+void RP_MSAA_PP::createRenderPass()
 {
 #ifdef DEBUG_ENV_CORE
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1444,7 +1444,7 @@ void RW_MSAA_PP::createRenderPass()
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void RW_MSAA_PP::createImageResources()
+void RP_MSAA_PP::createImageResources()
 {
 #ifdef DEBUG_ENV_CORE
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1535,7 +1535,7 @@ void RW_MSAA_PP::createImageResources()
 	color_2.view = e.createImageView(color_2.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
-void RW_MSAA_PP::createFramebuffers()
+void RP_MSAA_PP::createFramebuffers()
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1579,27 +1579,27 @@ void RW_MSAA_PP::createFramebuffers()
 	}
 }
 
-void RW_MSAA_PP::destroyAttachments()
+void RP_MSAA_PP::destroyAttachments()
 {
 	color_1.destroy(&e);
 	depth.destroy(&e);
 	color_2.destroy(&e);
 }
 
-RW_PP::RW_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
+RP_PP::RP_PP(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
 	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 1 };	// 4 color attachments in RP1::SP1
 	colorAttachmentCounts[1] = std::vector<unsigned>{ 1 };	// 1 color attachments in RP2::SP1
 
-	inputAttachments.resize(2);
+	inputAttachments.resize(renderPasses.size());
 	inputAttachments[0].resize(1);
 	inputAttachments[0][0] = std::vector<Image*>();
 	inputAttachments[1].resize(1);
 	inputAttachments[1][0] = std::vector<Image*>{ &color_1, &depth };
 }
 
-void RW_PP::createRenderPass()
+void RP_PP::createRenderPass()
 {
 #ifdef DEBUG_ENV_CORE
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1755,7 +1755,7 @@ void RW_PP::createRenderPass()
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void RW_PP::createImageResources()
+void RP_PP::createImageResources()
 {
 #ifdef DEBUG_ENV_CORE
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1827,7 +1827,7 @@ void RW_PP::createImageResources()
 		throw std::runtime_error("Failed to create depth sampler!");
 }
 
-void RW_PP::createFramebuffers()
+void RP_PP::createFramebuffers()
 {
 #ifdef DEBUG_ENV_CORE
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -1869,27 +1869,27 @@ void RW_PP::createFramebuffers()
 	}
 }
 
-void RW_PP::destroyAttachments()
+void RP_PP::destroyAttachments()
 {
 	color_1.destroy(&e);
 	depth.destroy(&e);
 	color_2.destroy(&e);
 }
 
-RW_DS::RW_DS(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
+RP_DS::RP_DS(VulkanEnvironment& e) : RenderPipeline(e, 2, {1, 1})
 {
-	colorAttachmentCounts.resize(2);						// 2 render passes (subpasses: 1, 1)
+	colorAttachmentCounts.resize(renderPasses.size());		// 2 render passes (subpasses: 1, 1)
 	colorAttachmentCounts[0] = std::vector<unsigned>{ 4 };	// 4 color attachments in RP1::SP1
 	colorAttachmentCounts[1] = std::vector<unsigned>{ 1 };	// 1 color attachments in RP2::SP1
 
-	inputAttachments.resize(2);
+	inputAttachments.resize(renderPasses.size());
 	inputAttachments[0].resize(1);
 	inputAttachments[0][0] = std::vector<Image*>();
 	inputAttachments[1].resize(1);
 	inputAttachments[1][0] = std::vector<Image*>{&position, &albedo, &normal, &specRoug};
 }
 
-void RW_DS::createRenderPass()
+void RP_DS::createRenderPass()
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -2117,7 +2117,7 @@ void RW_DS::createRenderPass()
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void RW_DS::createImageResources()
+void RP_DS::createImageResources()
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -2242,7 +2242,7 @@ void RW_DS::createImageResources()
 		throw std::runtime_error("Failed to create depth sampler!");
 }
 
-void RW_DS::createFramebuffers()
+void RP_DS::createFramebuffers()
 {
 	#ifdef DEBUG_ENV_CORE
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
@@ -2287,7 +2287,7 @@ void RW_DS::createFramebuffers()
 	}
 }
 
-void RW_DS::createRenderPassInfo()
+void RP_DS::createRenderPassInfo()
 {
 	// clearValues -------------------------
 
@@ -2329,11 +2329,481 @@ void RW_DS::createRenderPassInfo()
 	}
 }
 
-void RW_DS::destroyAttachments()
+void RP_DS::destroyAttachments()
 {
 	position.destroy(&e);
 	albedo.destroy(&e);
 	normal.destroy(&e);
 	specRoug.destroy(&e);
 	depth.destroy(&e);
+}
+
+
+RP_DS_PP::RP_DS_PP(VulkanEnvironment& e) : RenderPipeline(e, 4, { 1, 1, 1, 1 })
+{
+	colorAttachmentCounts.resize(renderPasses.size());
+	colorAttachmentCounts[0] = std::vector<unsigned>{ 4 };
+	colorAttachmentCounts[1] = std::vector<unsigned>{ 1 };
+	colorAttachmentCounts[2] = std::vector<unsigned>{ 1 };
+	colorAttachmentCounts[3] = std::vector<unsigned>{ 1 };
+
+	inputAttachments.resize(renderPasses.size());
+	inputAttachments[0].resize(subpassCount[0]);
+	inputAttachments[0][0] = std::vector<Image*>();
+	inputAttachments[1].resize(subpassCount[1]);
+	inputAttachments[1][0] = std::vector<Image*>{ &position, &albedo, &normal, &specRoug };
+	inputAttachments[2].resize(subpassCount[2]);
+	inputAttachments[2][0] = std::vector<Image*>();
+	inputAttachments[3].resize(subpassCount[3]);
+	inputAttachments[3][0] = std::vector<Image*>{ &color };
+}
+
+void RP_DS_PP::createRenderPass()
+{
+#ifdef DEBUG_ENV_CORE
+	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+#endif
+
+	/*
+		RP1's color attachments (writing): position, albedo, normal, specRoug
+		RP2's input attachments (reading): position, albedo, normal, specRoug
+	*/
+
+	// Attachments -------------------------
+
+	VkAttachmentDescription positionAtt_1{};	// RP1::SP1
+	VkAttachmentReference positionAttRef_1{};
+
+	VkAttachmentDescription albedoAtt_1{};
+	VkAttachmentReference albedoAttRef_1{};
+
+	VkAttachmentDescription normalAtt_1{};
+	VkAttachmentReference normalAttRef_1{};
+
+	VkAttachmentDescription specRougAtt_1{};
+	VkAttachmentReference specRougAttRef_1{};
+
+	VkAttachmentDescription depthAtt_1{};
+	VkAttachmentReference depthAttRef_1{};
+
+	VkAttachmentDescription positionAtt_2{};	// RP2::SP1
+	VkAttachmentReference positionAttRef_2{};
+
+	VkAttachmentDescription albedoAtt_2{};
+	VkAttachmentReference albedoAttRef_2{};
+
+	VkAttachmentDescription normalAtt_2{};
+	VkAttachmentReference normalAttRef_2{};
+
+	VkAttachmentDescription specRougAtt_2{};
+	VkAttachmentReference specRougAttRef_2{};
+
+	VkAttachmentDescription finalColorAtt_2{};
+	VkAttachmentReference finalColorAttRef_2{};
+
+	// Input attachment (position) to RP1::SP1
+	positionAtt_1.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	positionAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;							// Single color buffer attachment, or many (multisampling).
+	positionAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;					// What to do with the data (color and depth) in the attachment before rendering: VK_ATTACHMENT_LOAD_OP_ ... LOAD (preserve existing contents of the attachment), CLEAR (clear values to a constant at the start of a new frame), DONT_CARE (existing contents are undefined).
+	positionAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// What to do with the data (color and depth) in the attachment after rendering:  VK_ATTACHMENT_STORE_OP_ ... STORE (rendered contents will be stored in memory and can be read later), DON_CARE (contents of the framebuffer will be undefined after rendering).
+	positionAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;			// What to do with the stencil data in the attachment before rendering.
+	positionAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;		// What to do with the stencil data in the attachment after rendering.
+	positionAtt_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;				// Layout before the render pass. Textures and framebuffers in Vulkan are represented by VkImage objects with a certain pixel format, however the layout of the pixels in memory need to be transitioned to specific layouts suitable for the operation that they're going to be involved in next (read more below).
+	positionAtt_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// Layout to automatically transition after the render pass finishes. VK_IMAGE_LAYOUT_ ... UNDEFINED (we don't care what previous layout the image was in, and the contents of the image are not guaranteed to be preserved), COLOR_ATTACHMENT_OPTIMAL (images used as color attachment), PRESENT_SRC_KHR (images to be presented in the swap chain), TRANSFER_DST_OPTIMAL (Images to be used as destination for a memory copy operation).
+
+	positionAttRef_1.attachment = 0;										// Specify which attachment to reference by its index in the attachment descriptions array.
+	positionAttRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;		// Specify the layout we would like the attachment to have during a subpass that uses this reference. The layout VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL will give us the best performance.
+
+	// Input attachment (albedo) to RP1::SP1
+	albedoAtt_1.format = e.swapChain.imageFormat;
+	albedoAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
+	albedoAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	albedoAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	albedoAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	albedoAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	albedoAtt_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	albedoAtt_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	albedoAttRef_1.attachment = 1;
+	albedoAttRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Input attachment (normal) to RP1::SP1
+	normalAtt_1.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	normalAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
+	normalAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	normalAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	normalAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	normalAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	normalAtt_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	normalAtt_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	normalAttRef_1.attachment = 2;
+	normalAttRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Input attachment (specularity & roughness) to RP1::SP1
+	specRougAtt_1.format = e.swapChain.imageFormat;
+	specRougAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
+	specRougAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	specRougAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	specRougAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	specRougAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	specRougAtt_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	specRougAtt_1.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	specRougAttRef_1.attachment = 3;
+	specRougAttRef_1.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Depth buffer of RP1::SP1
+	depthAtt_1.format = e.c.deviceData.depthFormat;						// Should be same format as the depth image
+	depthAtt_1.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAtt_1.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAtt_1.storeOp = VK_ATTACHMENT_STORE_OP_STORE;					// VK_ATTACHMENT_STORE_OP_DONT_CARE: Here, we don't care because it will not be used after drawing has finished
+	depthAtt_1.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAtt_1.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAtt_1.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// We don't care about previous depth contents
+	depthAtt_1.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	depthAttRef_1.attachment = 4;
+	depthAttRef_1.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	// Input attachment (position) to RP2::SP1
+	positionAtt_2 = positionAtt_1;
+	positionAtt_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	positionAtt_2.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	positionAttRef_2 = positionAttRef_1;
+	positionAttRef_2.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	positionAttRef_2.attachment = 0;
+
+	// Input attachment (albedo) to RP2::SP1
+	albedoAtt_2 = albedoAtt_1;
+	albedoAtt_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	albedoAtt_2.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	albedoAttRef_2 = albedoAttRef_1;
+	albedoAttRef_2.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	albedoAttRef_2.attachment = 1;
+
+	// Input attachment (normal) to RP2::SP1
+	normalAtt_2 = normalAtt_1;
+	normalAtt_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	normalAtt_2.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	normalAttRef_2 = normalAttRef_1;
+	normalAttRef_2.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	normalAttRef_2.attachment = 2;
+
+	// Input attachment (specularity & roughness) to RP2::SP1
+	specRougAtt_2 = specRougAtt_1;
+	specRougAtt_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	specRougAtt_2.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	specRougAttRef_2 = specRougAttRef_1;
+	specRougAttRef_2.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	specRougAttRef_2.attachment = 3;
+
+	// Final color (output to screen) of RP2::SP1
+	finalColorAtt_2.format = e.swapChain.imageFormat;
+	finalColorAtt_2.samples = VK_SAMPLE_COUNT_1_BIT;
+	finalColorAtt_2.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	finalColorAtt_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	finalColorAtt_2.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	finalColorAtt_2.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	finalColorAtt_2.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	finalColorAtt_2.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	finalColorAttRef_2.attachment = 4;
+	finalColorAttRef_2.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Render pass 1 (Geometry pass) -------------------------
+
+	VkSubpassDescription subpass11{};
+	subpass11.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;	// VK_PIPELINE_BIND_POINT_GRAPHICS: This is a graphics subpass
+	std::vector<VkAttachmentReference> outputAttachments11 = { positionAttRef_1, albedoAttRef_1, normalAttRef_1, specRougAttRef_1 };	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
+	subpass11.colorAttachmentCount = static_cast<uint32_t>(outputAttachments11.size());
+	subpass11.pColorAttachments = outputAttachments11.data();		// Attachment for color. The index of the attachment in this array is directly referenced from the fragment shader with the directive "layout(location = 0) out vec4 outColor".
+	subpass11.pResolveAttachments = nullptr;						// Attachments used for resolving multisampling color attachments.
+	subpass11.pDepthStencilAttachment = &depthAttRef_1;				// Attachment for depth and stencil data. A subpass can only use a single depth (+ stencil) attachment.
+	subpass11.inputAttachmentCount = 0;
+	subpass11.pInputAttachments = nullptr;							// Attachments read from a shader.
+	subpass11.preserveAttachmentCount;
+	subpass11.pPreserveAttachments;									// Attachment not used by this subpass, but for which the data must be preserved.
+
+	VkSubpassDependency dependency11{};
+	dependency11.srcSubpass = VK_SUBPASS_EXTERNAL;																			// VK_SUBPASS_EXTERNAL: Refers to the implicit subpass before or after the render pass depending on whether it is specified in srcSubpass or dstSubpass.
+	dependency11.dstSubpass = 0;																								// Index of our subpass. The dstSubpass must always be higher than srcSubpass to prevent cycles in the dependency graph (unless one of the subpasses is VK_SUBPASS_EXTERNAL).
+	dependency11.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait (for the swap chain to finish reading from the image).
+	dependency11.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;	// Stage where to wait. 
+	dependency11.srcAccessMask = 0;																							// Operations that wait.
+	dependency11.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;			// Operations that wait (they involve the writing of the color attachment).
+
+	VkRenderPassCreateInfo renderPassInfo1{};
+	renderPassInfo1.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments1 = { positionAtt_1, albedoAtt_1, normalAtt_1, specRougAtt_1, depthAtt_1 };	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
+	renderPassInfo1.attachmentCount = static_cast<uint32_t>(attachments1.size());
+	renderPassInfo1.pAttachments = attachments1.data();
+	renderPassInfo1.subpassCount = 1;
+	renderPassInfo1.pSubpasses = &subpass11;				// Array of subpasses
+	renderPassInfo1.dependencyCount = 1;
+	renderPassInfo1.pDependencies = &dependency11;			// Array of dependencies.
+
+	if (vkCreateRenderPass(e.c.device, &renderPassInfo1, nullptr, &renderPasses[0]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+
+	// Render pass 2 (Lightning pass) -------------------------
+
+	VkSubpassDescription subpass21{};
+	subpass21.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass21.colorAttachmentCount = 1;
+	subpass21.pColorAttachments = &finalColorAttRef_2;
+	subpass21.pResolveAttachments = nullptr;
+	subpass21.pDepthStencilAttachment = nullptr;
+	std::vector<VkAttachmentReference> inputAttachments21 = { positionAttRef_2, albedoAttRef_2, normalAttRef_2, specRougAttRef_2 };
+	subpass21.inputAttachmentCount = inputAttachments21.size();
+	subpass21.pInputAttachments = inputAttachments21.data();	// <<< Can't input attachments read per-sample? Only per-pixel?
+	subpass21.preserveAttachmentCount;
+	subpass21.pPreserveAttachments;
+
+	VkSubpassDependency dependency21{};
+	dependency21.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency21.dstSubpass = 0;
+	dependency21.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency21.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency21.srcAccessMask = 0;
+	dependency21.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo renderPassInfo2{};
+	renderPassInfo2.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	std::vector<VkAttachmentDescription> attachments2 = { positionAtt_2, albedoAtt_2, normalAtt_2, specRougAtt_2, finalColorAtt_2 };
+	renderPassInfo2.attachmentCount = static_cast<uint32_t>(attachments2.size());
+	renderPassInfo2.pAttachments = attachments2.data();
+	renderPassInfo2.subpassCount = 1;
+	renderPassInfo2.pSubpasses = &subpass21;				// Array of subpasses
+	renderPassInfo2.dependencyCount = 1;
+	renderPassInfo2.pDependencies = &dependency21;			// Array of dependencies.
+
+	if (vkCreateRenderPass(e.c.device, &renderPassInfo2, nullptr, &renderPasses[1]) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+}
+
+void RP_DS_PP::createImageResources()
+{
+#ifdef DEBUG_ENV_CORE
+	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+#endif
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 1.0f;
+
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	samplerInfo.minLod = 0.f;
+	samplerInfo.maxLod = 0.f;
+	samplerInfo.mipLodBias = 0.0f;
+
+	// Position -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		position.image,
+		position.memory);
+
+	position.view = e.createImageView(position.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &position.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// Albedo -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		e.swapChain.imageFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		albedo.image,
+		albedo.memory);
+
+	albedo.view = e.createImageView(albedo.image, e.swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &albedo.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// Normal -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		normal.image,
+		normal.memory);
+
+	normal.view = e.createImageView(normal.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &normal.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// specRoug -------------------------------------
+
+	e.createImage(
+		e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		e.swapChain.imageFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		specRoug.image,
+		specRoug.memory);
+
+	specRoug.view = e.createImageView(specRoug.image, e.swapChain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &specRoug.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create resolve color sampler!");
+
+	// Depth -------------------------------------
+
+	e.createImage(e.swapChain.extent.width,
+		e.swapChain.extent.height,
+		1,
+		VK_SAMPLE_COUNT_1_BIT,
+		e.c.deviceData.depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depth.image,
+		depth.memory);
+
+	depth.view = e.createImageView(depth.image, e.c.deviceData.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+
+	// Explicitly transition the layout of the image to a depth attachment (there is no need of doing this because we take care of this in the render pass, but this is here for completeness).
+	e.transitionImageLayout(depth.image, e.c.deviceData.depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
+
+	if (vkCreateSampler(e.c.device, &samplerInfo, nullptr, &depth.sampler) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create depth sampler!");
+}
+
+void RP_DS_PP::createFramebuffers()
+{
+#ifdef DEBUG_ENV_CORE
+	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
+#endif
+
+	framebuffers.resize(e.swapChain.views.size());
+
+	// Framebuffers (2) for each swapChainImage
+	for (size_t i = 0; i < e.swapChain.views.size(); i++)
+	{
+		framebuffers[i].resize(2);
+
+		// Framebuffer 1 (Geometry pass)
+		std::vector<VkImageView> attachments_1 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
+
+		VkFramebufferCreateInfo framebufferInfo_1{};
+		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_1.renderPass = renderPasses[0];						// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+		framebufferInfo_1.attachmentCount = attachments_1.size();
+		framebufferInfo_1.pAttachments = attachments_1.data();					// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+		framebufferInfo_1.width = e.swapChain.extent.width;
+		framebufferInfo_1.height = e.swapChain.extent.height;
+		framebufferInfo_1.layers = 1;											// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+
+		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 1!");
+
+		// Framebuffers 2 (Lighting pass)
+		std::vector<VkImageView> attachments_2 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, e.swapChain.views[i] };
+
+		VkFramebufferCreateInfo framebufferInfo_2{};
+		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo_2.renderPass = renderPasses[1];
+		framebufferInfo_2.attachmentCount = attachments_2.size();
+		framebufferInfo_2.pAttachments = attachments_2.data();
+		framebufferInfo_2.width = e.swapChain.extent.width;
+		framebufferInfo_2.height = e.swapChain.extent.height;
+		framebufferInfo_2.layers = 1;
+
+		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create framebuffer 2!");
+	}
+}
+
+void RP_DS_PP::createRenderPassInfo()
+{
+	// clearValues -------------------------
+
+	VkClearColorValue background = { 0.20, 0.59, 1.00, 1.00 };
+	VkClearColorValue zeros = { 0.0, 0.0, 0.0, 0.0 };
+
+	clearValues.resize(2);						// One per render pass
+
+	clearValues[0].resize(5);					// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
+	clearValues[0][0].color = zeros;			// Color buffer (position). Background color (alpha = 1 means 100% opacity)
+	clearValues[0][1].color = background;		// Color buffer (albedo)
+	clearValues[0][2].color = zeros;			// Color buffer (normal)
+	clearValues[0][3].color = zeros;			// Color buffer (specularity & roughness)
+	clearValues[0][4].depthStencil = { 1.0f, 0 };	// Depth buffer. Depth buffer range in Vulkan is [0.0, 1.0], where 1.0 lies at the far view plane and 0.0 at the near view plane. The initial value at each point in the depth buffer should be the furthest possible depth (1.0).
+
+	clearValues[1].resize(5);
+	clearValues[1][0].color = zeros;			// Input attachment (position)
+	clearValues[1][1].color = background;		// Input attachment (albedo)
+	clearValues[1][2].color = zeros;			// Input attachment (normal)
+	clearValues[1][3].color = zeros;			// Input attachment (specularity & roughness)
+	clearValues[1][4].color = background;		// Final color buffer
+
+	// renderPassInfo -------------------------
+
+	renderPassInfo.resize(e.swapChain.images.size());	// One per swap chain image	
+	for (unsigned i = 0; i < renderPassInfo.size(); i++)
+	{
+		renderPassInfo[i].resize(2);					// One per render pass
+		for (unsigned j = 0; j < renderPassInfo[i].size(); j++)
+		{
+			renderPassInfo[i][j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo[i][j].renderPass = renderPasses[j];
+			renderPassInfo[i][j].framebuffer = framebuffers[i][j];
+			renderPassInfo[i][j].renderArea.offset = { 0, 0 };
+			renderPassInfo[i][j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+			renderPassInfo[i][j].clearValueCount = static_cast<uint32_t>(clearValues[j].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+			renderPassInfo[i][j].pClearValues = clearValues[j].data();								// ... used as load operation for the color attachment and depth buffer.
+		}
+	}
+}
+
+void RP_DS_PP::destroyAttachments()
+{
+	position.destroy(&e);
+	albedo.destroy(&e);
+	normal.destroy(&e);
+	specRoug.destroy(&e);
+	depth.destroy(&e);
+	color.destroy(&e);
 }

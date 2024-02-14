@@ -1,10 +1,11 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
-	Improve shaders (optimize)
+	Create render pass obj (for assigning subpasses and other things easier instead of creating too much stuff in renderPipeline)
+
 	Third pass: 
-		- 3th (forward pass): Input (depth, color), output (gBuffer)
-		- 4th (pp pass): Input (depth, color, gBuffer), output (color)
+		- 3th (forward pass): Input (depth), output (color)
+		- 4th (pp pass): Input (depth, color), output (color)
 
 	Bug: If chunks are being loaded and I escape window, it crashes
 	Soften ambient light
