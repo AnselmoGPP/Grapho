@@ -35,12 +35,10 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inGapFix;
 
 layout(location = 0)  		out vec3	outPos;			// Vertex position.
-layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
-layout(location = 2)  		out vec3	outNormal;		// Ground normal
-layout(location = 3)  		out float	outDist;		// Distace vertex-camera
-layout(location = 4)		out float	outGroundHeight;// Ground height over nucleus
-layout(location = 5)  flat  out float   outTime;
-layout(location = 6)  		out TB3		outTB3;			// Tangents & Bitangents
+layout(location = 1)  		out vec3	outNormal;		// Ground normal
+layout(location = 2)  		out float	outDist;		// Distace vertex-camera
+layout(location = 3)		out float	outGroundHeight;// Ground height over nucleus
+layout(location = 4)  		out TB3		outTB3;			// Tangents & Bitangents
 
 void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude);	// Adjust amplitude based on soil depth under camera. Waves are max. when soilHeight < (RADIUS - maxDepth) and min. when soilHeight > (RADIUS - minDepth)
 vec3 getSeaOptimized(inout vec3 normal, float min, float max);
@@ -62,8 +60,6 @@ void main()
 	outNormal       = mat3(ubo.normalMatrix) * normal;
 	outDist         = getDist(pos, gUbo.camPos_t.xyz);		// Dist. to wavy geoid
 	outGroundHeight = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
-	outCamPos       = gUbo.camPos_t.xyz;
-	outTime         = gUbo.camPos_t.w;
 	gl_Position		= gUbo.proj * gUbo.view * ubo.model * vec4(pos, 1);
 	
 	outTB3 = getTB3(normal);

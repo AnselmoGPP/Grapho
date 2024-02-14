@@ -20,7 +20,7 @@
 
 #define NUM_LIGHTS 2
 // Prototypes
-void update(Renderer& rend, glm::mat4 view, glm::mat4 proj);
+void update(Renderer& rend);
 void loadResourcesInfo();
 //void setLights();
 //float getFloorHeight(const glm::vec3& pos);
@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
 	return EXIT_SUCCESS;
 }
 
-void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
+void update(Renderer& rend)
 {
 	//d.frameTime = (float)(rend.getTimer().getTime());
 	//d.fps = rend.getTimer().getFPS();
@@ -130,7 +130,7 @@ void update(Renderer& rend, glm::mat4 view, glm::mat4 proj)
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 	
 	//std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
-	//std::cout << rend.getTimer().getFPS() << '\n';
+	std::cout << rend.getTimer().getFPS() << '\n';
 	
 	em.update(rend.getTimer().getDeltaTime());
 }
@@ -162,7 +162,7 @@ void loadResourcesInfo()
 	
 	// GLOBAL UBOS
 	globalUBOs[0] = UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4);			// View, Proj, camPos_Time
-	globalUBOs[1] = UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light));		// camPos, Lights
+	globalUBOs[1] = UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light));		// camPos_Time, Lights
 
 	// SHADERS
 	{

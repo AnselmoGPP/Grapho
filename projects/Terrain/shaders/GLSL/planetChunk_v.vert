@@ -21,27 +21,25 @@ layout(location = 1) in vec3    inNormal;
 layout(location = 2) in vec3    inGapFix;
 
 layout(location = 0)  		out vec3	outPos;			// Vertex position.
-layout(location = 1)  flat 	out vec3 	outCamPos;		// Camera position
-layout(location = 2)  		out vec3	outNormal;		// Ground normal
-layout(location = 3)  		out float	outSlope;		// Ground slope
-layout(location = 4)  		out float	outDist;		// Distace vertex-camera
-layout(location = 5)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
-layout(location = 6)		out float	outGroundHeight;// Ground height over nucleus
-layout(location = 7)  		out TB3		outTB3;			// Tangents & Bitangents
+layout(location = 1)  		out vec3	outNormal;		// Ground normal
+layout(location = 2)  		out float	outSlope;		// Ground slope
+layout(location = 3)  		out float	outDist;		// Distace vertex-camera
+layout(location = 4)  flat	out float	outCamSqrHeight;// Camera square height over nucleus
+layout(location = 5)		out float	outGroundHeight;// Ground height over nucleus
+layout(location = 6)  		out TB3		outTB3;			// Tangents & Bitangents
 
 void main()
 {
 	gl_Position		= gUbo.proj * gUbo.view * ubo.model * vec4(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), 1.0);
 				    
 	outPos          = inPos;
-	if(inGapFix[0] > 0.1) outNormal *= -1; else			// show chunk limits
-	outNormal       = mat3(ubo.normalMatrix) * inNormal;
+	if(inGapFix[0] > 0.1) outNormal *= -1;				// show chunk limits
+	else outNormal  = mat3(ubo.normalMatrix) * inNormal;
 	vec3 diff       = inPos - gUbo.camPos_t.xyz;
 	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 	outCamSqrHeight = gUbo.camPos_t.x * gUbo.camPos_t.x + gUbo.camPos_t.y * gUbo.camPos_t.y + gUbo.camPos_t.z * gUbo.camPos_t.z;	// Assuming vec3(0,0,0) == planetCenter
 	outGroundHeight = sqrt(inPos.x * inPos.x + inPos.y * inPos.y + inPos.z * inPos.z);
 	outSlope        = 1. - dot(outNormal, normalize(inPos - vec3(0,0,0)));				// Assuming vec3(0,0,0) == planetCenter
-	outCamPos       = gUbo.camPos_t.xyz;
 		
 	outTB3 = getTB3(inNormal);
 }

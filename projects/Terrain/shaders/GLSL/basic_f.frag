@@ -7,7 +7,7 @@
 //earlyDepthTest: layout(early_fragment_tests) in;
 
 layout(set = 0, binding = 2) uniform globalUbo {
-    vec4 camPos;
+    vec4 camPos_t;
     Light light[NUMLIGHTS];
 } gUbo;
 
@@ -40,14 +40,13 @@ void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
 	//discardAlpha: if(albedo.a < 0.5) { discard; return; }														// Discard non-visible fragments
-	//distDithering: if(applyOrderedDithering(getDist(gUbo.camPos.xyz, inPos), near, far)) { discard; return; }		// Apply dithering to distant fragments
-	//dryColor: albedo = vec4(albedo.xyz * getDryColor(vec3(0.9, 0.6, 0), 2000 + 15, 2000 + 70), albedo.w);		// Apply dry color to upper fragments
+	//distDithering: if(applyOrderedDithering(getDist(gUbo.camPos_t.xyz, inPos), near, far)) { discard; return; }	// Apply dithering to distant fragments
 	vec3 normal = normalize(inNormal);
 	vec3 specular = vec3(0, 0, 0);
 	float roughness = 0;	
 	
-	savePrecalcLightValues(inPos, gUbo.camPos.xyz, gUbo.light);
 	//reduceNightLight: modifySavedSunLight(inPos);
+	//dryColor: albedo = vec4(albedo.xyz * getDryColor(vec3(0.9, 0.6, 0), 2000 + 15, 2000 + 70), albedo.w);		// Apply dry color to upper fragments
 	
 	gPos      = vec4(inPos, 1.0);
 	gAlbedo   = albedo;

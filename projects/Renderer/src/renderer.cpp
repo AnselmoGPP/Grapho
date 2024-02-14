@@ -208,7 +208,7 @@ void ShaderIncluder::ReleaseInclude(shaderc_include_result* data)
 
 // Renderer ---------------------------------------------------------------------
 
-Renderer::Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, UBOinfo globalUBO_vs, UBOinfo globalUBO_fs)
+Renderer::Renderer(void(*graphicsUpdate)(Renderer&), IOmanager& io, UBOinfo globalUBO_vs, UBOinfo globalUBO_fs)
 	:
 	e(io),
 	io(io),
@@ -731,21 +731,13 @@ void Renderer::updateStates(uint32_t currentImage)
 
 	// - USER UPDATES
 
-	timer.computeDeltaTime();
-
-	//    Compute transformation matrix
-	//input.cam->ProcessCameraInput(input.window, timer.getDeltaTime());
-	//glm::mat4 view = input.cam->GetViewMatrix();
-	//glm::mat4 proj = input.cam->GetProjectionMatrix(e.swapChain.extent.width / (float)e.swapChain.extent.height);
-	glm::mat4 view;
-	glm::mat4 proj;
-
-	//    Update model matrices and other things (user defined)
 	#ifdef DEBUG_RENDERLOOP
 		std::cout << "userUpdate()" << std::endl;
 	#endif
 	
-	userUpdate(*this, view, proj);
+	timer.computeDeltaTime();
+
+	userUpdate(*this);		// Update model matrices and other things (user defined)
 
 	// - MOVE MODELS
 

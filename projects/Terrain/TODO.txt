@@ -1,7 +1,12 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
-	UBOs
+	Improve shaders (optimize)
+	Third pass: 
+		- 3th (forward pass): Input (depth, color), output (gBuffer)
+		- 4th (pp pass): Input (depth, color, gBuffer), output (color)
+
+	Bug: If chunks are being loaded and I escape window, it crashes
 	Soften ambient light
 	Shader maker
 

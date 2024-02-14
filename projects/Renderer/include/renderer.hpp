@@ -161,7 +161,7 @@ class Renderer
 	void updateStates(uint32_t currentImage);
 
 	/// Callback used by the client for updating states of their models
-	void(*userUpdate) (Renderer& rend, glm::mat4 view, glm::mat4 proj);
+	void(*userUpdate) (Renderer& rend);
 
 	/// Used in drawFrame(). The window surface may change, making the swap chain no longer compatible with it (example: window resizing). Here, we catch these events (when acquiring/submitting an image from/to the swap chain) and recreate the swap chain.
 	void recreateSwapChain();
@@ -175,7 +175,7 @@ class Renderer
 public:
 	// LOOK what if firstModel.size() == 0
 	/// Constructor. Requires a callback for updating model matrix, adding models, deleting models, etc.
-	Renderer(void(*graphicsUpdate)(Renderer&, glm::mat4 view, glm::mat4 proj), IOmanager& io, UBOinfo globalUBO_vs = UBOinfo(), UBOinfo globalUBO_fs = UBOinfo());
+	Renderer(void(*graphicsUpdate)(Renderer&), IOmanager& io, UBOinfo globalUBO_vs = UBOinfo(), UBOinfo globalUBO_fs = UBOinfo());
 	~Renderer();
 	
 	UBO globalUBO_vs, globalUBO_fs;

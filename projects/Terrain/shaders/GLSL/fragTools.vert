@@ -7,8 +7,6 @@
 		E
 		SR05
 	Data structures:
-		vec3 fragPos
-		vec3 normal
 		Light
 		PreCalcValues
 		TB3
@@ -74,9 +72,6 @@
 
 // Data structures (& global variables) ------------------------------------------------------------------------
 
-vec3 fragPos;
-vec3 normal;
-
 struct Light
 {
 	int type;			// int   0: no light   1: directional   2: point   3: spot
@@ -118,7 +113,7 @@ struct TB3
 	vec3 bTanY;
 	vec3 tanZ;
 	vec3 bTanZ;
-} tb3;
+};
 
 // Gradients for the X and Y texture coordinates can be used for fetching the textures when non-uniform flow control exists (https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#Non-uniform_flow_control).  
 struct uvGradient
@@ -343,20 +338,6 @@ float mixByHeight(float f_A, float f_B, float height_A, float height_B, float ra
 
 // Save functions ------------------------------------------------------------------------
 // They store shader variables in this library, making them global for this library and allowing it to use them.
-
-// Save fragment position.
-//void saveP(vec3 pos) { fragPos = pos; }
-
-// Save Tangent and Bitangent vectors.
-//void saveTB3(TB3 tb_3) { tb3 = tb_3; }
-
-// Save fragment position, normal, Tangent, and Bitangent.
-void savePNT(vec3 pos, vec3 norm, TB3 tb_3)
-{
-	fragPos = pos;
-	normal  = normalize(norm);
-	tb3     = tb_3;				// Tangent & Bitangent
-}
 
 // (UNOPTIMIZED) Precalculate (to avoid repeating calculations) and save (for making them global for this library) variables required for calculating light.
 void savePrecalcLightValues(vec3 fragPos, vec3 camPos, Light inLight[NUMLIGHTS])
@@ -596,13 +577,13 @@ vec3 getTex(sampler2D albedo, sampler2D normal, sampler2D specular, sampler2D ro
 // Triplanar functions ------------------------------------------------------------------------
 
 // Texture projected from 3 axes (x,y,z) and mixed.
-vec4 triplanarTexture(sampler2D tex, float texFactor)
+vec4 triplanarTexture(sampler2D tex, float texFactor, vec3 fragPos, vec3 normal)
 {
 	vec4 dx = texture(tex, unpackUV(fragPos.zy, texFactor));
 	vec4 dy = texture(tex, unpackUV(fragPos.xz, texFactor));
 	vec4 dz = texture(tex, unpackUV(fragPos.xy, texFactor));
 	
-	vec3 weights = abs(normalize(normal));
+	vec3 weights = abs(normal);
 	weights *= weights;
 	weights = weights / (weights.x + weights.y + weights.z);
 
@@ -610,13 +591,13 @@ vec4 triplanarTexture(sampler2D tex, float texFactor)
 }
 
 // Non-coloring texture projected from 3 axes (x, y, z) and mixed. 
-vec4 triplanarNoColor(sampler2D tex, float texFactor)
+vec4 triplanarNoColor(sampler2D tex, float texFactor, vec3 fragPos, vec3 normal)
 {
 	vec4 dx = toSRGB(texture(tex, unpackUV(fragPos.zy, texFactor)));	// Color space correction (textures are converted from sRGB to RGB, but non-coloring textures are in RGB already).
 	vec4 dy = toSRGB(texture(tex, unpackUV(fragPos.xz, texFactor)));
 	vec4 dz = toSRGB(texture(tex, unpackUV(fragPos.xy, texFactor)));
 	
-	vec3 weights = abs(normalize(normal));
+	vec3 weights = abs(normal);
 	weights *= weights;
 	weights = weights / (weights.x + weights.y + weights.z);
 
@@ -625,8 +606,8 @@ vec4 triplanarNoColor(sampler2D tex, float texFactor)
 
 // Normal map projected from 3 axes (x,y,z) and mixed.
 // https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
-vec3 triplanarNormal(sampler2D tex, float texFactor)
-{	
+vec3 triplanarNormal(sampler2D tex, float texFactor, vec3 fragPos, vec3 normal, TB3 tb3)
+{
 	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
 	vec3 tnormalX = unpackNormal(texture(tex, unpackUV(fragPos.zy, texFactor)).xyz);
 	vec3 tnormalY = unpackNormal(texture(tex, unpackUV(fragPos.xz, texFactor)).xyz);
@@ -650,7 +631,7 @@ vec3 triplanarNormal(sampler2D tex, float texFactor)
 }
 
 // Dynamic texture map projected from 3 axes (x,y,z) and mixed. 
-vec4 triplanarTexture_Sea(sampler2D tex, float texFactor, float speed, float t)
+vec4 triplanarTexture_Sea(sampler2D tex, float texFactor, float speed, float t, vec3 fragPos, vec3 normal)
 {	
 	// Get normal map coordinates
 	float time = t * speed;
@@ -695,7 +676,7 @@ vec4 triplanarTexture_Sea(sampler2D tex, float texFactor, float speed, float t)
 	//vec4 dz = texture(tex, unpackUV(fragPos.xy, texFactor));
 	
 	// Weighted average
-	vec3 weights = abs(normalize(normal));
+	vec3 weights = abs(normal);
 	weights *= weights;
 	weights = weights / (weights.x + weights.y + weights.z);
 
@@ -703,7 +684,7 @@ vec4 triplanarTexture_Sea(sampler2D tex, float texFactor, float speed, float t)
 }
 
 // Dynamic texture map projected from 3 axes (x,y,z) and mixed. 
-vec4 triplanarNoColor_Sea(sampler2D tex, float texFactor, float speed, float t)
+vec4 triplanarNoColor_Sea(sampler2D tex, float texFactor, float speed, float t, vec3 fragPos, vec3 normal)
 {	
 	// Get normal map coordinates
 	float time = t * speed;
@@ -749,7 +730,7 @@ vec4 triplanarNoColor_Sea(sampler2D tex, float texFactor, float speed, float t)
 	//vec4 dz = texture(tex, unpackUV(fragPos.xy, texFactor));
 	
 	// Weighted average
-	vec3 weights = abs(normalize(normal));
+	vec3 weights = abs(normal);
 	weights *= weights;
 	weights = weights / (weights.x + weights.y + weights.z);
 
@@ -757,7 +738,7 @@ vec4 triplanarNoColor_Sea(sampler2D tex, float texFactor, float speed, float t)
 }
 
 // Dynamic normal map projected from 3 axes (x,y,z) and mixed. 
-vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
+vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t, vec3 fragPos, vec3 normal, TB3 tb3)
 {	
 	// Get normal map coordinates
 	float time = t * speed;
@@ -820,13 +801,13 @@ vec3 triplanarNormal_Sea(sampler2D tex, float texFactor, float speed, float t)
 }
 
 // (EXAMPLE) Get triplanar fragment color given 4 texture maps (albedo, normal, specular, roughness).
-vec3 getTriTex(sampler2D albedo, sampler2D normal, sampler2D specular, sampler2D roughness, float scale, vec2 UV)
+vec3 getTriTex(sampler2D albedo, sampler2D normal, sampler2D specular, sampler2D roughness, float scale, vec2 UV, vec3 fragPos, vec3 inNormal, TB3 tb3)
 {
 	return getFragColor(
-				triplanarTexture(albedo, scale).rgb,
-				triplanarNormal (normal, scale),
-				triplanarTexture(specular, scale).rgb,
-				triplanarTexture(roughness, scale).r * 255 );
+				triplanarTexture(albedo, scale, fragPos, inNormal).rgb,
+				triplanarNormal (normal, scale, fragPos, inNormal, tb3),
+				triplanarNoColor(specular, scale, fragPos, inNormal).rgb,
+				triplanarNoColor(roughness, scale, fragPos, inNormal).r * 255 );
 }
 
 // Get gradients
@@ -840,13 +821,13 @@ uvGradient getGradients(vec2 uvs)
 }
 
 // Triplanar texture using gradients
-vec4 triplanarTexture(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient dxy)
+vec4 triplanarTexture(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient dxy, vec3 normal)
 {
 	vec4 dx = textureGrad(tex, dzy.uv, dzy.dFdx, dzy.dFdy);
 	vec4 dy = textureGrad(tex, dxz.uv, dxz.dFdx, dxz.dFdy);
 	vec4 dz = textureGrad(tex, dxy.uv, dxy.dFdx, dxy.dFdy);
 	
-	vec3 weights = abs(normalize(normal));
+	vec3 weights = abs(normal);
 	weights *= weights;
 	weights = weights / (weights.x + weights.y + weights.z);
 
@@ -854,7 +835,7 @@ vec4 triplanarTexture(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient 
 }
 
 // Triplanar normals using gradients
-vec3 triplanarNormal(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient dxy)
+vec3 triplanarNormal(sampler2D tex, uvGradient dzy, uvGradient dxz, uvGradient dxy, vec3 normal, TB3 tb3)
 {	
 	// Tangent space normal maps (retrieved using triplanar UVs; i.e., 3 facing planes)
 	vec3 tnormalX = unpackNormal(texture(tex, dzy.uv).xyz);

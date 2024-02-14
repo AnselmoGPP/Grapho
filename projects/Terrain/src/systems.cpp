@@ -680,7 +680,7 @@ void s_Model::update(float timeStep)
 
     // Fill globalUBOs
     uint8_t* dest;
-    glm::vec4 camPos_time;
+    glm::vec4 camPos_time = glm::vec4(c_cam->camPos, c_eng->time);
 
     for (int i = 0; i < c_eng->r.globalUBO_vs.numActiveDescriptors; i++)		// View, Proj, camPos_Time
     {
@@ -689,14 +689,13 @@ void s_Model::update(float timeStep)
         dest += size.mat4;
         memcpy(dest, &c_cam->proj, size.mat4);
         dest += size.mat4;
-        camPos_time = glm::vec4(c_cam->camPos, c_eng->time);
         memcpy(dest, &camPos_time, size.vec4);
     }
 
     for (int i = 0; i < c_eng->r.globalUBO_fs.numActiveDescriptors; i++)	    // camPos, Lights
     {
         dest = c_eng->r.globalUBO_fs.getDescriptorPtr(0);
-        memcpy(dest, &c_cam->camPos, size.vec3);
+        memcpy(dest, &camPos_time, size.vec4);
         dest += size.vec4;
         memcpy(dest, &c_lights->lights, c_lights->lights.bytesSize);
     }
