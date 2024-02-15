@@ -4,7 +4,7 @@
 
 #include "input.hpp"
 
-
+#include <iostream>
 IOmanager::IOmanager(int width, int height)
 {
 	initWindow(width, height);

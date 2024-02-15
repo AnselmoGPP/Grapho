@@ -130,8 +130,8 @@ void update(Renderer& rend)
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 	
 	//std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
-	std::cout << rend.getTimer().getFPS() << '\n';
-	
+	//std::cout << rend.getTimer().getFPS() << '\n';
+
 	em.update(rend.getTimer().getDeltaTime());
 }
 

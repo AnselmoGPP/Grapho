@@ -3,6 +3,10 @@ TODO:
 	
 	Create render pass obj (for assigning subpasses and other things easier instead of creating too much stuff in renderPipeline)
 
+	Construction/destruction of some things should be in RenderPass or Subpass class
+	clearValues should be inside Render pass
+	Framebuffers should be inside Render pass (maybe)
+
 	Third pass: 
 		- 3th (forward pass): Input (depth), output (color)
 		- 4th (pp pass): Input (depth, color), output (color)

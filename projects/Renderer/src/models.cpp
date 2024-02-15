@@ -167,12 +167,12 @@ void ModelData::createDescriptorSetLayout()
 	}
 
 	// 5) Input attachments
-	if (e->rp->inputAttachments[renderPassIndex][subpassIndex].size())
+	if(e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size())
 	{
 		VkDescriptorSetLayoutBinding inputAttachmentLayoutBinding{};
 		inputAttachmentLayoutBinding.binding = bindNumber++;
 		inputAttachmentLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;	// VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		inputAttachmentLayoutBinding.descriptorCount = e->rp->inputAttachments[renderPassIndex][subpassIndex].size();
+		inputAttachmentLayoutBinding.descriptorCount = e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size();
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -341,14 +341,14 @@ void ModelData::createGraphicsPipeline()
 		*/
 	}
 
-	std::vector<VkPipelineColorBlendAttachmentState> setColorBlendAttachments(e->rp->colorAttachmentCounts[renderPassIndex][subpassIndex], colorBlendAttachment);
+	std::vector<VkPipelineColorBlendAttachmentState> setColorBlendAttachments(e->rp->getSubpass(renderPassIndex, subpassIndex).colorAttsCount, colorBlendAttachment);
 
 	//	- Global color blending settings. Set blend constants that you can use as blend factors in the aforementioned calculations.
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;					// VK_FALSE: Blending method of mixing values.  VK_TRUE: Blending method of bitwise values combination (this disables the previous structure, like blendEnable = VK_FALSE).
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;				// Optional
-	colorBlending.attachmentCount = e->rp->colorAttachmentCounts[renderPassIndex][subpassIndex];
+	colorBlending.attachmentCount = e->rp->getSubpass(renderPassIndex, subpassIndex).colorAttsCount;
 	colorBlending.pAttachments = setColorBlendAttachments.data();
 	colorBlending.blendConstants[0] = 0.0f;						// Optional
 	colorBlending.blendConstants[1] = 0.0f;						// Optional
@@ -379,7 +379,7 @@ void ModelData::createGraphicsPipeline()
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = nullptr;					// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = e->rp->renderPasses[renderPassIndex];// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
+	pipelineInfo.renderPass = e->rp->renderPasses[renderPassIndex].renderPass;// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;		// [Optional] Specify the handle of an existing pipeline.
 	pipelineInfo.basePipelineIndex = -1;					// [Optional] Reference another pipeline that is about to be created by index.
@@ -438,7 +438,7 @@ void ModelData::createDescriptorPool()
 		poolSizes.push_back(pool);
 	}
 
-	if (e->rp->inputAttachments[renderPassIndex][subpassIndex].size())
+	if(e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size())
 	{
 		pool.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 		pool.descriptorCount = static_cast<uint32_t>(e->swapChain.images.size());
@@ -535,12 +535,12 @@ void ModelData::createDescriptorSets()
 		}
 
 		// Input attachments
-		std::vector<VkDescriptorImageInfo> inputAttachInfo(e->rp->inputAttachments[renderPassIndex][subpassIndex].size());
+		std::vector<VkDescriptorImageInfo> inputAttachInfo(e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size());
 		for (unsigned i = 0; i < inputAttachInfo.size(); i++)
 		{
 			inputAttachInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			inputAttachInfo[i].imageView = e->rp->inputAttachments[renderPassIndex][subpassIndex][i]->view;
-			inputAttachInfo[i].sampler = e->rp->inputAttachments[renderPassIndex][subpassIndex][i]->sampler;
+			inputAttachInfo[i].imageView = e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts[i]->view;
+			inputAttachInfo[i].sampler = e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts[i]->sampler;
 		}
 		
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
@@ -627,7 +627,7 @@ void ModelData::createDescriptorSets()
 			descriptorWrites.push_back(descriptor);
 		}
 		
-		if (e->rp->inputAttachments[renderPassIndex][subpassIndex].size())
+		if (e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size())
 		{
 			descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptor.dstSet = descriptorSets[i];

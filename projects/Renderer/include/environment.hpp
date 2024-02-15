@@ -32,8 +32,6 @@ struct SwapChain;
 struct DeviceData;
 
 class RenderingWorkflow;
-class RP_MSAA_PP;
-class RP_PP;
 class RP_DS;
 class RP_DS_PP;
 
@@ -180,6 +178,27 @@ private:
 };
 
 
+class Subpass
+{
+public:
+	Subpass(std::vector<Image*> inputAttachments, uint32_t colorAttachmentsCount)
+		: inputAtts(inputAttachments), colorAttsCount(colorAttachmentsCount) { }
+
+	uint32_t colorAttsCount;		//!< Number of color attachments (output images) per subpass
+	std::vector<Image*> inputAtts;	//!< Input attachments (input images) per subpass
+};
+
+class RenderPass
+{
+public:
+	RenderPass(std::vector<Subpass> subpasses)
+		: subpasses(subpasses) { }
+
+	VkRenderPass renderPass;
+	std::vector<Subpass> subpasses;
+	std::vector<VkRenderPassBeginInfo> renderPassInfo;	//!< One per swap chain image (per render pass)
+};
+
 /**
 	@brief Set the system of render passes and framebuffers used.
 
@@ -188,6 +207,7 @@ private:
 	- Attachment references : Every subpass references one or more of the attachments that we've described.
 		- Input attachments: Input images.
 		- Color attachments: Output images.
+		- Depth attachment: Depth buffer.
 */
 class RenderPipeline
 {
@@ -203,54 +223,22 @@ protected:
 	virtual void destroyAttachments() = 0;
 
 public:
-	RenderPipeline(VulkanEnvironment& e, uint32_t renderPassCount, std::initializer_list<uint32_t> subpassCount)
-		: e(e), subpassCount(subpassCount), renderPasses(renderPassCount) { }
+	RenderPipeline(VulkanEnvironment& e);
 
-	std::vector<VkRenderPass> renderPasses;							//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
+	Subpass& getSubpass(unsigned renderPassIndex, unsigned subpassIndex);
+	void destroyRenderPasses();
+
+	std::vector<RenderPass> renderPasses;
+
+	//std::vector<VkRenderPass> renderPasses;							//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
 	std::vector<std::vector<VkFramebuffer>> framebuffers;			//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
-	std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
-
-	const std::vector<uint32_t> subpassCount;						//!< Number of subpasses per render-pass
-	std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
-	std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
+	//std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
+	//
+	//const std::vector<uint32_t> subpassCount;						//!< Number of subpasses per render-pass
+	//std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
+	//std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
 
 	friend VulkanEnvironment;
-};
-
-/// Render pipeline containing MSAA and Post-processing.
-class RP_MSAA_PP : public RenderPipeline
-{
-protected:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
-	void createRenderPassInfo() override { };
-	void destroyAttachments() override;
-
-public:
-	RP_MSAA_PP(VulkanEnvironment& e);
-
-	Image color_1;							// Basic color (one or more samples)
-	Image depth;							// Depth buffer (one or more samples)
-	Image color_2;							// For postprocessing multiple samples (if used)
-};
-
-/// Render pipeline containing Post-processing (no MSAA).
-class RP_PP : public RenderPipeline
-{
-protected:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
-	void createRenderPassInfo() override { };
-	void destroyAttachments() override;
-
-public:
-	RP_PP(VulkanEnvironment& e);
-
-	Image color_1;							// Basic color (one or more samples)
-	Image depth;							// Depth buffer (one or more samples)
-	Image color_2;							// For postprocessing multiple samples (if used)
 };
 
 /// Render pipeline containing Deferred shading (lighting pass + geometry pass)

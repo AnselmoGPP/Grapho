@@ -212,6 +212,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&), IOmanager& io, UBOinfo glob
 	:
 	e(io),
 	io(io),
+	timer(maxFPS),
 	updateCommandBuffer(false), 
 	userUpdate(graphicsUpdate), 
 	currentFrame(0), 
@@ -230,7 +231,7 @@ Renderer::Renderer(void(*graphicsUpdate)(Renderer&), IOmanager& io, UBOinfo glob
 	// Prepare "models" list
 	models.resize(e.rp->renderPasses.size());
 	for (size_t rp = 0; rp < models.size(); rp++)
-		models[rp].resize(e.rp->subpassCount[rp]);
+		models[rp].resize(e.rp->renderPasses[rp].subpasses.size());
 
 	// Create UBOs
 	if (this->globalUBO_vs.totalBytes) this->globalUBO_vs.createUBObuffers();
@@ -290,7 +291,7 @@ void Renderer::createCommandBuffers()
 				std::cout << "   Render pass " << j << std::endl;
 			#endif
 			
-			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPassInfo[i][rp], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPasses[rp].renderPassInfo[i], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 			//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);										// Start subpass
 			
 			for (size_t sp = 0; sp < models[rp].size(); sp++)		// for each SUB-PASS
@@ -633,7 +634,6 @@ void Renderer::cleanup()
 	if (globalUBO_fs.totalBytes) globalUBO_fs.destroyUBOs();
 	
 	// Cleanup environment
-	std::cout << "   >>> Buffers size: models (" << models[0].size() << ", " << models[1].size() << "), modelsToLoad (" << modelsToLoad.size() << "), modelsToDelete (" << modelsToDelete.size() << "), Textures (" << textures.size() << "), Shaders(" << shaders.size() << ')' << std::endl;
 	e.cleanup();
 	
 	#ifdef DEBUG_RENDERER
