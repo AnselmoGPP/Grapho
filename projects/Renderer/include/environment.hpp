@@ -184,8 +184,8 @@ public:
 	Subpass(std::vector<Image*> inputAttachments, uint32_t colorAttachmentsCount)
 		: inputAtts(inputAttachments), colorAttsCount(colorAttachmentsCount) { }
 
-	uint32_t colorAttsCount;		//!< Number of color attachments (output images) per subpass
 	std::vector<Image*> inputAtts;	//!< Input attachments (input images) per subpass
+	uint32_t colorAttsCount;		//!< Number of color attachments (output images) per subpass
 };
 
 class RenderPass
@@ -194,9 +194,15 @@ public:
 	RenderPass(std::vector<Subpass> subpasses)
 		: subpasses(subpasses) { }
 
+	std::vector<VkImageView> getAttachments(size_t swapchainPosition);
+	void destroyRenderPass(VulkanEnvironment& e);
+	void destroyFramebuffers(VulkanEnvironment& e);
+
 	VkRenderPass renderPass;
 	std::vector<Subpass> subpasses;
-	std::vector<VkRenderPassBeginInfo> renderPassInfo;	//!< One per swap chain image (per render pass)
+	std::vector<std::vector<VkImageView*>> attachments;			//!< One set of attachments per swapchain image (per render pass).
+	std::vector<VkRenderPassBeginInfo> renderPassInfos;			//!< One per swap chain image (per render pass)
+	std::vector<VkFramebuffer> framebuffers;					//!< One per swap chain image (per render pass). List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 };
 
 /**
@@ -226,16 +232,16 @@ public:
 	RenderPipeline(VulkanEnvironment& e);
 
 	Subpass& getSubpass(unsigned renderPassIndex, unsigned subpassIndex);
-	void destroyRenderPasses();
+	void destroyRenderPipeline();		//!< Destroy render-passes, framebuffers, and attachments.
 
 	std::vector<RenderPass> renderPasses;
 
 	//std::vector<VkRenderPass> renderPasses;							//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	std::vector<std::vector<VkFramebuffer>> framebuffers;			//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	//std::vector<std::vector<VkFramebuffer>> framebuffers;				//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
 	//std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
-	//
-	//const std::vector<uint32_t> subpassCount;						//!< Number of subpasses per render-pass
-	//std::vector<std::vector<unsigned>> colorAttachmentCounts;		//!< Number of color attachments per subpass (initialized in subclass)
+	
+	//const std::vector<uint32_t> subpassCount;							//!< Number of subpasses per render-pass
+	//std::vector<std::vector<unsigned>> colorAttachmentCounts;			//!< Number of color attachments per subpass (initialized in subclass)
 	//std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
 
 	friend VulkanEnvironment;

@@ -146,15 +146,15 @@ VulkanEnvironment::VulkanEnvironment(IOmanager& io)
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	
-	rp = std::make_shared<RP_DS>(*this);
 	//if (c.msaaSamples > 1) rw = std::make_shared<RW_MSAA_PP>(*this);
 	//else rw = std::make_shared<RW_PP>(*this);
-
+	
 	createSwapChain();
 	createSwapChainImageViews();
 
 	createCommandPool();
 	
+	rp = std::make_shared<RP_DS>(*this);
 	rp->createRenderPass();
 	rp->createImageResources();
 	rp->createFramebuffers();
@@ -810,7 +810,7 @@ void VulkanEnvironment::createSwapChain()
 	vkGetSwapchainImagesKHR(c.device, swapChain.swapChain, &imageCount, nullptr);
 	swapChain.images.resize(imageCount);
 	vkGetSwapchainImagesKHR(c.device, swapChain.swapChain, &imageCount, swapChain.images.data());
-
+	
 	#ifdef DEBUG_ENV_INFO
 		std::cout << "   Swap chain images: " << swapChain.images.size() << std::endl;
 	#endif
@@ -1174,26 +1174,15 @@ void VulkanEnvironment::recreate_Images_RenderPass_SwapChain()
 	createSwapChain();					// Recreate the swap chain.
 	createSwapChainImageViews();		// Recreate image views because they are based directly on the swap chain images.
 	
-	rp->createRenderPass();					// Recreate render pass because it depends on the format of the swap chain images.
+	rp->createRenderPass();				// Recreate render pass because it depends on the format of the swap chain images.
 	rp->createImageResources();
-	rp->createFramebuffers();				// Framebuffers directly depend on the swap chain images.
+	rp->createFramebuffers();			// Framebuffers directly depend on the swap chain images.
 	rp->createRenderPassInfo();
 }
 
 void VulkanEnvironment::cleanup_Images_RenderPass_SwapChain()
 {
-	// Destroy attachments (images)
-	rp->destroyAttachments();
-
-	// Framebuffers
-	for (auto framebuffer : rp->framebuffers)
-	{
-		vkDestroyFramebuffer(c.device, framebuffer[0], nullptr);
-		vkDestroyFramebuffer(c.device, framebuffer[1], nullptr);
-	}
-
-	// Render pass
-	rp->destroyRenderPasses();
+	rp->destroyRenderPipeline();
 
 	swapChain.destroy(c.device);
 }
@@ -1257,18 +1246,56 @@ Subpass& RenderPipeline::getSubpass(unsigned renderPassIndex, unsigned subpassIn
 	return renderPasses[renderPassIndex].subpasses[subpassIndex];
 }
 
-void RenderPipeline::destroyRenderPasses()
+void RenderPipeline::destroyRenderPipeline()
 {
-	for(unsigned i = 0; i < renderPasses.size(); i++)
-		vkDestroyRenderPass(e.c.device, renderPasses[i].renderPass, nullptr);
+	destroyAttachments();
+
+	for (RenderPass& renderPass : renderPasses)
+	{
+		renderPass.destroyFramebuffers(e);
+		renderPass.destroyRenderPass(e);
+	}
+}
+
+std::vector<VkImageView> RenderPass::getAttachments(size_t swapchainPosition)
+{
+	std::vector<VkImageView> result(attachments[swapchainPosition].size());
+	for (unsigned i = 0; i < result.size(); i++)
+		result[i] = *attachments[swapchainPosition][i];
+
+	return result;
+}
+
+void RenderPass::destroyRenderPass(VulkanEnvironment& e)
+{
+	vkDestroyRenderPass(e.c.device, renderPass, nullptr);
+}
+
+void RenderPass::destroyFramebuffers(VulkanEnvironment& e)
+{
+	for (VkFramebuffer& framebuffer : framebuffers)
+		vkDestroyFramebuffer(e.c.device, framebuffer, nullptr);
 }
 
 RP_DS::RP_DS(VulkanEnvironment& e) : RenderPipeline(e)
 {
-	renderPasses = { 
+	// Render passes
+	renderPasses = {
 		RenderPass({Subpass({ }, 4)}),
 		RenderPass({Subpass({&position, &albedo, &normal, &specRoug}, 1)})
 	};
+
+	// Attachments
+	std::vector<std::vector<std::vector<VkImageView*>>> allAttachments(e.swapChain.images.size());	// Attachments per swapchain image, per render pass.
+	for (unsigned i = 0; i < allAttachments.size(); i++)
+		allAttachments[i] = {
+			std::vector<VkImageView*>{ &position.view, &albedo.view, &normal.view, &specRoug.view, &depth.view },			// RP1. Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
+			std::vector<VkImageView*>{ &position.view, &albedo.view, &normal.view, &specRoug.view, &e.swapChain.views[i] }	// RP2.
+	};
+
+	for (unsigned i = 0; i < renderPasses.size(); i++)
+		for (unsigned j = 0; j < e.swapChain.images.size(); j++)
+			renderPasses[i].attachments.push_back(allAttachments[j][i]);
 }
 
 void RP_DS::createRenderPass()
@@ -1630,42 +1657,26 @@ void RP_DS::createFramebuffers()
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	
-	framebuffers.resize(e.swapChain.views.size());
+	std::vector<VkImageView> attachments;
 
-	// Framebuffers (2) for each swapChainImage
-	for (size_t i = 0; i < e.swapChain.views.size(); i++)
+	for (unsigned i = 0; i < renderPasses.size(); i++)		// per render pass
 	{
-		framebuffers[i].resize(2);
-
-		// Framebuffer 1 (Geometry pass)
-		std::vector<VkImageView> attachments_1 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
-
-		VkFramebufferCreateInfo framebufferInfo_1{};
-		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_1.renderPass = renderPasses[0].renderPass;				// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-		framebufferInfo_1.attachmentCount = attachments_1.size();
-		framebufferInfo_1.pAttachments = attachments_1.data();					// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo_1.width = e.swapChain.extent.width;
-		framebufferInfo_1.height = e.swapChain.extent.height;
-		framebufferInfo_1.layers = 1;											// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
-		
-		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 1!");
-		
-		// Framebuffers 2 (Lighting pass)
-		std::vector<VkImageView> attachments_2 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, e.swapChain.views[i] };
-
-		VkFramebufferCreateInfo framebufferInfo_2{};
-		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_2.renderPass = renderPasses[1].renderPass;
-		framebufferInfo_2.attachmentCount = attachments_2.size();
-		framebufferInfo_2.pAttachments = attachments_2.data();
-		framebufferInfo_2.width = e.swapChain.extent.width;
-		framebufferInfo_2.height = e.swapChain.extent.height;
-		framebufferInfo_2.layers = 1;
-		
-		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 2!");
+		renderPasses[i].framebuffers.resize(e.swapChain.images.size());
+		for (unsigned j = 0; j < renderPasses[i].framebuffers.size(); j++)		// per swap chain image
+		{
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = renderPasses[i].renderPass;					// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+			attachments = renderPasses[i].getAttachments(j);
+			framebufferInfo.attachmentCount = attachments.size();
+			framebufferInfo.pAttachments = attachments.data();		// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+			framebufferInfo.width = e.swapChain.extent.width;
+			framebufferInfo.height = e.swapChain.extent.height;
+			framebufferInfo.layers = 1;													// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
+			
+			if (vkCreateFramebuffer(e.c.device, &framebufferInfo, nullptr, &renderPasses[i].framebuffers[j]) != VK_SUCCESS)
+				throw std::runtime_error("Failed to create framebuffer!");
+		}
 	}
 }
 
@@ -1676,7 +1687,7 @@ void RP_DS::createRenderPassInfo()
 	VkClearColorValue background = { 0.20, 0.59, 1.00, 1.00 };
 	VkClearColorValue zeros = { 0.0, 0.0, 0.0, 0.0 };
 
-	clearValues.resize(2);						// One per render pass
+	clearValues.resize(renderPasses.size());	// One per render pass
 
 	clearValues[0].resize(5);					// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
 	clearValues[0][0].color = zeros;			// Color buffer (position). Background color (alpha = 1 means 100% opacity)
@@ -1696,17 +1707,17 @@ void RP_DS::createRenderPassInfo()
 
 	for (unsigned i = 0; i < renderPasses.size(); i++)		// per render pass
 	{
-		renderPasses[i].renderPassInfo.resize(e.swapChain.images.size());
+		renderPasses[i].renderPassInfos.resize(e.swapChain.images.size());
 
-		for (unsigned j = 0; j < renderPasses[i].renderPassInfo.size(); j++)	// per swap chain image
+		for (unsigned j = 0; j < renderPasses[i].renderPassInfos.size(); j++)	// per swap chain image
 		{
-			renderPasses[i].renderPassInfo[j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPasses[i].renderPassInfo[j].renderPass = renderPasses[i].renderPass;
-			renderPasses[i].renderPassInfo[j].framebuffer = framebuffers[j][i];
-			renderPasses[i].renderPassInfo[j].renderArea.offset = { 0, 0 };
-			renderPasses[i].renderPassInfo[j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-			renderPasses[i].renderPassInfo[j].clearValueCount = static_cast<uint32_t>(clearValues[i].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-			renderPasses[i].renderPassInfo[j].pClearValues = clearValues[i].data();								// ... used as load operation for the color attachment and depth buffer.
+			renderPasses[i].renderPassInfos[j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPasses[i].renderPassInfos[j].renderPass = renderPasses[i].renderPass;
+			renderPasses[i].renderPassInfos[j].framebuffer = renderPasses[i].framebuffers[j];
+			renderPasses[i].renderPassInfos[j].renderArea.offset = { 0, 0 };
+			renderPasses[i].renderPassInfos[j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+			renderPasses[i].renderPassInfos[j].clearValueCount = static_cast<uint32_t>(clearValues[i].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+			renderPasses[i].renderPassInfos[j].pClearValues = clearValues[i].data();								// ... used as load operation for the color attachment and depth buffer.
 
 		}
 	}
@@ -2090,42 +2101,26 @@ void RP_DS_PP::createFramebuffers()
 	std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
 #endif
 
-	framebuffers.resize(e.swapChain.views.size());
+	std::vector<VkImageView> attachments;
 
-	// Framebuffers (2) for each swapChainImage
-	for (size_t i = 0; i < e.swapChain.views.size(); i++)
+	for (unsigned i = 0; i < renderPasses.size(); i++)		// per render pass
 	{
-		framebuffers[i].resize(2);
+		renderPasses[i].framebuffers.resize(e.swapChain.images.size());
+		for (unsigned j = 0; j < renderPasses[i].framebuffers.size(); j++)		// per swap chain image
+		{
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = renderPasses[i].renderPass;					// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
+			attachments = renderPasses[i].getAttachments(j);
+			framebufferInfo.attachmentCount = attachments.size();
+			framebufferInfo.pAttachments = attachments.data();		// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
+			framebufferInfo.width = e.swapChain.extent.width;
+			framebufferInfo.height = e.swapChain.extent.height;
+			framebufferInfo.layers = 1;													// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
 
-		// Framebuffer 1 (Geometry pass)
-		std::vector<VkImageView> attachments_1 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, depth.view };		// Color attachment differs for every swap chain image, but the same depth image can be used by all of them because only a single subpass is running at the same time due to our semaphores.
-
-		VkFramebufferCreateInfo framebufferInfo_1{};
-		framebufferInfo_1.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_1.renderPass = renderPasses[0].renderPass;				// A framebuffer can only be used with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments.
-		framebufferInfo_1.attachmentCount = attachments_1.size();
-		framebufferInfo_1.pAttachments = attachments_1.data();					// Objects that should be bound to the respective attachment descriptions in the render pass pAttachment array.
-		framebufferInfo_1.width = e.swapChain.extent.width;
-		framebufferInfo_1.height = e.swapChain.extent.height;
-		framebufferInfo_1.layers = 1;											// Number of layers in image arrays. If your swap chain images are single images, then layers = 1.
-
-		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_1, nullptr, &framebuffers[i][0]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 1!");
-
-		// Framebuffers 2 (Lighting pass)
-		std::vector<VkImageView> attachments_2 = std::vector<VkImageView>{ position.view, albedo.view, normal.view, specRoug.view, e.swapChain.views[i] };
-
-		VkFramebufferCreateInfo framebufferInfo_2{};
-		framebufferInfo_2.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo_2.renderPass = renderPasses[1].renderPass;
-		framebufferInfo_2.attachmentCount = attachments_2.size();
-		framebufferInfo_2.pAttachments = attachments_2.data();
-		framebufferInfo_2.width = e.swapChain.extent.width;
-		framebufferInfo_2.height = e.swapChain.extent.height;
-		framebufferInfo_2.layers = 1;
-
-		if (vkCreateFramebuffer(e.c.device, &framebufferInfo_2, nullptr, &framebuffers[i][1]) != VK_SUCCESS)
-			throw std::runtime_error("Failed to create framebuffer 2!");
+			if (vkCreateFramebuffer(e.c.device, &framebufferInfo, nullptr, &renderPasses[i].framebuffers[j]) != VK_SUCCESS)
+				throw std::runtime_error("Failed to create framebuffer!");
+		}
 	}
 }
 
@@ -2136,7 +2131,7 @@ void RP_DS_PP::createRenderPassInfo()
 	VkClearColorValue background = { 0.20, 0.59, 1.00, 1.00 };
 	VkClearColorValue zeros = { 0.0, 0.0, 0.0, 0.0 };
 
-	clearValues.resize(2);						// One per render pass
+	clearValues.resize(renderPasses.size());	// One per render pass
 
 	clearValues[0].resize(5);					// One per attachment (MSAA color buffer, resolve color buffer, depth buffer...). The order of clearValues should be identical to the order of your attachments.
 	clearValues[0][0].color = zeros;			// Color buffer (position). Background color (alpha = 1 means 100% opacity)
@@ -2154,35 +2149,19 @@ void RP_DS_PP::createRenderPassInfo()
 
 	// renderPassInfo -------------------------
 
-	//renderPassInfo.resize(e.swapChain.images.size());	
-	//for (unsigned i = 0; i < renderPassInfo.size(); i++)
-	//{
-	//	renderPassInfo[i].resize(2);					// One per render pass
-	//	for (unsigned j = 0; j < renderPassInfo[i].size(); j++)
-	//	{
-	//		renderPassInfo[i][j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	//		renderPassInfo[i][j].renderPass = renderPasses[j];
-	//		renderPassInfo[i][j].framebuffer = framebuffers[i][j];
-	//		renderPassInfo[i][j].renderArea.offset = { 0, 0 };
-	//		renderPassInfo[i][j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-	//		renderPassInfo[i][j].clearValueCount = static_cast<uint32_t>(clearValues[j].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-	//		renderPassInfo[i][j].pClearValues = clearValues[j].data();								// ... used as load operation for the color attachment and depth buffer.
-	//	}
-	//}
-
 	for (unsigned i = 0; i < renderPasses.size(); i++)		// per render pass
 	{
-		renderPasses[i].renderPassInfo.resize(e.swapChain.images.size());
+		renderPasses[i].renderPassInfos.resize(e.swapChain.images.size());
 
-		for (unsigned j = 0; j < renderPasses[i].renderPassInfo.size(); j++)	// per swap chain image
+		for (unsigned j = 0; j < renderPasses[i].renderPassInfos.size(); j++)	// per swap chain image
 		{
-			renderPasses[i].renderPassInfo[j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPasses[i].renderPassInfo[j].renderPass = renderPasses[i].renderPass;
-			renderPasses[i].renderPassInfo[j].framebuffer = framebuffers[j][i];
-			renderPasses[i].renderPassInfo[j].renderArea.offset = { 0, 0 };
-			renderPasses[i].renderPassInfo[j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
-			renderPasses[i].renderPassInfo[j].clearValueCount = static_cast<uint32_t>(clearValues[j].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
-			renderPasses[i].renderPassInfo[j].pClearValues = clearValues[j].data();								// ... used as load operation for the color attachment and depth buffer.
+			renderPasses[i].renderPassInfos[j].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPasses[i].renderPassInfos[j].renderPass = renderPasses[i].renderPass;
+			renderPasses[i].renderPassInfos[j].framebuffer = renderPasses[i].framebuffers[j];
+			renderPasses[i].renderPassInfos[j].renderArea.offset = { 0, 0 };
+			renderPasses[i].renderPassInfos[j].renderArea.extent = e.swapChain.extent;							// Size of the render area (where shader loads and stores will take place). Pixels outside this region will have undefined values. It should match the size of the attachments for best performance.
+			renderPasses[i].renderPassInfos[j].clearValueCount = static_cast<uint32_t>(clearValues[i].size());	// Clear values to use for VK_ATTACHMENT_LOAD_OP_CLEAR, which we ...
+			renderPasses[i].renderPassInfos[j].pClearValues = clearValues[i].data();								// ... used as load operation for the color attachment and depth buffer.
 
 		}
 	}

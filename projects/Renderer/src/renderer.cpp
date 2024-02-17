@@ -291,7 +291,7 @@ void Renderer::createCommandBuffers()
 				std::cout << "   Render pass " << j << std::endl;
 			#endif
 			
-			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPasses[rp].renderPassInfo[i], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPasses[rp].renderPassInfos[i], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
 			//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);										// Start subpass
 			
 			for (size_t sp = 0; sp < models[rp].size(); sp++)		// for each SUB-PASS

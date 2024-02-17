@@ -14,7 +14,6 @@ TimerSet::TimerSet(int maximumFPS)
     : currentTime(std::chrono::system_clock::duration::zero()), maxFPS(maximumFPS), time(0), deltaTime(0), FPS(0), frameCounter(0)
 {
     startTimer();
-    std::cout << maxFPS << std::endl;
 }
 
 void TimerSet::startTimer()

@@ -1,11 +1,7 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 	
-	Create render pass obj (for assigning subpasses and other things easier instead of creating too much stuff in renderPipeline)
-
-	Construction/destruction of some things should be in RenderPass or Subpass class
-	clearValues should be inside Render pass
-	Framebuffers should be inside Render pass (maybe)
+	Automatic shader for lighting pass and no-PP.
 
 	Third pass: 
 		- 3th (forward pass): Input (depth), output (color)
