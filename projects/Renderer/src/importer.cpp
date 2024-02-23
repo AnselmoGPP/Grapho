@@ -193,7 +193,7 @@ void VLModule::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize s
 	copyRegion.size = size;
 	copyRegion.srcOffset = 0;	// Optional
 	copyRegion.dstOffset = 0;	// Optional
-
+	
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
 	e->endSingleTimeCommands(commandBuffer);

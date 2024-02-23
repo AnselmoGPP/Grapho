@@ -1,15 +1,16 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
-	
+
 	Automatic shader for lighting pass and no-PP.
 
-	Third pass: 
-		- 3th (forward pass): Input (depth), output (color)
-		- 4th (pp pass): Input (depth, color), output (color)
+	Optimize textures: 
+		Non-triplanar mapping?
+		No double texture scaling
 
 	Bug: If chunks are being loaded and I escape window, it crashes
 	Soften ambient light
 	Shader maker
+	snow distribution not working well
 
 	reduceNightLight doesn't work due to lighting done in lighting pass
 	setNumActiveInstances() should increase the number of both vsUBO and fsUBO (but there also should be an existing general UBO)

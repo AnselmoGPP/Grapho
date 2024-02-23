@@ -39,7 +39,7 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 void main()
 {	
 	vec4 albedo = vec4(0.5, 0.5, 0.5, 1);
-	//discardAlpha: if(albedo.a < 0.5) { discard; return; }														// Discard non-visible fragments
+	//discardAlpha: if(albedo.a < 0.5) { discard; return; }															// Discard non-visible fragments
 	//distDithering: if(applyOrderedDithering(getDist(gUbo.camPos_t.xyz, inPos), near, far)) { discard; return; }	// Apply dithering to distant fragments
 	vec3 normal = normalize(inNormal);
 	vec3 specular = vec3(0, 0, 0);

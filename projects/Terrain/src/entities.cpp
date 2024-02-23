@@ -13,7 +13,7 @@ std::vector<Component*> EntityFactory::createLightingPass(std::map<std::string, 
 {
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
-	getScreenQuad(v_quad, i_quad, 1.f, 0);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
+	getScreenQuad(v_quad, i_quad, 1.f, 0.f);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
 	std::vector<ShaderLoader> usedShaders{ shaders["v_lightingPass"], shaders["f_lightingPass"] };
@@ -36,8 +36,42 @@ std::vector<Component*> EntityFactory::createLightingPass(std::map<std::string, 
 	modelInfo.transparency = false;
 	modelInfo.renderPassIndex = 1;
 	modelInfo.subpassIndex = 0;
-	modelInfo.maxDescriptorsCount_vs = 5000;
 	
+	modelIter model = renderer.newModel(modelInfo);
+
+	return std::vector<Component*> {
+		new c_Model_normal(model, UboType::lightPass)
+	};
+}
+
+std::vector<Component*> EntityFactory::createPostprocessingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights)
+{
+	std::vector<float> v_quad;	// [4 * 5]
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(v_quad, i_quad, 1.f, 0.f);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
+
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
+	std::vector<ShaderLoader> usedShaders{ shaders["v_postprocessing"], shaders["f_postprocessing"] };
+	std::vector<TextureLoader> usedTextures{ };
+
+	ModelDataInfo modelInfo;
+	modelInfo.name = "postprocessingPass";
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &usedShaders;
+	modelInfo.texturesInfo = &usedTextures;
+	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
+	modelInfo.maxDescriptorsCount_fs = 1;
+	modelInfo.UBOsize_vs = 1;
+	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.bytesSize;			// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
+	modelInfo.globalUBO_vs;
+	modelInfo.globalUBO_fs;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 3;
+	modelInfo.subpassIndex = 0;
+
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> {
@@ -441,7 +475,7 @@ std::vector<Component*> EntityFactory::createGrass(std::map<std::string, ShaderL
 	modelInfo.verticesLoader = &vertexData["grass"];
 	modelInfo.shadersInfo = &usedShaders;
 	modelInfo.texturesInfo = &usedTextures;
-	modelInfo.maxDescriptorsCount_vs = 5000;
+	modelInfo.maxDescriptorsCount_vs = 6000;
 	modelInfo.maxDescriptorsCount_fs;
 	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
 	modelInfo.UBOsize_fs;

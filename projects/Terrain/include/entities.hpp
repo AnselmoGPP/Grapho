@@ -16,6 +16,7 @@ public:
 	EntityFactory(Renderer& renderer);
 
 	std::vector<Component*> createLightingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights);
+	std::vector<Component*> createPostprocessingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights);
 
 	std::vector<Component*> createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
 	std::vector<Component*> createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader);

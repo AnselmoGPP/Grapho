@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #pragma shader_stage(vertex)
 
-#include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
+//#include "..\..\..\projects\Terrain\shaders\GLSL\vertexTools.vert"
 
 // Uniform
 layout(set = 0, binding = 0) uniform ubobject {

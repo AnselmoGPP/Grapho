@@ -191,18 +191,19 @@ public:
 class RenderPass
 {
 public:
-	RenderPass(std::vector<Subpass> subpasses)
-		: subpasses(subpasses) { }
+	RenderPass(std::vector<Subpass> subpasses) : subpasses(subpasses) { }
 
-	std::vector<VkImageView> getAttachments(size_t swapchainPosition);
-	void destroyRenderPass(VulkanEnvironment& e);
-	void destroyFramebuffers(VulkanEnvironment& e);
+	void createRenderPass(VkDevice& device, std::vector<VkAttachmentDescription>& allAttachments, std::vector<VkAttachmentReference>& inputAttachments, std::vector<VkAttachmentReference>& colorAttachments, VkAttachmentReference* depthAttachment);
+	void createFramebuffers(VulkanEnvironment& e);			//!< Define the swap chain framebuffers and their attachments. Framebuffers directly depend on the swap chain images.
+	void createRenderPassInfo(VulkanEnvironment& e);		//!< Create the VkRenderPassBeginInfo objects used at vkCmdBeginRenderPass() for creating the command buffer.
+	void destroy(VulkanEnvironment& e);						//!< Destroy framebuffers and render-pass.
 
 	VkRenderPass renderPass;
-	std::vector<Subpass> subpasses;
-	std::vector<std::vector<VkImageView*>> attachments;			//!< One set of attachments per swapchain image (per render pass).
-	std::vector<VkRenderPassBeginInfo> renderPassInfos;			//!< One per swap chain image (per render pass)
-	std::vector<VkFramebuffer> framebuffers;					//!< One per swap chain image (per render pass). List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	std::vector<Subpass> subpasses;	
+	std::vector<std::vector<VkImageView*>> attachments;			//!< One set of attachments per swapchain image.
+	std::vector<VkFramebuffer> framebuffers;					//!< One per swap chain image. List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
+	std::vector<VkRenderPassBeginInfo> renderPassInfos;			//!< One per swap chain image.
+	std::vector<VkClearValue> clearValues;						//!< One per attachment.
 };
 
 /**
@@ -210,53 +211,37 @@ public:
 
 	Tells Vulkan the framebuffer attachments that will be used while rendering (color, depth, multisampled images). A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
 	- Subpasses : A single render pass can consist of multiple subpasses, which are subsequent rendering operations that depend on the contents of framebuffers in previous passes (example : a sequence of post-processing effects applied one after another). Grouping them into one render pass may give better performance.
-	- Attachment references : Every subpass references one or more of the attachments that we've described.
+	- Attachment references: Every subpass references one or more of the attachments.
 		- Input attachments: Input images.
 		- Color attachments: Output images.
-		- Depth attachment: Depth buffer.
+		- Depth/stencil attachment: Depth/stencil buffer.
+		- Resolve attachment: Used for resolving the final image from a multisampled image.
 */
 class RenderPipeline
 {
-protected:
-	VulkanEnvironment& e;
-	std::vector< std::vector<VkClearValue>> clearValues;			//!< One per render pass per attachment
-	//const VkClearColorValue backgroundColor = { 0.20, 0.59, 1.00, 1.00 };
-
-	virtual void createRenderPass() = 0;		/// A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
-	virtual void createImageResources() = 0;
-	virtual void createFramebuffers() = 0;		/// Define the swap chain framebuffers and their attachments (color/swapChain image, depth image, MSAA image)
-	virtual void createRenderPassInfo() = 0;	//!< Create the VkRenderPassBeginInfo objects used at vkCmdBeginRenderPass() for creating the command buffer.
-	virtual void destroyAttachments() = 0;
-
 public:
 	RenderPipeline(VulkanEnvironment& e);
 
-	Subpass& getSubpass(unsigned renderPassIndex, unsigned subpassIndex);
-	void destroyRenderPipeline();		//!< Destroy render-passes, framebuffers, and attachments.
-
 	std::vector<RenderPass> renderPasses;
-
-	//std::vector<VkRenderPass> renderPasses;							//!< Opaque handle to a render pass object. Describes the attachments to a swapChainFramebuffer.
-	//std::vector<std::vector<VkFramebuffer>> framebuffers;				//!< List. Opaque handle to a framebuffer object (set of attachments, including the final image to render). Access: swapChainFramebuffers[numSwapChainImages][attachment]. First attachment: main color. Second attachment: post-processing
-	//std::vector<std::vector<VkRenderPassBeginInfo>> renderPassInfo;	//!< One per render pass per swap chain image.
-	
-	//const std::vector<uint32_t> subpassCount;							//!< Number of subpasses per render-pass
-	//std::vector<std::vector<unsigned>> colorAttachmentCounts;			//!< Number of color attachments per subpass (initialized in subclass)
-	//std::vector<std::vector<std::vector<Image*>>> inputAttachments;	//!< Input attachments per subpass (initialized in subclass)
+	Subpass& getSubpass(unsigned renderPassIndex, unsigned subpassIndex);
 
 	friend VulkanEnvironment;
+
+protected:
+	VulkanEnvironment& e;
+
+	void createRenderPipeline();		//!< Create render-passes, framebuffers, and attachments.
+	void destroyRenderPipeline();		//!< Destroy render-passes, framebuffers, and attachments.
+
+private:
+	virtual void destroyAttachments() = 0;
+	virtual void createRenderPass() = 0;		//!< A render-pass denotes more explicitly how your rendering happens. Specify subpasses and their attachments.
+	virtual void createImageResources() = 0;
 };
 
 /// Render pipeline containing Deferred shading (lighting pass + geometry pass)
 class RP_DS : public RenderPipeline
 {
-protected:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
-	void createRenderPassInfo() override;
-	void destroyAttachments() override;
-
 public:
 	RP_DS(VulkanEnvironment& e);
 
@@ -266,18 +251,16 @@ public:
 	Image specRoug;
 	Image depth;
 	//Image finalColor;	// swapchain.image[i]
+
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void destroyAttachments() override;
 };
 
 /// Render pipeline containing Deferred shading (lighting pass + geometry pass) + forward shading + post-processing
 class RP_DS_PP : public RenderPipeline
 {
-protected:
-	void createRenderPass() override;
-	void createImageResources() override;
-	void createFramebuffers() override;
-	void createRenderPassInfo() override;
-	void destroyAttachments() override;
-
 public:
 	RP_DS_PP(VulkanEnvironment& e);
 
@@ -288,6 +271,11 @@ public:
 	Image depth;
 	Image color;
 	//Image finalColor;	// swapchain.image[i]
+
+protected:
+	void createRenderPass() override;
+	void createImageResources() override;
+	void destroyAttachments() override;
 };
 
 class VulkanEnvironment
@@ -307,8 +295,8 @@ public:
 	void			endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	VkImageView		createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
-	void			recreate_Images_RenderPass_SwapChain();
-	void			cleanup_Images_RenderPass_SwapChain();
+	void			recreate_RenderPipeline_SwapChain();
+	void			cleanup_RenderPipeline_SwapChain();
 	void			cleanup();
 
 	// Main member variables:

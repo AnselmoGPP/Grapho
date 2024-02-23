@@ -80,7 +80,7 @@ class Renderer
 {
 	// Hardcoded parameters
 	const int MAX_FRAMES_IN_FLIGHT = 2;		//!< How many frames should be processed concurrently.
-	int maxFPS = 60;
+	int maxFPS = 120;
 
 	// Main parameters
 	VulkanEnvironment			e;

@@ -31,11 +31,11 @@ layout(set = 0, binding = 3) uniform ubobject		// https://www.reddit.com/r/vulka
 
 layout(set = 0, binding  = 4) uniform sampler2D texSampler[10];		// sampler1D, sampler2D, sampler3D
 
-layout(location = 0)  		in vec3 	inPos;
-layout(location = 1)  		in vec3 	inNormal;
-layout(location = 2)  		in float	inDist;
-layout(location = 3)		in float	inGroundHeight;
-layout(location = 4)  		in TB3	 	inTB3;
+layout(location = 0) in vec3  inPos;
+layout(location = 1) in vec3  inNormal;
+layout(location = 2) in float inDist;
+layout(location = 3) in float inGroundHeight;
+layout(location = 4) in TB3	  inTB3;
 
 //layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
 layout (location = 0) out vec4 gPos;

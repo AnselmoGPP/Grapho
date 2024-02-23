@@ -291,12 +291,12 @@ void Renderer::createCommandBuffers()
 				std::cout << "   Render pass " << j << std::endl;
 			#endif
 			
-			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPasses[rp].renderPassInfos[i], VK_SUBPASS_CONTENTS_INLINE);		// Start render pass. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
-			//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);										// Start subpass
+			vkCmdBeginRenderPass(commandBuffers[i], &e.rp->renderPasses[rp].renderPassInfos[i], VK_SUBPASS_CONTENTS_INLINE);	// Start RENDER PASS. VK_SUBPASS_CONTENTS_INLINE (the render pass commands will be embedded in the primary command buffer itself and no secondary command buffers will be executed), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS (the render pass commands will be executed from secondary command buffers).
+			//vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);						// Start SUBPASS
 			
 			for (size_t sp = 0; sp < models[rp].size(); sp++)		// for each SUB-PASS
 			{
-				if(sp > 0) vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);							// Start subpass
+				if(sp > 0) vkCmdNextSubpass(commandBuffers[i], VK_SUBPASS_CONTENTS_INLINE);			// Start SUBPASS
 				//clearDepthBuffer(commandBuffers[i]);		// Already done in createRenderPass() (loadOp). Previously used for implementing layers (Painter's algorithm).
 
 				for (modelIter it = models[rp][sp].begin(); it != models[rp][sp].end(); it++)		// for each MODEL
@@ -315,9 +315,7 @@ void Renderer::createCommandBuffers()
 
 					if (it->vsUBO.descriptorSize || it->fsUBO.descriptorSize)	// has UBO	<<< will this work ok if I don't have UBO for the vertex shader but a UBO for the fragment shader?
 						vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-					//else
-					//	vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, it->pipelineLayout, 0, 1, &it->descriptorSets[i], 0, 0);
-
+					
 					if (it->vert.indexCount)		// has indices
 						vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(it->vert.indexCount), it->activeInstances, 0, 0, 0);
 					else
@@ -466,14 +464,14 @@ void Renderer::drawFrame()
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };	// In which stages of the pipeline to wait the semaphore. VK_PIPELINE_STAGE_ ... TOP_OF_PIPE_BIT (ensures that the render passes don't begin until the image is available), COLOR_ATTACHMENT_OUTPUT_BIT (makes the render pass wait for this stage).
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;	// Semaphores upon which to wait before the CB/s begin execution.
+	submitInfo.pWaitSemaphores = waitSemaphores;					// Semaphores upon which to wait before the CB/s begin execution.
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;// Semaphores to be signaled once the CB/s have completed execution.
+	submitInfo.pSignalSemaphores = signalSemaphores;				// Semaphores to be signaled once the CB/s have completed execution.
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];		// Command buffers to submit for execution (here, the one that binds the swap chain image we just acquired as color attachment).
 
-	vkResetFences(e.c.device, 1, &framesInFlight[currentFrame]);		// Reset the fence to the unsignaled state.
+	vkResetFences(e.c.device, 1, &framesInFlight[currentFrame]);	// Reset the fence to the unsignaled state.
 
 	{
 		const std::lock_guard<std::mutex> lock(e.queueMutex);
@@ -542,7 +540,7 @@ void Renderer::recreateSwapChain()
 
 	// Recreate swapChain:
 	//    - Environment
-	e.recreate_Images_RenderPass_SwapChain();
+	e.recreate_RenderPipeline_SwapChain();
 
 	//    - Each model
 	const std::lock_guard<std::mutex> lock(worker.mutModels);
@@ -580,7 +578,7 @@ void Renderer::cleanupSwapChain()
 	}
 
 	// Environment
-	e.cleanup_Images_RenderPass_SwapChain();
+	e.cleanup_RenderPipeline_SwapChain();
 }
 
 void Renderer::clearDepthBuffer(VkCommandBuffer commandBuffer)
@@ -623,8 +621,9 @@ void Renderer::cleanup()
 	// Cleanup models, textures and shaders
 	// const std::lock_guard<std::mutex> lock(worker.mutModels);	// Not necessary (worker stopped loading thread)
 	
-	models[0].clear();
-	models[1].clear();
+	//for (size_t i = 0; i < models.size(); i++) 
+	//	models[i].clear();
+	models.clear();
 	modelsToLoad.clear();
 	modelsToDelete.clear();
 	textures.clear();

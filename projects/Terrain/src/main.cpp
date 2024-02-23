@@ -89,6 +89,9 @@ int main(int argc, char* argv[])
 			//em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
 			//if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 			//else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
+		
+			// Post-processing pass
+			em.addEntity("postprocessingPass", eFact.createPostprocessingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
 		}
 		// SYSTEMS:
 		{
@@ -130,7 +133,7 @@ void update(Renderer& rend)
 	//d.groundHeight = planetGrid.getGroundHeight(d.camPos);
 	
 	//std::cout << "MemAllocObjects: " << rend.getMaxMemoryAllocationCount() << " / " << rend.getMemAllocObjects() << std::endl;
-	//std::cout << rend.getTimer().getFPS() << '\n';
+	//std::cout << rend.getFrameCount() << ") " << rend.getTimer().getFPS() << '\n';
 
 	em.update(rend.getTimer().getDeltaTime());
 }
@@ -210,6 +213,9 @@ void loadResourcesInfo()
 		
 		shaderLoaders.insert(std::pair("v_lightingPass", ShaderLoader(shadersDir + "lightingPass_v.vert")));
 		shaderLoaders.insert(std::pair("f_lightingPass", ShaderLoader(shadersDir + "lightingPass_f.frag")));
+
+		shaderLoaders.insert(std::pair("v_postprocessing", ShaderLoader(shadersDir + "postprocessing_v.vert")));
+		shaderLoaders.insert(std::pair("f_postprocessing", ShaderLoader(shadersDir + "postprocessing_f.frag")));
 	}
 
 	// VERTICES

@@ -6,19 +6,23 @@
 
 //layout(early_fragment_tests) in;
 
+// Uniform
 layout(set = 0, binding = 1) uniform ubobject {
 	vec4 camPos;
 	Light lights[NUMLIGHTS];
 } ubo;
 
+// Samplers
 //layout(set = 0, binding = 1) uniform sampler2D texSampler[2];		// Opt. depth, Density
 layout(set = 0, binding = 2) uniform sampler2D inputAttachments[4];	// Position, Albedo, Normal, Specular_roughness (sampler2D for single-sample | sampler2DMS for multisampling)
 
+// Input
 layout(location = 0) in vec2 inUVs;
 
+// Output
 layout(location = 0) out vec4 outColor;
 
-
+// Functions
 vec4 showPositions(float divider) { return vec4(texture(inputAttachments[0], inUVs).xyz / divider, 1.0); }
 vec4 showAlbedo() { return vec4(texture(inputAttachments[1], inUVs).xyz, 1.0); }
 vec4 showNormals() { return vec4(texture(inputAttachments[2], inUVs).xyz, 1.0); }
