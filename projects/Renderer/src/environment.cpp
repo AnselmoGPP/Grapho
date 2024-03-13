@@ -1009,16 +1009,16 @@ void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, Vk
 
 	VkImageMemoryBarrier barrier{};			// One of the most common way to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources, like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership when VK_SHARING_MODE_EXCLUSIVE is used. There is an equivalent buffer memory barrier to do this for buffers.
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = oldLayout;								// Specify layout transition (it's possible to use VK_IMAGE_LAYOUTR_UNDEFINED if you don't care about the existing contents of the image).
-	barrier.newLayout = newLayout;								// Specify layout transition
+	barrier.oldLayout = oldLayout;											// Specify layout transition (it's possible to use VK_IMAGE_LAYOUTR_UNDEFINED if you don't care about the existing contents of the image).
+	barrier.newLayout = newLayout;											// Specify layout transition
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// If you are using the barrier to transfer queue family ownership, then these two fields ...
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;					// ... should be the indices of the queue families; otherwise, set this to VK_QUEUE_FAMILY_IGNORED.
 	barrier.image = image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;				// subresourceRange specifies the part of the image that is affected.
+	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;		// subresourceRange specifies the part of the image that is affected.
 	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = mipLevels;								// If the image has no mipmapping levels, then levelCount = 1
+	barrier.subresourceRange.levelCount = mipLevels;						// If the image has no mipmapping levels, then levelCount = 1
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;										// If the image is not an array, then layerCount = 1
+	barrier.subresourceRange.layerCount = 1;								// If the image is not an array, then layerCount = 1
 
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
@@ -1157,7 +1157,7 @@ void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 	submitInfo.pCommandBuffers = &commandBuffer;
 
 	{
-		const std::lock_guard<std::mutex> lock(queueMutex);
+		const std::lock_guard<std::mutex> lock(mutQueue);
 		vkQueueSubmit(c.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(c.graphicsQueue);			// Wait to this transfer to complete. Two ways to do this: vkQueueWaitIdle (Wait for the transfer queue to become idle. Execute one transfer at a time) or vkWaitForFences (Use a fence. Allows to schedule multiple transfers simultaneously and wait for all of them complete. It may give the driver more opportunities to optimize).
 	}
@@ -1817,7 +1817,6 @@ void RP_DS_PP::createRenderPass()
 	#ifdef DEBUG_ENV_CORE
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
 	/*
 		RP1::SP1 (Geometry pass)
 		RP2::SP1 (Lighting pass)

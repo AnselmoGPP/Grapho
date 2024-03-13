@@ -264,7 +264,7 @@ void Renderer::createCommandBuffers()
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;		// VK_COMMAND_BUFFER_LEVEL_ ... PRIMARY (can be submitted to a queue for execution, but cannot be called from other command buffers), SECONDARY (cannot be submitted directly, but can be called from primary command buffers - useful for reusing common operations from primary command buffers).
 	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();		// Number of buffers to allocate.
 
-	const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+	//const std::lock_guard<std::mutex> lock(e.mutCommandPool);	// already called before calling createCommandBuffers() 
 
 	if (vkAllocateCommandBuffers(e.c.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Failed to allocate command buffers!");
@@ -428,6 +428,11 @@ void Renderer::renderLoop()
 	vkQueueSubmit(renderFinishedSemaphores[currentFrame], framesInFlight[currentFrame]); // waitFor(imageAvailableSemaphores[currentFrame])
 	vkQueuePresentKHR(); // waitFor(renderFinishedSemaphores[currentFrame]);
 	currentFrame = nextFrame;
+
+	1. Wait for command buffer execution
+	2. Acquire image from swapchain
+	3. Submit command buffer
+	4. Present result to swapchain
 */
 void Renderer::drawFrame()
 {
@@ -435,7 +440,7 @@ void Renderer::drawFrame()
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
-	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences.
+	// Wait for the frame to be finished (command buffer execution). If VK_TRUE, we wait for all fences; otherwise, we wait for any.
 	vkWaitForFences(e.c.device, 1, &framesInFlight[currentFrame], VK_TRUE, UINT64_MAX);
 
 	// Acquire an image from the swap chain
@@ -474,7 +479,7 @@ void Renderer::drawFrame()
 	vkResetFences(e.c.device, 1, &framesInFlight[currentFrame]);	// Reset the fence to the unsignaled state.
 
 	{
-		const std::lock_guard<std::mutex> lock(e.queueMutex);
+		const std::lock_guard<std::mutex> lock(e.mutQueue);
 		if (vkQueueSubmit(e.c.graphicsQueue, 1, &submitInfo, framesInFlight[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
 			throw std::runtime_error("Failed to submit draw command buffer!");
 	}
@@ -490,7 +495,6 @@ void Renderer::drawFrame()
 	presentInfo.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount	= 1;
 	presentInfo.pWaitSemaphores		= signalSemaphores;
-
 	VkSwapchainKHR swapChains[]		= { e.swapChain.swapChain };
 	presentInfo.swapchainCount		= 1;
 	presentInfo.pSwapchains			= swapChains;
@@ -498,7 +502,7 @@ void Renderer::drawFrame()
 	presentInfo.pResults			= nullptr;			// Optional
 
 	{
-		const std::lock_guard<std::mutex> lock(e.queueMutex);
+		const std::lock_guard<std::mutex> lock(e.mutQueue);
 		result = vkQueuePresentKHR(e.c.presentQueue, &presentInfo);		// Submit request to present an image to the swap chain. Our triangle may look a bit different because the shader interpolates in linear color space and then converts to sRGB color space.
 		frameCount++;
 	}
@@ -820,12 +824,9 @@ void Renderer::updateStates(uint32_t currentImage)
 	
 	if (updateCommandBuffer)
 	{
-		{
-			const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-			vkQueueWaitIdle(e.c.graphicsQueue);
-			vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
-		}
-
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+		vkQueueWaitIdle(e.c.graphicsQueue);
+		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
 		createCommandBuffers();
 	}
 }

@@ -2,6 +2,7 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 
 	Automatic shader for lighting pass and no-PP.
+	vkGetPhysicalDeviceFormatProperties?
 
 	Optimize textures: 
 		Non-triplanar mapping?
@@ -12,6 +13,7 @@ TODO:
 	Shader maker
 	snow distribution not working well
 
+	Make textures have a size that's a power of 2
 	reduceNightLight doesn't work due to lighting done in lighting pass
 	setNumActiveInstances() should increase the number of both vsUBO and fsUBO (but there also should be an existing general UBO)
 	setNumActiveInstances() should resize the number of instances if it's bigger than the maximum size
