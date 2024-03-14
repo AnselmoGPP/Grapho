@@ -377,13 +377,13 @@ void ModelData::createGraphicsPipeline()
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pDepthStencilState = &depthStencil;		// [Optional]
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr;					// [Optional] <<< NO SE AÑADIÓ LA STRUCT dynamicState
+	pipelineInfo.pDynamicState = nullptr;				// [Optional] <<< dynamic state not passed. If the bound graphics pipeline state was created with the VK_DYNAMIC_STATE_VIEWPORT dynamic state enabled then vkCmdSetViewport must have been called in the current command buffer prior to this drawing command. 
 	pipelineInfo.layout = pipelineLayout;
 	pipelineInfo.renderPass = e->rp->renderPasses[renderPassIndex].renderPass;// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;		// [Optional] Specify the handle of an existing pipeline.
 	pipelineInfo.basePipelineIndex = -1;					// [Optional] Reference another pipeline that is about to be created by index.
-
+	
 	if (vkCreateGraphicsPipelines(e->c.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create graphics pipeline!");
 	

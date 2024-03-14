@@ -356,7 +356,7 @@ void Renderer::createSyncObjects()
 
 	VkFenceCreateInfo fenceInfo{};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;						// Reset to signaled state (CB finished execution)
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(e.c.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
@@ -366,6 +366,8 @@ void Renderer::createSyncObjects()
 			throw std::runtime_error("Failed to create synchronization objects for a frame!");
 		}
 	}
+
+	lastFence = framesInFlight[currentFrame];
 }
 
 void Renderer::renderLoop()
@@ -482,6 +484,8 @@ void Renderer::drawFrame()
 		const std::lock_guard<std::mutex> lock(e.mutQueue);
 		if (vkQueueSubmit(e.c.graphicsQueue, 1, &submitInfo, framesInFlight[currentFrame]) != VK_SUCCESS)	// Submit the command buffer to the graphics queue. An array of VkSubmitInfo structs can be taken as argument when workload is much larger, for efficiency.
 			throw std::runtime_error("Failed to submit draw command buffer!");
+
+		lastFence = framesInFlight[currentFrame];
 	}
 
 	// Note:
@@ -555,6 +559,7 @@ void Renderer::recreateSwapChain()
 				it->recreate_Pipeline_Descriptors();
 
 	//    - Renderer
+	const std::lock_guard<std::mutex> lock2(e.mutCommandPool);
 	createCommandBuffers();				// Command buffers directly depend on the swap chain images.
 	imagesInFlight.resize(e.swapChain.images.size(), VK_NULL_HANDLE);
 }
@@ -564,10 +569,13 @@ void Renderer::cleanupSwapChain()
 	#ifdef DEBUG_RENDERER
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
-
+	
+	{
+		const std::lock_guard<std::mutex> lock(e.mutQueue);
+		vkQueueWaitIdle(e.c.graphicsQueue);
+	}
 	{
 		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-		vkQueueWaitIdle(e.c.graphicsQueue);
 		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 	}
 
@@ -611,8 +619,11 @@ void Renderer::cleanup()
 	
 	// Renderer
 	{
-		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
+		const std::lock_guard<std::mutex> lock(e.mutQueue);
 		vkQueueWaitIdle(e.c.graphicsQueue);
+	}
+	{
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
 		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Free Command buffers
 	}
 	
@@ -821,11 +832,16 @@ void Renderer::updateStates(uint32_t currentImage)
 	#ifdef DEBUG_RENDERLOOP
 		std::cout << "Update command buffer" << std::endl;
 	#endif
-	
+
 	if (updateCommandBuffer)
 	{
-		const std::lock_guard<std::mutex> lock(e.mutCommandPool);
-		vkQueueWaitIdle(e.c.graphicsQueue);
+		{
+			//const std::lock_guard<std::mutex> lock(e.mutQueue);
+			//vkQueueWaitIdle(e.c.graphicsQueue);
+		}
+		vkWaitForFences(e.c.device, 1, &lastFence, VK_TRUE, UINT64_MAX);
+		
+		const std::lock_guard<std::mutex> lock(e.mutCommandPool);		// vkQueueWaitIdle(e.c.graphicsQueue) was called before, in drawFrame()
 		vkFreeCommandBuffers(e.c.device, e.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());	// Any primary command buffer that is in the recording or executable state and has any element of pCommandBuffers recorded into it, becomes invalid.
 		createCommandBuffers();
 	}

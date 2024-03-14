@@ -1,6 +1,8 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 
+	Bug: Invalid render pass (other error may be possible) when moving camera and resizing window.
+
 	Automatic shader for lighting pass and no-PP.
 	vkGetPhysicalDeviceFormatProperties?
 

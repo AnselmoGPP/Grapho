@@ -107,6 +107,7 @@ class Renderer
 	std::vector<VkSemaphore>	renderFinishedSemaphores;	//!< Signals that rendering has finished (CB has been executed) and presentation can happen. Each frame has a semaphore for concurrent processing. Allows multiple frames to be in-flight while still bounding the amount of work that piles up. One for each possible frame in flight.
 	std::vector<VkFence>		framesInFlight;				//!< Similar to semaphores, but fences actually wait in our own code. Used to perform CPU-GPU synchronization. One per frame in flight.
 	std::vector<VkFence>		imagesInFlight;				//!< Maps frames in flight by their fences. Tracks for each swap chain image if a frame in flight is currently using it. One per swap chain image.
+	VkFence lastFence;										//!< Signals that the last command buffer submitted finished execution.
 
 	size_t						currentFrame;				//!< Frame to process next (0 or 1).
 	size_t						commandsCount;				//!< Number of drawing commands sent to the command buffer. For debugging purposes.

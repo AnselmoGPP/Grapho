@@ -186,6 +186,8 @@ void VLModule::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize s
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
+	const std::lock_guard<std::mutex> lock(e->mutCommandPool);
+
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
 	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).
@@ -792,6 +794,8 @@ VkSampler TLModule::createTextureSampler(uint32_t mipLevels)
 
 void TLModule::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
+	const std::lock_guard<std::mutex> lock(e->mutCommandPool);
+
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
 	// Specify which part of the buffer is going to be copied to which part of the image
@@ -807,17 +811,13 @@ void TLModule::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
 	region.imageExtent = { width, height, 1 };			// Indicate to which part of the image we want to copy the pixels
 
 	// Enqueue buffer to image copy operations
-	{
-		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
-
-		vkCmdCopyBufferToImage(
-			commandBuffer,
-			buffer,
-			image,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,			// Layout the image is currently using
-			1,
-			&region);
-	}
+	vkCmdCopyBufferToImage(
+		commandBuffer,
+		buffer,
+		image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,			// Layout the image is currently using
+		1,
+		&region);
 
 	e->endSingleTimeCommands(commandBuffer);
 }
@@ -835,6 +835,8 @@ void TLModule::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texW
 		//		- Implement the mipmap generation in software with a library like stb_image_resize. Each mip level can then be loaded into the image in the same way that you loaded the original image.
 		// It's uncommon to generate the mipmap levels at runtime anyway. Usually they are pregenerated and stored in the texture file alongside the base level to improve loading speed. <<<<<
 	}
+	
+	const std::lock_guard<std::mutex> lock(e->mutCommandPool);
 
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
@@ -860,8 +862,6 @@ void TLModule::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texW
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;	// We transition level i - 1 to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. This transition will wait for level i - 1 to be filled, either from the previous blit command, or from vkCmdCopyBufferToImage. The current blit command will wait on this transition.
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
 
 		vkCmdPipelineBarrier(commandBuffer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
@@ -913,15 +913,11 @@ void TLModule::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texW
 	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 	// n. Record a barrier (This barrier transitions the last mip level from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. This wasn't handled by the loop, since the last mip level is never blitted from).
-	{
-		const std::lock_guard<std::mutex> lock(e->mutCommandPool);
-
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-	}
+	vkCmdPipelineBarrier(commandBuffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
 
 	e->endSingleTimeCommands(commandBuffer);
 }

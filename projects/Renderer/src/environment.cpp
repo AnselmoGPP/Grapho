@@ -1005,6 +1005,8 @@ void VulkanEnvironment::createCommandPool()
 
 void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
 {
+	const std::lock_guard<std::mutex> lock(mutCommandPool);
+
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
 	VkImageMemoryBarrier barrier{};			// One of the most common way to perform layout transitions is using an image memory barrier. A pipeline barrier like that is generally used to synchronize access to resources, like ensuring that a write to a buffer completes before reading from it, but it can also be used to transition image layouts and transfer queue family ownership when VK_SHARING_MODE_EXCLUSIVE is used. There is an equivalent buffer memory barrier to do this for buffers.
@@ -1060,17 +1062,14 @@ void VulkanEnvironment::transitionImageLayout(VkImage image, VkFormat format, Vk
 		throw std::invalid_argument("Unsupported layout transition!");
 
 	// Submit a pipeline barrier
-	{
-		const std::lock_guard<std::mutex> lock(mutCommandPool);
-		vkCmdPipelineBarrier(
-			commandBuffer,
-			sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
-			destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
-			0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
-			0, nullptr,			// Array of pipeline barriers of type memory barriers
-			0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
-			1, &barrier);		// Array of pipeline barriers of type image memory barriers
-	}
+	vkCmdPipelineBarrier(
+		commandBuffer,
+		sourceStage,		// Specify in which pipeline stage the operations occur that should happen before the barrier 
+		destinationStage,	// Specify the pipeline stage in which operations will wait on the barrier
+		0,					// This is either 0 (nothing) or VK_DEPENDENCY_BY_REGION_BIT (turns the barrier into a per-region condition, which means that the implementation is allowed to already begin reading from the parts of a resource that were written so far, for example).
+		0, nullptr,			// Array of pipeline barriers of type memory barriers
+		0, nullptr,			// Array of pipeline barriers of type buffer memory barriers
+		1, &barrier);		// Array of pipeline barriers of type image memory barriers
 
 	endSingleTimeCommands(commandBuffer);
 
@@ -1119,8 +1118,6 @@ bool VulkanEnvironment::hasStencilComponent(VkFormat format)
 */
 VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 {
-	const std::lock_guard<std::mutex> lock(mutCommandPool);
-
 	// Allocate the command buffer.
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1146,8 +1143,6 @@ VkCommandBuffer VulkanEnvironment::beginSingleTimeCommands()
 */
 void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
-	const std::lock_guard<std::mutex> lock(mutCommandPool);
-
 	vkEndCommandBuffer(commandBuffer);		// Stop recording (this command buffer only contains the copy command, so we can stop recording now).
 
 	// Execute the command buffer (only contains the copy command) to complete the transfer of buffers.
@@ -1156,12 +1151,23 @@ void VulkanEnvironment::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	//fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;						// Reset to signaled state (CB finished execution)
+
+	VkFence singleTimeFence;
+	vkCreateFence(c.device, &fenceInfo, nullptr, &singleTimeFence);
+	//vkResetFences(c.device, 1, &singleTimeFence);							// Reset to unsignaled state (CB didn't finish execution).
+	
 	{
 		const std::lock_guard<std::mutex> lock(mutQueue);
-		vkQueueSubmit(c.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(c.graphicsQueue);			// Wait to this transfer to complete. Two ways to do this: vkQueueWaitIdle (Wait for the transfer queue to become idle. Execute one transfer at a time) or vkWaitForFences (Use a fence. Allows to schedule multiple transfers simultaneously and wait for all of them complete. It may give the driver more opportunities to optimize).
+		vkQueueSubmit(c.graphicsQueue, 1, &submitInfo, singleTimeFence);	// VK_NULL_HANDLE);
+		//vkQueueWaitIdle(c.graphicsQueue);									// Wait to this transfer to complete. Two ways to do this: vkQueueWaitIdle (Wait for the transfer queue to become idle. Execute one transfer at a time) or vkWaitForFences (Use a fence. Allows to schedule multiple transfers simultaneously and wait for all of them complete. It may give the driver more opportunities to optimize).
 	}
 
+	vkWaitForFences(c.device, 1, &singleTimeFence, VK_TRUE, UINT64_MAX);	// Wait for signaled state
+	vkDestroyFence(c.device, singleTimeFence, nullptr);
+	
 	// Clean up the command buffer used.
 	vkFreeCommandBuffers(c.device, commandPool, 1, &commandBuffer);
 }
