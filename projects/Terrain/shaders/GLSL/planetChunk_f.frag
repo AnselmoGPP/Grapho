@@ -88,10 +88,10 @@ float getSnowRatio_Poles(float mixRange, float minHeight, float maxHeight)
 	return getRatio(inSlope, slopeThreshold + mixRange, slopeThreshold - mixRange);
 }
 
-float getSnowRatio_Height(float mixRange, float minHeight, float maxHeight)
+float getSnowRatio_Height(float mixRange, float minHeight, float maxHeight, float slope)
 {
-	float slopeRatio = getRatio(inGroundHeight - RADIUS, maxHeight, minHeight);
-	return getRatio(inSlope, slopeRatio - mixRange, slopeRatio + mixRange);
+	float slopeRatio = getRatio(inGroundHeight - RADIUS, minHeight, maxHeight);
+	return getRatio(slope, slopeRatio, slopeRatio - mixRange);
 }
 
 
@@ -286,13 +286,14 @@ void setData_grassRock()
 	
 	// Snow:
 	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
-	float ratioSnow = getSnowRatio_Height(0.1, 90, 120);
-	alb[2] = mix(alb[2], alb[3], ratioRock);	// mix plain and rough snow
+	//float slope = dot(baseNormal, nor[0]); 
+	float ratioSnow = getSnowRatio_Height(0.1, 100, 120, inSlope);
+	alb[2] = mix(alb[2], alb[3], ratioRock);	// mix plain snow and rough snow
 	nor[2] = mix(nor[2], nor[3], ratioRock);
 	spe[2] = mix(spe[2], spe[3], ratioRock);
 	rou[2] = mix(rou[2], rou[3], ratioRock);
 	
-	alb[0] = mix(alb[0], alb[2], ratioSnow);
+	alb[0] = mix(alb[0], alb[2], ratioSnow);	// mix snow with soil
 	nor[0] = mix(nor[0], nor[2], ratioSnow);
 	spe[0] = mix(spe[0], spe[2], ratioSnow);
 	rou[0] = mix(rou[0], rou[2], ratioSnow);
@@ -492,7 +493,7 @@ vec3 getTexture_GrassRock()
 	
 	// Snow:
 	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
-	float ratioSnow = getSnowRatio_Height(0.1, 90, 120);
+	float ratioSnow = getSnowRatio_Height(0.1, 90, 120, inSlope);
 	vec3 snow = mix(snowP, snowR, ratioRock);
 	result = mix(result, snow, ratioSnow);
 	

@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
 
 			// Geometry pass (deferred rendering)
 			em.addEntity("planet", eFact.createPlanet(shaderLoaders, texInfos));
-			em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
 			em.addEntity("grass", eFact.createGrass(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
 			em.addEntity("plant", eFact.createPlant(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
 			em.addEntity("stone", eFact.createRock(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
@@ -82,6 +81,7 @@ int main(int argc, char* argv[])
 			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
 		
 			// Forward pass (forward rendering)
+			//em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
 			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
 			//em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
 			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));

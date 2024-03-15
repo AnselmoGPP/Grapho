@@ -3,7 +3,6 @@ TODO:
 
 	water to forward rendering
 	down view
-	snow distro
 	render all
 
 	Automatic shader for lighting pass and no-PP.
