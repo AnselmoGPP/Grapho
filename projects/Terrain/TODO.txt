@@ -2,7 +2,6 @@ TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 
 	water to forward rendering
-	down view
 	render all
 
 	Automatic shader for lighting pass and no-PP.

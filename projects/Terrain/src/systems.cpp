@@ -463,9 +463,15 @@ void s_Camera::update_Plane_polar_sphere(float timeStep, c_Cam_Plane_polar_spher
         //yaw -= c_input->xOffset() * c_cam->mouseSpeed;
         //pitch -= c_input->yOffset() * c_cam->mouseSpeed;
 
+        float dotP = glm::dot(c_cam->front, c_cam->worldUp);
+        if (dotP >  0.9 && c_input->yOffset() < 0) goto tooSloped;
+        if (dotP < -0.9 && c_input->yOffset() > 0) goto tooSloped;
+
         angle = -c_input->yOffset() * c_cam->mouseSpeed;
         rotQuat2 = productQuat(rotQuat2, getRotQuat(c_cam->right, angle));
 
+        tooSloped:
+        
         angle = -c_input->xOffset() * c_cam->mouseSpeed;
         rotQuat2 = productQuat(rotQuat2, getRotQuat(c_cam->worldUp, angle));
     }

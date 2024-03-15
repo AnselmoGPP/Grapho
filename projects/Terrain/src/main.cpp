@@ -178,8 +178,8 @@ void loadResourcesInfo()
 		//shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "v_skybox.vert")));
 		//shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "f_skybox.frag")));
 		
-		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_v.vert")));
-		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_f.frag")));
+		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_FR_v.vert")));
+		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_FR_f.frag")));
 		
 		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "planetChunk_v.vert")));
 		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "planetChunk_f.frag")));
