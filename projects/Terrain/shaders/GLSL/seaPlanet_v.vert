@@ -9,7 +9,6 @@
 #define MAX 200			// max. dist.
 #define WAVES 6
 #define COUNT 6
-#define APPLY_WAVES true
 
 vec3  dir      [WAVES] = { vec3(1,0,0), vec3(0, SR05, -SR05), vec3(0,0,1), vec3(SR05, SR05, 0), vec3(0,1,0), vec3(-SR05, 0, SR05) };// Set of unit vectors
 float speed    [WAVES] = { 0.8,  0.7,  0.6, 0.5,  0.4, 0.3 };
@@ -42,6 +41,7 @@ layout(location = 4)  		out TB3		outTB3;			// Tangents & Bitangents
 
 void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude);	// Adjust amplitude based on soil depth under camera. Waves are max. when soilHeight < (RADIUS - maxDepth) and min. when soilHeight > (RADIUS - minDepth)
 vec3 getSeaOptimized(inout vec3 normal, float min, float max);
+vec3 getUpDownSea(float radius, float speed);
 vec3 GerstnerWaves(vec3 pos, inout vec3 normal);			// Gerstner waves standard (https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models)
 vec3 GerstnerWaves_sphere(vec3 pos, inout vec3 normal);		// Gerstner waves projected along the sphere surface.
 vec3 GerstnerWaves_sphere2(vec3 pos, inout vec3 normal);	// Gerstner waves projected perpendicularly from the direction line to the sphere
@@ -53,8 +53,9 @@ void main()
 	
 	vec3 normal     = inNormal;
 	vec3 pos;
-	if(APPLY_WAVES) pos = getSeaOptimized(normal, MIN, MAX);
-	else pos = inPos;
+	//pos = inPos;								// No waves
+	//pos = getSeaOptimized(normal, MIN, MAX);	// Waves
+	pos = getUpDownSea(0.25, 1);				// Up & Down
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;
@@ -69,6 +70,11 @@ void adjustWavesAmplitude(float maxDepth, float minDepth, float minAmplitude)
 {
 	float ratio = minAmplitude + 1.f - getRatio(gUbo.camPos_t.w, RADIUS - maxDepth, RADIUS - minDepth);
 	for(int i = 0; i < WAVES; i++) A[i] *= ratio;
+}
+
+vec3 getUpDownSea(float radius, float speed)
+{
+	return inPos + sin(speed * gUbo.camPos_t.w) * (inNormal * radius);
 }
 
 vec3 getSeaOptimized(inout vec3 normal, float min, float max)
