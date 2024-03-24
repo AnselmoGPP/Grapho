@@ -133,7 +133,7 @@ public:
 	virtual glm::vec3 getCenter();
 	void deleteModel();
 
-	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, unsigned numLights, bool transparency);
+	void render(std::vector<ShaderLoader>& shaders, std::vector<TextureLoader>& textures, std::vector<uint16_t>* indices, glm::ivec2 passIndex, unsigned numLights, bool transparency);
 	void updateUBOs(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& camPos, const LightSet& lights, float time, float camHeight, glm::vec3 planetCenter = glm::vec3(0,0,0));
 
 	void setSideDepths(unsigned a, unsigned b, unsigned c, unsigned d);
@@ -228,7 +228,7 @@ public:
 class DynamicGrid
 {
 public:
-	DynamicGrid(glm::vec3 camPos, Renderer* renderer, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
+	DynamicGrid(glm::vec3 camPos, Renderer* renderer, glm::ivec2 passIndex, unsigned activeTree, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 	virtual ~DynamicGrid();
 
 	//unsigned char* ubo;
@@ -256,6 +256,7 @@ protected:
 	std::vector<ShaderLoader> shaders;
 	std::vector<TextureLoader> textures;
 	unsigned activeTree, nonActiveTree;
+	glm::ivec2 passIndex;		//!< ivec2(renderPassIndex, subpassIndex)
 
 	// Configuration data
 	float rootCellSize;
@@ -299,7 +300,7 @@ public:
 	*	@param minLevel Minimum level rendered. Used for avoiding rendering too big chunks.
 	*	@param distMultiplier Distance (relative to a chunk side size) at which the chunk is subdivided.
 	*/
-	TerrainGrid(Renderer* renderer, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
+	TerrainGrid(Renderer* renderer, glm::ivec2 passIndex, Noiser* noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, bool transparency);
 	~TerrainGrid() { if (noiseGen) delete noiseGen; }
 
 private:
@@ -312,7 +313,7 @@ private:
 class PlanetGrid : public DynamicGrid
 {
 public:
-	PlanetGrid(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
+	PlanetGrid(Renderer* renderer, glm::ivec2 passIndex, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	virtual ~PlanetGrid() { }
 
 	float getRadius();
@@ -336,7 +337,7 @@ protected:
 class SphereGrid : public PlanetGrid
 {
 public:
-	SphereGrid(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
+	SphereGrid(Renderer* renderer, glm::ivec2 passIndex, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, glm::vec3 cubePlane, glm::vec3 cubeSideCenter, bool transparency);
 	
 	QuadNode<Chunk*>* getNode(std::tuple<float, float, float> center, float sideLength, unsigned depth, unsigned chunkID) override;
 };
@@ -360,7 +361,7 @@ public:
 class Planet
 {
 public:
-	Planet(Renderer* renderer, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	Planet(Renderer* renderer, glm::ivec2 passIndex, std::shared_ptr<Noiser> noiseGenerator, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	virtual ~Planet();
 
 	void addResources(const std::vector<ShaderLoader>& shaders, const std::vector<TextureLoader>& textures);							//!< Add textures and shader
@@ -399,7 +400,7 @@ class Sphere : public Planet
 	float callBack_getFloorHeight(const glm::vec3& pos) override;	//!< Callback example
 
 public:
-	Sphere(Renderer* renderer, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
+	Sphere(Renderer* renderer, glm::ivec2 passIndex, size_t rootCellSize, size_t numSideVertex, size_t numLevels, size_t minLevel, float distMultiplier, float radius, glm::vec3 nucleus, bool transparency);
 	~Sphere();
 };
 

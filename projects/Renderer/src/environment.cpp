@@ -1824,10 +1824,10 @@ void RP_DS_PP::createRenderPass()
 		std::cout << "   " << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 	/*
-		RP1::SP1 (Geometry pass)
-		RP2::SP1 (Lighting pass)
-		RP3::SP1 (Forward pass)
-		RP4::SP1 (Post-processing pass)
+		RP1::SP1 (Geometry pass): IA (0), DA (1), CA (4)
+		RP2::SP1 (Lighting pass): IA (4), DA (0), CA (1)
+		RP3::SP1 (Forward pass): IA (0), DA (1), CA (1)
+		RP4::SP1 (Post-processing pass): IA (1), DA (1), CA (1)
 	*/
 
 	// Attachments -------------------------
@@ -1898,6 +1898,7 @@ void RP_DS_PP::createRenderPass()
 	VkAttachmentReference* depthAttachment11 = &depthAttRef11;
 	std::vector<VkAttachmentReference> colorAttachments11 = { caPosAttRef11, caAlbedoAttRef11, caNormalAttRef11, caSpecRougAttRef11 };	// Put together all the attachments that your render-pass will contain, in the same order you specified when creating the references (VkAttachmentReference).
 
+
 	// RP2::SP1::inputAttachment (position)
 	VkAttachmentDescription iaPosAtt21 = defaultAtt;
 	iaPosAtt21.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -1954,6 +1955,7 @@ void RP_DS_PP::createRenderPass()
 	VkAttachmentReference* depthAttachment21 = nullptr;
 	std::vector<VkAttachmentReference> colorAttachments21 = { caColorAttRef21 };
 
+
 	// RP3::SP1::depth/stencilAttachment (depth)
 	VkAttachmentDescription depthAtt31 = defaultAtt;
 	depthAtt31.format = e.c.deviceData.depthFormat;
@@ -1979,6 +1981,7 @@ void RP_DS_PP::createRenderPass()
 	std::vector<VkAttachmentReference> inputAttachments31 = { };
 	VkAttachmentReference* depthAttachment31 = &depthAttRef31;
 	std::vector<VkAttachmentReference> colorAttachments31 = { caColorAttRef31 };
+
 
 	// RP4::SP1::inputAttachment (color)
 	VkAttachmentDescription iaColorAtt41 = defaultAtt;
@@ -2015,6 +2018,7 @@ void RP_DS_PP::createRenderPass()
 	std::vector<VkAttachmentReference> inputAttachments41 = { iaColorAttRef41 };
 	VkAttachmentReference* depthAttachment41 = &depthAttRef41;
 	std::vector<VkAttachmentReference> colorAttachments41 = { caColorAttRef41 };
+
 
 	// Create render passes -------------------------
 

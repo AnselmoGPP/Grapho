@@ -373,11 +373,10 @@ void ModelData::createGraphicsPipeline()
 	pipelineInfo.pInputAssemblyState = &inputAssembly;
 	pipelineInfo.pViewportState = &viewportState;
 	pipelineInfo.pRasterizationState = &rasterizer;
-	//if(!renderPassIndex) 
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pDepthStencilState = &depthStencil;		// [Optional]
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr;				// [Optional] <<< dynamic state not passed. If the bound graphics pipeline state was created with the VK_DYNAMIC_STATE_VIEWPORT dynamic state enabled then vkCmdSetViewport must have been called in the current command buffer prior to this drawing command. 
+	pipelineInfo.pDynamicState = nullptr;					// [Optional] <<< dynamic state not passed. If the bound graphics pipeline state was created with the VK_DYNAMIC_STATE_VIEWPORT dynamic state enabled then vkCmdSetViewport must have been called in the current command buffer prior to this drawing command. 
 	pipelineInfo.layout = pipelineLayout;
 	pipelineInfo.renderPass = e->rp->renderPasses[renderPassIndex].renderPass;// It's possible to use other render passes with this pipeline instead of this specific instance, but they have to be compatible with "renderPass" (https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#renderpass-compatibility).
 	pipelineInfo.subpass = 0;

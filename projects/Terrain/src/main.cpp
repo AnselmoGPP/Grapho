@@ -37,9 +37,9 @@ std::map<std::string, TextureLoader> texInfos;
 UBOinfo globalUBOs[2];
 std::map<std::string, VerticesLoader> verticesLoaders;
 
-std::vector<TextureLoader> soilTexInfos;	// Package of textures
-std::vector<TextureLoader> seaTexInfos;		// Package of textures
-std::vector<TextureLoader> skyboxTexInfos;	// Package of textures
+//std::vector<TextureLoader> soilTexInfos;	// Package of textures
+//std::vector<TextureLoader> seaTexInfos;		// Package of textures
+//std::vector<TextureLoader> skyboxTexInfos;	// Package of textures
 
 // main ---------------------------------------------------------------------
 
@@ -57,9 +57,13 @@ int main(int argc, char* argv[])
 		IOmanager io(1920/2, 1080/2);
 		loadResourcesInfo();						// Load shaders, textures, UBOs, meshes from files
 		
-		Renderer r(update, io, globalUBOs[0], globalUBOs[1]);		// Create a renderer object. Pass a callback that will be called for each frame (useful for updating model view matrices).
+		Renderer r(		// Create a renderer object
+			update,					// Callback that will be called for each frame (useful for updating model view matrices)
+			io, 
+			UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4),			// global UBO: View, Proj, camPos_Time
+			UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light)) );	// global UBO: camPos_Time, Lights
 		EntityFactory eFact(r);
-		
+
 		// ENTITIES + COMPONENTS:
 		{
 			em.addEntity("singletons", std::vector<Component*>{	// Singleton components.
@@ -81,7 +85,7 @@ int main(int argc, char* argv[])
 			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
 		
 			// Forward pass (forward rendering)
-			//em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
+			em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
 			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
 			//em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
 			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
@@ -163,10 +167,6 @@ void loadResourcesInfo()
 		#endif
 	#endif
 	
-	// GLOBAL UBOS
-	globalUBOs[0] = UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4);			// View, Proj, camPos_Time
-	globalUBOs[1] = UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light));		// camPos_Time, Lights
-
 	// SHADERS
 	{
 		//shaderLoaders.insert(std::pair("v_points", ShaderLoader(shadersDir + "v_points.vert")));
@@ -306,6 +306,7 @@ void loadResourcesInfo()
 		texInfos.insert(std::pair("snow2_s", TextureLoader(texDir + "snow/snow2_s.png")));
 	}
 
+/*
 	// TEXTURE PACKS
 	{
 		// Plants
@@ -371,4 +372,5 @@ void loadResourcesInfo()
 		skyboxTexInfos.push_back(texInfos["sb_right"]);
 		skyboxTexInfos.push_back(texInfos["sb_left"]);
 	}
+*/
 }

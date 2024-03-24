@@ -9,6 +9,12 @@
 #define DIST_1 5
 #define DIST_2 8
 
+#define GRAS 0		// grass
+#define ROCK 1		// rock
+#define PSNW 2		// plain snow
+#define RSNW 3		// rough snow
+#define SAND 4		// sand
+
 layout(early_fragment_tests) in;
 
 layout(set = 0, binding = 2) uniform globalUbo {
@@ -96,6 +102,151 @@ float getSnowRatio_Height(float mixRange, float minHeight, float maxHeight, floa
 
 
 void setData_grassRock()
+{
+	vec3 baseNormal = normalize(inNormal);
+	
+	// Texture resolution and Ratios.
+	float tf[2];														// texture factors
+	float ratioMix  = getTexScaling(inDist, 10, 40, 0.2, tf[0], tf[1]);	// params: fragDist, initialTexFactor, baseDist, mixRange, texFactor1, texFactor2
+
+	// Get data
+	Material grassPar[2];
+	Material rockPar [2];
+	Material pSnowPar[2];
+	Material rSnowPar[2];
+	Material sandPar [2];
+	
+	for(int i = 0; i < 2; i++)
+	{
+		grassPar[i].albedo = triplanarTexture(texSampler[0],  tf[i], inPos, baseNormal).rgb;
+		grassPar[i].normal = triplanarNormal (texSampler[1], tf[i],  inPos, baseNormal, inTB3);
+		grassPar[i].spec   = triplanarNoColor(texSampler[2],  tf[i], inPos, baseNormal).rgb;
+		grassPar[i].rough  = triplanarNoColor(texSampler[3],  tf[i], inPos, baseNormal).r;
+		
+		rockPar[i].albedo  = triplanarTexture(texSampler[5],  tf[i], inPos, baseNormal).rgb;
+		rockPar[i].normal  = triplanarNormal (texSampler[6],  tf[i], inPos, baseNormal, inTB3);
+		rockPar[i].spec    = triplanarNoColor(texSampler[7],  tf[i], inPos, baseNormal).rgb;
+		rockPar[i].rough   = triplanarNoColor(texSampler[8],  tf[i], inPos, baseNormal).r;
+		
+		pSnowPar[i].albedo = triplanarTexture(texSampler[15], tf[i], inPos, baseNormal).rgb;
+		pSnowPar[i].normal = triplanarNormal (texSampler[16], tf[i], inPos, baseNormal, inTB3);
+		pSnowPar[i].spec   = triplanarNoColor(texSampler[17], tf[i], inPos, baseNormal).rgb;
+		pSnowPar[i].rough  = triplanarNoColor(texSampler[18], tf[i], inPos, baseNormal).r;
+		
+		rSnowPar[i].albedo = triplanarTexture(texSampler[10], tf[i], inPos, baseNormal).rgb;
+		rSnowPar[i].normal = triplanarNormal (texSampler[11], tf[i], inPos, baseNormal, inTB3);
+		rSnowPar[i].spec   = triplanarNoColor(texSampler[12], tf[i], inPos, baseNormal).rgb;
+		rSnowPar[i].rough  = triplanarNoColor(texSampler[13], tf[i], inPos, baseNormal).r;
+		
+		sandPar[i].albedo  = triplanarTexture(texSampler[25], tf[i], inPos, baseNormal).rgb;
+		sandPar[i].normal  = triplanarNormal (texSampler[26], tf[i], inPos, baseNormal, inTB3);
+		sandPar[i].spec    = triplanarNoColor(texSampler[27], tf[i], inPos, baseNormal).rgb;
+		sandPar[i].rough   = triplanarNoColor(texSampler[28], tf[i], inPos, baseNormal).r;
+	}
+		
+	// Mix normals (ground vs grass) depending upon distance
+	for(int i = 0; i < 2; i++)
+		grassPar[i].normal = mix(
+			triplanarNormal(texSampler[16], tf[i] * 1.1, inPos, baseNormal, inTB3), 
+			grassPar[i].normal, 
+			getRatio(inDist, DIST_2, 0.2 * DIST_2));
+	
+	// Mix data depending upon distance
+	Material grass;
+	Material rock; 
+	Material pSnow;
+	Material rSnow;
+	Material sand;
+	
+	grass.albedo = mix(grassPar[1].albedo, grassPar[0].albedo, ratioMix);
+	grass.normal = mix(grassPar[1].normal, grassPar[0].normal, ratioMix);
+	grass.spec   = mix(grassPar[1].spec,   grassPar[0].spec,   ratioMix);
+	grass.rough  = mix(grassPar[1].rough,  grassPar[0].rough,  ratioMix);
+	
+	rock.albedo  = mix(rockPar[1].albedo,  rockPar[0].albedo,  ratioMix);
+	rock.normal  = mix(rockPar[1].normal,  rockPar[0].normal,  ratioMix);
+	rock.spec    = mix(rockPar[1].spec,    rockPar[0].spec,    ratioMix);
+	rock.rough   = mix(rockPar[1].rough,   rockPar[0].rough,   ratioMix);
+	
+	pSnow.albedo = mix(pSnowPar[1].albedo, pSnowPar[0].albedo, ratioMix);
+	pSnow.normal = mix(pSnowPar[1].normal, pSnowPar[0].normal, ratioMix);
+	pSnow.spec   = mix(pSnowPar[1].spec,   pSnowPar[0].spec,   ratioMix);
+	pSnow.rough  = mix(pSnowPar[1].rough,  pSnowPar[0].rough,  ratioMix);
+	
+	rSnow.albedo = mix(rSnowPar[1].albedo, rSnowPar[0].albedo, ratioMix);
+	rSnow.normal = mix(rSnowPar[1].normal, rSnowPar[0].normal, ratioMix);
+	rSnow.spec   = mix(rSnowPar[1].spec,   rSnowPar[0].spec,   ratioMix);
+	rSnow.rough  = mix(rSnowPar[1].rough,  rSnowPar[0].rough,  ratioMix);
+	
+	sand.albedo  = mix(sandPar[1].albedo,  sandPar[0].albedo,  ratioMix);
+	sand.normal  = mix(sandPar[1].normal,  sandPar[0].normal,  ratioMix);
+	sand.spec    = mix(sandPar[1].spec,    sandPar[0].spec,    ratioMix);
+	sand.rough   = mix(sandPar[1].rough,   sandPar[0].rough,   ratioMix);
+	
+	// Grass dry color
+	vec3 dryColor = getDryColor(vec3(0.9, 0.6, 0), RADIUS + 15, RADIUS + 70);
+	grass.albedo *= dryColor;
+	
+	// Grass + Rock
+	Material result;
+		
+	// - Basis: Height maps & slope
+	float grassHeight = mix(
+		triplanarNoColor(texSampler[4], tf[1], inPos, baseNormal).r,
+		triplanarNoColor(texSampler[4], tf[0], inPos, baseNormal).r,
+		ratioMix );
+	
+	float rockHeight = mix(
+		triplanarNoColor(texSampler[9], tf[1], inPos, baseNormal).r,
+		triplanarNoColor(texSampler[9], tf[0], inPos, baseNormal).r,
+		ratioMix );
+	
+	float ratioRock = getRockRatio(0.22, 0.02);					// params: slopeThreshold, mixRange
+	
+	result.albedo = mixByHeight(grass.albedo, rock.albedo, grassHeight, rockHeight, ratioRock, 0.5);
+	result.normal = mixByHeight(grass.normal, rock.normal, grassHeight, rockHeight, ratioRock, 0.5);
+	result.spec   = mixByHeight(grass.spec,   rock.spec,   grassHeight, rockHeight, ratioRock, 0.5);
+	result.rough  = mixByHeight(grass.rough,  rock.rough,  grassHeight, rockHeight, ratioRock, 0.5);
+	
+	// - Basis: Coast level (rocky coast)
+	float ratioCoast = 1.f - getRatio(inGroundHeight, SEALEVEL, SEALEVEL + 1);
+
+	result.albedo = mixByHeight(result.albedo, rock.albedo, grassHeight, rockHeight, ratioCoast, 0.1);
+	result.normal = mixByHeight(result.normal, rock.normal, grassHeight, rockHeight, ratioCoast, 0.1);
+	result.spec   = mixByHeight(result.spec,   rock.spec,   grassHeight, rockHeight, ratioCoast, 0.1);
+	result.rough  = mixByHeight(result.rough,  rock.rough,  grassHeight, rockHeight, ratioCoast, 0.1);
+	
+	// Sand
+	float maxSlope = 1.f - getRatio(inGroundHeight, SEALEVEL - 60, SEALEVEL + 5);
+	float sandRatio = 1.f - getRatio(inSlope, maxSlope - 0.05, maxSlope);
+	result.albedo = mix(result.albedo, sand.albedo, sandRatio);
+	result.normal = mix(result.normal, sand.normal, sandRatio);
+	result.spec   = mix(result.spec,   sand.spec,   sandRatio);
+	result.rough  = mix(result.rough,  sand.rough,  sandRatio);
+	
+	// Snow
+	pSnow.albedo  = mix(pSnow.albedo, rSnow.albedo, ratioRock);		// mix plain snow and rough snow
+	pSnow.normal  = mix(pSnow.normal, rSnow.normal, ratioRock);
+	pSnow.spec    = mix(pSnow.spec,   rSnow.spec,   ratioRock);
+	pSnow.rough   = mix(pSnow.rough,  rSnow.rough,  ratioRock);
+	
+	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);			// params: mixRange, minHeight, maxHeight
+	float ratioSnow = getSnowRatio_Height(0.5, 100, 120, inSlope);
+	
+	result.albedo = mix(result.albedo, pSnow.albedo, ratioSnow);	// mix snow with soil
+	result.normal = mix(result.normal, pSnow.normal, ratioSnow);
+	result.spec   = mix(result.spec,   pSnow.spec,   ratioSnow);
+	result.rough  = mix(result.rough,  pSnow.rough,  ratioSnow);
+	
+	// Set g-buffer
+	gPos = vec4(inPos, 1.0);
+	gAlbedo = vec4(result.albedo, 1.0);
+	gNormal = vec4(normalize(result.normal), 1.0);
+	gSpecRoug = vec4(result.spec, result.rough);
+	return;
+}
+
+void setData_grassRock_2()
 {
 	vec3 baseNormal = normalize(inNormal);
 	
@@ -287,7 +438,7 @@ void setData_grassRock()
 	// Snow:
 	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
 	//float slope = dot(baseNormal, nor[0]); 
-	float ratioSnow = getSnowRatio_Height(0.1, 100, 120, inSlope);
+	float ratioSnow = getSnowRatio_Height(0.5, 100, 120, inSlope);
 	alb[2] = mix(alb[2], alb[3], ratioRock);	// mix plain snow and rough snow
 	nor[2] = mix(nor[2], nor[3], ratioRock);
 	spe[2] = mix(spe[2], spe[3], ratioRock);

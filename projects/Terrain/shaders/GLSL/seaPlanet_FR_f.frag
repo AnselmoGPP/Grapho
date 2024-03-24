@@ -5,17 +5,17 @@
 #include "..\..\..\projects\Terrain\shaders\GLSL\fragTools.vert"
 
 #define RADIUS      2000
-#define FOAM_COL    vec3(0.98, 0.98, 0.98)
-#define SPECULARITY vec3(0.7, 0.7, 0.7)
-#define ROUGHNESS   30
-#define DIST_1      150
-#define DIST_2      300
-#define SCALE_1     150
-#define SCALE_2     750
 #define SPEED_1     2
 #define SPEED_2     5
+#define DIST_1      300
+#define DIST_2      600
+#define SCALE_1     150
+#define SCALE_2     750
+#define FOAM_COL    vec3(0.98, 0.98, 0.98)
 #define WATER_COL_1 vec3(0.02, 0.26, 0.45)	//https://www.color-hex.com/color-palette/3497	//vec3(0.14, 0.30, 0.36)	// https://colorswall.com/palette/63192
 #define WATER_COL_2 vec3(0.11, 0.64, 0.85)	//vec3(0.17, 0.71, 0.61)
+#define SPECULARITY vec3(0.7, 0.7, 0.7)
+#define ROUGHNESS   30
 
 layout(early_fragment_tests) in;
 
@@ -37,30 +37,79 @@ layout(location = 2) in float inDist;
 layout(location = 3) in float inGroundHeight;
 layout(location = 4) in TB3	  inTB3;
 
-//layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
-layout (location = 0) out vec4 gPos;
-layout (location = 1) out vec4 gAlbedo;
-layout (location = 2) out vec4 gNormal;
-layout (location = 3) out vec4 gSpecRoug;
+layout(location = 0) out vec4 outColor;					// layout(location=0) specifies the index of the framebuffer (usually, there's only one).
+//layout (location = 0) out vec4 gPos;
+//layout (location = 1) out vec4 gAlbedo;
+//layout (location = 2) out vec4 gNormal;
+//layout (location = 3) out vec4 gSpecRoug;
 
 // Declarations:
 
-void setData_Sea();
+vec3 getTex_Sea();	// for FR (forward rendering)
+void setData_Sea();	// for DR (deferred rendering)
 float getTransparency(float minAlpha, float maxDist);
 
 // Definitions:
 
 void main()
 {		
-	setData_Sea();
-	//outColor = vec4(cubemapTex(inCamPos, inPos, inNormal, texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1);
-	//outColor = vec4(getTex_Sea(), getTransparency(0.5, 30));
+	// DR (Deferred Rendering)
+	//setData_Sea();
+	
+	// FR (Forward Rendering)
+	savePrecalcLightValues(inPos, gUbo.camPos_t.xyz, gUbo.light);
+	outColor = vec4(getTex_Sea(), getTransparency(0.5, 30));
 }
+
+vec3 getTex_Sea()
+{	
+	// Colors: https://colorswall.com/palette/63192
+	// Colors: https://www.color-hex.com/color-palette/101255
+	// Samplers: 0 (normal), 1 (height), 2 (foam) ...
+	
+	float time = gUbo.camPos_t.w;
+	vec3 baseNormal = normalize(inNormal);
+	
+	// Water color
+	vec3 waterColor;
+	vec3 tex;
+		
+	// - Green water (height map)
+	tex = triplanarNoColor_Sea(texSampler[1], SCALE_1, SPEED_1, time, inPos, baseNormal).rgb;
+	waterColor = mix(WATER_COL_1, WATER_COL_2, getRatio(tex.x, 0.32, 0.70));
+	
+	// - Foam
+	tex = triplanarTexture_Sea(texSampler[2], SCALE_1, SPEED_1, time, inPos, baseNormal).rgb;
+	waterColor = mix(waterColor, FOAM_COL, getRatio(tex.x, 0.17, 0.25));
+	
+	// - Mix
+	waterColor = mix(waterColor, WATER_COL_1, getRatio(inDist, DIST_1, DIST_2));
+	
+	// Normal	
+	vec3 normal = mix(
+		triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, time, inPos, baseNormal, inTB3),
+		triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, time, inPos, baseNormal, inTB3),
+		getRatio(inDist, DIST_1, DIST_2)
+	);
+	
+	// Reflection
+	vec3 reflection = cubemapTex(reflectRay(gUbo.camPos_t.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
+	
+	// Final color
+	float reflectRatio = 0.3;
+	return (1.0 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS) + reflectRatio * reflection;
+}
+
 
 void setData_Sea()
 {	
 	// Colors: https://colorswall.com/palette/63192
 	// Colors: https://www.color-hex.com/color-palette/101255
+
+	vec4 gPos;
+	vec4 gAlbedo;
+	vec4 gNormal;
+	vec4 gSpecRoug;
 
 	vec3 baseNormal = normalize(inNormal);
 
@@ -119,9 +168,6 @@ void setData_Sea()
 		gNormal = vec4(normal, 1.0);
 		gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 		return;
-		
-		//return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-		//	+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 	}
 	
 	//    - Mix area (close and far normals)
@@ -137,9 +183,6 @@ void setData_Sea()
 		gNormal = vec4(normal, 1.0);
 		gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
 		return;
-		
-		//return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-		//	+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 	}
 	
 	//    - Far normals
@@ -149,9 +192,6 @@ void setData_Sea()
 	gAlbedo   = vec4( (1 - reflectRatio) * waterColor + reflectRatio * cubemapTex(reflectRay(gUbo.camPos_t.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]), 1.0);
 	gNormal   = vec4(normal, 1.0);
 	gSpecRoug = vec4(SPECULARITY, ROUGHNESS);
-	
-	//return (1 - reflectRatio) * getFragColor(waterColor, normal, SPECULARITY, ROUGHNESS )
-	//	+ reflectRatio * cubemapTex(reflectRay(inCamPos, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);
 }
 
 float getTransparency(float minAlpha, float maxDist)

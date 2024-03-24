@@ -19,10 +19,6 @@
 		unpackNormal
 		mixByHeight
 	Save:
-		saveP
-		saveTB3
-		savePN
-		savePNT
 		savePrecalcLightValues
 	Math:
 		getDist
@@ -123,6 +119,14 @@ struct uvGradient
 	vec2 dFdy;		// Gradient of y coords
 };
 
+// Material components
+struct Material
+{
+	vec3 albedo;
+	vec3 normal;
+	vec3 spec;
+	float rough;
+};
 
 // Math functions ------------------------------------------------------------------------
 

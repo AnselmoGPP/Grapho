@@ -358,7 +358,7 @@ std::vector<Component*> EntityFactory::createSphere(std::map<std::string, Shader
 		texInfos["sb_left"]
 	};
 	
-	Sphere* seaSphere = new Sphere(&renderer, 100, 21, 7, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
+	Sphere* seaSphere = new Sphere(&renderer, glm::ivec2(2, 0), 100, 21, 7, 2, 1.f, 2000, { 0.f, 0.f, 0.f }, true);
 	seaSphere->addResources(usedShaders, usedTextures);
 
 	return std::vector<Component*>{ 
@@ -442,7 +442,7 @@ std::vector<Component*> EntityFactory::createPlanet(std::map<std::string, Shader
 		texInfos["sea_foam_a"]
 	};
 
-	Planet* planet = new Planet(&renderer, multiNoise, 100, 29, 7, 2, 1.2f, 2000, { 0.f, 0.f, 0.f }, false);
+	Planet* planet = new Planet(&renderer, glm::ivec2(0, 0), multiNoise, 100, 29, 7, 2, 1.2f, 2000, {0.f, 0.f, 0.f}, false);
 	planet->addResources(usedShaders, usedTextures);
 
 	return std::vector<Component*>{

@@ -703,7 +703,7 @@ void s_Model::update(float timeStep)
         dest = c_eng->r.globalUBO_fs.getDescriptorPtr(0);
         memcpy(dest, &camPos_time, size.vec4);
         dest += size.vec4;
-        memcpy(dest, &c_lights->lights, c_lights->lights.bytesSize);
+        memcpy(dest, c_lights->lights.set, c_lights->lights.bytesSize);
     }
 
     // Entities with the component

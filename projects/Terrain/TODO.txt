@@ -1,6 +1,7 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 
+	Use 3 subpasses intead of 3 render passes (GS, LS, FS)
 	water to forward rendering
 	render all
 
