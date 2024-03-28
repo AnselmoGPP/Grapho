@@ -37,7 +37,7 @@ layout(set = 0, binding = 3) uniform ubobject		// https://www.reddit.com/r/vulka
 } ubo;
 
 layout(set = 0, binding = 4) uniform sampler2D texSampler[2];			// Opt. depth, Density
-layout(set = 0, binding = 5) uniform sampler2DMS inputAttachments[2];	// Color, Depth (sampler2D for single-sample | sampler2DMS for multisampling)
+layout(set = 0, binding = 5) uniform sampler2D inputAttachments[2];		// Color, Depth (sampler2D for single-sample | sampler2DMS for multisampling)
 
 layout(location = 0) in vec2 inUVs;
 layout(location = 1) in vec3 inPixPos;

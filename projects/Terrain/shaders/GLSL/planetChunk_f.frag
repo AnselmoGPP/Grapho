@@ -46,7 +46,7 @@ layout (location = 3) out vec4 gSpecRoug;
 // Declarations:
 
 vec3  getDryColor (vec3 color, float minHeight, float maxHeight);	
-float getBlackRatio(float min, float max);
+void applyBlackBottom(float minHeight, float maxHeight);
 void getTexture_Sand(inout vec3 result);
 vec3 getTexture_GrassRock();
 void setData_grassRock();
@@ -60,6 +60,7 @@ const int iGrass = 0, iRock = 1, iPSnow = 2, iRSnow = 3, iSand = 4;		// indices
 void main()
 {
 	setData_grassRock();
+	applyBlackBottom(SEALEVEL-2, SEALEVEL-0);
 	
 	//gPos.xyz = inPos;
 	//gAlbedo = vec4(0.2, 0.8, 0.2, 1.f);
@@ -77,6 +78,14 @@ void main()
 	//outColor = vec4(color, 1.0);
 }
 
+
+void applyBlackBottom(float minHeight, float maxHeight)
+{
+	float ratio = getRatio(inGroundHeight, minHeight, maxHeight);
+	
+	gAlbedo.xyz *= ratio;
+	gSpecRoug.xyz *= ratio;
+}
 
 // Get ratio of rock given a slope threshold (slopeThreshold) and a slope mixing range (mixRange).
 float getRockRatio(float slopeThreshold, float mixRange)
@@ -243,218 +252,8 @@ void setData_grassRock()
 	gAlbedo = vec4(result.albedo, 1.0);
 	gNormal = vec4(normalize(result.normal), 1.0);
 	gSpecRoug = vec4(result.spec, result.rough);
-	return;
 }
 
-void setData_grassRock_2()
-{
-	vec3 baseNormal = normalize(inNormal);
-	
-	// Texture resolution and Ratios.
-	float tf[2];														// texture factors
-	float ratioMix  = getTexScaling(inDist, 10, 40, 0.2, tf[0], tf[1]);	// params: fragDist, initialTexFactor, baseDist, mixRange, texFactor1, texFactor2
-
-	// Get data
-	vec3 albedo[5][2];	// grass, rock, plainSnow, roughSnow, sand
-	vec3 normal[5][2];
-	vec3 specul[5][2];
-	float rough[5][2];
-	
-	vec3 grassPar[2];
-	vec3 rockPar [2];
-	vec3 snow1Par[2];
-	vec3 snow2Par[2];
-	vec3 sandPar [2];
-	
-	vec3 dryColor = getDryColor(vec3(0.9, 0.6, 0), RADIUS + 15, RADIUS + 70);
-	
-	for(int i = 0; i < 2; i++)
-	{
-		albedo[0][i] = triplanarTexture(texSampler[0],  tf[i], inPos, baseNormal).rgb * dryColor;
-		albedo[1][i] = triplanarTexture(texSampler[5],  tf[i], inPos, baseNormal).rgb;
-		albedo[2][i] = triplanarTexture(texSampler[15], tf[i], inPos, baseNormal).rgb;
-		albedo[3][i] = triplanarTexture(texSampler[10], tf[i], inPos, baseNormal).rgb;
-		albedo[4][i] = triplanarTexture(texSampler[25], tf[i], inPos, baseNormal).rgb;
-		
-		normal[0][i] = triplanarNormal (texSampler[16], tf[i] * 1.1, inPos, baseNormal, inTB3);
-		normal[1][i] = triplanarNormal (texSampler[6],  tf[i], inPos, baseNormal, inTB3);
-		normal[2][i] = triplanarNormal (texSampler[16], tf[i], inPos, baseNormal, inTB3);
-		normal[3][i] = triplanarNormal (texSampler[11], tf[i], inPos, baseNormal, inTB3);
-		normal[4][i] = triplanarNormal (texSampler[26], tf[i], inPos, baseNormal, inTB3);
-		
-		specul[0][i] = triplanarNoColor(texSampler[2],  tf[i], inPos, baseNormal).rgb;
-        specul[1][i] = triplanarNoColor(texSampler[7],  tf[i], inPos, baseNormal).rgb;
-        specul[2][i] = triplanarNoColor(texSampler[17], tf[i], inPos, baseNormal).rgb;
-        specul[3][i] = triplanarNoColor(texSampler[12], tf[i], inPos, baseNormal).rgb;
-        specul[4][i] = triplanarNoColor(texSampler[27], tf[i], inPos, baseNormal).rgb;
-		
-		rough [0][i] = triplanarNoColor(texSampler[3],  tf[i], inPos, baseNormal).r;
-        rough [1][i] = triplanarNoColor(texSampler[8],  tf[i], inPos, baseNormal).r;
-        rough [2][i] = triplanarNoColor(texSampler[18], tf[i], inPos, baseNormal).r;
-        rough [3][i] = triplanarNoColor(texSampler[13], tf[i], inPos, baseNormal).r;
-        rough [4][i] = triplanarNoColor(texSampler[28], tf[i], inPos, baseNormal).r;
-		
-		if(false || ratioMix == 1.f) {
-			albedo[0][1] = albedo[0][0]; 
-			albedo[1][1] = albedo[1][0]; 			
-			albedo[2][1] = albedo[2][0]; 			
-			albedo[3][1] = albedo[3][0]; 			
-			albedo[4][1] = albedo[4][0]; 			
-			
-			normal[0][1] = normal[0][0]; 			
-			normal[1][1] = normal[1][0]; 			
-			normal[2][1] = normal[2][0]; 			
-			normal[3][1] = normal[3][0]; 			
-			normal[4][1] = normal[4][0]; 			
-			
-			specul[0][1] = specul[0][0]; 			
-			specul[1][1] = specul[1][0]; 			
-			specul[2][1] = specul[2][0]; 			
-			specul[3][1] = specul[3][0]; 			
-			specul[4][1] = specul[4][0]; 			
-			
-			rough[0][1] = rough[0][0]; 			
-			rough[1][1] = rough[1][0]; 			
-			rough[2][1] = rough[2][0]; 			
-			rough[3][1] = rough[3][0]; 			
-			rough[4][1] = rough[4][0]; 			
-
-			break;
-		}
-	}
-	
-	// Get material colors depending upon distance mixing resolution.
-	vec3 alb[5];
-	vec3 nor[5];
-	vec3 spe[5];
-	float rou[5];
-	
-	{
-		alb[0] = mix(albedo[0][1], albedo[0][0], ratioMix);
-		alb[1] = mix(albedo[1][1], albedo[1][0], ratioMix);
-		alb[2] = mix(albedo[2][1], albedo[2][0], ratioMix);
-		alb[3] = mix(albedo[3][1], albedo[3][0], ratioMix);
-		alb[4] = mix(albedo[4][1], albedo[4][0], ratioMix);
-	
-		
-		nor[0] = mix(normal[0][1], normal[0][0], ratioMix);
-		nor[1] = mix(normal[1][1], normal[1][0], ratioMix);
-		nor[2] = mix(normal[2][1], normal[2][0], ratioMix);
-		nor[3] = mix(normal[3][1], normal[3][0], ratioMix);
-		nor[4] = mix(normal[4][1], normal[4][0], ratioMix);
-	
-		
-		spe[0] = mix(specul[0][1], specul[0][0], ratioMix);
-		spe[1] = mix(specul[1][1], specul[1][0], ratioMix);
-		spe[2] = mix(specul[2][1], specul[2][0], ratioMix);
-		spe[3] = mix(specul[3][1], specul[3][0], ratioMix);
-		spe[4] = mix(specul[4][1], specul[4][0], ratioMix);
-	
-		
-		rou[0] = mix(rough[0][1], rough[0][0], ratioMix);
-		rou[1] = mix(rough[1][1], rough[1][0], ratioMix);
-		rou[2] = mix(rough[2][1], rough[2][0], ratioMix);
-		rou[3] = mix(rough[3][1], rough[3][0], ratioMix);
-		rou[4] = mix(rough[4][1], rough[4][0], ratioMix);
-	}
-	
-	// Grass:
-	if(inDist < DIST_2)		// Close grass use different normals (snow normals Vs grass normals)
-	{	
-		float closeRatio = getRatio(inDist, 0.2 * DIST_2, DIST_2);
-		
-		alb[0] = mix(triplanarTexture(texSampler[0], tf[0], inPos, baseNormal).rgb * dryColor, albedo[0][0], closeRatio);
-		nor[0] = mix(triplanarNormal (texSampler[1], tf[0], inPos, baseNormal, inTB3),         normal[0][0], closeRatio);
-		spe[0] = mix(triplanarNoColor(texSampler[2], tf[0], inPos, baseNormal).rgb,            specul[0][0], closeRatio);
-		rou[0] = mix(triplanarNoColor(texSampler[3], tf[0], inPos, baseNormal).r,              rough [0][0], closeRatio);
-	}
-
-	// Grass + Rock:
-	float ratioRock = getRockRatio(0.22, 0.02);					// params: slopeThreshold, mixRange
-	float ratioCoast = 1.f - getRatio(inGroundHeight, SEALEVEL, SEALEVEL + 1);
-
-	if(inDist < DIST_1)		// Very close range
-	{		
-		// Rock & grass
-		float grassHeight = triplanarNoColor(texSampler[4], tf[0], inPos, baseNormal).r;
-		float rockHeight  = triplanarNoColor(texSampler[9], tf[0], inPos, baseNormal).r;
-
-		if(inDist > (DIST_1 - 2))
-		{
-			alb[0]  = mix(mixByHeight(alb[0], alb[1], grassHeight, rockHeight, ratioRock, 0.1),
-						mix(alb[0], alb[1], ratioRock),
-						getRatio(inDist, DIST_1 - 1, DIST_1));
-			nor[0]  = mix(mixByHeight(nor[0], nor[1], grassHeight, rockHeight, ratioRock, 0.1),
-						mix(nor[0], nor[1], ratioRock),
-						getRatio(inDist, DIST_1 - 1, DIST_1));
-			spe[0]  = mix(mixByHeight(spe[0], spe[1], grassHeight, rockHeight, ratioRock, 0.1),
-						mix(spe[0], spe[1], ratioRock),
-						getRatio(inDist, DIST_1 - 1, DIST_1));
-			rou[0]  = mix(mixByHeight(rou[0], rou[1], grassHeight, rockHeight, ratioRock, 0.1),
-						mix(rou[0], rou[1], ratioRock),
-						getRatio(inDist, DIST_1 - 1, DIST_1));
-		}
-		else
-		{
-			alb[0] = mixByHeight(alb[0], alb[1], grassHeight, rockHeight, ratioRock, 0.1);
-			nor[0] = mixByHeight(nor[0], nor[1], grassHeight, rockHeight, ratioRock, 0.1);
-			spe[0] = mixByHeight(spe[0], spe[1], grassHeight, rockHeight, ratioRock, 0.1);
-			rou[0] = mixByHeight(rou[0], rou[1], grassHeight, rockHeight, ratioRock, 0.1);
-		}
-		
-		// Rocky coast
-		if(inGroundHeight < (SEALEVEL + 2))	// Rocky coast
-		{
-			alb[0] = mixByHeight(alb[0], alb[1], grassHeight, rockHeight, ratioCoast, 0.1);
-			nor[0] = mixByHeight(nor[0], nor[1], grassHeight, rockHeight, ratioCoast, 0.1);
-			spe[0] = mixByHeight(spe[0], spe[1], grassHeight, rockHeight, ratioCoast, 0.1);
-			rou[0] = mixByHeight(rou[0], rou[1], grassHeight, rockHeight, ratioCoast, 0.1);
-		}
-	}
-	else
-	{
-		alb[0] = mix(alb[0], alb[1], ratioRock);
-		nor[0] = mix(nor[0], nor[1], ratioRock);
-		spe[0] = mix(spe[0], spe[1], ratioRock);
-		rou[0] = mix(rou[0], rou[1], ratioRock);
-		
-		if(inGroundHeight < (SEALEVEL + 1))
-		{
-			alb[0] = mix(alb[0], alb[1], ratioCoast);
-			nor[0] = mix(nor[0], nor[1], ratioCoast);
-			spe[0] = mix(spe[0], spe[1], ratioCoast);
-			rou[0] = mix(rou[0], rou[1], ratioCoast);
-		}
-	}
-	
-	// Sand:
-	float maxSlope = 1.f - getRatio(inGroundHeight, SEALEVEL - 60, SEALEVEL + 5);
-	float sandRatio = 1.f - getRatio(inSlope, maxSlope - 0.05, maxSlope);
-	alb[0] = mix(alb[0], alb[4], sandRatio);
-	nor[0] = mix(nor[0], nor[4], sandRatio);
-	spe[0] = mix(spe[0], spe[4], sandRatio);
-	rou[0] = mix(rou[0], rou[4], sandRatio);
-	
-	// Snow:
-	//float ratioSnow = getSnowRatio_Poles(0.1, 100, 140);				// params: mixRange, minHeight, maxHeight
-	//float slope = dot(baseNormal, nor[0]); 
-	float ratioSnow = getSnowRatio_Height(0.5, 100, 120, inSlope);
-	alb[2] = mix(alb[2], alb[3], ratioRock);	// mix plain snow and rough snow
-	nor[2] = mix(nor[2], nor[3], ratioRock);
-	spe[2] = mix(spe[2], spe[3], ratioRock);
-	rou[2] = mix(rou[2], rou[3], ratioRock);
-	
-	alb[0] = mix(alb[0], alb[2], ratioSnow);	// mix snow with soil
-	nor[0] = mix(nor[0], nor[2], ratioSnow);
-	spe[0] = mix(spe[0], spe[2], ratioSnow);
-	rou[0] = mix(rou[0], rou[2], ratioSnow);
-	
-	// Set g-buffer
-	gPos = vec4(inPos, 1.0);
-	gAlbedo = vec4(alb[0], 1.0);
-	gNormal = vec4(normalize(nor[0]), 1.0);
-	gSpecRoug = vec4(spe[0], rou[0]);
-}
 
 void getTexture_Sand(inout vec3 result)
 {
@@ -656,11 +455,6 @@ vec3 getDryColor(vec3 color, float minHeight, float maxHeight)
 	vec3 increment = vec3(1-color.x, 1-color.y, 1-color.z);
 	float ratio = 1 - clamp((inGroundHeight - minHeight) / (maxHeight - minHeight), 0, 1);
 	return color + increment * ratio;
-}
-
-float getBlackRatio(float min, float max)
-{
-	return 1.f - getRatio(inGroundHeight, min, max);	
 }
 
 vec3 heatMap(float seaLevel, float maxHeight)

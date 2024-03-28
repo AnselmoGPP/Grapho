@@ -94,8 +94,8 @@ int main(int argc, char* argv[])
 			//else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		
 			// Post-processing pass
-			em.addEntity("postprocessingPass", eFact.createPostprocessingPass((c_Lights*)em.getSComponent(CT::lights)));
-			//em.addEntity("atmosphere", eFact.createAtmosphere((c_Lights*)em.getSComponent(CT::lights)));// shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
+			//em.addEntity("postprocessingPass", eFact.createPostprocessingPass((c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("atmosphere", eFact.createAtmosphere((c_Lights*)em.getSComponent(CT::lights)));// shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		}
 		// SYSTEMS:
 		{

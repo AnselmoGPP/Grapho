@@ -1768,7 +1768,7 @@ RP_DS_PP::RP_DS_PP(VulkanEnvironment& e) : RenderPipeline(e)
 		RenderPass({ Subpass({ }, 4) }),
 		RenderPass({ Subpass({&position, &albedo, &normal, &specRoug}, 1) }),
 		RenderPass({ Subpass({ }, 1) }),
-		RenderPass({ Subpass({&color}, 1) })
+		RenderPass({ Subpass({&color, &depth}, 1) })
 	};
 
 	// Attachments (order convention: input attachments, depth attachment, color attachments)
@@ -1827,7 +1827,7 @@ void RP_DS_PP::createRenderPass()
 		RP1::SP1 (Geometry pass): IA (0), DA (1), CA (4)
 		RP2::SP1 (Lighting pass): IA (4), DA (0), CA (1)
 		RP3::SP1 (Forward pass): IA (0), DA (1), CA (1)
-		RP4::SP1 (Post-processing pass): IA (1), DA (1), CA (1)
+		RP4::SP1 (Post-processing pass): IA (2), DA (0), CA (1)
 	*/
 
 	// Attachments -------------------------
@@ -1993,16 +1993,16 @@ void RP_DS_PP::createRenderPass()
 	iaColorAttRef41.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	iaColorAttRef41.attachment = 0;
 
-	// RP4::SP1::depth/stencilAttachment (depth)
-	VkAttachmentDescription depthAtt41 = defaultAtt;
-	depthAtt41.format = e.c.deviceData.depthFormat;
-	depthAtt41.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAtt41.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	// RP4::SP1::inputAttachment (depth)
+	VkAttachmentDescription iaDepthAtt41 = defaultAtt;
+	iaDepthAtt41.format = e.c.deviceData.depthFormat;
+	iaDepthAtt41.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	iaDepthAtt41.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	VkAttachmentReference depthAttRef41{};
-	depthAttRef41.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthAttRef41.attachment = 1;
-
+	VkAttachmentReference iaDepthAttRef41{};
+	iaDepthAttRef41.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	iaDepthAttRef41.attachment = 1;
+	
 	// RP4::SP1::colorAttachment (finalColor)
 	VkAttachmentDescription caColorAtt41 = defaultAtt;
 	caColorAtt41.format = e.swapChain.imageFormat;
@@ -2014,9 +2014,9 @@ void RP_DS_PP::createRenderPass()
 	caColorAttRef41.attachment = 2;
 
 	// RP4::SP1::attachments
-	std::vector<VkAttachmentDescription> allAttachments41 = { iaColorAtt41, depthAtt41, caColorAtt41 };
-	std::vector<VkAttachmentReference> inputAttachments41 = { iaColorAttRef41 };
-	VkAttachmentReference* depthAttachment41 = &depthAttRef41;
+	std::vector<VkAttachmentDescription> allAttachments41 = { iaColorAtt41, iaDepthAtt41, caColorAtt41 };
+	std::vector<VkAttachmentReference> inputAttachments41 = { iaColorAttRef41, iaDepthAttRef41 };
+	VkAttachmentReference* depthAttachment41 = { };
 	std::vector<VkAttachmentReference> colorAttachments41 = { caColorAttRef41 };
 
 

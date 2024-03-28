@@ -13,7 +13,7 @@ layout(set = 0, binding = 1) uniform ubobject {
 
 // Samplers
 //layout(set = 0, binding = 1) uniform sampler2D texSampler[2];		// Opt. depth, Density
-layout(set = 0, binding = 2) uniform sampler2D inputAttachments[1];	// Color (sampler2D for single-sample | sampler2DMS for multisampling)
+layout(set = 0, binding = 2) uniform sampler2D inputAttachments[2];	// Color (sampler2D for single-sample | sampler2DMS for multisampling)
 
 // Input
 layout(location = 0) in vec2 inUVs;

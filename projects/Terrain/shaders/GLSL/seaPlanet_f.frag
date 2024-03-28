@@ -58,7 +58,7 @@ void main()
 	
 	// FR (Forward Rendering)
 	savePrecalcLightValues(inPos, gUbo.camPos_t.xyz, gUbo.light);
-	outColor = vec4(getTex_Sea(), getTransparency(0.5, 30));
+	outColor = vec4(getTex_Sea(), getTransparency(0.4, 50));
 }
 
 vec3 getTex_Sea()

@@ -114,7 +114,7 @@ void ModelData::createDescriptorSetLayout()
 		bindings.push_back(vsGlobalUboLayoutBinding);
 	}
 
-	//	1) Dynamic Uniform buffer descriptor (vertex shader)
+	//	1) Uniform buffer descriptor (vertex shader)
 	if (vsUBO.descriptorSize)
 	{
 		VkDescriptorSetLayoutBinding vsUboLayoutBinding{};
@@ -175,7 +175,7 @@ void ModelData::createDescriptorSetLayout()
 		inputAttachmentLayoutBinding.descriptorCount = e->rp->getSubpass(renderPassIndex, subpassIndex).inputAtts.size();
 		inputAttachmentLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		inputAttachmentLayoutBinding.pImmutableSamplers = nullptr;
-
+		if (name == "postprocessingPass") std::cout << "count = " << inputAttachmentLayoutBinding.descriptorCount << std::endl;
 		bindings.push_back(inputAttachmentLayoutBinding);
 	}
 
