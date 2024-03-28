@@ -1,8 +1,9 @@
 TODO:
 	PARTICULAR EXPENSES (-25 jhose / ropa / ala-delta ) -25 - (14 + 18) - Estopa
 
+	Pass depth buffer as input attachment
+	Associate UBOsize_vs with UBOtype
 	Use 3 subpasses intead of 3 render passes (GS, LS, FS)
-	water to forward rendering
 	render all
 
 	Automatic shader for lighting pass and no-PP.

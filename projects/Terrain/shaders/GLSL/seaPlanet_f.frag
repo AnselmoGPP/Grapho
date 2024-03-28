@@ -89,8 +89,7 @@ vec3 getTex_Sea()
 	vec3 normal = mix(
 		triplanarNormal_Sea(texSampler[0], SCALE_1, SPEED_1, time, inPos, baseNormal, inTB3),
 		triplanarNormal_Sea(texSampler[0], SCALE_2, SPEED_2, time, inPos, baseNormal, inTB3),
-		getRatio(inDist, DIST_1, DIST_2)
-	);
+		getRatio(inDist, DIST_1, DIST_2) );
 	
 	// Reflection
 	vec3 reflection = cubemapTex(reflectRay(gUbo.camPos_t.xyz, inPos, normal), texSampler[4], texSampler[5], texSampler[6], texSampler[7], texSampler[8], texSampler[9]);

@@ -55,7 +55,7 @@ void main()
 	vec3 pos;
 	//pos = inPos;								// No waves
 	//pos = getSeaOptimized(normal, MIN, MAX);	// Waves
-	pos = getUpDownSea(0.25, 1);				// Up & Down
+	pos = getUpDownSea(0.25, 0.5);				// Up & Down
 				    
 	outPos          = pos;
 	outNormal       = mat3(ubo.normalMatrix) * normal;

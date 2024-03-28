@@ -33,8 +33,8 @@ void main()
 	gl_Position		= gUbo.proj * gUbo.view * ubo.model * vec4(fixedPos(inPos, inGapFix, ubo.sideDepthsDiff), 1.0);
 				    
 	outPos          = inPos;
-	if(inGapFix[0] > 0.1) outNormal *= -1;				// show chunk limits
-	else outNormal  = mat3(ubo.normalMatrix) * inNormal;
+	outNormal       = mat3(ubo.normalMatrix) * inNormal;
+	//if(inGapFix[0] > 0.1) outNormal *= -1;				// show chunk limits
 	vec3 diff       = inPos - gUbo.camPos_t.xyz;
 	outDist         = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 	outCamSqrHeight = gUbo.camPos_t.x * gUbo.camPos_t.x + gUbo.camPos_t.y * gUbo.camPos_t.y + gUbo.camPos_t.z * gUbo.camPos_t.z;	// Assuming vec3(0,0,0) == planetCenter

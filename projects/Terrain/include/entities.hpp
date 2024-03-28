@@ -15,24 +15,27 @@ class EntityFactory : public MainEntityFactory
 public:
 	EntityFactory(Renderer& renderer);
 
-	std::vector<Component*> createLightingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights);
-	std::vector<Component*> createPostprocessingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights);
+	std::map<std::string, ShaderLoader> shaderLoaders;
+	std::map<std::string, TextureLoader> texInfos;
 
-	std::vector<Component*> createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader);
-	std::vector<Component*> createReticule(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures);
-	std::vector<Component*> createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures);
-	std::vector<Component*> createSphere(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos);
-	std::vector<Component*> createPlanet(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos);
-	std::vector<Component*> createPlant(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createGrass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createRock(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
-	std::vector<Component*> createTreeBillboard(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
-	std::vector<std::vector<Component*>> createTree(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createLightingPass(const c_Lights* c_lights);
+	std::vector<Component*> createPostprocessingPass(const c_Lights* c_lights);
+
+	std::vector<Component*> createNoPP();
+	std::vector<Component*> createAtmosphere(const c_Lights* c_lights);
+	std::vector<Component*> createReticule();
+	std::vector<Component*> createPoints();
+	std::vector<Component*> createAxes();
+	std::vector<Component*> createGrid();
+	std::vector<Component*> createSun();
+	std::vector<Component*> createSkyBox();
+	std::vector<Component*> createSphere();
+	std::vector<Component*> createPlanet();
+	std::vector<Component*> createPlant(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createGrass(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createRock(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<Component*> createTreeBillboard(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
+	std::vector<std::vector<Component*>> createTree(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights);
 };
 
 bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<std::shared_ptr<Noiser>>& noisers);

@@ -8,8 +8,7 @@
 
 // Uniform
 layout(set = 0, binding = 1) uniform ubobject {
-	vec4 camPos;
-	Light lights[NUMLIGHTS];
+	vec4 test;
 } ubo;
 
 // Samplers

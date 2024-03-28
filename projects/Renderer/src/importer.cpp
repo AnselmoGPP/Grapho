@@ -30,7 +30,7 @@ void ResourcesLoader::loadResources(VertexData& destVertexData, std::vector<shad
 	#endif
 
 	vertices.loadVertices(destVertexData, this, e);
-
+	
 	{
 		const std::lock_guard<std::mutex> lock(mutResources);
 		
@@ -182,12 +182,12 @@ void VLModule::createIndexBuffer(const std::vector<uint16_t>& rawIndices, Vertex
 */
 void VLModule::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VulkanEnvironment* e)
 {
-	#ifdef DEBUG_MODELS
+	#ifdef DEBUG_RESOURCES
 		std::cout << typeid(*this).name() << "::" << __func__ << std::endl;
 	#endif
 
 	const std::lock_guard<std::mutex> lock(e->mutCommandPool);
-
+	
 	VkCommandBuffer commandBuffer = e->beginSingleTimeCommands();
 
 	// Specify buffers and the size of the contents you will transfer (it's not possible to specify VK_WHOLE_SIZE here, unlike vkMapMemory command).

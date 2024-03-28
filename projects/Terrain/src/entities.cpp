@@ -9,14 +9,14 @@
 EntityFactory::EntityFactory(Renderer& renderer) 
 	: MainEntityFactory(), renderer(renderer) { };
 
-std::vector<Component*> EntityFactory::createLightingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createLightingPass(const c_Lights* c_lights)
 {
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(v_quad, i_quad, 1.f, 0.f);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
-	std::vector<ShaderLoader> usedShaders{ shaders["v_lightingPass"], shaders["f_lightingPass"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_lightingPass"], shaderLoaders["f_lightingPass"] };
 	std::vector<TextureLoader> usedTextures{ };
 
 	ModelDataInfo modelInfo;
@@ -44,14 +44,14 @@ std::vector<Component*> EntityFactory::createLightingPass(std::map<std::string, 
 	};
 }
 
-std::vector<Component*> EntityFactory::createPostprocessingPass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createPostprocessingPass(const c_Lights* c_lights)
 {
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(v_quad, i_quad, 1.f, 0.f);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
-	std::vector<ShaderLoader> usedShaders{ shaders["v_postprocessing"], shaders["f_postprocessing"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_postprocessing"], shaderLoaders["f_postprocessing"] };
 	std::vector<TextureLoader> usedTextures{ };
 
 	ModelDataInfo modelInfo;
@@ -65,7 +65,7 @@ std::vector<Component*> EntityFactory::createPostprocessingPass(std::map<std::st
 	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
 	modelInfo.maxDescriptorsCount_fs = 1;
 	modelInfo.UBOsize_vs = 1;
-	modelInfo.UBOsize_fs = size.vec4 + c_lights->lights.bytesSize;			// (camPos + numLights),  n * LightPosDir (2*vec4),  n * LightProps (6*vec4)
+	modelInfo.UBOsize_fs = 1;
 	modelInfo.globalUBO_vs;
 	modelInfo.globalUBO_fs;
 	modelInfo.transparency = false;
@@ -75,19 +75,19 @@ std::vector<Component*> EntityFactory::createPostprocessingPass(std::map<std::st
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> {
-		new c_Model_normal(model, UboType::lightPass)
+		new c_Model_normal(model, UboType::noData)
 	};
 }
 
-std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createNoPP()
 {
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(v_quad, i_quad, 1.f, 0.5);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
 
 	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
+	//std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	//std::vector<TextureLoader> textureSet{ textures };
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "noPP";
@@ -95,8 +95,8 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	//modelInfo.shadersInfo = &shaders;
+	//modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
 	modelInfo.UBOsize_vs = 1;
 	modelInfo.UBOsize_fs = 0;
@@ -110,8 +110,46 @@ std::vector<Component*> EntityFactory::createNoPP(ShaderLoader Vshader, ShaderLo
 	};
 }
 
-std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, ShaderLoader Fshader)
+std::vector<Component*> EntityFactory::createAtmosphere(const c_Lights* c_lights)
 {
+	std::vector<float> v_quad;	// [4 * 5]
+	std::vector<uint16_t> i_quad;
+	getScreenQuad(v_quad, i_quad, 1.f, 0);	// <<< The parameter zValue doesn't represent heigth (otherwise, this value should serve for hiding one plane behind another).
+
+	OpticalDepthTable optDepth(10, 1400, 2450, 30, pi / 20, 10);	// numOptDepthPoints, planetRadius, atmosphereRadius, heightStep, angleStep, densityFallOff
+	TextureLoader texOD(optDepth.table.data(), optDepth.angleSteps, optDepth.heightSteps, "optDepth", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+	DensityVector density(1400, 2450, 30, 10);						// planetRadius, atmosphereRadius, heightStep, densityFallOff
+	TextureLoader texDV(density.table.data(), 1, density.heightSteps, "density", VK_FORMAT_R32_SFLOAT, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	VerticesLoader vertexData(vt_32.vertexSize, v_quad.data(), 4, i_quad);
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"] };
+	std::vector<TextureLoader> usedTextures{ texOD, texDV };
+
+	ModelDataInfo modelInfo;
+	modelInfo.name = "atmosphere";
+	modelInfo.activeInstances = 1;
+	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	modelInfo.vertexType = vt_32;
+	modelInfo.verticesLoader = &vertexData;
+	modelInfo.shadersInfo = &usedShaders;
+	modelInfo.texturesInfo = &usedTextures;
+	modelInfo.maxDescriptorsCount_vs = 1;		// <<< ModelSet doesn't work if there is no VS descriptor set
+	modelInfo.maxDescriptorsCount_fs = 1;
+	modelInfo.UBOsize_vs = 2 * size.mat4 + 8 * size.vec4;
+	modelInfo.UBOsize_fs = 1;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
+	modelInfo.transparency = false;
+	modelInfo.renderPassIndex = 3;
+	modelInfo.subpassIndex = 0;
+
+	modelIter model = renderer.newModel(modelInfo);
+
+	return std::vector<Component*> {
+		new c_Model_normal(model, UboType::atmosphere)
+	};
+	/*
 	std::vector<float> v_quad;	// [4 * 5]
 	std::vector<uint16_t> i_quad;
 	getScreenQuad(v_quad, i_quad, 1.f, 0.5);
@@ -145,50 +183,54 @@ std::vector<Component*> EntityFactory::createAtmosphere(ShaderLoader Vshader, Sh
 	return std::vector<Component*> { 
 		new c_Model_normal(model, UboType::atmosphere) 
 	};
+	*/
 }
 
-std::vector<Component*> EntityFactory::createReticule(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createReticule()
 {
 	return std::vector<Component*>{};
 }
 
-std::vector<Component*> EntityFactory::createSkyBox(ShaderLoader Vshader, ShaderLoader Fshader, std::vector<TextureLoader>& textures)
+std::vector<Component*> EntityFactory::createSkyBox()
 {
 	//VerticesLoader vertexData(vt_32.vertexSize, v_cube.data(), 14, i_inCube);
 	VerticesLoader vertexData(vt_32.vertexSize, v_skybox.data(), 6 * 4, i_skybox);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
-
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_skybox"], shaderLoaders["f_skybox"]};
+	std::vector<TextureLoader> usedTextures{ texInfos["sb_front"], texInfos["sb_back"], texInfos["sb_up"], texInfos["sb_down"], texInfos["sb_right"], texInfos["sb_left"] };
+	
 	ModelDataInfo modelInfo;
 	modelInfo.name = "skyBox";
-	modelInfo.activeInstances = 1;
+	modelInfo.activeInstances = 0;
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	modelInfo.shadersInfo = &usedShaders;
+	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 1;
-	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
-	modelInfo.UBOsize_fs = 0;
+	modelInfo.maxDescriptorsCount_fs;
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, NM
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = false;
-	modelInfo.renderPassIndex = 0;
+	modelInfo.renderPassIndex = 2;
+	modelInfo.subpassIndex = 0;
 	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-
+	
 	modelIter model = renderer.newModel(modelInfo);
-
-	//return std::vector<Component*> { new c_Model(model), new c_ModelMatrix(100), new c_Move(followCam) };
+	
 	return std::vector<Component*> {
-		new c_Model_normal(model, UboType::mvp, true),
+		new c_Model_normal(model, UboType::mm_nm),
 		new c_ModelParams(),
 		new c_Move(skyOrbit)						// 1 day ≈ 30 min
 	};
 }
 
-std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createSun()
 {
 	VerticesLoader vertexData(vt_32.vertexSize, v_YZquad.data(), 4, i_quad);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_sun"], shaderLoaders["f_sun"] };
+	std::vector<TextureLoader> usedTextures{ texInfos["sun"] };
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "sun";
@@ -196,24 +238,29 @@ std::vector<Component*> EntityFactory::createSun(ShaderLoader Vshader, ShaderLoa
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	modelInfo.vertexType = vt_32;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	modelInfo.shadersInfo = &usedShaders;
+	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 1;
-	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
-	modelInfo.UBOsize_fs = 0;
+	modelInfo.maxDescriptorsCount_fs;
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, NM
+	modelInfo.UBOsize_fs;
+	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
+	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
 	modelInfo.transparency = true;
-	modelInfo.renderPassIndex = 0;
+	modelInfo.renderPassIndex = 2;
+	modelInfo.subpassIndex = 0;
+	modelInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	modelIter model = renderer.newModel(modelInfo);
 
 	return std::vector<Component*> { 
-		new c_Model_normal(model, UboType::mvp, true),
+		new c_Model_normal(model, UboType::mm_nm),
 		new c_ModelParams(glm::vec3(7, 7, 7)),
 		new c_Move(sunOrbit)						// 1 year ≈ 6 hours
 	};
 }
 
-std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createGrid()
 {
 	float gridStep = 50;
 
@@ -222,8 +269,8 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 	size_t numVertex = getGrid(v_grid, i_grid, gridStep, 50, 10, glm::vec3(0.5, 0.5, 0.5));
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_grid.data(), numVertex, i_grid);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
+	//std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	//std::vector<TextureLoader> textureSet{ textures };
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "grid";
@@ -231,8 +278,8 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	modelInfo.vertexType = vt_33;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	//modelInfo.shadersInfo = &shaders;
+	//modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;
 	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
 	modelInfo.UBOsize_fs = 0;
@@ -248,15 +295,15 @@ std::vector<Component*> EntityFactory::createGrid(ShaderLoader Vshader, ShaderLo
 	};
 }
 
-std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createAxes()
 {
 	std::vector<float> v_axis;
 	std::vector<uint16_t> i_axis;
 	size_t numVertex = getAxis(v_axis, i_axis, 5000, 0.9);		// getAxis(), getLongAxis()
 
 	VerticesLoader vertexData(vt_33.vertexSize, v_axis.data(), numVertex, i_axis);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
+	//std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	//std::vector<TextureLoader> textureSet{ textures };
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "axis";
@@ -264,8 +311,8 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	modelInfo.vertexType = vt_33;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	//modelInfo.shadersInfo = &shaders;
+	//modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;
 	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
 	modelInfo.UBOsize_fs = 0;
@@ -311,13 +358,13 @@ std::vector<Component*> EntityFactory::createAxes(ShaderLoader Vshader, ShaderLo
 	*/
 }
 
-std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, ShaderLoader Fshader, std::initializer_list<TextureLoader> textures)
+std::vector<Component*> EntityFactory::createPoints()
 {
 	Icosahedron icos(400.f);	// Just created for calling destructor, which applies a multiplier.
 
 	VerticesLoader vertexData(vt_33.vertexSize, Icosahedron::icos.data(), Icosahedron::icos.size() / 6, noIndices);
-	std::vector<ShaderLoader> shaders{ Vshader, Fshader };
-	std::vector<TextureLoader> textureSet{ textures };
+	//std::vector<ShaderLoader> shaders{ Vshader, Fshader };
+	//std::vector<TextureLoader> textureSet{ textures };
 
 	ModelDataInfo modelInfo;
 	modelInfo.name = "points";
@@ -325,8 +372,8 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 	modelInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	modelInfo.vertexType = vt_33;
 	modelInfo.verticesLoader = &vertexData;
-	modelInfo.shadersInfo = &shaders;
-	modelInfo.texturesInfo = &textureSet;
+	//modelInfo.shadersInfo = &shaders;
+	//modelInfo.texturesInfo = &textureSet;
 	modelInfo.maxDescriptorsCount_vs = 1;
 	modelInfo.UBOsize_vs = 3 * size.mat4;	// M, V, P
 	modelInfo.UBOsize_fs = 0;
@@ -341,9 +388,9 @@ std::vector<Component*> EntityFactory::createPoints(ShaderLoader Vshader, Shader
 	};
 }
 
-std::vector<Component*> EntityFactory::createSphere(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos)
+std::vector<Component*> EntityFactory::createSphere()
 {
-	std::vector<ShaderLoader> usedShaders{ shaders["v_seaPlanet"], shaders["f_seaPlanet"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_seaPlanet"], shaderLoaders["f_seaPlanet"] };
 	std::vector<TextureLoader> usedTextures{
 		texInfos["sea_n"],
 		texInfos["sea_h"],
@@ -366,7 +413,7 @@ std::vector<Component*> EntityFactory::createSphere(std::map<std::string, Shader
 	};
 }
 
-std::vector<Component*> EntityFactory::createPlanet(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos)
+std::vector<Component*> EntityFactory::createPlanet()
 {
 	// Create noise generator:
 
@@ -399,7 +446,7 @@ std::vector<Component*> EntityFactory::createPlanet(std::map<std::string, Shader
 	std::shared_ptr<Noiser> multiNoise = std::make_shared<Multinoise>(noiserSet, getNoise_C_E_PV);
 
 	// Create planet entity:
-	const std::vector<ShaderLoader> usedShaders{ shaders["v_planetChunk"], shaders["f_planetChunk"] };
+	const std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_planetChunk"], shaderLoaders["f_planetChunk"] };
 	const std::vector<TextureLoader> usedTextures{ 
 		// Plants
 		texInfos["grassDry_a"],
@@ -450,7 +497,7 @@ std::vector<Component*> EntityFactory::createPlanet(std::map<std::string, Shader
 	};
 }
 
-std::vector<Component*> EntityFactory::createGrass(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createGrass(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -464,7 +511,7 @@ std::vector<Component*> EntityFactory::createGrass(std::map<std::string, ShaderL
 	//noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
 
 	//VerticesLoader vertexData(vertexDir + "grass.obj");
-	std::vector<ShaderLoader> usedShaders{ shaders["v_grass"], shaders["f_grass"]};
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_grass"], shaderLoaders["f_grass"]};
 	std::vector<TextureLoader> usedTextures{ texInfos["grass"] };
 
 	ModelDataInfo modelInfo;
@@ -505,7 +552,7 @@ bool grass_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 	return true;
 }
 
-std::vector<Component*> EntityFactory::createPlant(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createPlant(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -519,7 +566,7 @@ std::vector<Component*> EntityFactory::createPlant(std::map<std::string, ShaderL
 	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.1, 1112));
 
 	//VerticesLoader vertexData(vertexDir + "grass.obj");
-	std::vector<ShaderLoader> usedShaders{ shaders["v_grass"], shaders["f_grass"]};
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_grass"], shaderLoaders["f_grass"]};
 	std::vector<TextureLoader> usedTextures{ texInfos["plant"]};
 
 	ModelDataInfo modelInfo;
@@ -532,7 +579,7 @@ std::vector<Component*> EntityFactory::createPlant(std::map<std::string, ShaderL
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
 	modelInfo.maxDescriptorsCount_fs;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
 	modelInfo.UBOsize_fs;
 	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
 	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
@@ -562,7 +609,7 @@ bool plant_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 	return true;
 }
 
-std::vector<Component*> EntityFactory::createRock(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createRock(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -576,7 +623,7 @@ std::vector<Component*> EntityFactory::createRock(std::map<std::string, ShaderLo
 	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 1114));
 
 	//VerticesLoader vertexData(vertexDir + "rocks/free_rock/rock.obj");
-	std::vector<ShaderLoader> usedShaders{ shaders["v_stone"], shaders["f_stone"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_stone"], shaderLoaders["f_stone"] };
 	std::vector<TextureLoader> usedTextures{ texInfos["stone_a"], texInfos["stone_s"], texInfos["stone_r"], texInfos["stone_n"] };
 
 	ModelDataInfo modelInfo;
@@ -589,7 +636,7 @@ std::vector<Component*> EntityFactory::createRock(std::map<std::string, ShaderLo
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
 	modelInfo.maxDescriptorsCount_fs;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
 	modelInfo.UBOsize_fs;
 	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
 	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
@@ -619,7 +666,7 @@ bool stone_callback(const glm::vec3& pos, float groundSlope, const std::vector<s
 	return true;
 }
 
-std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
+std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -637,7 +684,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	// Trunk:
 	
 	//VerticesLoader vertexData(vertexDir + "tree/trunk.obj");
-	std::vector<ShaderLoader> usedShaders{ shaders["v_trunk"], shaders["f_trunk"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_trunk"], shaderLoaders["f_trunk"] };
 	std::vector<TextureLoader> usedTextures{ texInfos["bark_a"] };
 
 	ModelDataInfo modelInfo;
@@ -650,7 +697,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
 	modelInfo.maxDescriptorsCount_fs;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
 	modelInfo.UBOsize_fs;
 	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
 	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;
@@ -669,7 +716,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	// Branches:
 
 	//VerticesLoader vertexData2(vertexDir + "tree/branches.obj");
-	std::vector<ShaderLoader> usedShaders2{ shaders["v_branch"], shaders["f_branch"]};
+	std::vector<ShaderLoader> usedShaders2{ shaderLoaders["v_branch"], shaderLoaders["f_branch"]};
 	std::vector<TextureLoader> usedTextureSet2{ texInfos["branch_a"]};
 
 	modelInfo;
@@ -701,7 +748,7 @@ std::vector<std::vector<Component*>> EntityFactory::createTree(std::map<std::str
 	return entities;
 }
 
-std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string, ShaderLoader>& shaders, std::map<std::string, TextureLoader>& texInfos, std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
+std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string, VerticesLoader>& vertexData, const c_Lights* c_lights)
 {
 	const LightSet* lights;
 	if (c_lights) lights = &c_lights->lights;
@@ -715,7 +762,7 @@ std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string,
 	noiseSet.push_back(std::make_shared<SimpleNoise>(FastNoiseLite::NoiseType_Value, 0.0001, 1116));
 
 	//VerticesLoader vertexData(vertexDir + "grass.obj");
-	std::vector<ShaderLoader> usedShaders{ shaders["v_treeBB"], shaders["f_treeBB"] };
+	std::vector<ShaderLoader> usedShaders{ shaderLoaders["v_treeBB"], shaderLoaders["f_treeBB"] };
 	std::vector<TextureLoader> usedTextures{ texInfos["treeBB_a"] };
 
 	ModelDataInfo modelInfo;
@@ -728,7 +775,7 @@ std::vector<Component*> EntityFactory::createTreeBillboard(std::map<std::string,
 	modelInfo.texturesInfo = &usedTextures;
 	modelInfo.maxDescriptorsCount_vs = 500;
 	modelInfo.maxDescriptorsCount_fs;
-	modelInfo.UBOsize_vs = 4 * size.mat4 + size.vec4;	// M, V, P, MN, camPos_time, n * LightPosDir (2*vec4)
+	modelInfo.UBOsize_vs = 2 * size.mat4;	// M, MN
 	modelInfo.UBOsize_fs;
 	modelInfo.globalUBO_vs = &renderer.globalUBO_vs;
 	modelInfo.globalUBO_fs = &renderer.globalUBO_fs;

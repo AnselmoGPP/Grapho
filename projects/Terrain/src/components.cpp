@@ -126,7 +126,7 @@ c_Cam_Plane_polar::c_Cam_Plane_polar()
 }
 
 c_Cam_Plane_polar_sphere::c_Cam_Plane_polar_sphere()
-	: c_Camera(camMode::plane_polar_sphere, glm::vec3(1500, -1500, 0), 50, 0.001, 0.1), worldUp(glm::normalize(camPos))
+	: c_Camera(camMode::plane_polar_sphere, glm::vec3(-1500, 1500, 0), 50, 0.001, 0.1), worldUp(glm::normalize(camPos))
 {
 	// Camera looks east:
 	front = glm::normalize(glm::cross(glm::vec3(0,0,1), worldUp));

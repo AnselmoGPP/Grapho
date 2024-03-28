@@ -37,10 +37,6 @@ std::map<std::string, TextureLoader> texInfos;
 UBOinfo globalUBOs[2];
 std::map<std::string, VerticesLoader> verticesLoaders;
 
-//std::vector<TextureLoader> soilTexInfos;	// Package of textures
-//std::vector<TextureLoader> seaTexInfos;		// Package of textures
-//std::vector<TextureLoader> skyboxTexInfos;	// Package of textures
-
 // main ---------------------------------------------------------------------
 
 int main(int argc, char* argv[])
@@ -55,14 +51,17 @@ int main(int argc, char* argv[])
 	try   // https://www.tutorialspoint.com/cplusplus/cpp_exceptions_handling.htm
 	{
 		IOmanager io(1920/2, 1080/2);
-		loadResourcesInfo();						// Load shaders, textures, UBOs, meshes from files
+		loadResourcesInfo();						// Load shaders, textures, and meshes from files
 		
-		Renderer r(		// Create a renderer object
+		Renderer r(					// Create a renderer object
 			update,					// Callback that will be called for each frame (useful for updating model view matrices)
 			io, 
 			UBOinfo(1, 1, size.mat4 + size.mat4 + size.vec4),			// global UBO: View, Proj, camPos_Time
 			UBOinfo(1, 1, size.vec4 + NUM_LIGHTS * sizeof(Light)) );	// global UBO: camPos_Time, Lights
+		
 		EntityFactory eFact(r);
+		eFact.shaderLoaders = shaderLoaders;
+		eFact.texInfos = texInfos;
 
 		// ENTITIES + COMPONENTS:
 		{
@@ -70,32 +69,33 @@ int main(int argc, char* argv[])
 				new c_Engine(r),
 				new c_Input,
 				new c_Cam_Plane_polar_sphere,	// Sphere, Plane_free, Plane_polar_sphere
-				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 40),
+				new c_Sky(0.0035, 0, 0.0035 + 0.00028, 0, 30),
 				new c_Lights(NUM_LIGHTS) });
 
 			// Geometry pass (deferred rendering)
-			em.addEntity("planet", eFact.createPlanet(shaderLoaders, texInfos));
-			em.addEntity("grass", eFact.createGrass(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("plant", eFact.createPlant(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("stone", eFact.createRock(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
-			em.addEntity("treeBB", eFact.createTreeBillboard(shaderLoaders, texInfos, verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("planet", eFact.createPlanet());
+			em.addEntity("grass", eFact.createGrass(verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("plant", eFact.createPlant(verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("stone", eFact.createRock(verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntities(std::vector<std::string>{"trunk", "branch"}, eFact.createTree(verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("treeBB", eFact.createTreeBillboard(verticesLoaders, (c_Lights*)em.getSComponent(CT::lights)));
 
 			// Lighting pass (deferred rendering)
-			em.addEntity("lightingPass", eFact.createLightingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("lightingPass", eFact.createLightingPass((c_Lights*)em.getSComponent(CT::lights)));
 		
 			// Forward pass (forward rendering)
-			em.addEntity("sea", eFact.createSphere(shaderLoaders, texInfos));
+			em.addEntity("skybox", eFact.createSkyBox());
+			em.addEntity("sun", eFact.createSun());
+			em.addEntity("sea", eFact.createSphere());
 			//em.addEntity(eFact.createPoints(shaderLoaders[0], shaderLoaders[1], { }));	// <<<
 			//em.addEntity("axes", eFact.createAxes(shaderLoaders["v_lines"], shaderLoaders["f_lines"], {}));
 			//em.addEntity("grid", eFact.createGrid(shaderLoaders["v_lines"], shaderLoaders["f_lines"], { }));
-			//em.addEntity("skybox", eFact.createSkyBox(shaderLoaders["v_skybox"], shaderLoaders["f_skybox"], skyboxTexInfos));
-			//em.addEntity("sun", eFact.createSun(shaderLoaders["v_sun"], shaderLoaders["f_sun"], { texInfos["sun"] }));
 			//if (withPP) em.addEntity("atmosphere", eFact.createAtmosphere(shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 			//else em.addEntity("noPP", eFact.createNoPP(shaderLoaders["v_noPP"], shaderLoaders["f_noPP"], { texInfos["sun"], texInfos["hud"] }));
 		
 			// Post-processing pass
-			em.addEntity("postprocessingPass", eFact.createPostprocessingPass(shaderLoaders, texInfos, (c_Lights*)em.getSComponent(CT::lights)));
+			em.addEntity("postprocessingPass", eFact.createPostprocessingPass((c_Lights*)em.getSComponent(CT::lights)));
+			//em.addEntity("atmosphere", eFact.createAtmosphere((c_Lights*)em.getSComponent(CT::lights)));// shaderLoaders["v_atmosphere"], shaderLoaders["f_atmosphere"]));
 		}
 		// SYSTEMS:
 		{
@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 		}
 
 		#ifdef DEBUG_MAIN
-			world.printInfo();
+			em.printInfo();
 			std::cout << "--------------------" << std::endl;
 		#endif
 		
@@ -175,23 +175,23 @@ void loadResourcesInfo()
 		//shaderLoaders.insert(std::pair("v_lines", ShaderLoader(shadersDir + "v_lines.vert")));
 		//shaderLoaders.insert(std::pair("f_lines", ShaderLoader(shadersDir + "f_lines.frag")));
 		//
-		//shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "v_skybox.vert")));
-		//shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "f_skybox.frag")));
+		shaderLoaders.insert(std::pair("v_skybox", ShaderLoader(shadersDir + "skybox_v.vert")));
+		shaderLoaders.insert(std::pair("f_skybox", ShaderLoader(shadersDir + "skybox_f.frag")));
 		
-		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_FR_v.vert")));
-		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_FR_f.frag")));
+		shaderLoaders.insert(std::pair("v_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_v.vert")));
+		shaderLoaders.insert(std::pair("f_seaPlanet", ShaderLoader(shadersDir + "seaPlanet_f.frag")));
 		
 		shaderLoaders.insert(std::pair("v_planetChunk", ShaderLoader(shadersDir + "planetChunk_v.vert")));
 		shaderLoaders.insert(std::pair("f_planetChunk", ShaderLoader(shadersDir + "planetChunk_f.frag")));
 		
-		//shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "v_sun.vert")));
-		//shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "f_sun.frag")));
-		//
+		shaderLoaders.insert(std::pair("v_sun", ShaderLoader(shadersDir + "sun_v.vert")));
+		shaderLoaders.insert(std::pair("f_sun", ShaderLoader(shadersDir + "sun_f.frag")));
+		
 		//shaderLoaders.insert(std::pair("v_hud", ShaderLoader(shadersDir + "v_hud.vert")));
 		//shaderLoaders.insert(std::pair("f_hud", ShaderLoader(shadersDir + "f_hud.frag")));
-		//
-		//shaderLoaders.insert(std::pair("v_atmosphere", ShaderLoader(shadersDir + "v_atmosphere.vert")));
-		//shaderLoaders.insert(std::pair("f_atmosphere", ShaderLoader(shadersDir + "f_atmosphere.frag")));
+		
+		shaderLoaders.insert(std::pair("v_atmosphere", ShaderLoader(shadersDir + "atmosphere_v.vert")));
+		shaderLoaders.insert(std::pair("f_atmosphere", ShaderLoader(shadersDir + "atmosphere_f.frag")));
 
 		shaderLoaders.insert(std::pair("v_treeBB", ShaderLoader(shadersDir + "basic_v.vert", std::vector<shaderModifier>{sm_verticalNormals, sm_waving_weak})));
 		shaderLoaders.insert(std::pair("f_treeBB", ShaderLoader(shadersDir + "basic_f.frag", std::vector<shaderModifier>{sm_albedo, sm_discardAlpha, sm_reduceNightLight, sm_distDithering_far})));
